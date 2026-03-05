@@ -1,0 +1,50 @@
+version: "3"
+
+tasks:
+  install:
+    cmds:
+      - uv sync --all-extras
+
+  test:
+    cmds:
+      - uv run pytest {{.CLI_ARGS}}
+
+  test-unit:
+    cmds:
+      - uv run pytest tests/unit -v
+
+  test-integration:
+    cmds:
+      - uv run pytest tests/integration -v
+
+  test-e2e:
+    cmds:
+      - uv run pytest tests/e2e -v
+
+  lint:
+    cmds:
+      - uv run ruff check src/ tests/
+      - uv run ruff format --check src/ tests/
+
+  typecheck:
+    cmds:
+      - uv run mypy src/lintel/
+
+  format:
+    cmds:
+      - uv run ruff format src/ tests/
+      - uv run ruff check --fix src/ tests/
+
+  serve:
+    cmds:
+      - uv run uvicorn lintel.api.app:app --reload --port 8000
+
+  migrate:
+    cmds:
+      - uv run python -m lintel.infrastructure.event_store.migrate
+
+  all:
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test
