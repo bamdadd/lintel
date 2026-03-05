@@ -35,20 +35,20 @@ graph LR
 
 ## Phase 1: Project Skeleton & Tooling
 
-- [ ] Step 1.1: Repository setup (pyproject.toml, uv, ruff, mypy)
-- [ ] Step 1.2: Source tree scaffold (src/lintel/ package structure)
-- [ ] Step 1.3: Taskfile.yaml (lint, typecheck, test, serve tasks)
-- [ ] Step 1.4: Pre-commit hooks
-- [ ] Validation: `task lint && task typecheck`
+- [x] Step 1.1: Repository setup (pyproject.toml, uv, ruff, mypy)
+- [x] Step 1.2: Source tree scaffold (src/lintel/ package structure)
+- [x] Step 1.3: Taskfile.yaml (lint, typecheck, test, serve tasks)
+- [x] Step 1.4: Pre-commit hooks
+- [x] Validation: `task lint && task typecheck`
 
 ## Phase 2: Contracts & Domain Types
 
-- [ ] Step 2.1: Core value types (ThreadRef, ActorType, SkillDescriptor, etc.)
-- [ ] Step 2.2: Event envelope (DomainEvent base with schema_version)
-- [ ] Step 2.3: All event types (channel, workflow, agent, sandbox, repo, security)
-- [ ] Step 2.4: Command types
-- [ ] Step 2.5: Protocol interfaces (EventStore, PIIFirewall, ChannelAdapter, WorkflowEngine, etc.)
-- [ ] Validation: `task typecheck`
+- [x] Step 2.1: Core value types (ThreadRef, ActorType, SkillDescriptor, etc.)
+- [x] Step 2.2: Event envelope (DomainEvent base with schema_version)
+- [x] Step 2.3: All event types (channel, workflow, agent, sandbox, repo, security)
+- [x] Step 2.4: Command types
+- [x] Step 2.5: Protocol interfaces (EventStore, PIIFirewall, ChannelAdapter, WorkflowEngine, etc.)
+- [x] Validation: `task typecheck`
 
 ## Phase 3: Event Store
 

@@ -11,6 +11,7 @@ from uuid import UUID
 @dataclass(frozen=True)
 class ThreadRef:
     """Canonical identifier for a workflow instance (Slack thread)."""
+
     workspace_id: str
     channel_id: str
     thread_ts: str
@@ -68,6 +69,7 @@ class SkillExecutionMode(StrEnum):
 @dataclass(frozen=True)
 class ModelPolicy:
     """Policy for model selection per agent role."""
+
     provider: str
     model_name: str
     max_tokens: int = 4096

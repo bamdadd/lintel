@@ -7,7 +7,7 @@ Every event carries a schema_version for upcasting.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -17,10 +17,11 @@ from lintel.contracts.types import ActorType, ThreadRef
 @dataclass(frozen=True)
 class EventEnvelope:
     """Shared envelope for all domain events."""
+
     event_id: UUID = field(default_factory=uuid4)
     event_type: str = ""
     schema_version: int = 1
-    occurred_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     actor_type: ActorType = ActorType.SYSTEM
     actor_id: str = ""
     thread_ref: ThreadRef | None = None
@@ -31,6 +32,7 @@ class EventEnvelope:
 
 
 # --- Channel & Ingestion Events ---
+
 
 @dataclass(frozen=True)
 class ThreadMessageReceived(EventEnvelope):
@@ -54,6 +56,7 @@ class PIIResidualRiskBlocked(EventEnvelope):
 
 # --- Workflow Events ---
 
+
 @dataclass(frozen=True)
 class IntentRouted(EventEnvelope):
     event_type: str = "IntentRouted"
@@ -70,6 +73,7 @@ class WorkflowAdvanced(EventEnvelope):
 
 
 # --- Agent Events ---
+
 
 @dataclass(frozen=True)
 class AgentStepScheduled(EventEnvelope):
@@ -98,6 +102,7 @@ class ModelCallCompleted(EventEnvelope):
 
 # --- Sandbox Events ---
 
+
 @dataclass(frozen=True)
 class SandboxJobScheduled(EventEnvelope):
     event_type: str = "SandboxJobScheduled"
@@ -119,6 +124,7 @@ class SandboxDestroyed(EventEnvelope):
 
 
 # --- Repo Events ---
+
 
 @dataclass(frozen=True)
 class BranchCreated(EventEnvelope):
@@ -142,6 +148,7 @@ class HumanApprovalRejected(EventEnvelope):
 
 # --- Security Events ---
 
+
 @dataclass(frozen=True)
 class VaultRevealRequested(EventEnvelope):
     event_type: str = "VaultRevealRequested"
@@ -160,15 +167,31 @@ class PolicyDecisionRecorded(EventEnvelope):
 # --- Event Registry ---
 
 EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
-    cls.event_type: cls  # type: ignore[attr-defined]
+    cls.event_type: cls
     for cls in [
-        ThreadMessageReceived, PIIDetected, PIIAnonymised, PIIResidualRiskBlocked,
-        IntentRouted, WorkflowStarted, WorkflowAdvanced,
-        AgentStepScheduled, AgentStepStarted, AgentStepCompleted,
-        ModelSelected, ModelCallCompleted,
-        SandboxJobScheduled, SandboxCreated, SandboxArtifactsCollected, SandboxDestroyed,
-        BranchCreated, PRCreated, HumanApprovalGranted, HumanApprovalRejected,
-        VaultRevealRequested, VaultRevealGranted, PolicyDecisionRecorded,
+        ThreadMessageReceived,
+        PIIDetected,
+        PIIAnonymised,
+        PIIResidualRiskBlocked,
+        IntentRouted,
+        WorkflowStarted,
+        WorkflowAdvanced,
+        AgentStepScheduled,
+        AgentStepStarted,
+        AgentStepCompleted,
+        ModelSelected,
+        ModelCallCompleted,
+        SandboxJobScheduled,
+        SandboxCreated,
+        SandboxArtifactsCollected,
+        SandboxDestroyed,
+        BranchCreated,
+        PRCreated,
+        HumanApprovalGranted,
+        HumanApprovalRejected,
+        VaultRevealRequested,
+        VaultRevealGranted,
+        PolicyDecisionRecorded,
     ]
 }
 

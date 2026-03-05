@@ -7,8 +7,6 @@ import dataclasses
 from lintel.contracts.types import (
     ActorType,
     AgentRole,
-    CorrelationId,
-    EventId,
     ModelPolicy,
     SandboxStatus,
     SkillExecutionMode,

@@ -6,11 +6,14 @@ No concrete imports from infrastructure in this file.
 
 from __future__ import annotations
 
-from typing import Any, Protocol, Sequence
-from uuid import UUID
+from typing import TYPE_CHECKING, Any, Protocol
 
-from lintel.contracts.events import EventEnvelope
-from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from uuid import UUID
+
+    from lintel.contracts.events import EventEnvelope
+    from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
 
 
 class EventStore(Protocol):

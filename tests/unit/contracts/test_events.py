@@ -67,13 +67,29 @@ class TestConcreteEvents:
 
     def test_all_event_types_have_correct_event_type(self) -> None:
         event_classes = [
-            ThreadMessageReceived, PIIDetected, PIIAnonymised, PIIResidualRiskBlocked,
-            IntentRouted, WorkflowStarted, WorkflowAdvanced,
-            AgentStepScheduled, AgentStepStarted, AgentStepCompleted,
-            ModelSelected, ModelCallCompleted,
-            SandboxJobScheduled, SandboxCreated, SandboxArtifactsCollected, SandboxDestroyed,
-            BranchCreated, PRCreated, HumanApprovalGranted, HumanApprovalRejected,
-            VaultRevealRequested, VaultRevealGranted, PolicyDecisionRecorded,
+            ThreadMessageReceived,
+            PIIDetected,
+            PIIAnonymised,
+            PIIResidualRiskBlocked,
+            IntentRouted,
+            WorkflowStarted,
+            WorkflowAdvanced,
+            AgentStepScheduled,
+            AgentStepStarted,
+            AgentStepCompleted,
+            ModelSelected,
+            ModelCallCompleted,
+            SandboxJobScheduled,
+            SandboxCreated,
+            SandboxArtifactsCollected,
+            SandboxDestroyed,
+            BranchCreated,
+            PRCreated,
+            HumanApprovalGranted,
+            HumanApprovalRejected,
+            VaultRevealRequested,
+            VaultRevealGranted,
+            PolicyDecisionRecorded,
         ]
         for cls in event_classes:
             evt = cls()
