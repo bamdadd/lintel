@@ -147,34 +147,34 @@ graph LR
 
 ## Phase 13: API Layer & FastAPI App
 
-- [ ] Step 13.1: FastAPI app with lifespan, DI, correlation middleware
+- [x] Step 13.1: FastAPI app with lifespan, DI, correlation middleware
   - Blocked by: Phases 6-12
-- [ ] Step 13.2: Health endpoint
-- [ ] Step 13.3: Thread/event query endpoints
-- [ ] Validation: `task test -- tests/integration/test_api.py`
+- [x] Step 13.2: Health endpoint
+- [x] Step 13.3: Thread/event query endpoints
+- [x] Validation: `task test -- tests/integration/test_api.py`
 
 ## Phase 14: Docker Compose & Local Dev
 
-- [ ] Step 14.1: Docker Compose (Postgres, NATS, Lintel)
+- [x] Step 14.1: Docker Compose (Postgres, NATS, Lintel)
   - Blocked by: Phase 13
-- [ ] Step 14.2: Dockerfile
-- [ ] Step 14.3: .env.example
-- [ ] Validation: `docker compose up && curl localhost:8000/healthz`
+- [x] Step 14.2: Dockerfile
+- [x] Step 14.3: .env.example
+- [x] Validation: `docker compose up && curl localhost:8000/healthz`
 
 ## Phase 15: Integration Tests & E2E
 
-- [ ] Step 15.1: Full message pipeline test
+- [x] Step 15.1: Full message pipeline test
   - Blocked by: Phase 14
-- [ ] Step 15.2: PII pipeline integration test
-- [ ] Step 15.3: Workflow lifecycle integration test
-- [ ] Validation: `task test-integration`
+- [x] Step 15.2: PII pipeline integration test
+- [x] Step 15.3: Workflow lifecycle integration test
+- [x] Validation: `task test-integration`
 
 ## Phase 16: Documentation & CI/CD
 
-- [ ] Step 16.1: README, CONTRIBUTING, architecture docs
+- [x] Step 16.1: README, CONTRIBUTING, architecture docs
   - Blocked by: Phase 15
-- [ ] Step 16.2: GitHub Actions CI (lint, typecheck, test-unit, test-integration)
-- [ ] Validation: `task all`
+- [x] Step 16.2: GitHub Actions CI (lint, typecheck, test-unit, test-integration)
+- [x] Validation: `task all`
 
 ---
 
