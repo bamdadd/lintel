@@ -8,11 +8,14 @@ import {
   Loader,
   Center,
 } from '@mantine/core';
+import { useNavigate } from 'react-router';
 import { useAgentsListAgentRoles, useAgentsListModelPolicies } from '@/generated/api/agents/agents';
 
 export function Component() {
   const { data: rolesResp, isLoading: rolesLoading } = useAgentsListAgentRoles();
   const { data: policiesResp, isLoading: policiesLoading } = useAgentsListModelPolicies();
+
+  const navigate = useNavigate();
 
   if (rolesLoading || policiesLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -26,7 +29,7 @@ export function Component() {
         {roles.map((role: string) => {
           const policy = policies?.[role];
           return (
-            <Paper key={role} withBorder p="md" radius="md">
+            <Paper key={role} withBorder p="md" radius="md" style={{ cursor: 'pointer' }} onClick={() => void navigate(`/agents/${role}`)}>
               <Badge mb="sm">{role}</Badge>
               <Text size="sm">
                 Provider: {policy?.provider ?? 'default'}

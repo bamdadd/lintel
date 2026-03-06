@@ -1,10 +1,12 @@
 import { createBrowserRouter } from 'react-router';
 import { AppLayout } from '@/shared/layout/AppLayout';
+import { RouteError } from '@/shared/components/RouteError';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
+    errorElement: <RouteError />,
     children: [
       {
         index: true,
@@ -40,6 +42,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/agents/pages/AgentListPage'),
       },
       {
+        path: 'agents/:role',
+        lazy: () => import('@/features/agents/pages/AgentDetailPage'),
+      },
+      {
         path: 'skills',
         lazy: () => import('@/features/skills/pages/SkillListPage'),
       },
@@ -58,6 +64,10 @@ export const router = createBrowserRouter([
       {
         path: 'projects',
         lazy: () => import('@/features/projects/pages/ProjectListPage'),
+      },
+      {
+        path: 'projects/:projectId',
+        lazy: () => import('@/features/projects/pages/ProjectDetailPage'),
       },
       {
         path: 'pipelines',
