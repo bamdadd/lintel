@@ -73,12 +73,12 @@ graph LR
 
 ## Phase 5: Configuration & Observability
 
-- [ ] Step 5.1: Settings (pydantic-settings with env vars)
+- [x] Step 5.1: Settings (pydantic-settings with env vars)
   - Blocked by: Phase 2
-- [ ] Step 5.2: Structured logging (structlog with correlation_id)
-- [ ] Step 5.3: OpenTelemetry tracing setup
-- [ ] Step 5.4: Metrics (Prometheus-compatible)
-- [ ] Validation: `task test -- tests/unit/infrastructure/test_config.py`
+- [x] Step 5.2: Structured logging (structlog with correlation_id)
+- [x] Step 5.3: OpenTelemetry tracing setup
+- [x] Step 5.4: Metrics (Prometheus-compatible)
+- [x] Validation: `task test -- tests/unit/infrastructure/test_config.py`
 
 ## Phase 6: Slack Channel Adapter
 
