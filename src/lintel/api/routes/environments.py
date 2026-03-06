@@ -24,7 +24,9 @@ class InMemoryEnvironmentStore:
         return self._envs.get(environment_id)
 
     async def list_all(
-        self, *, project_id: str | None = None,
+        self,
+        *,
+        project_id: str | None = None,
     ) -> list[Environment]:
         envs = list(self._envs.values())
         if project_id is not None:

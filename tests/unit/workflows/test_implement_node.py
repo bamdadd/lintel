@@ -75,7 +75,7 @@ class TestSpawnImplementation:
         manager = DummySandboxManager()
         state = _make_state()
 
-        result = await spawn_implementation(state, sandbox_manager=manager)
+        await spawn_implementation(state, sandbox_manager=manager)
 
         assert len(manager.created) == 1
         assert len(manager.destroyed) == 1

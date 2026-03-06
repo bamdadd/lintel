@@ -36,7 +36,9 @@ class InMemoryPipelineStore:
         return self._runs.get(run_id)
 
     async def list_all(
-        self, *, project_id: str | None = None,
+        self,
+        *,
+        project_id: str | None = None,
     ) -> list[PipelineRun]:
         runs = list(self._runs.values())
         if project_id is not None:

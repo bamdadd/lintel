@@ -206,22 +206,16 @@ class TestSandboxManagerConformance:
             async def read_file(self, sandbox_id: str, path: str) -> str:
                 return ""
 
-            async def write_file(
-                self, sandbox_id: str, path: str, content: str
-            ) -> None:
+            async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
                 pass
 
-            async def list_files(
-                self, sandbox_id: str, path: str = "/workspace"
-            ) -> list[str]:
+            async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
                 return []
 
             async def get_status(self, sandbox_id: str) -> SandboxStatus:
                 return SandboxStatus.RUNNING
 
-            async def collect_artifacts(
-                self, sandbox_id: str
-            ) -> dict[str, Any]:
+            async def collect_artifacts(self, sandbox_id: str) -> dict[str, Any]:
                 return {}
 
             async def destroy(self, sandbox_id: str) -> None:
@@ -290,5 +284,3 @@ class TestSkillRegistryConformance:
 
         registry: SkillRegistry = FakeRegistry()  # type: ignore[assignment]
         assert registry is not None
-
-

@@ -54,23 +54,17 @@ class TestChatConversations:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    def test_list_conversations_filter_by_user(
-        self, client: TestClient
-    ) -> None:
+    def test_list_conversations_filter_by_user(self, client: TestClient) -> None:
         _create_conversation(client, user_id="alice")
         _create_conversation(client, user_id="bob")
 
-        resp = client.get(
-            "/api/v1/chat/conversations", params={"user_id": "alice"}
-        )
+        resp = client.get("/api/v1/chat/conversations", params={"user_id": "alice"})
         assert resp.status_code == 200
         results = resp.json()
         assert len(results) == 1
         assert results[0]["user_id"] == "alice"
 
-    def test_list_conversations_filter_by_project(
-        self, client: TestClient
-    ) -> None:
+    def test_list_conversations_filter_by_project(self, client: TestClient) -> None:
         _create_conversation(client, project_id="proj-1")
         _create_conversation(client, project_id="proj-2")
 
@@ -93,9 +87,7 @@ class TestChatConversations:
         assert data["conversation_id"] == cid
         assert len(data["messages"]) == 2
 
-    def test_get_conversation_not_found(
-        self, client: TestClient
-    ) -> None:
+    def test_get_conversation_not_found(self, client: TestClient) -> None:
         resp = client.get("/api/v1/chat/conversations/nonexistent")
         assert resp.status_code == 404
 
@@ -130,7 +122,5 @@ class TestChatConversations:
         assert resp.status_code == 404
 
     def test_delete_not_found(self, client: TestClient) -> None:
-        resp = client.delete(
-            "/api/v1/chat/conversations/nonexistent"
-        )
+        resp = client.delete("/api/v1/chat/conversations/nonexistent")
         assert resp.status_code == 404

@@ -76,9 +76,7 @@ class ChatStore:
         if user_id is not None:
             results = [c for c in results if c["user_id"] == user_id]
         if project_id is not None:
-            results = [
-                c for c in results if c["project_id"] == project_id
-            ]
+            results = [c for c in results if c["project_id"] == project_id]
         return results
 
     def add_message(
@@ -143,10 +141,7 @@ def create_conversation(
         role="user",
         content=body.message,
     )
-    stub = (
-        "[stub] Message received. "
-        "AI processing not yet connected."
-    )
+    stub = "[stub] Message received. AI processing not yet connected."
     store.add_message(
         conversation_id,
         user_id="system",

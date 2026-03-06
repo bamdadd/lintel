@@ -19,16 +19,20 @@ def client() -> "Generator[TestClient]":
 
 class TestArtifactsAPI:
     def test_create_artifact_returns_201(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
-        resp = client.post("/api/v1/artifacts", json={
-            "artifact_id": "art-1",
-            "work_item_id": "wi-1",
-            "run_id": "run-1",
-            "artifact_type": "source",
-            "path": "src/main.py",
-            "content": "print('hello')",
-        })
+        resp = client.post(
+            "/api/v1/artifacts",
+            json={
+                "artifact_id": "art-1",
+                "work_item_id": "wi-1",
+                "run_id": "run-1",
+                "artifact_type": "source",
+                "path": "src/main.py",
+                "content": "print('hello')",
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["artifact_id"] == "art-1"
@@ -40,12 +44,15 @@ class TestArtifactsAPI:
         assert resp.json() == []
 
     def test_get_artifact_by_id(self, client: TestClient) -> None:
-        client.post("/api/v1/artifacts", json={
-            "artifact_id": "art-2",
-            "work_item_id": "wi-1",
-            "run_id": "run-1",
-            "artifact_type": "test",
-        })
+        client.post(
+            "/api/v1/artifacts",
+            json={
+                "artifact_id": "art-2",
+                "work_item_id": "wi-1",
+                "run_id": "run-1",
+                "artifact_type": "test",
+            },
+        )
         resp = client.get("/api/v1/artifacts/art-2")
         assert resp.status_code == 200
         assert resp.json()["artifact_id"] == "art-2"
@@ -55,23 +62,28 @@ class TestArtifactsAPI:
         assert resp.status_code == 404
 
     def test_create_test_result_returns_201(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
-        resp = client.post("/api/v1/test-results", json={
-            "result_id": "tr-1",
-            "run_id": "run-1",
-            "stage_id": "stage-1",
-            "verdict": "passed",
-            "total": 10,
-            "passed": 10,
-        })
+        resp = client.post(
+            "/api/v1/test-results",
+            json={
+                "result_id": "tr-1",
+                "run_id": "run-1",
+                "stage_id": "stage-1",
+                "verdict": "passed",
+                "total": 10,
+                "passed": 10,
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["result_id"] == "tr-1"
         assert data["verdict"] == "passed"
 
     def test_get_test_result_not_found(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         resp = client.get("/api/v1/test-results/nonexistent")
         assert resp.status_code == 404

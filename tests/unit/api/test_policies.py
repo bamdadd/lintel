@@ -19,12 +19,15 @@ def client() -> "Generator[TestClient]":
 
 class TestPoliciesAPI:
     def test_create_policy_returns_201(self, client: TestClient) -> None:
-        resp = client.post("/api/v1/policies", json={
-            "policy_id": "pol-1",
-            "name": "Deploy Gate",
-            "action": "require_approval",
-            "approvers": ["u-1"],
-        })
+        resp = client.post(
+            "/api/v1/policies",
+            json={
+                "policy_id": "pol-1",
+                "name": "Deploy Gate",
+                "action": "require_approval",
+                "approvers": ["u-1"],
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["policy_id"] == "pol-1"
@@ -37,10 +40,13 @@ class TestPoliciesAPI:
         assert resp.json() == []
 
     def test_get_policy_by_id(self, client: TestClient) -> None:
-        client.post("/api/v1/policies", json={
-            "policy_id": "pol-2",
-            "name": "Review Gate",
-        })
+        client.post(
+            "/api/v1/policies",
+            json={
+                "policy_id": "pol-2",
+                "name": "Review Gate",
+            },
+        )
         resp = client.get("/api/v1/policies/pol-2")
         assert resp.status_code == 200
         assert resp.json()["name"] == "Review Gate"
@@ -50,10 +56,13 @@ class TestPoliciesAPI:
         assert resp.status_code == 404
 
     def test_delete_policy_returns_204(self, client: TestClient) -> None:
-        client.post("/api/v1/policies", json={
-            "policy_id": "pol-3",
-            "name": "To Delete",
-        })
+        client.post(
+            "/api/v1/policies",
+            json={
+                "policy_id": "pol-3",
+                "name": "To Delete",
+            },
+        )
         resp = client.delete("/api/v1/policies/pol-3")
         assert resp.status_code == 204
         assert client.get("/api/v1/policies/pol-3").status_code == 404

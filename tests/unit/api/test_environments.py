@@ -18,7 +18,8 @@ def client() -> "Generator[TestClient]":
 
 
 def _create_environment(
-    client: TestClient, environment_id: str = "env1",
+    client: TestClient,
+    environment_id: str = "env1",
 ) -> dict:
     return client.post(
         "/api/v1/environments",
@@ -48,7 +49,8 @@ class TestEnvironmentsAPI:
         assert data["project_id"] == "proj-1"
 
     def test_create_environment_duplicate_returns_409(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         _create_environment(client, "dup")
         resp = client.post(
@@ -63,7 +65,8 @@ class TestEnvironmentsAPI:
         assert resp.json() == []
 
     def test_list_environments_with_items(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         _create_environment(client, "a")
         _create_environment(client, "b")
@@ -78,7 +81,8 @@ class TestEnvironmentsAPI:
         assert resp.json()["environment_id"] == "env1"
 
     def test_get_environment_not_found_returns_404(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         resp = client.get("/api/v1/environments/missing")
         assert resp.status_code == 404

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -117,18 +116,15 @@ class TestExecute:
         manager = DockerSandboxManager()
         container = MagicMock()
 
-        async def slow_exec(*args: Any, **kwargs: Any) -> None:
+        async def slow_exec(*_args: object, **_kwargs: object) -> None:
             import asyncio
 
             await asyncio.sleep(10)
 
         manager._containers["s1"] = container
 
-        with patch("asyncio.to_thread", side_effect=slow_exec):
-            with pytest.raises(SandboxTimeoutError):
-                await manager.execute(
-                    "s1", SandboxJob(command="sleep 999", timeout_seconds=0)
-                )
+        with patch("asyncio.to_thread", side_effect=slow_exec), pytest.raises(SandboxTimeoutError):
+            await manager.execute("s1", SandboxJob(command="sleep 999", timeout_seconds=0))
 
 
 class TestReadFile:

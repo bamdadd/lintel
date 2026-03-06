@@ -49,7 +49,8 @@ class TestProjectsAPI:
         assert data["credential_ids"] == []
 
     def test_create_project_duplicate_returns_409(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         _create_project(client, "dup")
         resp = client.post(
@@ -77,7 +78,8 @@ class TestProjectsAPI:
         assert resp.json()["project_id"] == "p1"
 
     def test_get_project_not_found_returns_404(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         resp = client.get("/api/v1/projects/missing")
         assert resp.status_code == 404

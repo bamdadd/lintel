@@ -30,9 +30,7 @@ class AgentDefinitionStore:
         self._definitions[agent_id] = definition
         return definition
 
-    def update(
-        self, agent_id: str, updates: dict[str, Any]
-    ) -> dict[str, Any]:
+    def update(self, agent_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         if agent_id not in self._definitions:
             raise KeyError(agent_id)
         self._definitions[agent_id].update(updates)
@@ -49,10 +47,9 @@ def get_agent_definition_store(
 ) -> AgentDefinitionStore:
     """Get agent definition store from app state."""
     if not hasattr(request.app.state, "agent_definition_store"):
-        request.app.state.agent_definition_store = (
-            AgentDefinitionStore()
-        )
+        request.app.state.agent_definition_store = AgentDefinitionStore()
     return request.app.state.agent_definition_store  # type: ignore[no-any-return]
+
 
 router = APIRouter()
 
@@ -189,9 +186,7 @@ class UpdateAgentDefinitionRequest(BaseModel):
     role: str | None = None
 
 
-AgentDefStoreDep = Annotated[
-    AgentDefinitionStore, Depends(get_agent_definition_store)
-]
+AgentDefStoreDep = Annotated[AgentDefinitionStore, Depends(get_agent_definition_store)]
 
 
 @router.post("/agents/definitions", status_code=201)
@@ -207,9 +202,7 @@ async def create_agent_definition(
     except ValueError:
         raise HTTPException(  # noqa: B904
             status_code=409,
-            detail=(
-                f"Agent definition '{body.agent_id}' already exists"
-            ),
+            detail=(f"Agent definition '{body.agent_id}' already exists"),
         )
 
 
@@ -245,9 +238,7 @@ async def update_agent_definition(
     """Update a custom agent definition (partial)."""
     updates = body.model_dump(exclude_none=True)
     if "model_policy" in updates:
-        updates["model_policy"] = (
-            body.model_policy.model_dump()  # type: ignore[union-attr]
-        )
+        updates["model_policy"] = body.model_policy.model_dump()  # type: ignore[union-attr]
     try:
         return store.update(agent_id, updates)
     except KeyError:
@@ -257,9 +248,7 @@ async def update_agent_definition(
         )
 
 
-@router.delete(
-    "/agents/definitions/{agent_id}", status_code=204
-)
+@router.delete("/agents/definitions/{agent_id}", status_code=204)
 async def delete_agent_definition(
     agent_id: str,
     store: AgentDefStoreDep,

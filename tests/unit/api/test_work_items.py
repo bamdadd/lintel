@@ -18,7 +18,8 @@ def client() -> "Generator[TestClient]":
 
 
 def _create_work_item(
-    client: TestClient, work_item_id: str = "wi1",
+    client: TestClient,
+    work_item_id: str = "wi1",
 ) -> dict:
     return client.post(
         "/api/v1/work-items",
@@ -49,7 +50,8 @@ class TestWorkItemsAPI:
         assert data["status"] == "open"
 
     def test_create_work_item_duplicate_returns_409(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         _create_work_item(client, "dup")
         resp = client.post(
@@ -81,7 +83,8 @@ class TestWorkItemsAPI:
         assert resp.json()["work_item_id"] == "wi1"
 
     def test_get_work_item_not_found_returns_404(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         resp = client.get("/api/v1/work-items/missing")
         assert resp.status_code == 404

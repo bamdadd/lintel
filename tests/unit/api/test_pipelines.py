@@ -18,7 +18,8 @@ def client() -> "Generator[TestClient]":
 
 
 def _create_pipeline(
-    client: TestClient, run_id: str = "run1",
+    client: TestClient,
+    run_id: str = "run1",
 ) -> dict:
     return client.post(
         "/api/v1/pipelines",
@@ -48,7 +49,8 @@ class TestPipelinesAPI:
         assert len(data["stages"]) == 8
 
     def test_create_pipeline_duplicate_returns_409(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         _create_pipeline(client, "dup")
         resp = client.post(
@@ -80,7 +82,8 @@ class TestPipelinesAPI:
         assert resp.json()["run_id"] == "run1"
 
     def test_get_pipeline_not_found_returns_404(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         resp = client.get("/api/v1/pipelines/missing")
         assert resp.status_code == 404

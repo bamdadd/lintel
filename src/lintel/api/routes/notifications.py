@@ -23,9 +23,7 @@ class NotificationRuleStore:
     async def get(self, rule_id: str) -> NotificationRule | None:
         return self._rules.get(rule_id)
 
-    async def list_all(
-        self, *, project_id: str | None = None
-    ) -> list[NotificationRule]:
+    async def list_all(self, *, project_id: str | None = None) -> list[NotificationRule]:
         rules = list(self._rules.values())
         if project_id is not None:
             rules = [r for r in rules if r.project_id == project_id]

@@ -85,7 +85,7 @@ class UpdateVariableRequest(BaseModel):
 def _mask_secret(value: str) -> str:
     """Return first 4 characters followed by '****'."""
     if len(value) <= 4:
-        return value[:len(value)] + "****"
+        return value[: len(value)] + "****"
     return value[:4] + "****"
 
 

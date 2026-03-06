@@ -23,9 +23,7 @@ class WorkItemStore:
     async def get(self, work_item_id: str) -> dict[str, Any] | None:
         return self._data.get(work_item_id)
 
-    async def list_all(
-        self, *, project_id: str | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_all(self, *, project_id: str | None = None) -> list[dict[str, Any]]:
         items = list(self._data.values())
         if project_id is not None:
             items = [i for i in items if i["project_id"] == project_id]

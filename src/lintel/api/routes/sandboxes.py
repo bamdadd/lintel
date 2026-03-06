@@ -60,7 +60,7 @@ async def get_sandbox_status(
         status = await manager.get_status(sandbox_id)
         return {"sandbox_id": sandbox_id, "status": status.value}
     except SandboxNotFoundError:
-        raise HTTPException(status_code=404, detail="Sandbox not found")
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None
 
 
 @router.post("/sandboxes/{sandbox_id}/execute")
@@ -86,7 +86,7 @@ async def execute_command(
             "stderr": result.stderr,
         }
     except SandboxNotFoundError:
-        raise HTTPException(status_code=404, detail="Sandbox not found")
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None
 
 
 @router.post("/sandboxes/{sandbox_id}/files")
@@ -101,7 +101,7 @@ async def write_file(
         await manager.write_file(sandbox_id, body.path, body.content)
         return {"status": "written", "path": body.path}
     except SandboxNotFoundError:
-        raise HTTPException(status_code=404, detail="Sandbox not found")
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None
 
 
 @router.get("/sandboxes/{sandbox_id}/files")
@@ -116,7 +116,7 @@ async def read_file(
         content = await manager.read_file(sandbox_id, path)
         return {"path": path, "content": content}
     except SandboxNotFoundError:
-        raise HTTPException(status_code=404, detail="Sandbox not found")
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None
 
 
 @router.delete("/sandboxes/{sandbox_id}", status_code=204)
@@ -126,4 +126,4 @@ async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
     try:
         await manager.destroy(sandbox_id)
     except SandboxNotFoundError:
-        raise HTTPException(status_code=404, detail="Sandbox not found")
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None

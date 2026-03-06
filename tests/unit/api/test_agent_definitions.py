@@ -35,40 +35,28 @@ def _agent_payload(
     }
 
 
-def _create_definition(
-    client: TestClient, **overrides: str
-) -> dict:
+def _create_definition(client: TestClient, **overrides: str) -> dict:
     payload = _agent_payload(**overrides)
     resp = client.post("/api/v1/agents/definitions", json=payload)
     return resp.json()
 
 
 class TestAgentDefinitions:
-    def test_create_agent_definition(
-        self, client: TestClient
-    ) -> None:
+    def test_create_agent_definition(self, client: TestClient) -> None:
         payload = _agent_payload()
-        resp = client.post(
-            "/api/v1/agents/definitions", json=payload
-        )
+        resp = client.post("/api/v1/agents/definitions", json=payload)
         assert resp.status_code == 201
         data = resp.json()
         assert data["agent_id"] == "custom-agent-1"
         assert data["name"] == "Custom Agent"
 
-    def test_create_duplicate_returns_409(
-        self, client: TestClient
-    ) -> None:
+    def test_create_duplicate_returns_409(self, client: TestClient) -> None:
         payload = _agent_payload()
         client.post("/api/v1/agents/definitions", json=payload)
-        resp = client.post(
-            "/api/v1/agents/definitions", json=payload
-        )
+        resp = client.post("/api/v1/agents/definitions", json=payload)
         assert resp.status_code == 409
 
-    def test_list_definitions_empty(
-        self, client: TestClient
-    ) -> None:
+    def test_list_definitions_empty(self, client: TestClient) -> None:
         resp = client.get("/api/v1/agents/definitions")
         assert resp.status_code == 200
         assert resp.json() == []
@@ -88,9 +76,7 @@ class TestAgentDefinitions:
         assert resp.status_code == 200
         assert resp.json()["agent_id"] == "lookup-me"
 
-    def test_get_definition_not_found(
-        self, client: TestClient
-    ) -> None:
+    def test_get_definition_not_found(self, client: TestClient) -> None:
         resp = client.get("/api/v1/agents/definitions/nope")
         assert resp.status_code == 404
 

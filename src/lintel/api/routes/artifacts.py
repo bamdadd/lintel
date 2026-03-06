@@ -52,9 +52,7 @@ class TestResultStore:
     async def get(self, result_id: str) -> TestResult | None:
         return self._results.get(result_id)
 
-    async def list_all(
-        self, *, run_id: str | None = None
-    ) -> list[TestResult]:
+    async def list_all(self, *, run_id: str | None = None) -> list[TestResult]:
         results = list(self._results.values())
         if run_id is not None:
             results = [r for r in results if r.run_id == run_id]

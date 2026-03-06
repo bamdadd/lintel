@@ -57,9 +57,7 @@ def get_approval_request_store(
 # Request bodies
 # ---------------------------------------------------------------------------
 
-StoreDep = Annotated[
-    InMemoryApprovalRequestStore, Depends(get_approval_request_store)
-]
+StoreDep = Annotated[InMemoryApprovalRequestStore, Depends(get_approval_request_store)]
 
 
 class CreateApprovalRequestBody(BaseModel):
@@ -91,9 +89,7 @@ async def create_approval_request(
 ) -> dict[str, Any]:
     existing = await store.get(body.approval_id)
     if existing is not None:
-        raise HTTPException(
-            status_code=409, detail="Approval request already exists"
-        )
+        raise HTTPException(status_code=409, detail="Approval request already exists")
     approval = ApprovalRequest(
         approval_id=body.approval_id,
         run_id=body.run_id,
@@ -134,9 +130,7 @@ async def get_approval_request(
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
-        raise HTTPException(
-            status_code=404, detail="Approval request not found"
-        )
+        raise HTTPException(status_code=404, detail="Approval request not found")
     return asdict(approval)
 
 
@@ -148,9 +142,7 @@ async def approve_approval_request(
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
-        raise HTTPException(
-            status_code=404, detail="Approval request not found"
-        )
+        raise HTTPException(status_code=404, detail="Approval request not found")
     if approval.status != ApprovalStatus.PENDING:
         raise HTTPException(
             status_code=409,
@@ -175,9 +167,7 @@ async def reject_approval_request(
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
-        raise HTTPException(
-            status_code=404, detail="Approval request not found"
-        )
+        raise HTTPException(status_code=404, detail="Approval request not found")
     if approval.status != ApprovalStatus.PENDING:
         raise HTTPException(
             status_code=409,

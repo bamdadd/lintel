@@ -19,11 +19,14 @@ def client() -> "Generator[TestClient]":
 
 class TestUsersAPI:
     def test_create_user_returns_201(self, client: TestClient) -> None:
-        resp = client.post("/api/v1/users", json={
-            "user_id": "u-1",
-            "name": "Alice",
-            "email": "alice@example.com",
-        })
+        resp = client.post(
+            "/api/v1/users",
+            json={
+                "user_id": "u-1",
+                "name": "Alice",
+                "email": "alice@example.com",
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["user_id"] == "u-1"
@@ -36,10 +39,13 @@ class TestUsersAPI:
         assert resp.json() == []
 
     def test_get_user_by_id(self, client: TestClient) -> None:
-        client.post("/api/v1/users", json={
-            "user_id": "u-2",
-            "name": "Bob",
-        })
+        client.post(
+            "/api/v1/users",
+            json={
+                "user_id": "u-2",
+                "name": "Bob",
+            },
+        )
         resp = client.get("/api/v1/users/u-2")
         assert resp.status_code == 200
         assert resp.json()["name"] == "Bob"
@@ -49,10 +55,13 @@ class TestUsersAPI:
         assert resp.status_code == 404
 
     def test_delete_user_returns_204(self, client: TestClient) -> None:
-        client.post("/api/v1/users", json={
-            "user_id": "u-3",
-            "name": "Charlie",
-        })
+        client.post(
+            "/api/v1/users",
+            json={
+                "user_id": "u-3",
+                "name": "Charlie",
+            },
+        )
         resp = client.delete("/api/v1/users/u-3")
         assert resp.status_code == 204
         assert client.get("/api/v1/users/u-3").status_code == 404

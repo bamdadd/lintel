@@ -220,9 +220,8 @@ class TestNodeFunctions:
         assert len(result["plan"]["tasks"]) > 0
 
     async def test_implement_produces_sandbox_results(self) -> None:
-        from tests.unit.workflows.test_implement_node import DummySandboxManager
-
         from lintel.workflows.nodes.implement import spawn_implementation
+        from tests.unit.workflows.test_implement_node import DummySandboxManager
 
         state = ThreadWorkflowState(
             thread_ref="thread:w:c:t",
