@@ -122,6 +122,99 @@ async def test_read_all(event_store: PostgresEventStore) -> None:
     assert len(all_events) >= 1
 
 
+async def test_hash_chain_integrity(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(3)
+    ]
+    await event_store.append(stream_id, events)
+
+    async with event_store._pool.acquire() as conn:  # type: ignore[no-untyped-call]
+        rows = await conn.fetch(
+            "SELECT payload_hash, prev_hash FROM events "
+            "WHERE stream_id = $1 ORDER BY stream_version",
+            stream_id,
+        )
+    assert rows[0]["prev_hash"] is None
+    assert rows[1]["prev_hash"] == rows[0]["payload_hash"]
+    assert rows[2]["prev_hash"] == rows[1]["payload_hash"]
+
+
+async def test_read_stream_from_version(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(5)
+    ]
+    await event_store.append(stream_id, events)
+
+    result = await event_store.read_stream(stream_id, from_version=3)
+    assert len(result) == 2
+    assert result[0].payload["sanitized_text"] == "msg 3"
+    assert result[1].payload["sanitized_text"] == "msg 4"
+
+
+async def test_read_all_with_offset_and_limit(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(5)
+    ]
+    await event_store.append(stream_id, events)
+
+    result = await event_store.read_all(from_position=0, limit=2)
+    assert len(result) == 2
+
+
+async def test_thread_ref_round_trip(event_store: PostgresEventStore) -> None:
+    thread_ref = ThreadRef("W1", "C1", "99.99")
+    event = ThreadMessageReceived(
+        actor_type=ActorType.HUMAN,
+        actor_id="U1",
+        thread_ref=thread_ref,
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "ref test"},
+    )
+    await event_store.append(thread_ref.stream_id, [event])
+    stored = await event_store.read_stream(thread_ref.stream_id)
+    assert stored[0].thread_ref is not None
+    assert stored[0].thread_ref.workspace_id == "W1"
+    assert stored[0].thread_ref.channel_id == "C1"
+    assert stored[0].thread_ref.thread_ts == "99.99"
+    assert stored[0].thread_ref.stream_id == "thread:W1:C1:99.99"
+
+
+async def test_causation_id_persisted(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    cause_id = uuid4()
+    event = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        causation_id=cause_id,
+        payload={"sanitized_text": "caused"},
+    )
+    await event_store.append(stream_id, [event])
+    stored = await event_store.read_stream(stream_id)
+    assert stored[0].causation_id == cause_id
+
+
 async def test_idempotency(event_store: PostgresEventStore) -> None:
     stream_id = f"test:{uuid4()}"
     key = str(uuid4())

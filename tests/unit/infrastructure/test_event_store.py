@@ -99,6 +99,58 @@ class TestRowToEvent:
         assert type(evt) is EventEnvelope
         assert evt.event_type == "UnknownFutureEvent"
 
+    def test_preserves_causation_id(self) -> None:
+        cause_id = uuid4()
+        row = FakeRecord(
+            event_id=uuid4(),
+            event_type="ThreadMessageReceived",
+            schema_version=1,
+            occurred_at=datetime.now(UTC),
+            actor_type="human",
+            actor_id="U1",
+            thread_ref=None,
+            correlation_id=uuid4(),
+            causation_id=cause_id,
+            payload="{}",
+            idempotency_key=None,
+        )
+        evt = _row_to_event(row)
+        assert evt.causation_id == cause_id
+
+    def test_preserves_idempotency_key(self) -> None:
+        row = FakeRecord(
+            event_id=uuid4(),
+            event_type="ThreadMessageReceived",
+            schema_version=1,
+            occurred_at=datetime.now(UTC),
+            actor_type="system",
+            actor_id="sys",
+            thread_ref=None,
+            correlation_id=uuid4(),
+            causation_id=None,
+            payload="{}",
+            idempotency_key="msg-abc-123",
+        )
+        evt = _row_to_event(row)
+        assert evt.idempotency_key == "msg-abc-123"
+
+    def test_preserves_schema_version(self) -> None:
+        row = FakeRecord(
+            event_id=uuid4(),
+            event_type="ThreadMessageReceived",
+            schema_version=2,
+            occurred_at=datetime.now(UTC),
+            actor_type="system",
+            actor_id="sys",
+            thread_ref=None,
+            correlation_id=uuid4(),
+            causation_id=None,
+            payload="{}",
+            idempotency_key=None,
+        )
+        evt = _row_to_event(row)
+        assert evt.schema_version == 2
+
     def test_dict_thread_ref(self) -> None:
         row = FakeRecord(
             event_id=uuid4(),
