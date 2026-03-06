@@ -421,6 +421,8 @@ ui/
   - `clean-code-react-ui.md` - Frontend patterns to establish
   - `evidence-index.md` - Consolidated evidence citations
   - `risks.md` - Risk analysis and troubleshooting
+- `plan.md` - Implementation plan (Option A: Orval + Feature-Based SPA)
+- `implementation_checklist.md` - Progress tracking
 
 ## Notes
 
