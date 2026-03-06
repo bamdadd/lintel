@@ -1,0 +1,75 @@
+"""Feature-to-PR workflow graph using LangGraph.
+
+LangGraph is an implementation detail. This module wraps it behind
+Lintel's own graph builder so the orchestration engine can be replaced.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from langgraph.graph import END, StateGraph
+
+if TYPE_CHECKING:
+    from langgraph.graph.state import CompiledStateGraph
+
+from lintel.workflows.nodes.implement import spawn_implementation
+from lintel.workflows.nodes.ingest import ingest_message
+from lintel.workflows.nodes.plan import plan_work
+from lintel.workflows.nodes.review import review_output
+from lintel.workflows.nodes.route import route_intent
+from lintel.workflows.state import ThreadWorkflowState
+
+
+def build_feature_to_pr_graph() -> StateGraph[Any]:
+    """Build the feature-to-PR workflow graph."""
+    graph: StateGraph[Any] = StateGraph(ThreadWorkflowState)
+
+    graph.add_node("ingest", ingest_message)
+    graph.add_node("route", route_intent)
+    graph.add_node("plan", plan_work)
+    graph.add_node("approval_gate_spec", lambda s: s)
+    graph.add_node("implement", spawn_implementation)
+    graph.add_node("review", review_output)
+    graph.add_node("approval_gate_merge", lambda s: s)
+    graph.add_node("close", lambda s: {**s, "current_phase": "closed"})
+
+    graph.set_entry_point("ingest")
+    graph.add_edge("ingest", "route")
+    graph.add_conditional_edges(
+        "route",
+        _route_decision,
+        {
+            "plan": "plan",
+            "close": "close",
+        },
+    )
+    graph.add_edge("plan", "approval_gate_spec")
+    graph.add_edge("approval_gate_spec", "implement")
+    graph.add_edge("implement", "review")
+    graph.add_edge("review", "approval_gate_merge")
+    graph.add_edge("approval_gate_merge", "close")
+    graph.add_edge("close", END)
+
+    return graph
+
+
+def _route_decision(state: ThreadWorkflowState) -> str:
+    intent = state.get("intent", "")
+    if intent in ("feature", "bug", "refactor"):
+        return "plan"
+    return "close"
+
+
+async def compile_workflow(db_url: str) -> CompiledStateGraph[Any]:
+    """Compile the workflow with Postgres checkpointing."""
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+    async with AsyncPostgresSaver.from_conn_string(db_url) as checkpointer:
+        await checkpointer.setup()
+
+        graph = build_feature_to_pr_graph()
+        return graph.compile(
+            checkpointer=checkpointer,
+            interrupt_before=["approval_gate_spec", "approval_gate_merge"],
+        )
