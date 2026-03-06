@@ -10,6 +10,7 @@ import {
   ActionIcon,
   Loader,
   Center,
+  Select,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
@@ -22,6 +23,7 @@ import {
   useProjectsCreateProject,
   useProjectsRemoveProject,
 } from '@/generated/api/projects/projects';
+import { useRepositoriesListRepositories } from '@/generated/api/repositories/repositories';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface Project {
@@ -34,6 +36,7 @@ interface Project {
 
 export function Component() {
   const { data: resp, isLoading } = useProjectsListProjects();
+  const { data: reposResp } = useRepositoriesListRepositories();
   const createMutation = useProjectsCreateProject();
   const deleteMutation = useProjectsRemoveProject();
   const queryClient = useQueryClient();
@@ -57,6 +60,8 @@ export function Component() {
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   const projects = (resp?.data ?? []) as Project[];
+  const repos = (reposResp?.data ?? []) as Array<{ repo_id: string; name?: string; url?: string }>;
+  const repoOptions = repos.map((r) => ({ value: r.repo_id, label: r.name ?? r.url ?? r.repo_id }));
 
   const handleSubmit = form.onSubmit((values) => {
     createMutation.mutate(
@@ -139,7 +144,13 @@ export function Component() {
           <Stack gap="sm">
             <TextInput label="Project ID" placeholder="my-project" {...form.getInputProps('project_id')} />
             <TextInput label="Name" placeholder="My Project" {...form.getInputProps('name')} />
-            <TextInput label="Repository ID" placeholder="repo-123" {...form.getInputProps('repo_id')} />
+            <Select
+              label="Repository"
+              placeholder="Select a repository"
+              data={repoOptions}
+              searchable
+              {...form.getInputProps('repo_id')}
+            />
             <TextInput label="Default Branch" {...form.getInputProps('default_branch')} />
             <Button type="submit" loading={createMutation.isPending}>Create</Button>
           </Stack>

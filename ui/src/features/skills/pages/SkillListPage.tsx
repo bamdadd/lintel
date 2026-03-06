@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Title,
   Stack,
@@ -16,11 +17,12 @@ import {
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconEdit } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useSkillsListSkills,
   useSkillsRegisterSkill,
+  useSkillsUpdateSkill,
   useSkillsDeleteSkill,
 } from '@/generated/api/skills/skills';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -37,11 +39,13 @@ interface Skill {
 export function Component() {
   const { data: resp, isLoading } = useSkillsListSkills();
   const registerMutation = useSkillsRegisterSkill();
+  const updateMutation = useSkillsUpdateSkill();
   const deleteMutation = useSkillsDeleteSkill();
   const queryClient = useQueryClient();
-  const [opened, { open, close }] = useDisclosure(false);
+  const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
+  const [editSkill, setEditSkill] = useState<Skill | null>(null);
 
-  const form = useForm({
+  const createForm = useForm({
     initialValues: {
       skill_id: '',
       name: '',
@@ -56,22 +60,60 @@ export function Component() {
     },
   });
 
+  const editForm = useForm({
+    initialValues: {
+      name: '',
+      description: '',
+      content: '',
+      version: '',
+      execution_mode: 'inline',
+    },
+  });
+
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   const skills = (resp?.data ?? []) as Skill[];
 
-  const handleSubmit = form.onSubmit((values) => {
+  const handleCreate = createForm.onSubmit((values) => {
     registerMutation.mutate(
       { data: { ...values, input_schema: {}, output_schema: {} } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: `Skill "${values.name}" registered`, color: 'green' });
           void queryClient.invalidateQueries({ queryKey: ['/api/v1/skills'] });
-          form.reset();
-          close();
+          createForm.reset();
+          closeCreate();
         },
         onError: () => {
           notifications.show({ title: 'Error', message: 'Failed to register skill', color: 'red' });
+        },
+      },
+    );
+  });
+
+  const openEdit = (skill: Skill) => {
+    setEditSkill(skill);
+    editForm.setValues({
+      name: skill.name,
+      description: skill.description ?? '',
+      content: skill.content ?? '',
+      version: skill.version,
+      execution_mode: skill.execution_mode,
+    });
+  };
+
+  const handleEdit = editForm.onSubmit((values) => {
+    if (!editSkill) return;
+    updateMutation.mutate(
+      { skillId: editSkill.skill_id, data: values },
+      {
+        onSuccess: () => {
+          notifications.show({ title: 'Updated', message: `Skill "${values.name}" updated`, color: 'green' });
+          void queryClient.invalidateQueries({ queryKey: ['/api/v1/skills'] });
+          setEditSkill(null);
+        },
+        onError: () => {
+          notifications.show({ title: 'Error', message: 'Failed to update skill', color: 'red' });
         },
       },
     );
@@ -93,7 +135,7 @@ export function Component() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Skills</Title>
-        <Button onClick={open}>Register Skill</Button>
+        <Button onClick={openCreate}>Register Skill</Button>
       </Group>
 
       {skills.length === 0 ? (
@@ -101,7 +143,7 @@ export function Component() {
           title="No skills registered"
           description="Register a skill to extend agent capabilities"
           actionLabel="Register Skill"
-          onAction={open}
+          onAction={openCreate}
         />
       ) : (
         <Table striped highlightOnHover>
@@ -117,20 +159,21 @@ export function Component() {
           </Table.Thead>
           <Table.Tbody>
             {skills.map((s) => (
-              <Table.Tr key={s.skill_id}>
+              <Table.Tr key={s.skill_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(s)}>
                 <Table.Td>{s.skill_id}</Table.Td>
                 <Table.Td>{s.name}</Table.Td>
                 <Table.Td><Text size="sm" lineClamp={1}>{s.description || '—'}</Text></Table.Td>
                 <Table.Td>{s.version}</Table.Td>
                 <Table.Td>{s.execution_mode}</Table.Td>
                 <Table.Td>
-                  <ActionIcon
-                    color="red"
-                    variant="subtle"
-                    onClick={() => handleDelete(s.skill_id)}
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
+                  <Group gap={4}>
+                    <ActionIcon variant="subtle" onClick={(e) => { e.stopPropagation(); openEdit(s); }}>
+                      <IconEdit size={16} />
+                    </ActionIcon>
+                    <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(s.skill_id); }}>
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -138,36 +181,50 @@ export function Component() {
         </Table>
       )}
 
-      <Modal opened={opened} onClose={close} title="Register Skill" size="lg">
-        <form onSubmit={handleSubmit}>
+      {/* Create Modal */}
+      <Modal opened={createOpened} onClose={closeCreate} title="Register Skill" size="lg">
+        <form onSubmit={handleCreate}>
           <Stack gap="sm">
-            <TextInput label="Skill ID" placeholder="my-skill" {...form.getInputProps('skill_id')} />
-            <TextInput label="Name" placeholder="My Skill" {...form.getInputProps('name')} />
-            <Textarea
-              label="Description"
-              placeholder="What this skill does"
-              autosize
-              minRows={2}
-              {...form.getInputProps('description')}
-            />
+            <TextInput label="Skill ID" placeholder="my-skill" {...createForm.getInputProps('skill_id')} />
+            <TextInput label="Name" placeholder="My Skill" {...createForm.getInputProps('name')} />
+            <Textarea label="Description" placeholder="What this skill does" autosize minRows={2} {...createForm.getInputProps('description')} />
             <Textarea
               label="Content"
               placeholder="Skill content / prompt template (OpenSkill format)"
-              autosize
-              minRows={6}
+              autosize minRows={6}
               styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
-              {...form.getInputProps('content')}
+              {...createForm.getInputProps('content')}
             />
-            <TextInput label="Version" {...form.getInputProps('version')} />
+            <TextInput label="Version" {...createForm.getInputProps('version')} />
             <Select
               label="Execution Mode"
-              data={[
-                { value: 'inline', label: 'Inline' },
-                { value: 'sandbox', label: 'Sandbox' },
-              ]}
-              {...form.getInputProps('execution_mode')}
+              data={[{ value: 'inline', label: 'Inline' }, { value: 'sandbox', label: 'Sandbox' }]}
+              {...createForm.getInputProps('execution_mode')}
             />
             <Button type="submit" loading={registerMutation.isPending}>Register</Button>
+          </Stack>
+        </form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal opened={!!editSkill} onClose={() => setEditSkill(null)} title={`Edit Skill: ${editSkill?.skill_id ?? ''}`} size="lg">
+        <form onSubmit={handleEdit}>
+          <Stack gap="sm">
+            <TextInput label="Name" {...editForm.getInputProps('name')} />
+            <Textarea label="Description" autosize minRows={2} {...editForm.getInputProps('description')} />
+            <Textarea
+              label="Content"
+              autosize minRows={8}
+              styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
+              {...editForm.getInputProps('content')}
+            />
+            <TextInput label="Version" {...editForm.getInputProps('version')} />
+            <Select
+              label="Execution Mode"
+              data={[{ value: 'inline', label: 'Inline' }, { value: 'sandbox', label: 'Sandbox' }]}
+              {...editForm.getInputProps('execution_mode')}
+            />
+            <Button type="submit" loading={updateMutation.isPending}>Save Changes</Button>
           </Stack>
         </form>
       </Modal>

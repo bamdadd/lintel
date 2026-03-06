@@ -30,7 +30,9 @@ import type {
   SkillsGetSkill200,
   SkillsInvokeSkill200,
   SkillsListSkills200Item,
-  SkillsRegisterSkill201
+  SkillsRegisterSkill201,
+  SkillsUpdateSkill200,
+  UpdateSkillRequest
 } from '../../models';
 
 import { customInstance } from '../../../shared/api/client';
@@ -357,6 +359,97 @@ export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSki
 
 
 /**
+ * Update a registered skill.
+ * @summary Update Skill
+ */
+export type skillsUpdateSkillResponse200 = {
+  data: SkillsUpdateSkill200
+  status: 200
+}
+
+export type skillsUpdateSkillResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type skillsUpdateSkillResponseSuccess = (skillsUpdateSkillResponse200) & {
+  headers: Headers;
+};
+export type skillsUpdateSkillResponseError = (skillsUpdateSkillResponse422) & {
+  headers: Headers;
+};
+
+export type skillsUpdateSkillResponse = (skillsUpdateSkillResponseSuccess | skillsUpdateSkillResponseError)
+
+export const getSkillsUpdateSkillUrl = (skillId: string,) => {
+
+
+  
+
+  return `/api/v1/skills/${skillId}`
+}
+
+export const skillsUpdateSkill = async (skillId: string,
+    updateSkillRequest: UpdateSkillRequest, options?: RequestInit): Promise<skillsUpdateSkillResponse> => {
+  
+  return customInstance<skillsUpdateSkillResponse>(getSkillsUpdateSkillUrl(skillId),
+  {      
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateSkillRequest,)
+  }
+);}
+  
+
+
+
+export const getSkillsUpdateSkillMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsUpdateSkill>>, TError,{skillId: string;data: UpdateSkillRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof skillsUpdateSkill>>, TError,{skillId: string;data: UpdateSkillRequest}, TContext> => {
+
+const mutationKey = ['skillsUpdateSkill'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof skillsUpdateSkill>>, {skillId: string;data: UpdateSkillRequest}> = (props) => {
+          const {skillId,data} = props ?? {};
+
+          return  skillsUpdateSkill(skillId,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SkillsUpdateSkillMutationResult = NonNullable<Awaited<ReturnType<typeof skillsUpdateSkill>>>
+    export type SkillsUpdateSkillMutationBody = UpdateSkillRequest
+    export type SkillsUpdateSkillMutationError = HTTPValidationError
+
+    /**
+ * @summary Update Skill
+ */
+export const useSkillsUpdateSkill = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsUpdateSkill>>, TError,{skillId: string;data: UpdateSkillRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof skillsUpdateSkill>>,
+        TError,
+        {skillId: string;data: UpdateSkillRequest},
+        TContext
+      > => {
+      return useMutation(getSkillsUpdateSkillMutationOptions(options), queryClient);
+    }
+    /**
  * Delete a registered skill.
  * @summary Delete Skill
  */

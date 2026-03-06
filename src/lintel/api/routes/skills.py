@@ -143,6 +143,39 @@ async def get_skill(
     return {"skill_id": skill_id, **asdict(skills[skill_id]), **store._metadata.get(skill_id, {})}
 
 
+class UpdateSkillRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    content: str | None = None
+    version: str | None = None
+    execution_mode: SkillExecutionMode | None = None
+
+
+@router.patch("/skills/{skill_id}")
+async def update_skill(
+    skill_id: str,
+    body: UpdateSkillRequest,
+    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+) -> dict[str, Any]:
+    """Update a registered skill."""
+    skills = await store.list_skills()
+    if skill_id not in skills:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    descriptor = skills[skill_id]
+    updates = body.model_dump(exclude_none=True)
+    meta = store._metadata.get(skill_id, {})
+    if "description" in updates:
+        meta["description"] = updates.pop("description")
+    if "content" in updates:
+        meta["content"] = updates.pop("content")
+    store._metadata[skill_id] = meta
+    if "execution_mode" in updates:
+        updates["execution_mode"] = SkillExecutionMode(updates["execution_mode"])
+    for key, val in updates.items():
+        object.__setattr__(descriptor, key, val)
+    return {"skill_id": skill_id, **asdict(descriptor), **store._metadata.get(skill_id, {})}
+
+
 @router.delete("/skills/{skill_id}", status_code=204)
 async def delete_skill(
     skill_id: str,
