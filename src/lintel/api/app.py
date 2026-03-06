@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
@@ -166,6 +167,14 @@ def create_app() -> FastAPI:
     app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+
+    # Serve SPA static files in production (must be last)
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists():
+        from fastapi.staticfiles import StaticFiles
+
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
+
     return app
 
 

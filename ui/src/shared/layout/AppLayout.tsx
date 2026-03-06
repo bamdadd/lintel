@@ -11,6 +11,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconSun, IconMoon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { CommandPalette } from '@/shared/components/CommandPalette';
+import { ConnectionStatus } from '@/shared/components/ConnectionStatus';
 
 const navItems = [
   { label: 'Dashboard', path: '/' },
@@ -54,6 +55,7 @@ export function AppLayout() {
             />
             <Title order={3}>Lintel</Title>
           </Group>
+          <ConnectionStatus />
           <ActionIcon
             variant="default"
             onClick={toggleColorScheme}
