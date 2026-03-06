@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Title,
   Stack,
@@ -20,6 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   useTeamsListTeams,
   useTeamsCreateTeam,
+  useTeamsUpdateTeam,
   useTeamsDeleteTeam,
 } from '@/generated/api/teams/teams';
 import { useUsersListUsers } from '@/generated/api/users/users';
@@ -48,23 +50,27 @@ export function Component() {
   const { data: usersResp } = useUsersListUsers();
   const { data: projectsResp } = useProjectsListProjects();
   const createMutation = useTeamsCreateTeam();
+  const updateMutation = useTeamsUpdateTeam();
   const deleteMutation = useTeamsDeleteTeam();
   const queryClient = useQueryClient();
-  const [opened, { open, close }] = useDisclosure(false);
+  const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
+  const [editTeam, setEditTeam] = useState<TeamItem | null>(null);
 
   const users = (usersResp?.data ?? []) as UserItem[];
   const projects = (projectsResp?.data ?? []) as ProjectItem[];
   const userOptions = users.map((u) => ({ value: u.user_id, label: u.name }));
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
 
-  const form = useForm({
+  const createForm = useForm({
+    initialValues: { name: '' },
+    validate: { name: (v) => (v.trim() ? null : 'Required') },
+  });
+
+  const editForm = useForm({
     initialValues: {
       name: '',
       member_ids: [] as string[],
       project_ids: [] as string[],
-    },
-    validate: {
-      name: (v) => (v.trim() ? null : 'Required'),
     },
   });
 
@@ -72,18 +78,44 @@ export function Component() {
 
   const teams = (resp?.data ?? []) as TeamItem[];
 
-  const handleSubmit = form.onSubmit((values) => {
+  const handleCreate = createForm.onSubmit((values) => {
     createMutation.mutate(
-      { data: values },
+      { data: { name: values.name } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: `Team "${values.name}" created`, color: 'green' });
           void queryClient.invalidateQueries({ queryKey: ['/api/v1/teams'] });
-          form.reset();
-          close();
+          createForm.reset();
+          closeCreate();
         },
         onError: () => {
           notifications.show({ title: 'Error', message: 'Failed to create team', color: 'red' });
+        },
+      },
+    );
+  });
+
+  const openEdit = (team: TeamItem) => {
+    setEditTeam(team);
+    editForm.setValues({
+      name: team.name,
+      member_ids: team.member_ids ?? [],
+      project_ids: team.project_ids ?? [],
+    });
+  };
+
+  const handleEdit = editForm.onSubmit((values) => {
+    if (!editTeam) return;
+    updateMutation.mutate(
+      { teamId: editTeam.team_id, data: values },
+      {
+        onSuccess: () => {
+          notifications.show({ title: 'Updated', message: `Team "${values.name}" updated`, color: 'green' });
+          void queryClient.invalidateQueries({ queryKey: ['/api/v1/teams'] });
+          setEditTeam(null);
+        },
+        onError: () => {
+          notifications.show({ title: 'Error', message: 'Failed to update team', color: 'red' });
         },
       },
     );
@@ -96,6 +128,7 @@ export function Component() {
         onSuccess: () => {
           notifications.show({ title: 'Deleted', message: 'Team removed', color: 'orange' });
           void queryClient.invalidateQueries({ queryKey: ['/api/v1/teams'] });
+          if (editTeam?.team_id === teamId) setEditTeam(null);
         },
       },
     );
@@ -105,7 +138,7 @@ export function Component() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Teams</Title>
-        <Button onClick={open}>Create Team</Button>
+        <Button onClick={openCreate}>Create Team</Button>
       </Group>
 
       {teams.length === 0 ? (
@@ -113,7 +146,7 @@ export function Component() {
           title="No teams"
           description="Create teams to organize users and projects"
           actionLabel="Create Team"
-          onAction={open}
+          onAction={openCreate}
         />
       ) : (
         <Table striped highlightOnHover>
@@ -127,12 +160,12 @@ export function Component() {
           </Table.Thead>
           <Table.Tbody>
             {teams.map((t) => (
-              <Table.Tr key={t.team_id}>
+              <Table.Tr key={t.team_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(t)}>
                 <Table.Td>{t.name}</Table.Td>
                 <Table.Td><Badge variant="light">{t.member_ids?.length ?? 0} members</Badge></Table.Td>
                 <Table.Td><Badge variant="light">{t.project_ids?.length ?? 0} projects</Badge></Table.Td>
                 <Table.Td>
-                  <ActionIcon color="red" variant="subtle" onClick={() => handleDelete(t.team_id)}>
+                  <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(t.team_id); }}>
                     <IconTrash size={16} />
                   </ActionIcon>
                 </Table.Td>
@@ -142,25 +175,36 @@ export function Component() {
         </Table>
       )}
 
-      <Modal opened={opened} onClose={close} title="Create Team">
-        <form onSubmit={handleSubmit}>
+      {/* Create — just name */}
+      <Modal opened={createOpened} onClose={closeCreate} title="Create Team">
+        <form onSubmit={handleCreate}>
           <Stack gap="sm">
-            <TextInput label="Name" placeholder="Engineering" {...form.getInputProps('name')} />
+            <TextInput label="Name" placeholder="Engineering" {...createForm.getInputProps('name')} />
+            <Button type="submit" loading={createMutation.isPending}>Create Team</Button>
+          </Stack>
+        </form>
+      </Modal>
+
+      {/* Edit — manage members and projects */}
+      <Modal opened={!!editTeam} onClose={() => setEditTeam(null)} title={`Manage: ${editTeam?.name ?? ''}`} size="lg">
+        <form onSubmit={handleEdit}>
+          <Stack gap="sm">
+            <TextInput label="Name" {...editForm.getInputProps('name')} />
             <MultiSelect
               label="Members"
               placeholder="Add users to this team"
               data={userOptions}
               searchable
-              {...form.getInputProps('member_ids')}
+              {...editForm.getInputProps('member_ids')}
             />
             <MultiSelect
               label="Projects"
               placeholder="Assign projects to this team"
               data={projectOptions}
               searchable
-              {...form.getInputProps('project_ids')}
+              {...editForm.getInputProps('project_ids')}
             />
-            <Button type="submit" loading={createMutation.isPending}>Create Team</Button>
+            <Button type="submit" loading={updateMutation.isPending}>Save Changes</Button>
           </Stack>
         </form>
       </Modal>
