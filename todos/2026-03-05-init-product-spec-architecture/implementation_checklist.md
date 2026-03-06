@@ -103,47 +103,47 @@ graph LR
 
 ## Phase 8: Agent Runtime & Model Router
 
-- [ ] Step 8.1: Agent runtime with model policy enforcement
+- [x] Step 8.1: Agent runtime with model policy enforcement
   - Blocked by: Phase 7
-- [ ] Step 8.2: Model router with provider abstraction (litellm)
-- [ ] Step 8.3: Tool allow-list per agent role
-- [ ] Step 8.4: Agent events (AgentStepScheduled, ModelCallCompleted, etc.)
-- [ ] Validation: `task test -- tests/unit/agents/`
+- [x] Step 8.2: Model router with provider abstraction (litellm)
+- [x] Step 8.3: Tool allow-list per agent role
+- [x] Step 8.4: Agent events (AgentStepScheduled, ModelCallCompleted, etc.)
+- [x] Validation: `task test -- tests/unit/agents/`
 
 ## Phase 9: Skill Registry
 
-- [ ] Step 9.1: Skill protocol & in-memory registry
+- [x] Step 9.1: Skill protocol & in-memory registry
   - Blocked by: Phase 8
-- [ ] Step 9.2: Built-in skills (code, test, review)
-- [ ] Step 9.3: Skill invocation events
-- [ ] Validation: `task test -- tests/unit/skills/`
+- [x] Step 9.2: Built-in skills (code, test, review)
+- [x] Step 9.3: Skill invocation events
+- [x] Validation: `task test -- tests/unit/skills/`
 
 ## Phase 10: Sandbox Manager
 
-- [ ] Step 10.1: Sandbox protocol & Docker backend
+- [x] Step 10.1: Sandbox protocol & Docker backend
   - Blocked by: Phase 8
-- [ ] Step 10.2: Defense-in-depth security (cap-drop ALL, seccomp, read-only, no network)
-- [ ] Step 10.3: Artifact collection (diffs, logs, test results)
-- [ ] Step 10.4: Sandbox events
-- [ ] Validation: `task test -- tests/unit/sandbox/`
+- [x] Step 10.2: Defense-in-depth security (cap-drop ALL, seccomp, read-only, no network)
+- [x] Step 10.3: Artifact collection (diffs, logs, test results)
+- [x] Step 10.4: Sandbox events
+- [x] Validation: `task test -- tests/unit/sandbox/`
 
 ## Phase 11: Repo Provider (GitHub)
 
-- [ ] Step 11.1: RepoProvider protocol & GitHub implementation
+- [x] Step 11.1: RepoProvider protocol & GitHub implementation
   - Blocked by: Phase 10
-- [ ] Step 11.2: Git operations (clone, branch, commit, push)
-- [ ] Step 11.3: PR operations (create, comment)
-- [ ] Step 11.4: Repo events
-- [ ] Validation: `task test -- tests/unit/repo/`
+- [x] Step 11.2: Git operations (clone, branch, commit, push)
+- [x] Step 11.3: PR operations (create, comment)
+- [x] Step 11.4: Repo events
+- [x] Validation: `task test -- tests/unit/repo/`
 
 ## Phase 12: Projections & Read Models
 
-- [ ] Step 12.1: Projection engine
+- [x] Step 12.1: Projection engine
   - Blocked by: Phase 3
-- [ ] Step 12.2: Thread status projection
-- [ ] Step 12.3: Task backlog projection
-- [ ] Step 12.4: Projection SQL migrations
-- [ ] Validation: `task test -- tests/unit/projections/`
+- [x] Step 12.2: Thread status projection
+- [x] Step 12.3: Task backlog projection
+- [x] Step 12.4: Projection SQL migrations
+- [x] Validation: `task test -- tests/unit/projections/`
 
 ## Phase 13: API Layer & FastAPI App
 
