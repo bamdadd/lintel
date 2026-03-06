@@ -9,7 +9,7 @@ import type { RegisterSkillRequestOutputSchema } from './registerSkillRequestOut
 import type { SkillExecutionMode } from './skillExecutionMode';
 
 export interface RegisterSkillRequest {
-  skill_id: string;
+  skill_id?: string;
   version: string;
   name: string;
   description?: string;

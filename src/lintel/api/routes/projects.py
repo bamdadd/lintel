@@ -2,9 +2,10 @@
 
 from dataclasses import asdict
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Project, ProjectStatus
 
@@ -47,7 +48,7 @@ def _to_response(data: dict[str, Any]) -> dict[str, Any]:
 
 
 class CreateProjectRequest(BaseModel):
-    project_id: str
+    project_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     repo_id: str
     channel_id: str = ""

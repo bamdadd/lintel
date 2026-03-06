@@ -7,6 +7,7 @@ import {
   Group,
   Modal,
   TextInput,
+  Textarea,
   Select,
   Loader,
   Center,
@@ -30,7 +31,6 @@ interface Credential {
   credential_id: string;
   credential_type: string;
   name: string;
-  repo_ids: string[];
 }
 
 export function Component() {
@@ -42,14 +42,11 @@ export function Component() {
 
   const form = useForm({
     initialValues: {
-      credential_id: '',
       name: '',
       credential_type: 'github_token',
       secret: '',
-      repo_ids: '',
     },
     validate: {
-      credential_id: (v) => (v.trim() ? null : 'Required'),
       name: (v) => (v.trim() ? null : 'Required'),
       secret: (v) => (v.trim() ? null : 'Required'),
     },
@@ -58,16 +55,15 @@ export function Component() {
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   const credentials = (resp?.data ?? []) as Credential[];
+  const isSSHKey = form.values.credential_type === 'ssh_key';
 
   const handleSubmit = form.onSubmit((values) => {
     storeMutation.mutate(
       {
         data: {
-          credential_id: values.credential_id,
           name: values.name,
           credential_type: values.credential_type as 'github_token' | 'ssh_key' | 'api_key',
           secret: values.secret,
-          repo_ids: values.repo_ids ? values.repo_ids.split(',').map((s) => s.trim()) : [],
         },
       },
       {
@@ -121,20 +117,16 @@ export function Component() {
               <Table striped highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>ID</Table.Th>
                     <Table.Th>Name</Table.Th>
                     <Table.Th>Type</Table.Th>
-                    <Table.Th>Repos</Table.Th>
                     <Table.Th />
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {credentials.map((c) => (
                     <Table.Tr key={c.credential_id}>
-                      <Table.Td>{c.credential_id}</Table.Td>
                       <Table.Td>{c.name}</Table.Td>
                       <Table.Td>{c.credential_type}</Table.Td>
-                      <Table.Td><Text size="sm">{c.repo_ids?.join(', ') || '—'}</Text></Table.Td>
                       <Table.Td>
                         <ActionIcon color="red" variant="subtle" onClick={() => handleRevoke(c.credential_id)}>
                           <IconTrash size={16} />
@@ -156,8 +148,7 @@ export function Component() {
       <Modal opened={opened} onClose={close} title="Add Credential">
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
-            <TextInput label="Credential ID" placeholder="gh-token-1" {...form.getInputProps('credential_id')} />
-            <TextInput label="Name" placeholder="GitHub Token" {...form.getInputProps('name')} />
+            <TextInput label="Name" placeholder="My GitHub Token" {...form.getInputProps('name')} />
             <Select
               label="Type"
               data={[
@@ -167,12 +158,22 @@ export function Component() {
               ]}
               {...form.getInputProps('credential_type')}
             />
-            <PasswordInput label="Secret" placeholder="ghp_..." {...form.getInputProps('secret')} />
-            <TextInput
-              label="Repository IDs"
-              placeholder="repo-1, repo-2 (comma separated)"
-              {...form.getInputProps('repo_ids')}
-            />
+            {isSSHKey ? (
+              <Textarea
+                label="SSH Private Key"
+                placeholder={"-----BEGIN OPENSSH PRIVATE KEY-----\n..."}
+                autosize
+                minRows={8}
+                styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+                {...form.getInputProps('secret')}
+              />
+            ) : (
+              <PasswordInput
+                label={form.values.credential_type === 'github_token' ? 'Token' : 'API Key'}
+                placeholder={form.values.credential_type === 'github_token' ? 'ghp_...' : 'sk-...'}
+                {...form.getInputProps('secret')}
+              />
+            )}
             <Button type="submit" loading={storeMutation.isPending}>Store</Button>
           </Stack>
         </form>

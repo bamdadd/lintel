@@ -6,7 +6,7 @@
  */
 
 export interface RegisterRepoRequest {
-  repo_id: string;
+  repo_id?: string;
   name: string;
   url: string;
   default_branch?: string;

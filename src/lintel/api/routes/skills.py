@@ -2,9 +2,10 @@
 
 from dataclasses import asdict
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import SkillDescriptor, SkillExecutionMode, SkillResult
 
@@ -81,7 +82,7 @@ def get_skill_store(request: Request) -> InMemorySkillStore:
 
 
 class RegisterSkillRequest(BaseModel):
-    skill_id: str
+    skill_id: str = Field(default_factory=lambda: str(uuid4()))
     version: str
     name: str
     description: str = ""

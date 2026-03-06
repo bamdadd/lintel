@@ -6299,7 +6299,6 @@
         },
         "type": "object",
         "required": [
-          "agent_id",
           "name",
           "description",
           "system_prompt",
@@ -6662,7 +6661,6 @@
         },
         "type": "object",
         "required": [
-          "project_id",
           "name",
           "repo_id"
         ],
@@ -7373,7 +7371,6 @@
         },
         "type": "object",
         "required": [
-          "repo_id",
           "name",
           "url"
         ],
@@ -7422,7 +7419,6 @@
         },
         "type": "object",
         "required": [
-          "skill_id",
           "version",
           "name"
         ],
@@ -7708,7 +7704,6 @@
         },
         "type": "object",
         "required": [
-          "credential_id",
           "credential_type",
           "name",
           "secret"

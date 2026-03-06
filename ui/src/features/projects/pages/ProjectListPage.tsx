@@ -45,13 +45,11 @@ export function Component() {
 
   const form = useForm({
     initialValues: {
-      project_id: '',
       name: '',
       repo_id: '',
       default_branch: 'main',
     },
     validate: {
-      project_id: (v) => (v.trim() ? null : 'Required'),
       name: (v) => (v.trim() ? null : 'Required'),
       repo_id: (v) => (v.trim() ? null : 'Required'),
     },
@@ -142,7 +140,6 @@ export function Component() {
       <Modal opened={opened} onClose={close} title="Create Project">
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
-            <TextInput label="Project ID" placeholder="my-project" {...form.getInputProps('project_id')} />
             <TextInput label="Name" placeholder="My Project" {...form.getInputProps('name')} />
             <Select
               label="Repository"

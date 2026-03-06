@@ -2,9 +2,10 @@
 
 from dataclasses import asdict
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Credential, CredentialType
 
@@ -65,7 +66,7 @@ def _mask_secret(secret: str) -> str:
 
 
 class StoreCredentialRequest(BaseModel):
-    credential_id: str
+    credential_id: str = Field(default_factory=lambda: str(uuid4()))
     credential_type: CredentialType
     name: str
     secret: str

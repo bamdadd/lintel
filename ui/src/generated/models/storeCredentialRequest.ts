@@ -7,7 +7,7 @@
 import type { CredentialType } from './credentialType';
 
 export interface StoreCredentialRequest {
-  credential_id: string;
+  credential_id?: string;
   credential_type: CredentialType;
   name: string;
   secret: string;

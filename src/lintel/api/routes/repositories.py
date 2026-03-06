@@ -2,9 +2,10 @@
 
 from dataclasses import asdict
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lintel.api.deps import get_repository_store
 from lintel.contracts.types import Repository, RepoStatus
@@ -13,8 +14,12 @@ from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
 router = APIRouter()
 
 
+def _gen_id() -> str:
+    return str(uuid4())
+
+
 class RegisterRepoRequest(BaseModel):
-    repo_id: str
+    repo_id: str = Field(default_factory=_gen_id)
     name: str
     url: str
     default_branch: str = "main"

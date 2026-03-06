@@ -47,7 +47,6 @@ export function Component() {
 
   const createForm = useForm({
     initialValues: {
-      skill_id: '',
       name: '',
       description: '',
       content: '',
@@ -55,7 +54,6 @@ export function Component() {
       execution_mode: 'inline',
     },
     validate: {
-      skill_id: (v) => (v.trim() ? null : 'Required'),
       name: (v) => (v.trim() ? null : 'Required'),
     },
   });
@@ -185,7 +183,6 @@ export function Component() {
       <Modal opened={createOpened} onClose={closeCreate} title="Register Skill" size="lg">
         <form onSubmit={handleCreate}>
           <Stack gap="sm">
-            <TextInput label="Skill ID" placeholder="my-skill" {...createForm.getInputProps('skill_id')} />
             <TextInput label="Name" placeholder="My Skill" {...createForm.getInputProps('name')} />
             <Textarea label="Description" placeholder="What this skill does" autosize minRows={2} {...createForm.getInputProps('description')} />
             <Textarea

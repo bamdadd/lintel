@@ -8,36 +8,56 @@ import {
   Center,
   Modal,
   TextInput,
+  MultiSelect,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
+import { notifications } from '@mantine/notifications';
 import {
   useRepositoriesListRepositories,
   useRepositoriesRegisterRepository,
   useRepositoriesRemoveRepository,
   getRepositoriesListRepositoriesQueryKey,
 } from '@/generated/api/repositories/repositories';
+import { useCredentialsListCredentials } from '@/generated/api/credentials/credentials';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { useQueryClient } from '@tanstack/react-query';
 
+interface Credential {
+  credential_id: string;
+  name: string;
+  credential_type: string;
+}
+
 export function Component() {
   const { data: resp, isLoading } = useRepositoriesListRepositories();
+  const { data: credsResp } = useCredentialsListCredentials();
   const registerMutation = useRepositoriesRegisterRepository();
   const deleteMutation = useRepositoriesRemoveRepository();
   const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
-  const [form, setForm] = useState({ repo_id: '', name: '', url: '' });
+  const [form, setForm] = useState({ name: '', url: '', credential_ids: [] as string[] });
   const repos = resp?.data;
+
+  const credentials = (credsResp?.data ?? []) as Credential[];
+  const credentialOptions = credentials.map((c) => ({
+    value: c.credential_id,
+    label: `${c.name} (${c.credential_type})`,
+  }));
 
   const handleCreate = () => {
     registerMutation.mutate(
-      { data: form },
+      { data: { name: form.name, url: form.url } },
       {
         onSuccess: () => {
+          notifications.show({ title: 'Registered', message: `Repository "${form.name}" added`, color: 'green' });
           void queryClient.invalidateQueries({ queryKey: getRepositoriesListRepositoriesQueryKey() });
           close();
-          setForm({ repo_id: '', name: '', url: '' });
+          setForm({ name: '', url: '', credential_ids: [] });
+        },
+        onError: () => {
+          notifications.show({ title: 'Error', message: 'Failed to register repository', color: 'red' });
         },
       },
     );
@@ -48,6 +68,7 @@ export function Component() {
       { repoId },
       {
         onSuccess: () => {
+          notifications.show({ title: 'Deleted', message: 'Repository removed', color: 'orange' });
           void queryClient.invalidateQueries({ queryKey: getRepositoriesListRepositoriesQueryKey() });
         },
       },
@@ -74,18 +95,16 @@ export function Component() {
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>ID</Table.Th>
               <Table.Th>Name</Table.Th>
               <Table.Th>URL</Table.Th>
               <Table.Th>Branch</Table.Th>
               <Table.Th>Status</Table.Th>
-              <Table.Th>Actions</Table.Th>
+              <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {repos.map((r, i) => (
               <Table.Tr key={i}>
-                <Table.Td>{String(r.repo_id ?? '')}</Table.Td>
                 <Table.Td>{String(r.name ?? '')}</Table.Td>
                 <Table.Td>{String(r.url ?? '')}</Table.Td>
                 <Table.Td>{String(r.default_branch ?? 'main')}</Table.Td>
@@ -111,12 +130,6 @@ export function Component() {
       <Modal opened={opened} onClose={close} title="Register Repository">
         <Stack>
           <TextInput
-            label="Repository ID"
-            value={form.repo_id}
-            onChange={(e) => setForm({ ...form, repo_id: e.target.value })}
-            required
-          />
-          <TextInput
             label="Name"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -124,9 +137,18 @@ export function Component() {
           />
           <TextInput
             label="URL"
+            placeholder="https://github.com/org/repo"
             value={form.url}
             onChange={(e) => setForm({ ...form, url: e.target.value })}
             required
+          />
+          <MultiSelect
+            label="Credentials"
+            placeholder="Select credentials for this repository"
+            data={credentialOptions}
+            value={form.credential_ids}
+            onChange={(val) => setForm({ ...form, credential_ids: val })}
+            searchable
           />
           <Button onClick={handleCreate} loading={registerMutation.isPending}>
             Register

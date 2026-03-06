@@ -7,7 +7,7 @@
 import type { ModelPolicyRequest } from './modelPolicyRequest';
 
 export interface CreateAgentDefinitionRequest {
-  agent_id: string;
+  agent_id?: string;
   name: string;
   description: string;
   system_prompt: string;
