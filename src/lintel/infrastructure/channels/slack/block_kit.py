@@ -66,8 +66,10 @@ def build_status_blocks(
         context_elements: list[dict[str, str]] = [
             {"type": "mrkdwn", "text": f"*{k}*: {v}"} for k, v in metadata.items()
         ]
-        blocks.append({
-            "type": "context",
-            "elements": context_elements[:10],
-        })
+        blocks.append(
+            {
+                "type": "context",
+                "elements": context_elements[:10],
+            }
+        )
     return blocks

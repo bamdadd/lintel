@@ -55,7 +55,9 @@ class TestBuildStatusBlocks:
 
     def test_includes_metadata_context(self) -> None:
         blocks = build_status_blocks(
-            "coder", "implementing", "Working...",
+            "coder",
+            "implementing",
+            "Working...",
             metadata={"model": "claude-sonnet", "tokens": "1234"},
         )
         assert len(blocks) == 3

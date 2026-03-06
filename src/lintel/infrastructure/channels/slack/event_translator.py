@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lintel.contracts.commands import (
     GrantApproval,
     ProcessIncomingMessage,
     RejectApproval,
 )
-from typing import Any
-
 from lintel.contracts.types import ThreadRef
 
 
