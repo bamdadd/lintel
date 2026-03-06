@@ -1,0 +1,217 @@
+tech_area: api
+display_name: API & Domain Layer
+description: >
+  FastAPI REST API with event-sourced CQRS architecture. Handles all HTTP endpoints,
+  domain types, event processing, projections, and workflow orchestration.
+
+task_runner: make
+dependency_manager: uv
+
+frameworks:
+  - name: fastapi
+    version: ">=0.115"
+    context7_library_id: /tiangolo/fastapi
+    documentation_urls:
+      - https://fastapi.tiangolo.com
+    topics:
+      - dependencies
+      - middleware
+      - testing
+      - security
+      - path-operations
+      - request-body
+      - response-model
+
+  - name: pydantic
+    version: ">=2.10"
+    context7_library_id: /pydantic/pydantic
+    documentation_urls:
+      - https://docs.pydantic.dev/latest/
+    topics:
+      - validators
+      - serialization
+      - settings
+      - dataclasses
+
+  - name: sqlalchemy
+    version: ">=2.0"
+    context7_library_id: /sqlalchemy/sqlalchemy
+    documentation_urls:
+      - https://docs.sqlalchemy.org/en/20/
+    topics:
+      - async
+      - orm
+      - core
+      - engine
+
+  - name: structlog
+    version: ">=24.4"
+    context7_library_id: /hynek/structlog
+    documentation_urls:
+      - https://www.structlog.org/en/stable/
+    topics:
+      - configuration
+      - processors
+      - testing
+
+  - name: langgraph
+    version: ">=0.3"
+    context7_library_id: /langchain-ai/langgraph
+    documentation_urls:
+      - https://langchain-ai.github.io/langgraph/
+    topics:
+      - graphs
+      - state
+      - checkpointing
+      - human-in-the-loop
+
+  - name: litellm
+    version: ">=1.55"
+    context7_library_id: /BerriAI/litellm
+    documentation_urls:
+      - https://docs.litellm.ai/
+    topics:
+      - providers
+      - completion
+      - embedding
+      - router
+
+  - name: presidio-analyzer
+    version: ">=2.2"
+    context7_library_id: ""
+    documentation_urls:
+      - https://microsoft.github.io/presidio/
+    topics:
+      - analyzers
+      - recognizers
+      - anonymizers
+
+  - name: slack-bolt
+    version: ">=1.21"
+    context7_library_id: /slackapi/bolt-python
+    documentation_urls:
+      - https://slack.dev/bolt-python/
+    topics:
+      - events
+      - commands
+      - middleware
+      - socket-mode
+
+  - name: asyncpg
+    version: ">=0.30"
+    context7_library_id: /MagicStack/asyncpg
+    documentation_urls:
+      - https://magicstack.github.io/asyncpg/current/
+    topics:
+      - connection
+      - pool
+      - transactions
+      - prepared-statements
+
+  - name: cryptography
+    version: ">=44.0"
+    context7_library_id: /pyca/cryptography
+    documentation_urls:
+      - https://cryptography.io/en/latest/
+    topics:
+      - fernet
+      - hazmat
+      - x509
+
+  - name: httpx
+    version: ">=0.28"
+    context7_library_id: /encode/httpx
+    documentation_urls:
+      - https://www.python-httpx.org/
+    topics:
+      - async
+      - client
+      - transports
+
+  - name: opentelemetry-sdk
+    version: ">=1.29"
+    context7_library_id: ""
+    documentation_urls:
+      - https://opentelemetry-python.readthedocs.io/en/latest/
+    topics:
+      - tracing
+      - metrics
+      - exporters
+
+  - name: nats-py
+    version: ">=2.9"
+    context7_library_id: /nats-io/nats.py
+    documentation_urls:
+      - https://nats-io.github.io/nats.py/
+    topics:
+      - jetstream
+      - publish-subscribe
+      - request-reply
+
+  - name: tenacity
+    version: ">=9.0"
+    context7_library_id: /jd/tenacity
+    documentation_urls:
+      - https://tenacity.readthedocs.io/en/latest/
+    topics:
+      - retry
+      - wait
+      - stop
+
+deployment:
+  platform: github-actions
+  workflows:
+    - path: .github/workflows/ci.yml
+      description: Lint, typecheck, and test on push/PR to main
+  infrastructure:
+    - path: Dockerfile
+      description: Production container image
+    - path: docker-compose.yml
+      description: Local development stack (Postgres, NATS, app)
+
+development:
+  taskfile: Makefile
+  linting:
+    - tool: ruff
+      config_path: pyproject.toml
+  formatting:
+    - tool: ruff
+      config_path: pyproject.toml
+  testing:
+    tool: pytest
+    config_path: pyproject.toml
+  type_checking:
+    tool: mypy
+    config_path: pyproject.toml
+
+pattern_categories:
+  - event-sourcing
+  - cqrs
+  - clean-architecture
+  - dependency-injection
+  - protocol-interfaces
+  - frozen-dataclasses
+  - in-memory-stores
+
+best_practice_categories:
+  - api-design
+  - error-handling
+  - testing
+  - security
+  - pii-handling
+  - observability
+
+anti_pattern_hints:
+  - importing-infrastructure-from-domain
+  - mutable-domain-objects
+  - leaky-abstractions
+  - missing-correlation-ids
+  - exposing-secrets-in-responses
+
+related_docs:
+  - path: docs/architecture.md
+    description: System architecture overview
+  - path: docs/events.md
+    description: Event reference for all domain events
+  - path: docs/local-dev.md
+    description: Local development setup guide

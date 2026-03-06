@@ -1,6 +1,5 @@
 """Credential response models."""
 
-
 from pydantic import BaseModel
 
 

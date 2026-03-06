@@ -1,6 +1,5 @@
 """Sandbox response models."""
 
-
 from pydantic import BaseModel
 
 

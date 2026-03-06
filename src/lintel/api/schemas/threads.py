@@ -1,6 +1,5 @@
 """Thread response models."""
 
-
 from pydantic import BaseModel
 
 

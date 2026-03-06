@@ -1,6 +1,5 @@
 """Workflow response models."""
 
-
 from pydantic import BaseModel
 
 

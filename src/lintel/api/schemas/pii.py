@@ -1,6 +1,5 @@
 """PII response models."""
 
-
 from pydantic import BaseModel
 
 

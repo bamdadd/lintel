@@ -11,12 +11,16 @@ import {
   Center,
   ActionIcon,
   Badge,
-  MultiSelect,
+  Checkbox,
+  Text,
+  ScrollArea,
+  Paper,
+  Tabs,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconUsers, IconBriefcase } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useTeamsListTeams,
@@ -38,6 +42,7 @@ interface TeamItem {
 interface UserItem {
   user_id: string;
   name: string;
+  email?: string;
 }
 
 interface ProjectItem {
@@ -55,11 +60,11 @@ export function Component() {
   const queryClient = useQueryClient();
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [editTeam, setEditTeam] = useState<TeamItem | null>(null);
+  const [memberFilter, setMemberFilter] = useState('');
+  const [projectFilter, setProjectFilter] = useState('');
 
   const users = (usersResp?.data ?? []) as UserItem[];
   const projects = (projectsResp?.data ?? []) as ProjectItem[];
-  const userOptions = users.map((u) => ({ value: u.user_id, label: u.name }));
-  const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
 
   const createForm = useForm({
     initialValues: { name: '' },
@@ -97,11 +102,31 @@ export function Component() {
 
   const openEdit = (team: TeamItem) => {
     setEditTeam(team);
+    setMemberFilter('');
+    setProjectFilter('');
     editForm.setValues({
       name: team.name,
       member_ids: team.member_ids ?? [],
       project_ids: team.project_ids ?? [],
     });
+  };
+
+  const toggleMember = (userId: string) => {
+    const current = editForm.values.member_ids;
+    if (current.includes(userId)) {
+      editForm.setFieldValue('member_ids', current.filter((id) => id !== userId));
+    } else {
+      editForm.setFieldValue('member_ids', [...current, userId]);
+    }
+  };
+
+  const toggleProject = (projectId: string) => {
+    const current = editForm.values.project_ids;
+    if (current.includes(projectId)) {
+      editForm.setFieldValue('project_ids', current.filter((id) => id !== projectId));
+    } else {
+      editForm.setFieldValue('project_ids', [...current, projectId]);
+    }
   };
 
   const handleEdit = editForm.onSubmit((values) => {
@@ -133,6 +158,15 @@ export function Component() {
       },
     );
   };
+
+  const filteredUsers = users.filter((u) =>
+    u.name.toLowerCase().includes(memberFilter.toLowerCase())
+    || (u.email ?? '').toLowerCase().includes(memberFilter.toLowerCase())
+  );
+
+  const filteredProjects = projects.filter((p) =>
+    p.name.toLowerCase().includes(projectFilter.toLowerCase())
+  );
 
   return (
     <Stack gap="md">
@@ -185,25 +219,96 @@ export function Component() {
         </form>
       </Modal>
 
-      {/* Edit — manage members and projects */}
+      {/* Edit — manage members and projects with checkbox lists */}
       <Modal opened={!!editTeam} onClose={() => setEditTeam(null)} title={`Manage: ${editTeam?.name ?? ''}`} size="lg">
         <form onSubmit={handleEdit}>
-          <Stack gap="sm">
+          <Stack gap="md">
             <TextInput label="Name" {...editForm.getInputProps('name')} />
-            <MultiSelect
-              label="Members"
-              placeholder="Add users to this team"
-              data={userOptions}
-              searchable
-              {...editForm.getInputProps('member_ids')}
-            />
-            <MultiSelect
-              label="Projects"
-              placeholder="Assign projects to this team"
-              data={projectOptions}
-              searchable
-              {...editForm.getInputProps('project_ids')}
-            />
+
+            <Tabs defaultValue="members">
+              <Tabs.List>
+                <Tabs.Tab value="members" leftSection={<IconUsers size={16} />}>
+                  Members ({editForm.values.member_ids.length})
+                </Tabs.Tab>
+                <Tabs.Tab value="projects" leftSection={<IconBriefcase size={16} />}>
+                  Projects ({editForm.values.project_ids.length})
+                </Tabs.Tab>
+              </Tabs.List>
+
+              <Tabs.Panel value="members" pt="sm">
+                <Stack gap="xs">
+                  <TextInput
+                    placeholder="Search users..."
+                    size="sm"
+                    value={memberFilter}
+                    onChange={(e) => setMemberFilter(e.currentTarget.value)}
+                  />
+                  <ScrollArea h={250}>
+                    <Stack gap={4}>
+                      {filteredUsers.length === 0 ? (
+                        <Text size="sm" c="dimmed" ta="center" py="md">
+                          {users.length === 0 ? 'No users created yet' : 'No matching users'}
+                        </Text>
+                      ) : (
+                        filteredUsers.map((u) => (
+                          <Paper key={u.user_id} p="xs" withBorder style={{ cursor: 'pointer' }}
+                            onClick={() => toggleMember(u.user_id)}
+                          >
+                            <Group gap="sm">
+                              <Checkbox
+                                checked={editForm.values.member_ids.includes(u.user_id)}
+                                onChange={() => toggleMember(u.user_id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <div>
+                                <Text size="sm" fw={500}>{u.name}</Text>
+                                {u.email && <Text size="xs" c="dimmed">{u.email}</Text>}
+                              </div>
+                            </Group>
+                          </Paper>
+                        ))
+                      )}
+                    </Stack>
+                  </ScrollArea>
+                </Stack>
+              </Tabs.Panel>
+
+              <Tabs.Panel value="projects" pt="sm">
+                <Stack gap="xs">
+                  <TextInput
+                    placeholder="Search projects..."
+                    size="sm"
+                    value={projectFilter}
+                    onChange={(e) => setProjectFilter(e.currentTarget.value)}
+                  />
+                  <ScrollArea h={250}>
+                    <Stack gap={4}>
+                      {filteredProjects.length === 0 ? (
+                        <Text size="sm" c="dimmed" ta="center" py="md">
+                          {projects.length === 0 ? 'No projects created yet' : 'No matching projects'}
+                        </Text>
+                      ) : (
+                        filteredProjects.map((p) => (
+                          <Paper key={p.project_id} p="xs" withBorder style={{ cursor: 'pointer' }}
+                            onClick={() => toggleProject(p.project_id)}
+                          >
+                            <Group gap="sm">
+                              <Checkbox
+                                checked={editForm.values.project_ids.includes(p.project_id)}
+                                onChange={() => toggleProject(p.project_id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <Text size="sm" fw={500}>{p.name}</Text>
+                            </Group>
+                          </Paper>
+                        ))
+                      )}
+                    </Stack>
+                  </ScrollArea>
+                </Stack>
+              </Tabs.Panel>
+            </Tabs>
+
             <Button type="submit" loading={updateMutation.isPending}>Save Changes</Button>
           </Stack>
         </form>
