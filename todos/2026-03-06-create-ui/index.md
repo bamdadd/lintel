@@ -406,11 +406,21 @@ ui/
       index.ts              # TypeScript types mirroring backend contracts
 ```
 
-## Work Artifacts
+## Artifacts
 
-| Agent        | File     | Purpose                 |
-| ------------ | -------- | ----------------------- |
-| task-manager | index.md | Task index and tracking |
+- `index.md` - Task definition
+- `research.md` - Research findings with synthesis and appendix summaries
+- `research/` - Detailed appendices (10 files)
+  - `codebase-survey-python-api.md` - Backend API surface survey
+  - `codebase-survey-react-ui.md` - Frontend infrastructure survey
+  - `framework-docs-python-api.md` - FastAPI/Pydantic documentation
+  - `framework-docs-react-ui.md` - Mantine/TanStack/React Flow/Vite documentation
+  - `web-research-python-api.md` - FastAPI+React integration best practices
+  - `web-research-react-ui.md` - React dashboard best practices
+  - `clean-code-python-api.md` - Backend code quality analysis
+  - `clean-code-react-ui.md` - Frontend patterns to establish
+  - `evidence-index.md` - Consolidated evidence citations
+  - `risks.md` - Risk analysis and troubleshooting
 
 ## Notes
 
