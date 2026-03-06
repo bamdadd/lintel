@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter
+
+from lintel.api.schemas.health import HealthResponse
 
 router = APIRouter()
 
 
-@router.get("/healthz")
-async def healthz() -> dict[str, Any]:
+@router.get("/healthz", response_model=HealthResponse)
+async def healthz() -> dict[str, str]:
     """Liveness probe."""
     return {"status": "ok"}

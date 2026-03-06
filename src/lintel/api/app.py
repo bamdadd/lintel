@@ -6,6 +6,10 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+if TYPE_CHECKING:
+    from fastapi.routing import APIRoute
 
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routes import (
@@ -113,38 +117,55 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
-    app = FastAPI(title="Lintel", version="0.1.0", lifespan=lifespan)
+    def _generate_unique_id(route: APIRoute) -> str:
+        if route.tags:
+            return f"{route.tags[0]}_{route.name}"
+        return route.name
+
+    app = FastAPI(
+        title="Lintel",
+        version="0.1.0",
+        lifespan=lifespan,
+        generate_unique_id_function=_generate_unique_id,
+    )
     app.add_middleware(CorrelationMiddleware)
-    app.include_router(health.router)
-    app.include_router(threads.router, prefix="/api/v1")
-    app.include_router(repositories.router, prefix="/api/v1")
-    app.include_router(workflows.router, prefix="/api/v1")
-    app.include_router(agents.router, prefix="/api/v1")
-    app.include_router(approvals.router, prefix="/api/v1")
-    app.include_router(sandboxes.router, prefix="/api/v1")
-    app.include_router(skills.router, prefix="/api/v1")
-    app.include_router(events.router, prefix="/api/v1")
-    app.include_router(pii.router, prefix="/api/v1")
-    app.include_router(settings.router, prefix="/api/v1")
-    app.include_router(workflow_definitions.router, prefix="/api/v1")
-    app.include_router(metrics.router, prefix="/api/v1")
-    app.include_router(credentials.router, prefix="/api/v1")
-    app.include_router(ai_providers.router, prefix="/api/v1")
-    app.include_router(projects.router, prefix="/api/v1")
-    app.include_router(work_items.router, prefix="/api/v1")
-    app.include_router(pipelines.router, prefix="/api/v1")
-    app.include_router(environments.router, prefix="/api/v1")
-    app.include_router(triggers.router, prefix="/api/v1")
-    app.include_router(variables.router, prefix="/api/v1")
-    app.include_router(users.router, prefix="/api/v1")
-    app.include_router(teams.router, prefix="/api/v1")
-    app.include_router(policies.router, prefix="/api/v1")
-    app.include_router(notifications.router, prefix="/api/v1")
-    app.include_router(audit.router, prefix="/api/v1")
-    app.include_router(artifacts.router, prefix="/api/v1")
-    app.include_router(approval_requests.router, prefix="/api/v1")
-    app.include_router(chat.router, prefix="/api/v1")
-    app.include_router(admin.router, prefix="/api/v1")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],
+        allow_methods=["*"],
+        allow_headers=["*", "X-Correlation-ID"],
+        expose_headers=["X-Correlation-ID"],
+    )
+    app.include_router(health.router, tags=["health"])
+    app.include_router(threads.router, prefix="/api/v1", tags=["threads"])
+    app.include_router(repositories.router, prefix="/api/v1", tags=["repositories"])
+    app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])
+    app.include_router(agents.router, prefix="/api/v1", tags=["agents"])
+    app.include_router(approvals.router, prefix="/api/v1", tags=["approvals"])
+    app.include_router(sandboxes.router, prefix="/api/v1", tags=["sandboxes"])
+    app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
+    app.include_router(events.router, prefix="/api/v1", tags=["events"])
+    app.include_router(pii.router, prefix="/api/v1", tags=["pii"])
+    app.include_router(settings.router, prefix="/api/v1", tags=["settings"])
+    app.include_router(workflow_definitions.router, prefix="/api/v1", tags=["workflow-definitions"])
+    app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
+    app.include_router(credentials.router, prefix="/api/v1", tags=["credentials"])
+    app.include_router(ai_providers.router, prefix="/api/v1", tags=["ai-providers"])
+    app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
+    app.include_router(work_items.router, prefix="/api/v1", tags=["work-items"])
+    app.include_router(pipelines.router, prefix="/api/v1", tags=["pipelines"])
+    app.include_router(environments.router, prefix="/api/v1", tags=["environments"])
+    app.include_router(triggers.router, prefix="/api/v1", tags=["triggers"])
+    app.include_router(variables.router, prefix="/api/v1", tags=["variables"])
+    app.include_router(users.router, prefix="/api/v1", tags=["users"])
+    app.include_router(teams.router, prefix="/api/v1", tags=["teams"])
+    app.include_router(policies.router, prefix="/api/v1", tags=["policies"])
+    app.include_router(notifications.router, prefix="/api/v1", tags=["notifications"])
+    app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+    app.include_router(artifacts.router, prefix="/api/v1", tags=["artifacts"])
+    app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
+    app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+    app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     return app
 
 
