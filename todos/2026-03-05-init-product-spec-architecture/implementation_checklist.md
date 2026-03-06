@@ -52,13 +52,13 @@ graph LR
 
 ## Phase 3: Event Store
 
-- [ ] Step 3.1: Postgres event store implementation (asyncpg)
+- [x] Step 3.1: Postgres event store implementation (asyncpg)
   - Blocked by: Phase 2
-- [ ] Step 3.2: SQL migrations (001_event_store.sql)
-- [ ] Step 3.3: Hash chaining for tamper evidence
-- [ ] Step 3.4: Idempotency enforcement
-- [ ] Step 3.5: Stream reads and correlation queries
-- [ ] Validation: `task test -- tests/unit/event_store/ && task test -- tests/integration/test_event_store.py`
+- [x] Step 3.2: SQL migrations (001_event_store.sql)
+- [x] Step 3.3: Hash chaining for tamper evidence
+- [x] Step 3.4: Idempotency enforcement
+- [x] Step 3.5: Stream reads and correlation queries
+- [x] Validation: `task test -- tests/unit/event_store/ && task test -- tests/integration/test_event_store.py`
 
 ## Phase 4: PII Firewall & Vault
 
