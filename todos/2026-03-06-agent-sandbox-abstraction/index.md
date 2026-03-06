@@ -18,9 +18,11 @@ Define an abstract sandbox interface that allows pointing to a repo and spinning
 | task-manager | index.md              | Task index and tracking              |
 | research     | research.md           | Research synthesis and recommendation |
 | research     | research/             | Detailed appendices (19 files)       |
+| plan         | plan.md               | Implementation plan (Option B)       |
+| plan         | implementation_checklist.md | Progress tracking              |
 
 ## Notes
 
 - Research complete. Recommends **Option B: Consolidate & Extend with Named Operations**.
-- See `research.md` for full analysis and 4 solution options.
-- Next step: user decision on approach, then `/plan` for implementation.
+- Plan created: 5 phases, 12 files changed, Phases 3+4 parallelizable.
+- Next step: `/code` to implement Phase 1.
