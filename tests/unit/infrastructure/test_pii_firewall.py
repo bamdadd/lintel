@@ -118,6 +118,32 @@ class TestPresidioFirewall:
             call_kwargs = vault.store_mapping.call_args
             assert call_kwargs is not None
 
+    async def test_detects_api_key(
+        self, thread_ref: ThreadRef, vault: AsyncMock
+    ) -> None:
+        from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
+
+        firewall = PresidioFirewall(vault=vault, risk_threshold=0.9)
+        result = await firewall.analyze_and_anonymize(
+            "Use api_key=AKIAIOSFODNN7EXAMPLE1234 to connect.", thread_ref
+        )
+        entity_types = [e["type"] for e in result.entities_detected]
+        has_key = "API_KEY" in entity_types or "AWS_ACCESS_KEY" in entity_types
+        assert has_key or result.placeholder_count > 0
+
+    async def test_detects_connection_string(
+        self, thread_ref: ThreadRef, vault: AsyncMock
+    ) -> None:
+        from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
+
+        firewall = PresidioFirewall(vault=vault, risk_threshold=0.9)
+        result = await firewall.analyze_and_anonymize(
+            "Connect to postgresql://user:pass@host:5432/db for data.", thread_ref
+        )
+        entity_types = [e["type"] for e in result.entities_detected]
+        has_connection = "CONNECTION_STRING" in entity_types or "URL" in entity_types
+        assert has_connection or result.placeholder_count > 0
+
     async def test_stable_placeholders_across_calls(
         self, thread_ref: ThreadRef, vault: AsyncMock
     ) -> None:

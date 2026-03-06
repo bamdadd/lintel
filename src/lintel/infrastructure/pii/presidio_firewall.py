@@ -38,9 +38,20 @@ class PresidioFirewall:
         risk_threshold: float = DEFAULT_RISK_THRESHOLD,
     ) -> None:
         self._analyzer = AnalyzerEngine()
+        self._register_custom_recognizers()
         self._vault = vault
         self._risk_threshold = risk_threshold
         self._placeholder_mgr = PlaceholderManager()
+
+    def _register_custom_recognizers(self) -> None:
+        from lintel.infrastructure.pii.custom_recognizers import (
+            create_api_key_recognizer,
+            create_connection_string_recognizer,
+        )
+
+        registry = self._analyzer.registry
+        registry.add_recognizer(create_api_key_recognizer())
+        registry.add_recognizer(create_connection_string_recognizer())
 
     async def analyze_and_anonymize(
         self,
