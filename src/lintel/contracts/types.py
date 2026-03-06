@@ -163,6 +163,9 @@ class SandboxConfig:
     image: str = "python:3.12-slim"
     memory_limit: str = "512m"
     cpu_quota: int = 50000
+    network_enabled: bool = False
+    timeout_seconds: int = 3600
+    environment: frozenset[tuple[str, str]] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -171,6 +174,7 @@ class SandboxJob:
 
     command: str
     workdir: str | None = None
+    timeout_seconds: int = 300
 
 
 @dataclass(frozen=True)
