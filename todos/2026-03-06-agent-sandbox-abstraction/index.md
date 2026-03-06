@@ -13,10 +13,14 @@ Define an abstract sandbox interface that allows pointing to a repo and spinning
 
 ## Work Artifacts
 
-| Agent        | File     | Purpose                 |
-| ------------ | -------- | ----------------------- |
-| task-manager | index.md | Task index and tracking |
+| Agent        | File                  | Purpose                              |
+| ------------ | --------------------- | ------------------------------------ |
+| task-manager | index.md              | Task index and tracking              |
+| research     | research.md           | Research synthesis and recommendation |
+| research     | research/             | Detailed appendices (19 files)       |
 
 ## Notes
 
-[Any additional context or decisions]
+- Research complete. Recommends **Option B: Consolidate & Extend with Named Operations**.
+- See `research.md` for full analysis and 4 solution options.
+- Next step: user decision on approach, then `/plan` for implementation.
