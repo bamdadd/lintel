@@ -1,8 +1,8 @@
 -- Migration 001: Create event store
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE events (
-    event_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS events (
+    event_id        UUID NOT NULL DEFAULT gen_random_uuid(),
     stream_id       TEXT NOT NULL,
     stream_version  BIGINT NOT NULL,
     event_type      TEXT NOT NULL,
@@ -17,20 +17,24 @@ CREATE TABLE events (
     payload_hash    TEXT,
     prev_hash       TEXT,
     idempotency_key TEXT,
-    UNIQUE (stream_id, stream_version),
-    UNIQUE (idempotency_key)
+    PRIMARY KEY (event_id, occurred_at),
+    UNIQUE (stream_id, stream_version, occurred_at),
+    UNIQUE (idempotency_key, occurred_at)
 ) PARTITION BY RANGE (occurred_at);
 
 -- Create initial partition
-CREATE TABLE events_2026_03 PARTITION OF events
+CREATE TABLE IF NOT EXISTS events_2026_03 PARTITION OF events
     FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
 
+-- Default partition for tests and any date outside explicit ranges
+CREATE TABLE IF NOT EXISTS events_default PARTITION OF events DEFAULT;
+
 -- Indexes
-CREATE INDEX idx_events_stream ON events (stream_id, stream_version);
-CREATE INDEX idx_events_type ON events (event_type);
-CREATE INDEX idx_events_correlation ON events (correlation_id);
-CREATE INDEX idx_events_occurred ON events (occurred_at);
-CREATE INDEX idx_events_thread_ref ON events USING GIN (thread_ref);
+CREATE INDEX IF NOT EXISTS idx_events_stream ON events (stream_id, stream_version);
+CREATE INDEX IF NOT EXISTS idx_events_type ON events (event_type);
+CREATE INDEX IF NOT EXISTS idx_events_correlation ON events (correlation_id);
+CREATE INDEX IF NOT EXISTS idx_events_occurred ON events (occurred_at);
+CREATE INDEX IF NOT EXISTS idx_events_thread_ref ON events USING GIN (thread_ref);
 
 -- Notify trigger for event bridge
 CREATE OR REPLACE FUNCTION notify_new_event() RETURNS trigger AS $$
@@ -40,5 +44,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS event_inserted ON events;
 CREATE TRIGGER event_inserted AFTER INSERT ON events
     FOR EACH ROW EXECUTE FUNCTION notify_new_event();

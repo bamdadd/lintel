@@ -67,6 +67,18 @@ class PostgresEventStore:
                 )
             )
 
+            # Check idempotency keys before inserting
+            for event in events:
+                if event.idempotency_key:
+                    existing = await conn.fetchval(
+                        "SELECT 1 FROM events WHERE idempotency_key = $1",
+                        event.idempotency_key,
+                    )
+                    if existing:
+                        raise IdempotencyViolationError(
+                            f"Event with idempotency_key={event.idempotency_key} already exists"
+                        )
+
             for i, event in enumerate(events):
                 version = base_version + 1 + i
                 payload_json = json.dumps(event.payload, sort_keys=True, default=str)
@@ -163,6 +175,10 @@ class OptimisticConcurrencyError(Exception):
     pass
 
 
+class IdempotencyViolationError(Exception):
+    pass
+
+
 def _row_to_event(row: Mapping[str, object] | RecordLike) -> EventEnvelope:
     """Deserialize a database row to an EventEnvelope."""
     from lintel.contracts.types import ActorType, ThreadRef
@@ -170,11 +186,7 @@ def _row_to_event(row: Mapping[str, object] | RecordLike) -> EventEnvelope:
     thread_ref = None
     raw_thread_ref = row["thread_ref"]
     if raw_thread_ref:
-        tr = (
-            json.loads(raw_thread_ref)
-            if isinstance(raw_thread_ref, str)
-            else raw_thread_ref
-        )
+        tr = json.loads(raw_thread_ref) if isinstance(raw_thread_ref, str) else raw_thread_ref
         thread_ref = ThreadRef(
             workspace_id=tr["workspace_id"],  # type: ignore[index]
             channel_id=tr["channel_id"],  # type: ignore[index]
@@ -183,9 +195,7 @@ def _row_to_event(row: Mapping[str, object] | RecordLike) -> EventEnvelope:
 
     raw_payload = row["payload"]
     payload: dict[str, object] = (
-        json.loads(raw_payload)
-        if isinstance(raw_payload, str)
-        else raw_payload  # type: ignore[assignment]
+        json.loads(raw_payload) if isinstance(raw_payload, str) else raw_payload  # type: ignore[assignment]
     )
 
     cls = EVENT_TYPE_MAP.get(str(row["event_type"]), EventEnvelope)
