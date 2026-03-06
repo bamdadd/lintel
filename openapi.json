@@ -6738,7 +6738,6 @@
         },
         "type": "object",
         "required": [
-          "team_id",
           "name"
         ],
         "title": "CreateTeamRequest"
@@ -6892,7 +6891,6 @@
         },
         "type": "object",
         "required": [
-          "user_id",
           "name"
         ],
         "title": "CreateUserRequest"

@@ -7,7 +7,7 @@
 import type { UserRole } from './userRole';
 
 export interface CreateUserRequest {
-  user_id: string;
+  user_id?: string;
   name: string;
   email?: string;
   role?: UserRole;

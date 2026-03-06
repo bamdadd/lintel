@@ -14,6 +14,8 @@ import {
   IconPlayerPlay,
   IconSettings,
   IconMessageCircle,
+  IconUsers,
+  IconUsersGroup,
 } from '@tabler/icons-react';
 
 const navActions = [
@@ -28,6 +30,8 @@ const navActions = [
   { id: 'events', label: 'Events', description: 'Explore event store', path: '/events', icon: IconTimeline },
   { id: 'security', label: 'Security', description: 'PII and vault', path: '/security', icon: IconShield },
   { id: 'projects', label: 'Projects', description: 'Manage projects', path: '/projects', icon: IconBriefcase },
+  { id: 'users', label: 'Users', description: 'Manage users', path: '/users', icon: IconUsers },
+  { id: 'teams', label: 'Teams', description: 'Manage teams', path: '/teams', icon: IconUsersGroup },
   { id: 'pipelines', label: 'Pipelines', description: 'Pipeline runs', path: '/pipelines', icon: IconPlayerPlay },
   { id: 'settings', label: 'Settings', description: 'Platform settings', path: '/settings', icon: IconSettings },
 ];

@@ -2,9 +2,10 @@
 
 from dataclasses import asdict
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import User, UserRole
 
@@ -39,7 +40,7 @@ def get_user_store(request: Request) -> InMemoryUserStore:
 
 
 class CreateUserRequest(BaseModel):
-    user_id: str
+    user_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     email: str = ""
     role: UserRole = UserRole.MEMBER

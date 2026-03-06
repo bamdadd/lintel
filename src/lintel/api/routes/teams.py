@@ -2,9 +2,10 @@
 
 from dataclasses import asdict
 from typing import Annotated, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Team
 
@@ -39,7 +40,7 @@ def get_team_store(request: Request) -> InMemoryTeamStore:
 
 
 class CreateTeamRequest(BaseModel):
-    team_id: str
+    team_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     member_ids: list[str] = []
     project_ids: list[str] = []

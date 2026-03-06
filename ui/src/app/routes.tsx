@@ -78,6 +78,14 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/pipelines/pages/PipelineListPage'),
       },
       {
+        path: 'users',
+        lazy: () => import('@/features/users/pages/UserListPage'),
+      },
+      {
+        path: 'teams',
+        lazy: () => import('@/features/teams/pages/TeamListPage'),
+      },
+      {
         path: 'settings',
         lazy: () => import('@/features/settings/pages/SettingsPage'),
       },

@@ -6,7 +6,7 @@
  */
 
 export interface CreateTeamRequest {
-  team_id: string;
+  team_id?: string;
   name: string;
   member_ids?: string[];
   project_ids?: string[];
