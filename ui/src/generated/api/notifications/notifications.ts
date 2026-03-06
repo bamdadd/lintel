@@ -37,6 +37,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -85,15 +87,15 @@ export const notificationsCreateNotificationRule = async (createNotificationRule
 
 
 export const getNotificationsCreateNotificationRuleMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsCreateNotificationRule>>, TError,{data: CreateNotificationRuleRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsCreateNotificationRule>>, TError,{data: CreateNotificationRuleRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof notificationsCreateNotificationRule>>, TError,{data: CreateNotificationRuleRequest}, TContext> => {
 
 const mutationKey = ['notificationsCreateNotificationRule'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -101,7 +103,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof notificationsCreateNotificationRule>>, {data: CreateNotificationRuleRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  notificationsCreateNotificationRule(data,)
+          return  notificationsCreateNotificationRule(data,requestOptions)
         }
 
 
@@ -119,7 +121,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Notification Rule
  */
 export const useNotificationsCreateNotificationRule = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsCreateNotificationRule>>, TError,{data: CreateNotificationRuleRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsCreateNotificationRule>>, TError,{data: CreateNotificationRuleRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof notificationsCreateNotificationRule>>,
         TError,
@@ -187,16 +189,16 @@ export const getNotificationsListNotificationRulesQueryKey = (params?: Notificat
     }
 
     
-export const getNotificationsListNotificationRulesQueryOptions = <TData = Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError = HTTPValidationError>(params?: NotificationsListNotificationRulesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError, TData>>, }
+export const getNotificationsListNotificationRulesQueryOptions = <TData = Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError = HTTPValidationError>(params?: NotificationsListNotificationRulesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getNotificationsListNotificationRulesQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof notificationsListNotificationRules>>> = ({ signal }) => notificationsListNotificationRules(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof notificationsListNotificationRules>>> = ({ signal }) => notificationsListNotificationRules(params, { signal, ...requestOptions });
 
       
 
@@ -216,7 +218,7 @@ export function useNotificationsListNotificationRules<TData = Awaited<ReturnType
           TError,
           Awaited<ReturnType<typeof notificationsListNotificationRules>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useNotificationsListNotificationRules<TData = Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError = HTTPValidationError>(
@@ -226,11 +228,11 @@ export function useNotificationsListNotificationRules<TData = Awaited<ReturnType
           TError,
           Awaited<ReturnType<typeof notificationsListNotificationRules>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useNotificationsListNotificationRules<TData = Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError = HTTPValidationError>(
- params?: NotificationsListNotificationRulesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError, TData>>, }
+ params?: NotificationsListNotificationRulesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -238,7 +240,7 @@ export function useNotificationsListNotificationRules<TData = Awaited<ReturnType
  */
 
 export function useNotificationsListNotificationRules<TData = Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError = HTTPValidationError>(
- params?: NotificationsListNotificationRulesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError, TData>>, }
+ params?: NotificationsListNotificationRulesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsListNotificationRules>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -304,16 +306,16 @@ export const getNotificationsGetNotificationRuleQueryKey = (ruleId: string,) => 
     }
 
     
-export const getNotificationsGetNotificationRuleQueryOptions = <TData = Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError = HTTPValidationError>(ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError, TData>>, }
+export const getNotificationsGetNotificationRuleQueryOptions = <TData = Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError = HTTPValidationError>(ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getNotificationsGetNotificationRuleQueryKey(ruleId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof notificationsGetNotificationRule>>> = ({ signal }) => notificationsGetNotificationRule(ruleId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof notificationsGetNotificationRule>>> = ({ signal }) => notificationsGetNotificationRule(ruleId, { signal, ...requestOptions });
 
       
 
@@ -333,7 +335,7 @@ export function useNotificationsGetNotificationRule<TData = Awaited<ReturnType<t
           TError,
           Awaited<ReturnType<typeof notificationsGetNotificationRule>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useNotificationsGetNotificationRule<TData = Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError = HTTPValidationError>(
@@ -343,11 +345,11 @@ export function useNotificationsGetNotificationRule<TData = Awaited<ReturnType<t
           TError,
           Awaited<ReturnType<typeof notificationsGetNotificationRule>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useNotificationsGetNotificationRule<TData = Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError = HTTPValidationError>(
- ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError, TData>>, }
+ ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -355,7 +357,7 @@ export function useNotificationsGetNotificationRule<TData = Awaited<ReturnType<t
  */
 
 export function useNotificationsGetNotificationRule<TData = Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError = HTTPValidationError>(
- ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError, TData>>, }
+ ruleId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof notificationsGetNotificationRule>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -416,15 +418,15 @@ export const notificationsUpdateNotificationRule = async (ruleId: string,
 
 
 export const getNotificationsUpdateNotificationRuleMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsUpdateNotificationRule>>, TError,{ruleId: string;data: UpdateNotificationRuleRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsUpdateNotificationRule>>, TError,{ruleId: string;data: UpdateNotificationRuleRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof notificationsUpdateNotificationRule>>, TError,{ruleId: string;data: UpdateNotificationRuleRequest}, TContext> => {
 
 const mutationKey = ['notificationsUpdateNotificationRule'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -432,7 +434,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof notificationsUpdateNotificationRule>>, {ruleId: string;data: UpdateNotificationRuleRequest}> = (props) => {
           const {ruleId,data} = props ?? {};
 
-          return  notificationsUpdateNotificationRule(ruleId,data,)
+          return  notificationsUpdateNotificationRule(ruleId,data,requestOptions)
         }
 
 
@@ -450,7 +452,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Notification Rule
  */
 export const useNotificationsUpdateNotificationRule = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsUpdateNotificationRule>>, TError,{ruleId: string;data: UpdateNotificationRuleRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsUpdateNotificationRule>>, TError,{ruleId: string;data: UpdateNotificationRuleRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof notificationsUpdateNotificationRule>>,
         TError,
@@ -504,15 +506,15 @@ export const notificationsDeleteNotificationRule = async (ruleId: string, option
 
 
 export const getNotificationsDeleteNotificationRuleMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsDeleteNotificationRule>>, TError,{ruleId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsDeleteNotificationRule>>, TError,{ruleId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof notificationsDeleteNotificationRule>>, TError,{ruleId: string}, TContext> => {
 
 const mutationKey = ['notificationsDeleteNotificationRule'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -520,7 +522,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof notificationsDeleteNotificationRule>>, {ruleId: string}> = (props) => {
           const {ruleId} = props ?? {};
 
-          return  notificationsDeleteNotificationRule(ruleId,)
+          return  notificationsDeleteNotificationRule(ruleId,requestOptions)
         }
 
 
@@ -538,7 +540,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Notification Rule
  */
 export const useNotificationsDeleteNotificationRule = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsDeleteNotificationRule>>, TError,{ruleId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof notificationsDeleteNotificationRule>>, TError,{ruleId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof notificationsDeleteNotificationRule>>,
         TError,

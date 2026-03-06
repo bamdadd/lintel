@@ -21,6 +21,7 @@ class InMemorySkillStore:
 
     def __init__(self) -> None:
         self._skills: dict[str, SkillDescriptor] = {}
+        self._metadata: dict[str, dict[str, Any]] = {}
 
     async def register(
         self,
@@ -53,6 +54,13 @@ class InMemorySkillStore:
         # Stub: real implementation would dispatch to the skill runtime.
         return SkillResult(success=True, output={"echo": input_data})
 
+    async def delete(self, skill_id: str) -> None:
+        if skill_id not in self._skills:
+            msg = f"Skill {skill_id} not found"
+            raise KeyError(msg)
+        del self._skills[skill_id]
+        self._metadata.pop(skill_id, None)
+
     async def list_skills(self) -> dict[str, SkillDescriptor]:
         return dict(self._skills)
 
@@ -76,6 +84,8 @@ class RegisterSkillRequest(BaseModel):
     skill_id: str
     version: str
     name: str
+    description: str = ""
+    content: str = ""
     input_schema: dict[str, Any] = {}
     output_schema: dict[str, Any] = {}
     execution_mode: SkillExecutionMode = SkillExecutionMode.INLINE
@@ -107,7 +117,8 @@ async def register_skill(
         output_schema=body.output_schema,
         execution_mode=body.execution_mode.value,
     )
-    return {"skill_id": body.skill_id, **asdict(descriptor)}
+    store._metadata[body.skill_id] = {"description": body.description, "content": body.content}
+    return {"skill_id": body.skill_id, **asdict(descriptor), **store._metadata[body.skill_id]}
 
 
 @router.get("/skills")
@@ -115,7 +126,10 @@ async def list_skills(
     store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
 ) -> list[dict[str, Any]]:
     skills = await store.list_skills()
-    return [{"skill_id": sid, **asdict(desc)} for sid, desc in skills.items()]
+    return [
+        {"skill_id": sid, **asdict(desc), **store._metadata.get(sid, {})}
+        for sid, desc in skills.items()
+    ]
 
 
 @router.get("/skills/{skill_id}")
@@ -126,7 +140,19 @@ async def get_skill(
     skills = await store.list_skills()
     if skill_id not in skills:
         raise HTTPException(status_code=404, detail="Skill not found")
-    return {"skill_id": skill_id, **asdict(skills[skill_id])}
+    return {"skill_id": skill_id, **asdict(skills[skill_id]), **store._metadata.get(skill_id, {})}
+
+
+@router.delete("/skills/{skill_id}", status_code=204)
+async def delete_skill(
+    skill_id: str,
+    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+) -> None:
+    """Delete a registered skill."""
+    try:
+        await store.delete(skill_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Skill not found")  # noqa: B904
 
 
 @router.post("/skills/{skill_id}/invoke")

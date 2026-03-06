@@ -37,6 +37,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -85,15 +87,15 @@ export const triggersCreateTrigger = async (createTriggerRequest: CreateTriggerR
 
 
 export const getTriggersCreateTriggerMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersCreateTrigger>>, TError,{data: CreateTriggerRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersCreateTrigger>>, TError,{data: CreateTriggerRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof triggersCreateTrigger>>, TError,{data: CreateTriggerRequest}, TContext> => {
 
 const mutationKey = ['triggersCreateTrigger'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -101,7 +103,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggersCreateTrigger>>, {data: CreateTriggerRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  triggersCreateTrigger(data,)
+          return  triggersCreateTrigger(data,requestOptions)
         }
 
 
@@ -119,7 +121,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Trigger
  */
 export const useTriggersCreateTrigger = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersCreateTrigger>>, TError,{data: CreateTriggerRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersCreateTrigger>>, TError,{data: CreateTriggerRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof triggersCreateTrigger>>,
         TError,
@@ -187,16 +189,16 @@ export const getTriggersListTriggersQueryKey = (params?: TriggersListTriggersPar
     }
 
     
-export const getTriggersListTriggersQueryOptions = <TData = Awaited<ReturnType<typeof triggersListTriggers>>, TError = HTTPValidationError>(params?: TriggersListTriggersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersListTriggers>>, TError, TData>>, }
+export const getTriggersListTriggersQueryOptions = <TData = Awaited<ReturnType<typeof triggersListTriggers>>, TError = HTTPValidationError>(params?: TriggersListTriggersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersListTriggers>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getTriggersListTriggersQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof triggersListTriggers>>> = ({ signal }) => triggersListTriggers(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof triggersListTriggers>>> = ({ signal }) => triggersListTriggers(params, { signal, ...requestOptions });
 
       
 
@@ -216,7 +218,7 @@ export function useTriggersListTriggers<TData = Awaited<ReturnType<typeof trigge
           TError,
           Awaited<ReturnType<typeof triggersListTriggers>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTriggersListTriggers<TData = Awaited<ReturnType<typeof triggersListTriggers>>, TError = HTTPValidationError>(
@@ -226,11 +228,11 @@ export function useTriggersListTriggers<TData = Awaited<ReturnType<typeof trigge
           TError,
           Awaited<ReturnType<typeof triggersListTriggers>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTriggersListTriggers<TData = Awaited<ReturnType<typeof triggersListTriggers>>, TError = HTTPValidationError>(
- params?: TriggersListTriggersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersListTriggers>>, TError, TData>>, }
+ params?: TriggersListTriggersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersListTriggers>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -238,7 +240,7 @@ export function useTriggersListTriggers<TData = Awaited<ReturnType<typeof trigge
  */
 
 export function useTriggersListTriggers<TData = Awaited<ReturnType<typeof triggersListTriggers>>, TError = HTTPValidationError>(
- params?: TriggersListTriggersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersListTriggers>>, TError, TData>>, }
+ params?: TriggersListTriggersParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersListTriggers>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -304,16 +306,16 @@ export const getTriggersGetTriggerQueryKey = (triggerId: string,) => {
     }
 
     
-export const getTriggersGetTriggerQueryOptions = <TData = Awaited<ReturnType<typeof triggersGetTrigger>>, TError = HTTPValidationError>(triggerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersGetTrigger>>, TError, TData>>, }
+export const getTriggersGetTriggerQueryOptions = <TData = Awaited<ReturnType<typeof triggersGetTrigger>>, TError = HTTPValidationError>(triggerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersGetTrigger>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getTriggersGetTriggerQueryKey(triggerId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof triggersGetTrigger>>> = ({ signal }) => triggersGetTrigger(triggerId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof triggersGetTrigger>>> = ({ signal }) => triggersGetTrigger(triggerId, { signal, ...requestOptions });
 
       
 
@@ -333,7 +335,7 @@ export function useTriggersGetTrigger<TData = Awaited<ReturnType<typeof triggers
           TError,
           Awaited<ReturnType<typeof triggersGetTrigger>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTriggersGetTrigger<TData = Awaited<ReturnType<typeof triggersGetTrigger>>, TError = HTTPValidationError>(
@@ -343,11 +345,11 @@ export function useTriggersGetTrigger<TData = Awaited<ReturnType<typeof triggers
           TError,
           Awaited<ReturnType<typeof triggersGetTrigger>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTriggersGetTrigger<TData = Awaited<ReturnType<typeof triggersGetTrigger>>, TError = HTTPValidationError>(
- triggerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersGetTrigger>>, TError, TData>>, }
+ triggerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersGetTrigger>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -355,7 +357,7 @@ export function useTriggersGetTrigger<TData = Awaited<ReturnType<typeof triggers
  */
 
 export function useTriggersGetTrigger<TData = Awaited<ReturnType<typeof triggersGetTrigger>>, TError = HTTPValidationError>(
- triggerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersGetTrigger>>, TError, TData>>, }
+ triggerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof triggersGetTrigger>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -416,15 +418,15 @@ export const triggersUpdateTrigger = async (triggerId: string,
 
 
 export const getTriggersUpdateTriggerMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersUpdateTrigger>>, TError,{triggerId: string;data: UpdateTriggerRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersUpdateTrigger>>, TError,{triggerId: string;data: UpdateTriggerRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof triggersUpdateTrigger>>, TError,{triggerId: string;data: UpdateTriggerRequest}, TContext> => {
 
 const mutationKey = ['triggersUpdateTrigger'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -432,7 +434,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggersUpdateTrigger>>, {triggerId: string;data: UpdateTriggerRequest}> = (props) => {
           const {triggerId,data} = props ?? {};
 
-          return  triggersUpdateTrigger(triggerId,data,)
+          return  triggersUpdateTrigger(triggerId,data,requestOptions)
         }
 
 
@@ -450,7 +452,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Trigger
  */
 export const useTriggersUpdateTrigger = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersUpdateTrigger>>, TError,{triggerId: string;data: UpdateTriggerRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersUpdateTrigger>>, TError,{triggerId: string;data: UpdateTriggerRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof triggersUpdateTrigger>>,
         TError,
@@ -504,15 +506,15 @@ export const triggersDeleteTrigger = async (triggerId: string, options?: Request
 
 
 export const getTriggersDeleteTriggerMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersDeleteTrigger>>, TError,{triggerId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersDeleteTrigger>>, TError,{triggerId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof triggersDeleteTrigger>>, TError,{triggerId: string}, TContext> => {
 
 const mutationKey = ['triggersDeleteTrigger'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -520,7 +522,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggersDeleteTrigger>>, {triggerId: string}> = (props) => {
           const {triggerId} = props ?? {};
 
-          return  triggersDeleteTrigger(triggerId,)
+          return  triggersDeleteTrigger(triggerId,requestOptions)
         }
 
 
@@ -538,7 +540,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Trigger
  */
 export const useTriggersDeleteTrigger = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersDeleteTrigger>>, TError,{triggerId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggersDeleteTrigger>>, TError,{triggerId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof triggersDeleteTrigger>>,
         TError,

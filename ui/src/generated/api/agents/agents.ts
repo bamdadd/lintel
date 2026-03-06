@@ -44,6 +44,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -91,16 +93,16 @@ export const getAgentsListAgentRolesQueryKey = () => {
     }
 
     
-export const getAgentsListAgentRolesQueryOptions = <TData = Awaited<ReturnType<typeof agentsListAgentRoles>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentRoles>>, TError, TData>>, }
+export const getAgentsListAgentRolesQueryOptions = <TData = Awaited<ReturnType<typeof agentsListAgentRoles>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentRoles>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAgentsListAgentRolesQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsListAgentRoles>>> = ({ signal }) => agentsListAgentRoles({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsListAgentRoles>>> = ({ signal }) => agentsListAgentRoles({ signal, ...requestOptions });
 
       
 
@@ -120,7 +122,7 @@ export function useAgentsListAgentRoles<TData = Awaited<ReturnType<typeof agents
           TError,
           Awaited<ReturnType<typeof agentsListAgentRoles>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsListAgentRoles<TData = Awaited<ReturnType<typeof agentsListAgentRoles>>, TError = unknown>(
@@ -130,11 +132,11 @@ export function useAgentsListAgentRoles<TData = Awaited<ReturnType<typeof agents
           TError,
           Awaited<ReturnType<typeof agentsListAgentRoles>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsListAgentRoles<TData = Awaited<ReturnType<typeof agentsListAgentRoles>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentRoles>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentRoles>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -142,7 +144,7 @@ export function useAgentsListAgentRoles<TData = Awaited<ReturnType<typeof agents
  */
 
 export function useAgentsListAgentRoles<TData = Awaited<ReturnType<typeof agentsListAgentRoles>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentRoles>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentRoles>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -202,16 +204,16 @@ export const getAgentsListModelPoliciesQueryKey = () => {
     }
 
     
-export const getAgentsListModelPoliciesQueryOptions = <TData = Awaited<ReturnType<typeof agentsListModelPolicies>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListModelPolicies>>, TError, TData>>, }
+export const getAgentsListModelPoliciesQueryOptions = <TData = Awaited<ReturnType<typeof agentsListModelPolicies>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListModelPolicies>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAgentsListModelPoliciesQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsListModelPolicies>>> = ({ signal }) => agentsListModelPolicies({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsListModelPolicies>>> = ({ signal }) => agentsListModelPolicies({ signal, ...requestOptions });
 
       
 
@@ -231,7 +233,7 @@ export function useAgentsListModelPolicies<TData = Awaited<ReturnType<typeof age
           TError,
           Awaited<ReturnType<typeof agentsListModelPolicies>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsListModelPolicies<TData = Awaited<ReturnType<typeof agentsListModelPolicies>>, TError = unknown>(
@@ -241,11 +243,11 @@ export function useAgentsListModelPolicies<TData = Awaited<ReturnType<typeof age
           TError,
           Awaited<ReturnType<typeof agentsListModelPolicies>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsListModelPolicies<TData = Awaited<ReturnType<typeof agentsListModelPolicies>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListModelPolicies>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListModelPolicies>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -253,7 +255,7 @@ export function useAgentsListModelPolicies<TData = Awaited<ReturnType<typeof age
  */
 
 export function useAgentsListModelPolicies<TData = Awaited<ReturnType<typeof agentsListModelPolicies>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListModelPolicies>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListModelPolicies>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -320,16 +322,16 @@ export const getAgentsGetModelPolicyQueryKey = (role: string,) => {
     }
 
     
-export const getAgentsGetModelPolicyQueryOptions = <TData = Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError = HTTPValidationError>(role: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError, TData>>, }
+export const getAgentsGetModelPolicyQueryOptions = <TData = Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError = HTTPValidationError>(role: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAgentsGetModelPolicyQueryKey(role);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsGetModelPolicy>>> = ({ signal }) => agentsGetModelPolicy(role, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsGetModelPolicy>>> = ({ signal }) => agentsGetModelPolicy(role, { signal, ...requestOptions });
 
       
 
@@ -349,7 +351,7 @@ export function useAgentsGetModelPolicy<TData = Awaited<ReturnType<typeof agents
           TError,
           Awaited<ReturnType<typeof agentsGetModelPolicy>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsGetModelPolicy<TData = Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError = HTTPValidationError>(
@@ -359,11 +361,11 @@ export function useAgentsGetModelPolicy<TData = Awaited<ReturnType<typeof agents
           TError,
           Awaited<ReturnType<typeof agentsGetModelPolicy>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsGetModelPolicy<TData = Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError = HTTPValidationError>(
- role: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError, TData>>, }
+ role: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -371,7 +373,7 @@ export function useAgentsGetModelPolicy<TData = Awaited<ReturnType<typeof agents
  */
 
 export function useAgentsGetModelPolicy<TData = Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError = HTTPValidationError>(
- role: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError, TData>>, }
+ role: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetModelPolicy>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -433,15 +435,15 @@ export const agentsUpdateModelPolicy = async (role: string,
 
 
 export const getAgentsUpdateModelPolicyMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateModelPolicy>>, TError,{role: string;data: UpdateModelPolicyRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateModelPolicy>>, TError,{role: string;data: UpdateModelPolicyRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateModelPolicy>>, TError,{role: string;data: UpdateModelPolicyRequest}, TContext> => {
 
 const mutationKey = ['agentsUpdateModelPolicy'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -449,7 +451,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof agentsUpdateModelPolicy>>, {role: string;data: UpdateModelPolicyRequest}> = (props) => {
           const {role,data} = props ?? {};
 
-          return  agentsUpdateModelPolicy(role,data,)
+          return  agentsUpdateModelPolicy(role,data,requestOptions)
         }
 
 
@@ -467,7 +469,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Model Policy
  */
 export const useAgentsUpdateModelPolicy = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateModelPolicy>>, TError,{role: string;data: UpdateModelPolicyRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateModelPolicy>>, TError,{role: string;data: UpdateModelPolicyRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof agentsUpdateModelPolicy>>,
         TError,
@@ -523,15 +525,15 @@ export const agentsTestPrompt = async (testPromptRequest: TestPromptRequest, opt
 
 
 export const getAgentsTestPromptMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsTestPrompt>>, TError,{data: TestPromptRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsTestPrompt>>, TError,{data: TestPromptRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof agentsTestPrompt>>, TError,{data: TestPromptRequest}, TContext> => {
 
 const mutationKey = ['agentsTestPrompt'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -539,7 +541,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof agentsTestPrompt>>, {data: TestPromptRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  agentsTestPrompt(data,)
+          return  agentsTestPrompt(data,requestOptions)
         }
 
 
@@ -557,7 +559,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Test Prompt
  */
 export const useAgentsTestPrompt = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsTestPrompt>>, TError,{data: TestPromptRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsTestPrompt>>, TError,{data: TestPromptRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof agentsTestPrompt>>,
         TError,
@@ -612,15 +614,15 @@ export const agentsScheduleAgentStep = async (scheduleAgentStepRequest: Schedule
 
 
 export const getAgentsScheduleAgentStepMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsScheduleAgentStep>>, TError,{data: ScheduleAgentStepRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsScheduleAgentStep>>, TError,{data: ScheduleAgentStepRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof agentsScheduleAgentStep>>, TError,{data: ScheduleAgentStepRequest}, TContext> => {
 
 const mutationKey = ['agentsScheduleAgentStep'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -628,7 +630,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof agentsScheduleAgentStep>>, {data: ScheduleAgentStepRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  agentsScheduleAgentStep(data,)
+          return  agentsScheduleAgentStep(data,requestOptions)
         }
 
 
@@ -646,7 +648,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Schedule Agent Step
  */
 export const useAgentsScheduleAgentStep = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsScheduleAgentStep>>, TError,{data: ScheduleAgentStepRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsScheduleAgentStep>>, TError,{data: ScheduleAgentStepRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof agentsScheduleAgentStep>>,
         TError,
@@ -701,16 +703,16 @@ export const getAgentsListAgentDefinitionsQueryKey = () => {
     }
 
     
-export const getAgentsListAgentDefinitionsQueryOptions = <TData = Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError, TData>>, }
+export const getAgentsListAgentDefinitionsQueryOptions = <TData = Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAgentsListAgentDefinitionsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsListAgentDefinitions>>> = ({ signal }) => agentsListAgentDefinitions({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsListAgentDefinitions>>> = ({ signal }) => agentsListAgentDefinitions({ signal, ...requestOptions });
 
       
 
@@ -730,7 +732,7 @@ export function useAgentsListAgentDefinitions<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof agentsListAgentDefinitions>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsListAgentDefinitions<TData = Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError = unknown>(
@@ -740,11 +742,11 @@ export function useAgentsListAgentDefinitions<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof agentsListAgentDefinitions>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsListAgentDefinitions<TData = Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -752,7 +754,7 @@ export function useAgentsListAgentDefinitions<TData = Awaited<ReturnType<typeof 
  */
 
 export function useAgentsListAgentDefinitions<TData = Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsListAgentDefinitions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -813,15 +815,15 @@ export const agentsCreateAgentDefinition = async (createAgentDefinitionRequest: 
 
 
 export const getAgentsCreateAgentDefinitionMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsCreateAgentDefinition>>, TError,{data: CreateAgentDefinitionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsCreateAgentDefinition>>, TError,{data: CreateAgentDefinitionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof agentsCreateAgentDefinition>>, TError,{data: CreateAgentDefinitionRequest}, TContext> => {
 
 const mutationKey = ['agentsCreateAgentDefinition'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -829,7 +831,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof agentsCreateAgentDefinition>>, {data: CreateAgentDefinitionRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  agentsCreateAgentDefinition(data,)
+          return  agentsCreateAgentDefinition(data,requestOptions)
         }
 
 
@@ -847,7 +849,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Agent Definition
  */
 export const useAgentsCreateAgentDefinition = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsCreateAgentDefinition>>, TError,{data: CreateAgentDefinitionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsCreateAgentDefinition>>, TError,{data: CreateAgentDefinitionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof agentsCreateAgentDefinition>>,
         TError,
@@ -909,16 +911,16 @@ export const getAgentsGetAgentDefinitionQueryKey = (agentId: string,) => {
     }
 
     
-export const getAgentsGetAgentDefinitionQueryOptions = <TData = Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError = HTTPValidationError>(agentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError, TData>>, }
+export const getAgentsGetAgentDefinitionQueryOptions = <TData = Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError = HTTPValidationError>(agentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAgentsGetAgentDefinitionQueryKey(agentId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsGetAgentDefinition>>> = ({ signal }) => agentsGetAgentDefinition(agentId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof agentsGetAgentDefinition>>> = ({ signal }) => agentsGetAgentDefinition(agentId, { signal, ...requestOptions });
 
       
 
@@ -938,7 +940,7 @@ export function useAgentsGetAgentDefinition<TData = Awaited<ReturnType<typeof ag
           TError,
           Awaited<ReturnType<typeof agentsGetAgentDefinition>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsGetAgentDefinition<TData = Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError = HTTPValidationError>(
@@ -948,11 +950,11 @@ export function useAgentsGetAgentDefinition<TData = Awaited<ReturnType<typeof ag
           TError,
           Awaited<ReturnType<typeof agentsGetAgentDefinition>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAgentsGetAgentDefinition<TData = Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError = HTTPValidationError>(
- agentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError, TData>>, }
+ agentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -960,7 +962,7 @@ export function useAgentsGetAgentDefinition<TData = Awaited<ReturnType<typeof ag
  */
 
 export function useAgentsGetAgentDefinition<TData = Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError = HTTPValidationError>(
- agentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError, TData>>, }
+ agentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof agentsGetAgentDefinition>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -1022,15 +1024,15 @@ export const agentsUpdateAgentDefinition = async (agentId: string,
 
 
 export const getAgentsUpdateAgentDefinitionMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateAgentDefinition>>, TError,{agentId: string;data: UpdateAgentDefinitionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateAgentDefinition>>, TError,{agentId: string;data: UpdateAgentDefinitionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateAgentDefinition>>, TError,{agentId: string;data: UpdateAgentDefinitionRequest}, TContext> => {
 
 const mutationKey = ['agentsUpdateAgentDefinition'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -1038,7 +1040,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof agentsUpdateAgentDefinition>>, {agentId: string;data: UpdateAgentDefinitionRequest}> = (props) => {
           const {agentId,data} = props ?? {};
 
-          return  agentsUpdateAgentDefinition(agentId,data,)
+          return  agentsUpdateAgentDefinition(agentId,data,requestOptions)
         }
 
 
@@ -1056,7 +1058,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Agent Definition
  */
 export const useAgentsUpdateAgentDefinition = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateAgentDefinition>>, TError,{agentId: string;data: UpdateAgentDefinitionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsUpdateAgentDefinition>>, TError,{agentId: string;data: UpdateAgentDefinitionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof agentsUpdateAgentDefinition>>,
         TError,
@@ -1111,15 +1113,15 @@ export const agentsDeleteAgentDefinition = async (agentId: string, options?: Req
 
 
 export const getAgentsDeleteAgentDefinitionMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsDeleteAgentDefinition>>, TError,{agentId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsDeleteAgentDefinition>>, TError,{agentId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof agentsDeleteAgentDefinition>>, TError,{agentId: string}, TContext> => {
 
 const mutationKey = ['agentsDeleteAgentDefinition'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -1127,7 +1129,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof agentsDeleteAgentDefinition>>, {agentId: string}> = (props) => {
           const {agentId} = props ?? {};
 
-          return  agentsDeleteAgentDefinition(agentId,)
+          return  agentsDeleteAgentDefinition(agentId,requestOptions)
         }
 
 
@@ -1145,7 +1147,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Agent Definition
  */
 export const useAgentsDeleteAgentDefinition = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsDeleteAgentDefinition>>, TError,{agentId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof agentsDeleteAgentDefinition>>, TError,{agentId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof agentsDeleteAgentDefinition>>,
         TError,

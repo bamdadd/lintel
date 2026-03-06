@@ -36,6 +36,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -83,16 +85,16 @@ export const getSkillsListSkillsQueryKey = () => {
     }
 
     
-export const getSkillsListSkillsQueryOptions = <TData = Awaited<ReturnType<typeof skillsListSkills>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsListSkills>>, TError, TData>>, }
+export const getSkillsListSkillsQueryOptions = <TData = Awaited<ReturnType<typeof skillsListSkills>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsListSkills>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSkillsListSkillsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof skillsListSkills>>> = ({ signal }) => skillsListSkills({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof skillsListSkills>>> = ({ signal }) => skillsListSkills({ signal, ...requestOptions });
 
       
 
@@ -112,7 +114,7 @@ export function useSkillsListSkills<TData = Awaited<ReturnType<typeof skillsList
           TError,
           Awaited<ReturnType<typeof skillsListSkills>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSkillsListSkills<TData = Awaited<ReturnType<typeof skillsListSkills>>, TError = unknown>(
@@ -122,11 +124,11 @@ export function useSkillsListSkills<TData = Awaited<ReturnType<typeof skillsList
           TError,
           Awaited<ReturnType<typeof skillsListSkills>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSkillsListSkills<TData = Awaited<ReturnType<typeof skillsListSkills>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsListSkills>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsListSkills>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -134,7 +136,7 @@ export function useSkillsListSkills<TData = Awaited<ReturnType<typeof skillsList
  */
 
 export function useSkillsListSkills<TData = Awaited<ReturnType<typeof skillsListSkills>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsListSkills>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsListSkills>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -194,15 +196,15 @@ export const skillsRegisterSkill = async (registerSkillRequest: RegisterSkillReq
 
 
 export const getSkillsRegisterSkillMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsRegisterSkill>>, TError,{data: RegisterSkillRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsRegisterSkill>>, TError,{data: RegisterSkillRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof skillsRegisterSkill>>, TError,{data: RegisterSkillRequest}, TContext> => {
 
 const mutationKey = ['skillsRegisterSkill'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -210,7 +212,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof skillsRegisterSkill>>, {data: RegisterSkillRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  skillsRegisterSkill(data,)
+          return  skillsRegisterSkill(data,requestOptions)
         }
 
 
@@ -228,7 +230,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Register Skill
  */
 export const useSkillsRegisterSkill = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsRegisterSkill>>, TError,{data: RegisterSkillRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsRegisterSkill>>, TError,{data: RegisterSkillRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof skillsRegisterSkill>>,
         TError,
@@ -289,16 +291,16 @@ export const getSkillsGetSkillQueryKey = (skillId: string,) => {
     }
 
     
-export const getSkillsGetSkillQueryOptions = <TData = Awaited<ReturnType<typeof skillsGetSkill>>, TError = HTTPValidationError>(skillId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsGetSkill>>, TError, TData>>, }
+export const getSkillsGetSkillQueryOptions = <TData = Awaited<ReturnType<typeof skillsGetSkill>>, TError = HTTPValidationError>(skillId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsGetSkill>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSkillsGetSkillQueryKey(skillId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof skillsGetSkill>>> = ({ signal }) => skillsGetSkill(skillId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof skillsGetSkill>>> = ({ signal }) => skillsGetSkill(skillId, { signal, ...requestOptions });
 
       
 
@@ -318,7 +320,7 @@ export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSki
           TError,
           Awaited<ReturnType<typeof skillsGetSkill>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSkill>>, TError = HTTPValidationError>(
@@ -328,11 +330,11 @@ export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSki
           TError,
           Awaited<ReturnType<typeof skillsGetSkill>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSkill>>, TError = HTTPValidationError>(
- skillId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsGetSkill>>, TError, TData>>, }
+ skillId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsGetSkill>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -340,7 +342,7 @@ export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSki
  */
 
 export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSkill>>, TError = HTTPValidationError>(
- skillId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsGetSkill>>, TError, TData>>, }
+ skillId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof skillsGetSkill>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -355,6 +357,95 @@ export function useSkillsGetSkill<TData = Awaited<ReturnType<typeof skillsGetSki
 
 
 /**
+ * Delete a registered skill.
+ * @summary Delete Skill
+ */
+export type skillsDeleteSkillResponse204 = {
+  data: void
+  status: 204
+}
+
+export type skillsDeleteSkillResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type skillsDeleteSkillResponseSuccess = (skillsDeleteSkillResponse204) & {
+  headers: Headers;
+};
+export type skillsDeleteSkillResponseError = (skillsDeleteSkillResponse422) & {
+  headers: Headers;
+};
+
+export type skillsDeleteSkillResponse = (skillsDeleteSkillResponseSuccess | skillsDeleteSkillResponseError)
+
+export const getSkillsDeleteSkillUrl = (skillId: string,) => {
+
+
+  
+
+  return `/api/v1/skills/${skillId}`
+}
+
+export const skillsDeleteSkill = async (skillId: string, options?: RequestInit): Promise<skillsDeleteSkillResponse> => {
+  
+  return customInstance<skillsDeleteSkillResponse>(getSkillsDeleteSkillUrl(skillId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+);}
+  
+
+
+
+export const getSkillsDeleteSkillMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsDeleteSkill>>, TError,{skillId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof skillsDeleteSkill>>, TError,{skillId: string}, TContext> => {
+
+const mutationKey = ['skillsDeleteSkill'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof skillsDeleteSkill>>, {skillId: string}> = (props) => {
+          const {skillId} = props ?? {};
+
+          return  skillsDeleteSkill(skillId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SkillsDeleteSkillMutationResult = NonNullable<Awaited<ReturnType<typeof skillsDeleteSkill>>>
+    
+    export type SkillsDeleteSkillMutationError = HTTPValidationError
+
+    /**
+ * @summary Delete Skill
+ */
+export const useSkillsDeleteSkill = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsDeleteSkill>>, TError,{skillId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof skillsDeleteSkill>>,
+        TError,
+        {skillId: string},
+        TContext
+      > => {
+      return useMutation(getSkillsDeleteSkillMutationOptions(options), queryClient);
+    }
+    /**
  * @summary Invoke Skill
  */
 export type skillsInvokeSkillResponse200 = {
@@ -401,15 +492,15 @@ export const skillsInvokeSkill = async (skillId: string,
 
 
 export const getSkillsInvokeSkillMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsInvokeSkill>>, TError,{skillId: string;data: InvokeSkillRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsInvokeSkill>>, TError,{skillId: string;data: InvokeSkillRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof skillsInvokeSkill>>, TError,{skillId: string;data: InvokeSkillRequest}, TContext> => {
 
 const mutationKey = ['skillsInvokeSkill'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -417,7 +508,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof skillsInvokeSkill>>, {skillId: string;data: InvokeSkillRequest}> = (props) => {
           const {skillId,data} = props ?? {};
 
-          return  skillsInvokeSkill(skillId,data,)
+          return  skillsInvokeSkill(skillId,data,requestOptions)
         }
 
 
@@ -435,7 +526,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Invoke Skill
  */
 export const useSkillsInvokeSkill = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsInvokeSkill>>, TError,{skillId: string;data: InvokeSkillRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof skillsInvokeSkill>>, TError,{skillId: string;data: InvokeSkillRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof skillsInvokeSkill>>,
         TError,

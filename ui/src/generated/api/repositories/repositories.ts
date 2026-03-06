@@ -36,6 +36,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -83,16 +85,16 @@ export const getRepositoriesListRepositoriesQueryKey = () => {
     }
 
     
-export const getRepositoriesListRepositoriesQueryOptions = <TData = Awaited<ReturnType<typeof repositoriesListRepositories>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositories>>, TError, TData>>, }
+export const getRepositoriesListRepositoriesQueryOptions = <TData = Awaited<ReturnType<typeof repositoriesListRepositories>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositories>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getRepositoriesListRepositoriesQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof repositoriesListRepositories>>> = ({ signal }) => repositoriesListRepositories({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof repositoriesListRepositories>>> = ({ signal }) => repositoriesListRepositories({ signal, ...requestOptions });
 
       
 
@@ -112,7 +114,7 @@ export function useRepositoriesListRepositories<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof repositoriesListRepositories>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useRepositoriesListRepositories<TData = Awaited<ReturnType<typeof repositoriesListRepositories>>, TError = unknown>(
@@ -122,11 +124,11 @@ export function useRepositoriesListRepositories<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof repositoriesListRepositories>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useRepositoriesListRepositories<TData = Awaited<ReturnType<typeof repositoriesListRepositories>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositories>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositories>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -134,7 +136,7 @@ export function useRepositoriesListRepositories<TData = Awaited<ReturnType<typeo
  */
 
 export function useRepositoriesListRepositories<TData = Awaited<ReturnType<typeof repositoriesListRepositories>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositories>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositories>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -194,15 +196,15 @@ export const repositoriesRegisterRepository = async (registerRepoRequest: Regist
 
 
 export const getRepositoriesRegisterRepositoryMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRegisterRepository>>, TError,{data: RegisterRepoRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRegisterRepository>>, TError,{data: RegisterRepoRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof repositoriesRegisterRepository>>, TError,{data: RegisterRepoRequest}, TContext> => {
 
 const mutationKey = ['repositoriesRegisterRepository'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -210,7 +212,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof repositoriesRegisterRepository>>, {data: RegisterRepoRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  repositoriesRegisterRepository(data,)
+          return  repositoriesRegisterRepository(data,requestOptions)
         }
 
 
@@ -228,7 +230,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Register Repository
  */
 export const useRepositoriesRegisterRepository = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRegisterRepository>>, TError,{data: RegisterRepoRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRegisterRepository>>, TError,{data: RegisterRepoRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof repositoriesRegisterRepository>>,
         TError,
@@ -289,16 +291,16 @@ export const getRepositoriesGetRepositoryQueryKey = (repoId: string,) => {
     }
 
     
-export const getRepositoriesGetRepositoryQueryOptions = <TData = Awaited<ReturnType<typeof repositoriesGetRepository>>, TError = HTTPValidationError>(repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesGetRepository>>, TError, TData>>, }
+export const getRepositoriesGetRepositoryQueryOptions = <TData = Awaited<ReturnType<typeof repositoriesGetRepository>>, TError = HTTPValidationError>(repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesGetRepository>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getRepositoriesGetRepositoryQueryKey(repoId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof repositoriesGetRepository>>> = ({ signal }) => repositoriesGetRepository(repoId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof repositoriesGetRepository>>> = ({ signal }) => repositoriesGetRepository(repoId, { signal, ...requestOptions });
 
       
 
@@ -318,7 +320,7 @@ export function useRepositoriesGetRepository<TData = Awaited<ReturnType<typeof r
           TError,
           Awaited<ReturnType<typeof repositoriesGetRepository>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useRepositoriesGetRepository<TData = Awaited<ReturnType<typeof repositoriesGetRepository>>, TError = HTTPValidationError>(
@@ -328,11 +330,11 @@ export function useRepositoriesGetRepository<TData = Awaited<ReturnType<typeof r
           TError,
           Awaited<ReturnType<typeof repositoriesGetRepository>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useRepositoriesGetRepository<TData = Awaited<ReturnType<typeof repositoriesGetRepository>>, TError = HTTPValidationError>(
- repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesGetRepository>>, TError, TData>>, }
+ repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesGetRepository>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -340,7 +342,7 @@ export function useRepositoriesGetRepository<TData = Awaited<ReturnType<typeof r
  */
 
 export function useRepositoriesGetRepository<TData = Awaited<ReturnType<typeof repositoriesGetRepository>>, TError = HTTPValidationError>(
- repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesGetRepository>>, TError, TData>>, }
+ repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesGetRepository>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -401,15 +403,15 @@ export const repositoriesUpdateRepository = async (repoId: string,
 
 
 export const getRepositoriesUpdateRepositoryMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesUpdateRepository>>, TError,{repoId: string;data: UpdateRepoRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesUpdateRepository>>, TError,{repoId: string;data: UpdateRepoRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof repositoriesUpdateRepository>>, TError,{repoId: string;data: UpdateRepoRequest}, TContext> => {
 
 const mutationKey = ['repositoriesUpdateRepository'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -417,7 +419,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof repositoriesUpdateRepository>>, {repoId: string;data: UpdateRepoRequest}> = (props) => {
           const {repoId,data} = props ?? {};
 
-          return  repositoriesUpdateRepository(repoId,data,)
+          return  repositoriesUpdateRepository(repoId,data,requestOptions)
         }
 
 
@@ -435,7 +437,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Repository
  */
 export const useRepositoriesUpdateRepository = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesUpdateRepository>>, TError,{repoId: string;data: UpdateRepoRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesUpdateRepository>>, TError,{repoId: string;data: UpdateRepoRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof repositoriesUpdateRepository>>,
         TError,
@@ -489,15 +491,15 @@ export const repositoriesRemoveRepository = async (repoId: string, options?: Req
 
 
 export const getRepositoriesRemoveRepositoryMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRemoveRepository>>, TError,{repoId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRemoveRepository>>, TError,{repoId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof repositoriesRemoveRepository>>, TError,{repoId: string}, TContext> => {
 
 const mutationKey = ['repositoriesRemoveRepository'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -505,7 +507,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof repositoriesRemoveRepository>>, {repoId: string}> = (props) => {
           const {repoId} = props ?? {};
 
-          return  repositoriesRemoveRepository(repoId,)
+          return  repositoriesRemoveRepository(repoId,requestOptions)
         }
 
 
@@ -523,7 +525,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Remove Repository
  */
 export const useRepositoriesRemoveRepository = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRemoveRepository>>, TError,{repoId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof repositoriesRemoveRepository>>, TError,{repoId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof repositoriesRemoveRepository>>,
         TError,

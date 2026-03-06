@@ -26,6 +26,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -74,16 +76,16 @@ export const getThreadsListThreadsQueryKey = () => {
     }
 
     
-export const getThreadsListThreadsQueryOptions = <TData = Awaited<ReturnType<typeof threadsListThreads>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof threadsListThreads>>, TError, TData>>, }
+export const getThreadsListThreadsQueryOptions = <TData = Awaited<ReturnType<typeof threadsListThreads>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof threadsListThreads>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getThreadsListThreadsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof threadsListThreads>>> = ({ signal }) => threadsListThreads({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof threadsListThreads>>> = ({ signal }) => threadsListThreads({ signal, ...requestOptions });
 
       
 
@@ -103,7 +105,7 @@ export function useThreadsListThreads<TData = Awaited<ReturnType<typeof threadsL
           TError,
           Awaited<ReturnType<typeof threadsListThreads>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useThreadsListThreads<TData = Awaited<ReturnType<typeof threadsListThreads>>, TError = unknown>(
@@ -113,11 +115,11 @@ export function useThreadsListThreads<TData = Awaited<ReturnType<typeof threadsL
           TError,
           Awaited<ReturnType<typeof threadsListThreads>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useThreadsListThreads<TData = Awaited<ReturnType<typeof threadsListThreads>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof threadsListThreads>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof threadsListThreads>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -125,7 +127,7 @@ export function useThreadsListThreads<TData = Awaited<ReturnType<typeof threadsL
  */
 
 export function useThreadsListThreads<TData = Awaited<ReturnType<typeof threadsListThreads>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof threadsListThreads>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof threadsListThreads>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

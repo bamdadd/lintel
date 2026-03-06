@@ -34,6 +34,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -83,15 +85,15 @@ export const piiRevealPii = async (revealPIIRequest: RevealPIIRequest, options?:
 
 
 export const getPiiRevealPiiMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof piiRevealPii>>, TError,{data: RevealPIIRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof piiRevealPii>>, TError,{data: RevealPIIRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof piiRevealPii>>, TError,{data: RevealPIIRequest}, TContext> => {
 
 const mutationKey = ['piiRevealPii'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -99,7 +101,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof piiRevealPii>>, {data: RevealPIIRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  piiRevealPii(data,)
+          return  piiRevealPii(data,requestOptions)
         }
 
 
@@ -117,7 +119,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Reveal Pii
  */
 export const usePiiRevealPii = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof piiRevealPii>>, TError,{data: RevealPIIRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof piiRevealPii>>, TError,{data: RevealPIIRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof piiRevealPii>>,
         TError,
@@ -172,16 +174,16 @@ export const getPiiVaultActivityLogQueryKey = () => {
     }
 
     
-export const getPiiVaultActivityLogQueryOptions = <TData = Awaited<ReturnType<typeof piiVaultActivityLog>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiVaultActivityLog>>, TError, TData>>, }
+export const getPiiVaultActivityLogQueryOptions = <TData = Awaited<ReturnType<typeof piiVaultActivityLog>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiVaultActivityLog>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getPiiVaultActivityLogQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof piiVaultActivityLog>>> = ({ signal }) => piiVaultActivityLog({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof piiVaultActivityLog>>> = ({ signal }) => piiVaultActivityLog({ signal, ...requestOptions });
 
       
 
@@ -201,7 +203,7 @@ export function usePiiVaultActivityLog<TData = Awaited<ReturnType<typeof piiVaul
           TError,
           Awaited<ReturnType<typeof piiVaultActivityLog>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePiiVaultActivityLog<TData = Awaited<ReturnType<typeof piiVaultActivityLog>>, TError = unknown>(
@@ -211,11 +213,11 @@ export function usePiiVaultActivityLog<TData = Awaited<ReturnType<typeof piiVaul
           TError,
           Awaited<ReturnType<typeof piiVaultActivityLog>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePiiVaultActivityLog<TData = Awaited<ReturnType<typeof piiVaultActivityLog>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiVaultActivityLog>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiVaultActivityLog>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -223,7 +225,7 @@ export function usePiiVaultActivityLog<TData = Awaited<ReturnType<typeof piiVaul
  */
 
 export function usePiiVaultActivityLog<TData = Awaited<ReturnType<typeof piiVaultActivityLog>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiVaultActivityLog>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiVaultActivityLog>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -283,16 +285,16 @@ export const getPiiPiiStatsQueryKey = () => {
     }
 
     
-export const getPiiPiiStatsQueryOptions = <TData = Awaited<ReturnType<typeof piiPiiStats>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiPiiStats>>, TError, TData>>, }
+export const getPiiPiiStatsQueryOptions = <TData = Awaited<ReturnType<typeof piiPiiStats>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiPiiStats>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getPiiPiiStatsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof piiPiiStats>>> = ({ signal }) => piiPiiStats({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof piiPiiStats>>> = ({ signal }) => piiPiiStats({ signal, ...requestOptions });
 
       
 
@@ -312,7 +314,7 @@ export function usePiiPiiStats<TData = Awaited<ReturnType<typeof piiPiiStats>>, 
           TError,
           Awaited<ReturnType<typeof piiPiiStats>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePiiPiiStats<TData = Awaited<ReturnType<typeof piiPiiStats>>, TError = unknown>(
@@ -322,11 +324,11 @@ export function usePiiPiiStats<TData = Awaited<ReturnType<typeof piiPiiStats>>, 
           TError,
           Awaited<ReturnType<typeof piiPiiStats>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePiiPiiStats<TData = Awaited<ReturnType<typeof piiPiiStats>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiPiiStats>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiPiiStats>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -334,7 +336,7 @@ export function usePiiPiiStats<TData = Awaited<ReturnType<typeof piiPiiStats>>, 
  */
 
 export function usePiiPiiStats<TData = Awaited<ReturnType<typeof piiPiiStats>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiPiiStats>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof piiPiiStats>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

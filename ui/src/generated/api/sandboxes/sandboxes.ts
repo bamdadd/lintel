@@ -39,6 +39,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -88,15 +90,15 @@ export const sandboxesCreateSandbox = async (createSandboxRequest: CreateSandbox
 
 
 export const getSandboxesCreateSandboxMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCreateSandbox>>, TError,{data: CreateSandboxRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCreateSandbox>>, TError,{data: CreateSandboxRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sandboxesCreateSandbox>>, TError,{data: CreateSandboxRequest}, TContext> => {
 
 const mutationKey = ['sandboxesCreateSandbox'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -104,7 +106,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof sandboxesCreateSandbox>>, {data: CreateSandboxRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  sandboxesCreateSandbox(data,)
+          return  sandboxesCreateSandbox(data,requestOptions)
         }
 
 
@@ -122,7 +124,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Sandbox
  */
 export const useSandboxesCreateSandbox = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCreateSandbox>>, TError,{data: CreateSandboxRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCreateSandbox>>, TError,{data: CreateSandboxRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof sandboxesCreateSandbox>>,
         TError,
@@ -184,16 +186,16 @@ export const getSandboxesGetSandboxStatusQueryKey = (sandboxId: string,) => {
     }
 
     
-export const getSandboxesGetSandboxStatusQueryOptions = <TData = Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError = HTTPValidationError>(sandboxId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError, TData>>, }
+export const getSandboxesGetSandboxStatusQueryOptions = <TData = Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError = HTTPValidationError>(sandboxId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSandboxesGetSandboxStatusQueryKey(sandboxId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>> = ({ signal }) => sandboxesGetSandboxStatus(sandboxId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>> = ({ signal }) => sandboxesGetSandboxStatus(sandboxId, { signal, ...requestOptions });
 
       
 
@@ -213,7 +215,7 @@ export function useSandboxesGetSandboxStatus<TData = Awaited<ReturnType<typeof s
           TError,
           Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSandboxesGetSandboxStatus<TData = Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError = HTTPValidationError>(
@@ -223,11 +225,11 @@ export function useSandboxesGetSandboxStatus<TData = Awaited<ReturnType<typeof s
           TError,
           Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSandboxesGetSandboxStatus<TData = Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError = HTTPValidationError>(
- sandboxId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError, TData>>, }
+ sandboxId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -235,7 +237,7 @@ export function useSandboxesGetSandboxStatus<TData = Awaited<ReturnType<typeof s
  */
 
 export function useSandboxesGetSandboxStatus<TData = Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError = HTTPValidationError>(
- sandboxId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError, TData>>, }
+ sandboxId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -295,15 +297,15 @@ export const sandboxesDestroySandbox = async (sandboxId: string, options?: Reque
 
 
 export const getSandboxesDestroySandboxMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesDestroySandbox>>, TError,{sandboxId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesDestroySandbox>>, TError,{sandboxId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sandboxesDestroySandbox>>, TError,{sandboxId: string}, TContext> => {
 
 const mutationKey = ['sandboxesDestroySandbox'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -311,7 +313,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof sandboxesDestroySandbox>>, {sandboxId: string}> = (props) => {
           const {sandboxId} = props ?? {};
 
-          return  sandboxesDestroySandbox(sandboxId,)
+          return  sandboxesDestroySandbox(sandboxId,requestOptions)
         }
 
 
@@ -329,7 +331,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Destroy Sandbox
  */
 export const useSandboxesDestroySandbox = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesDestroySandbox>>, TError,{sandboxId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesDestroySandbox>>, TError,{sandboxId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof sandboxesDestroySandbox>>,
         TError,
@@ -386,15 +388,15 @@ export const sandboxesExecuteCommand = async (sandboxId: string,
 
 
 export const getSandboxesExecuteCommandMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesExecuteCommand>>, TError,{sandboxId: string;data: ExecuteRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesExecuteCommand>>, TError,{sandboxId: string;data: ExecuteRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sandboxesExecuteCommand>>, TError,{sandboxId: string;data: ExecuteRequest}, TContext> => {
 
 const mutationKey = ['sandboxesExecuteCommand'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -402,7 +404,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof sandboxesExecuteCommand>>, {sandboxId: string;data: ExecuteRequest}> = (props) => {
           const {sandboxId,data} = props ?? {};
 
-          return  sandboxesExecuteCommand(sandboxId,data,)
+          return  sandboxesExecuteCommand(sandboxId,data,requestOptions)
         }
 
 
@@ -420,7 +422,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Execute Command
  */
 export const useSandboxesExecuteCommand = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesExecuteCommand>>, TError,{sandboxId: string;data: ExecuteRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesExecuteCommand>>, TError,{sandboxId: string;data: ExecuteRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof sandboxesExecuteCommand>>,
         TError,
@@ -477,15 +479,15 @@ export const sandboxesWriteFile = async (sandboxId: string,
 
 
 export const getSandboxesWriteFileMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesWriteFile>>, TError,{sandboxId: string;data: WriteFileRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesWriteFile>>, TError,{sandboxId: string;data: WriteFileRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof sandboxesWriteFile>>, TError,{sandboxId: string;data: WriteFileRequest}, TContext> => {
 
 const mutationKey = ['sandboxesWriteFile'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -493,7 +495,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof sandboxesWriteFile>>, {sandboxId: string;data: WriteFileRequest}> = (props) => {
           const {sandboxId,data} = props ?? {};
 
-          return  sandboxesWriteFile(sandboxId,data,)
+          return  sandboxesWriteFile(sandboxId,data,requestOptions)
         }
 
 
@@ -511,7 +513,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Write File
  */
 export const useSandboxesWriteFile = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesWriteFile>>, TError,{sandboxId: string;data: WriteFileRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesWriteFile>>, TError,{sandboxId: string;data: WriteFileRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof sandboxesWriteFile>>,
         TError,
@@ -584,16 +586,16 @@ export const getSandboxesReadFileQueryKey = (sandboxId: string,
 
     
 export const getSandboxesReadFileQueryOptions = <TData = Awaited<ReturnType<typeof sandboxesReadFile>>, TError = HTTPValidationError>(sandboxId: string,
-    params: SandboxesReadFileParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesReadFile>>, TError, TData>>, }
+    params: SandboxesReadFileParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesReadFile>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSandboxesReadFileQueryKey(sandboxId,params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesReadFile>>> = ({ signal }) => sandboxesReadFile(sandboxId,params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesReadFile>>> = ({ signal }) => sandboxesReadFile(sandboxId,params, { signal, ...requestOptions });
 
       
 
@@ -614,7 +616,7 @@ export function useSandboxesReadFile<TData = Awaited<ReturnType<typeof sandboxes
           TError,
           Awaited<ReturnType<typeof sandboxesReadFile>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSandboxesReadFile<TData = Awaited<ReturnType<typeof sandboxesReadFile>>, TError = HTTPValidationError>(
@@ -625,12 +627,12 @@ export function useSandboxesReadFile<TData = Awaited<ReturnType<typeof sandboxes
           TError,
           Awaited<ReturnType<typeof sandboxesReadFile>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSandboxesReadFile<TData = Awaited<ReturnType<typeof sandboxesReadFile>>, TError = HTTPValidationError>(
  sandboxId: string,
-    params: SandboxesReadFileParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesReadFile>>, TError, TData>>, }
+    params: SandboxesReadFileParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesReadFile>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -639,7 +641,7 @@ export function useSandboxesReadFile<TData = Awaited<ReturnType<typeof sandboxes
 
 export function useSandboxesReadFile<TData = Awaited<ReturnType<typeof sandboxesReadFile>>, TError = HTTPValidationError>(
  sandboxId: string,
-    params: SandboxesReadFileParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesReadFile>>, TError, TData>>, }
+    params: SandboxesReadFileParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesReadFile>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

@@ -35,6 +35,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -83,15 +85,15 @@ export const auditRecordAuditEntry = async (createAuditEntryRequest: CreateAudit
 
 
 export const getAuditRecordAuditEntryMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof auditRecordAuditEntry>>, TError,{data: CreateAuditEntryRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof auditRecordAuditEntry>>, TError,{data: CreateAuditEntryRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof auditRecordAuditEntry>>, TError,{data: CreateAuditEntryRequest}, TContext> => {
 
 const mutationKey = ['auditRecordAuditEntry'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -99,7 +101,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof auditRecordAuditEntry>>, {data: CreateAuditEntryRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  auditRecordAuditEntry(data,)
+          return  auditRecordAuditEntry(data,requestOptions)
         }
 
 
@@ -117,7 +119,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Record Audit Entry
  */
 export const useAuditRecordAuditEntry = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof auditRecordAuditEntry>>, TError,{data: CreateAuditEntryRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof auditRecordAuditEntry>>, TError,{data: CreateAuditEntryRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof auditRecordAuditEntry>>,
         TError,
@@ -185,16 +187,16 @@ export const getAuditListAuditEntriesQueryKey = (params?: AuditListAuditEntriesP
     }
 
     
-export const getAuditListAuditEntriesQueryOptions = <TData = Awaited<ReturnType<typeof auditListAuditEntries>>, TError = HTTPValidationError>(params?: AuditListAuditEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditListAuditEntries>>, TError, TData>>, }
+export const getAuditListAuditEntriesQueryOptions = <TData = Awaited<ReturnType<typeof auditListAuditEntries>>, TError = HTTPValidationError>(params?: AuditListAuditEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditListAuditEntries>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAuditListAuditEntriesQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof auditListAuditEntries>>> = ({ signal }) => auditListAuditEntries(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof auditListAuditEntries>>> = ({ signal }) => auditListAuditEntries(params, { signal, ...requestOptions });
 
       
 
@@ -214,7 +216,7 @@ export function useAuditListAuditEntries<TData = Awaited<ReturnType<typeof audit
           TError,
           Awaited<ReturnType<typeof auditListAuditEntries>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAuditListAuditEntries<TData = Awaited<ReturnType<typeof auditListAuditEntries>>, TError = HTTPValidationError>(
@@ -224,11 +226,11 @@ export function useAuditListAuditEntries<TData = Awaited<ReturnType<typeof audit
           TError,
           Awaited<ReturnType<typeof auditListAuditEntries>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAuditListAuditEntries<TData = Awaited<ReturnType<typeof auditListAuditEntries>>, TError = HTTPValidationError>(
- params?: AuditListAuditEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditListAuditEntries>>, TError, TData>>, }
+ params?: AuditListAuditEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditListAuditEntries>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -236,7 +238,7 @@ export function useAuditListAuditEntries<TData = Awaited<ReturnType<typeof audit
  */
 
 export function useAuditListAuditEntries<TData = Awaited<ReturnType<typeof auditListAuditEntries>>, TError = HTTPValidationError>(
- params?: AuditListAuditEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditListAuditEntries>>, TError, TData>>, }
+ params?: AuditListAuditEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditListAuditEntries>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -302,16 +304,16 @@ export const getAuditGetAuditEntryQueryKey = (entryId: string,) => {
     }
 
     
-export const getAuditGetAuditEntryQueryOptions = <TData = Awaited<ReturnType<typeof auditGetAuditEntry>>, TError = HTTPValidationError>(entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditGetAuditEntry>>, TError, TData>>, }
+export const getAuditGetAuditEntryQueryOptions = <TData = Awaited<ReturnType<typeof auditGetAuditEntry>>, TError = HTTPValidationError>(entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditGetAuditEntry>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAuditGetAuditEntryQueryKey(entryId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof auditGetAuditEntry>>> = ({ signal }) => auditGetAuditEntry(entryId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof auditGetAuditEntry>>> = ({ signal }) => auditGetAuditEntry(entryId, { signal, ...requestOptions });
 
       
 
@@ -331,7 +333,7 @@ export function useAuditGetAuditEntry<TData = Awaited<ReturnType<typeof auditGet
           TError,
           Awaited<ReturnType<typeof auditGetAuditEntry>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAuditGetAuditEntry<TData = Awaited<ReturnType<typeof auditGetAuditEntry>>, TError = HTTPValidationError>(
@@ -341,11 +343,11 @@ export function useAuditGetAuditEntry<TData = Awaited<ReturnType<typeof auditGet
           TError,
           Awaited<ReturnType<typeof auditGetAuditEntry>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAuditGetAuditEntry<TData = Awaited<ReturnType<typeof auditGetAuditEntry>>, TError = HTTPValidationError>(
- entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditGetAuditEntry>>, TError, TData>>, }
+ entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditGetAuditEntry>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -353,7 +355,7 @@ export function useAuditGetAuditEntry<TData = Awaited<ReturnType<typeof auditGet
  */
 
 export function useAuditGetAuditEntry<TData = Awaited<ReturnType<typeof auditGetAuditEntry>>, TError = HTTPValidationError>(
- entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditGetAuditEntry>>, TError, TData>>, }
+ entryId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof auditGetAuditEntry>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

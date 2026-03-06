@@ -35,6 +35,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -83,16 +85,16 @@ export const getCredentialsListCredentialsQueryKey = () => {
     }
 
     
-export const getCredentialsListCredentialsQueryOptions = <TData = Awaited<ReturnType<typeof credentialsListCredentials>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentials>>, TError, TData>>, }
+export const getCredentialsListCredentialsQueryOptions = <TData = Awaited<ReturnType<typeof credentialsListCredentials>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentials>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getCredentialsListCredentialsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof credentialsListCredentials>>> = ({ signal }) => credentialsListCredentials({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof credentialsListCredentials>>> = ({ signal }) => credentialsListCredentials({ signal, ...requestOptions });
 
       
 
@@ -112,7 +114,7 @@ export function useCredentialsListCredentials<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof credentialsListCredentials>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCredentialsListCredentials<TData = Awaited<ReturnType<typeof credentialsListCredentials>>, TError = unknown>(
@@ -122,11 +124,11 @@ export function useCredentialsListCredentials<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof credentialsListCredentials>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCredentialsListCredentials<TData = Awaited<ReturnType<typeof credentialsListCredentials>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentials>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentials>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -134,7 +136,7 @@ export function useCredentialsListCredentials<TData = Awaited<ReturnType<typeof 
  */
 
 export function useCredentialsListCredentials<TData = Awaited<ReturnType<typeof credentialsListCredentials>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentials>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentials>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -195,15 +197,15 @@ export const credentialsStoreCredential = async (storeCredentialRequest: StoreCr
 
 
 export const getCredentialsStoreCredentialMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsStoreCredential>>, TError,{data: StoreCredentialRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsStoreCredential>>, TError,{data: StoreCredentialRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof credentialsStoreCredential>>, TError,{data: StoreCredentialRequest}, TContext> => {
 
 const mutationKey = ['credentialsStoreCredential'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -211,7 +213,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof credentialsStoreCredential>>, {data: StoreCredentialRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  credentialsStoreCredential(data,)
+          return  credentialsStoreCredential(data,requestOptions)
         }
 
 
@@ -229,7 +231,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Store Credential
  */
 export const useCredentialsStoreCredential = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsStoreCredential>>, TError,{data: StoreCredentialRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsStoreCredential>>, TError,{data: StoreCredentialRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof credentialsStoreCredential>>,
         TError,
@@ -291,16 +293,16 @@ export const getCredentialsGetCredentialQueryKey = (credentialId: string,) => {
     }
 
     
-export const getCredentialsGetCredentialQueryOptions = <TData = Awaited<ReturnType<typeof credentialsGetCredential>>, TError = HTTPValidationError>(credentialId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsGetCredential>>, TError, TData>>, }
+export const getCredentialsGetCredentialQueryOptions = <TData = Awaited<ReturnType<typeof credentialsGetCredential>>, TError = HTTPValidationError>(credentialId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsGetCredential>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getCredentialsGetCredentialQueryKey(credentialId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof credentialsGetCredential>>> = ({ signal }) => credentialsGetCredential(credentialId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof credentialsGetCredential>>> = ({ signal }) => credentialsGetCredential(credentialId, { signal, ...requestOptions });
 
       
 
@@ -320,7 +322,7 @@ export function useCredentialsGetCredential<TData = Awaited<ReturnType<typeof cr
           TError,
           Awaited<ReturnType<typeof credentialsGetCredential>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCredentialsGetCredential<TData = Awaited<ReturnType<typeof credentialsGetCredential>>, TError = HTTPValidationError>(
@@ -330,11 +332,11 @@ export function useCredentialsGetCredential<TData = Awaited<ReturnType<typeof cr
           TError,
           Awaited<ReturnType<typeof credentialsGetCredential>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCredentialsGetCredential<TData = Awaited<ReturnType<typeof credentialsGetCredential>>, TError = HTTPValidationError>(
- credentialId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsGetCredential>>, TError, TData>>, }
+ credentialId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsGetCredential>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -342,7 +344,7 @@ export function useCredentialsGetCredential<TData = Awaited<ReturnType<typeof cr
  */
 
 export function useCredentialsGetCredential<TData = Awaited<ReturnType<typeof credentialsGetCredential>>, TError = HTTPValidationError>(
- credentialId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsGetCredential>>, TError, TData>>, }
+ credentialId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsGetCredential>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -402,15 +404,15 @@ export const credentialsRevokeCredential = async (credentialId: string, options?
 
 
 export const getCredentialsRevokeCredentialMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsRevokeCredential>>, TError,{credentialId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsRevokeCredential>>, TError,{credentialId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof credentialsRevokeCredential>>, TError,{credentialId: string}, TContext> => {
 
 const mutationKey = ['credentialsRevokeCredential'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -418,7 +420,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof credentialsRevokeCredential>>, {credentialId: string}> = (props) => {
           const {credentialId} = props ?? {};
 
-          return  credentialsRevokeCredential(credentialId,)
+          return  credentialsRevokeCredential(credentialId,requestOptions)
         }
 
 
@@ -436,7 +438,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Revoke Credential
  */
 export const useCredentialsRevokeCredential = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsRevokeCredential>>, TError,{credentialId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof credentialsRevokeCredential>>, TError,{credentialId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof credentialsRevokeCredential>>,
         TError,
@@ -498,16 +500,16 @@ export const getCredentialsListCredentialsForRepoQueryKey = (repoId: string,) =>
     }
 
     
-export const getCredentialsListCredentialsForRepoQueryOptions = <TData = Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError = HTTPValidationError>(repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError, TData>>, }
+export const getCredentialsListCredentialsForRepoQueryOptions = <TData = Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError = HTTPValidationError>(repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getCredentialsListCredentialsForRepoQueryKey(repoId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>> = ({ signal }) => credentialsListCredentialsForRepo(repoId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>> = ({ signal }) => credentialsListCredentialsForRepo(repoId, { signal, ...requestOptions });
 
       
 
@@ -527,7 +529,7 @@ export function useCredentialsListCredentialsForRepo<TData = Awaited<ReturnType<
           TError,
           Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCredentialsListCredentialsForRepo<TData = Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError = HTTPValidationError>(
@@ -537,11 +539,11 @@ export function useCredentialsListCredentialsForRepo<TData = Awaited<ReturnType<
           TError,
           Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCredentialsListCredentialsForRepo<TData = Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError = HTTPValidationError>(
- repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError, TData>>, }
+ repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -549,7 +551,7 @@ export function useCredentialsListCredentialsForRepo<TData = Awaited<ReturnType<
  */
 
 export function useCredentialsListCredentialsForRepo<TData = Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError = HTTPValidationError>(
- repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError, TData>>, }
+ repoId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof credentialsListCredentialsForRepo>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

@@ -40,6 +40,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -88,15 +90,15 @@ export const artifactsCreateArtifact = async (createCodeArtifactRequest: CreateC
 
 
 export const getArtifactsCreateArtifactMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateArtifact>>, TError,{data: CreateCodeArtifactRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateArtifact>>, TError,{data: CreateCodeArtifactRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateArtifact>>, TError,{data: CreateCodeArtifactRequest}, TContext> => {
 
 const mutationKey = ['artifactsCreateArtifact'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -104,7 +106,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof artifactsCreateArtifact>>, {data: CreateCodeArtifactRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  artifactsCreateArtifact(data,)
+          return  artifactsCreateArtifact(data,requestOptions)
         }
 
 
@@ -122,7 +124,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Artifact
  */
 export const useArtifactsCreateArtifact = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateArtifact>>, TError,{data: CreateCodeArtifactRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateArtifact>>, TError,{data: CreateCodeArtifactRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof artifactsCreateArtifact>>,
         TError,
@@ -190,16 +192,16 @@ export const getArtifactsListArtifactsQueryKey = (params?: ArtifactsListArtifact
     }
 
     
-export const getArtifactsListArtifactsQueryOptions = <TData = Awaited<ReturnType<typeof artifactsListArtifacts>>, TError = HTTPValidationError>(params?: ArtifactsListArtifactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListArtifacts>>, TError, TData>>, }
+export const getArtifactsListArtifactsQueryOptions = <TData = Awaited<ReturnType<typeof artifactsListArtifacts>>, TError = HTTPValidationError>(params?: ArtifactsListArtifactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListArtifacts>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getArtifactsListArtifactsQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsListArtifacts>>> = ({ signal }) => artifactsListArtifacts(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsListArtifacts>>> = ({ signal }) => artifactsListArtifacts(params, { signal, ...requestOptions });
 
       
 
@@ -219,7 +221,7 @@ export function useArtifactsListArtifacts<TData = Awaited<ReturnType<typeof arti
           TError,
           Awaited<ReturnType<typeof artifactsListArtifacts>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsListArtifacts<TData = Awaited<ReturnType<typeof artifactsListArtifacts>>, TError = HTTPValidationError>(
@@ -229,11 +231,11 @@ export function useArtifactsListArtifacts<TData = Awaited<ReturnType<typeof arti
           TError,
           Awaited<ReturnType<typeof artifactsListArtifacts>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsListArtifacts<TData = Awaited<ReturnType<typeof artifactsListArtifacts>>, TError = HTTPValidationError>(
- params?: ArtifactsListArtifactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListArtifacts>>, TError, TData>>, }
+ params?: ArtifactsListArtifactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListArtifacts>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -241,7 +243,7 @@ export function useArtifactsListArtifacts<TData = Awaited<ReturnType<typeof arti
  */
 
 export function useArtifactsListArtifacts<TData = Awaited<ReturnType<typeof artifactsListArtifacts>>, TError = HTTPValidationError>(
- params?: ArtifactsListArtifactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListArtifacts>>, TError, TData>>, }
+ params?: ArtifactsListArtifactsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListArtifacts>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -307,16 +309,16 @@ export const getArtifactsGetArtifactQueryKey = (artifactId: string,) => {
     }
 
     
-export const getArtifactsGetArtifactQueryOptions = <TData = Awaited<ReturnType<typeof artifactsGetArtifact>>, TError = HTTPValidationError>(artifactId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetArtifact>>, TError, TData>>, }
+export const getArtifactsGetArtifactQueryOptions = <TData = Awaited<ReturnType<typeof artifactsGetArtifact>>, TError = HTTPValidationError>(artifactId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetArtifact>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getArtifactsGetArtifactQueryKey(artifactId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsGetArtifact>>> = ({ signal }) => artifactsGetArtifact(artifactId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsGetArtifact>>> = ({ signal }) => artifactsGetArtifact(artifactId, { signal, ...requestOptions });
 
       
 
@@ -336,7 +338,7 @@ export function useArtifactsGetArtifact<TData = Awaited<ReturnType<typeof artifa
           TError,
           Awaited<ReturnType<typeof artifactsGetArtifact>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsGetArtifact<TData = Awaited<ReturnType<typeof artifactsGetArtifact>>, TError = HTTPValidationError>(
@@ -346,11 +348,11 @@ export function useArtifactsGetArtifact<TData = Awaited<ReturnType<typeof artifa
           TError,
           Awaited<ReturnType<typeof artifactsGetArtifact>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsGetArtifact<TData = Awaited<ReturnType<typeof artifactsGetArtifact>>, TError = HTTPValidationError>(
- artifactId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetArtifact>>, TError, TData>>, }
+ artifactId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetArtifact>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -358,7 +360,7 @@ export function useArtifactsGetArtifact<TData = Awaited<ReturnType<typeof artifa
  */
 
 export function useArtifactsGetArtifact<TData = Awaited<ReturnType<typeof artifactsGetArtifact>>, TError = HTTPValidationError>(
- artifactId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetArtifact>>, TError, TData>>, }
+ artifactId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetArtifact>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -418,15 +420,15 @@ export const artifactsCreateTestResult = async (createTestResultRequest: CreateT
 
 
 export const getArtifactsCreateTestResultMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateTestResult>>, TError,{data: CreateTestResultRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateTestResult>>, TError,{data: CreateTestResultRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateTestResult>>, TError,{data: CreateTestResultRequest}, TContext> => {
 
 const mutationKey = ['artifactsCreateTestResult'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -434,7 +436,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof artifactsCreateTestResult>>, {data: CreateTestResultRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  artifactsCreateTestResult(data,)
+          return  artifactsCreateTestResult(data,requestOptions)
         }
 
 
@@ -452,7 +454,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Test Result
  */
 export const useArtifactsCreateTestResult = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateTestResult>>, TError,{data: CreateTestResultRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof artifactsCreateTestResult>>, TError,{data: CreateTestResultRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof artifactsCreateTestResult>>,
         TError,
@@ -520,16 +522,16 @@ export const getArtifactsListTestResultsQueryKey = (params?: ArtifactsListTestRe
     }
 
     
-export const getArtifactsListTestResultsQueryOptions = <TData = Awaited<ReturnType<typeof artifactsListTestResults>>, TError = HTTPValidationError>(params?: ArtifactsListTestResultsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListTestResults>>, TError, TData>>, }
+export const getArtifactsListTestResultsQueryOptions = <TData = Awaited<ReturnType<typeof artifactsListTestResults>>, TError = HTTPValidationError>(params?: ArtifactsListTestResultsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListTestResults>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getArtifactsListTestResultsQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsListTestResults>>> = ({ signal }) => artifactsListTestResults(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsListTestResults>>> = ({ signal }) => artifactsListTestResults(params, { signal, ...requestOptions });
 
       
 
@@ -549,7 +551,7 @@ export function useArtifactsListTestResults<TData = Awaited<ReturnType<typeof ar
           TError,
           Awaited<ReturnType<typeof artifactsListTestResults>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsListTestResults<TData = Awaited<ReturnType<typeof artifactsListTestResults>>, TError = HTTPValidationError>(
@@ -559,11 +561,11 @@ export function useArtifactsListTestResults<TData = Awaited<ReturnType<typeof ar
           TError,
           Awaited<ReturnType<typeof artifactsListTestResults>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsListTestResults<TData = Awaited<ReturnType<typeof artifactsListTestResults>>, TError = HTTPValidationError>(
- params?: ArtifactsListTestResultsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListTestResults>>, TError, TData>>, }
+ params?: ArtifactsListTestResultsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListTestResults>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -571,7 +573,7 @@ export function useArtifactsListTestResults<TData = Awaited<ReturnType<typeof ar
  */
 
 export function useArtifactsListTestResults<TData = Awaited<ReturnType<typeof artifactsListTestResults>>, TError = HTTPValidationError>(
- params?: ArtifactsListTestResultsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListTestResults>>, TError, TData>>, }
+ params?: ArtifactsListTestResultsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsListTestResults>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -637,16 +639,16 @@ export const getArtifactsGetTestResultQueryKey = (resultId: string,) => {
     }
 
     
-export const getArtifactsGetTestResultQueryOptions = <TData = Awaited<ReturnType<typeof artifactsGetTestResult>>, TError = HTTPValidationError>(resultId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetTestResult>>, TError, TData>>, }
+export const getArtifactsGetTestResultQueryOptions = <TData = Awaited<ReturnType<typeof artifactsGetTestResult>>, TError = HTTPValidationError>(resultId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetTestResult>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getArtifactsGetTestResultQueryKey(resultId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsGetTestResult>>> = ({ signal }) => artifactsGetTestResult(resultId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof artifactsGetTestResult>>> = ({ signal }) => artifactsGetTestResult(resultId, { signal, ...requestOptions });
 
       
 
@@ -666,7 +668,7 @@ export function useArtifactsGetTestResult<TData = Awaited<ReturnType<typeof arti
           TError,
           Awaited<ReturnType<typeof artifactsGetTestResult>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsGetTestResult<TData = Awaited<ReturnType<typeof artifactsGetTestResult>>, TError = HTTPValidationError>(
@@ -676,11 +678,11 @@ export function useArtifactsGetTestResult<TData = Awaited<ReturnType<typeof arti
           TError,
           Awaited<ReturnType<typeof artifactsGetTestResult>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArtifactsGetTestResult<TData = Awaited<ReturnType<typeof artifactsGetTestResult>>, TError = HTTPValidationError>(
- resultId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetTestResult>>, TError, TData>>, }
+ resultId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetTestResult>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -688,7 +690,7 @@ export function useArtifactsGetTestResult<TData = Awaited<ReturnType<typeof arti
  */
 
 export function useArtifactsGetTestResult<TData = Awaited<ReturnType<typeof artifactsGetTestResult>>, TError = HTTPValidationError>(
- resultId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetTestResult>>, TError, TData>>, }
+ resultId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof artifactsGetTestResult>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

@@ -36,6 +36,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -83,16 +85,16 @@ export const getTeamsListTeamsQueryKey = () => {
     }
 
     
-export const getTeamsListTeamsQueryOptions = <TData = Awaited<ReturnType<typeof teamsListTeams>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsListTeams>>, TError, TData>>, }
+export const getTeamsListTeamsQueryOptions = <TData = Awaited<ReturnType<typeof teamsListTeams>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsListTeams>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getTeamsListTeamsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof teamsListTeams>>> = ({ signal }) => teamsListTeams({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof teamsListTeams>>> = ({ signal }) => teamsListTeams({ signal, ...requestOptions });
 
       
 
@@ -112,7 +114,7 @@ export function useTeamsListTeams<TData = Awaited<ReturnType<typeof teamsListTea
           TError,
           Awaited<ReturnType<typeof teamsListTeams>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTeamsListTeams<TData = Awaited<ReturnType<typeof teamsListTeams>>, TError = unknown>(
@@ -122,11 +124,11 @@ export function useTeamsListTeams<TData = Awaited<ReturnType<typeof teamsListTea
           TError,
           Awaited<ReturnType<typeof teamsListTeams>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTeamsListTeams<TData = Awaited<ReturnType<typeof teamsListTeams>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsListTeams>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsListTeams>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -134,7 +136,7 @@ export function useTeamsListTeams<TData = Awaited<ReturnType<typeof teamsListTea
  */
 
 export function useTeamsListTeams<TData = Awaited<ReturnType<typeof teamsListTeams>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsListTeams>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsListTeams>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -194,15 +196,15 @@ export const teamsCreateTeam = async (createTeamRequest: CreateTeamRequest, opti
 
 
 export const getTeamsCreateTeamMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsCreateTeam>>, TError,{data: CreateTeamRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsCreateTeam>>, TError,{data: CreateTeamRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof teamsCreateTeam>>, TError,{data: CreateTeamRequest}, TContext> => {
 
 const mutationKey = ['teamsCreateTeam'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -210,7 +212,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof teamsCreateTeam>>, {data: CreateTeamRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  teamsCreateTeam(data,)
+          return  teamsCreateTeam(data,requestOptions)
         }
 
 
@@ -228,7 +230,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Team
  */
 export const useTeamsCreateTeam = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsCreateTeam>>, TError,{data: CreateTeamRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsCreateTeam>>, TError,{data: CreateTeamRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof teamsCreateTeam>>,
         TError,
@@ -289,16 +291,16 @@ export const getTeamsGetTeamQueryKey = (teamId: string,) => {
     }
 
     
-export const getTeamsGetTeamQueryOptions = <TData = Awaited<ReturnType<typeof teamsGetTeam>>, TError = HTTPValidationError>(teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsGetTeam>>, TError, TData>>, }
+export const getTeamsGetTeamQueryOptions = <TData = Awaited<ReturnType<typeof teamsGetTeam>>, TError = HTTPValidationError>(teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsGetTeam>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getTeamsGetTeamQueryKey(teamId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof teamsGetTeam>>> = ({ signal }) => teamsGetTeam(teamId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof teamsGetTeam>>> = ({ signal }) => teamsGetTeam(teamId, { signal, ...requestOptions });
 
       
 
@@ -318,7 +320,7 @@ export function useTeamsGetTeam<TData = Awaited<ReturnType<typeof teamsGetTeam>>
           TError,
           Awaited<ReturnType<typeof teamsGetTeam>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTeamsGetTeam<TData = Awaited<ReturnType<typeof teamsGetTeam>>, TError = HTTPValidationError>(
@@ -328,11 +330,11 @@ export function useTeamsGetTeam<TData = Awaited<ReturnType<typeof teamsGetTeam>>
           TError,
           Awaited<ReturnType<typeof teamsGetTeam>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useTeamsGetTeam<TData = Awaited<ReturnType<typeof teamsGetTeam>>, TError = HTTPValidationError>(
- teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsGetTeam>>, TError, TData>>, }
+ teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsGetTeam>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -340,7 +342,7 @@ export function useTeamsGetTeam<TData = Awaited<ReturnType<typeof teamsGetTeam>>
  */
 
 export function useTeamsGetTeam<TData = Awaited<ReturnType<typeof teamsGetTeam>>, TError = HTTPValidationError>(
- teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsGetTeam>>, TError, TData>>, }
+ teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof teamsGetTeam>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -401,15 +403,15 @@ export const teamsUpdateTeam = async (teamId: string,
 
 
 export const getTeamsUpdateTeamMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsUpdateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsUpdateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof teamsUpdateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext> => {
 
 const mutationKey = ['teamsUpdateTeam'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -417,7 +419,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof teamsUpdateTeam>>, {teamId: string;data: UpdateTeamRequest}> = (props) => {
           const {teamId,data} = props ?? {};
 
-          return  teamsUpdateTeam(teamId,data,)
+          return  teamsUpdateTeam(teamId,data,requestOptions)
         }
 
 
@@ -435,7 +437,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Team
  */
 export const useTeamsUpdateTeam = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsUpdateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsUpdateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof teamsUpdateTeam>>,
         TError,
@@ -489,15 +491,15 @@ export const teamsDeleteTeam = async (teamId: string, options?: RequestInit): Pr
 
 
 export const getTeamsDeleteTeamMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsDeleteTeam>>, TError,{teamId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsDeleteTeam>>, TError,{teamId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof teamsDeleteTeam>>, TError,{teamId: string}, TContext> => {
 
 const mutationKey = ['teamsDeleteTeam'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -505,7 +507,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof teamsDeleteTeam>>, {teamId: string}> = (props) => {
           const {teamId} = props ?? {};
 
-          return  teamsDeleteTeam(teamId,)
+          return  teamsDeleteTeam(teamId,requestOptions)
         }
 
 
@@ -523,7 +525,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Team
  */
 export const useTeamsDeleteTeam = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsDeleteTeam>>, TError,{teamId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof teamsDeleteTeam>>, TError,{teamId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof teamsDeleteTeam>>,
         TError,

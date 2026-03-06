@@ -36,6 +36,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -84,16 +86,16 @@ export const getWorkflowsListWorkflowsQueryKey = () => {
     }
 
     
-export const getWorkflowsListWorkflowsQueryOptions = <TData = Awaited<ReturnType<typeof workflowsListWorkflows>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsListWorkflows>>, TError, TData>>, }
+export const getWorkflowsListWorkflowsQueryOptions = <TData = Awaited<ReturnType<typeof workflowsListWorkflows>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsListWorkflows>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getWorkflowsListWorkflowsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof workflowsListWorkflows>>> = ({ signal }) => workflowsListWorkflows({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof workflowsListWorkflows>>> = ({ signal }) => workflowsListWorkflows({ signal, ...requestOptions });
 
       
 
@@ -113,7 +115,7 @@ export function useWorkflowsListWorkflows<TData = Awaited<ReturnType<typeof work
           TError,
           Awaited<ReturnType<typeof workflowsListWorkflows>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkflowsListWorkflows<TData = Awaited<ReturnType<typeof workflowsListWorkflows>>, TError = unknown>(
@@ -123,11 +125,11 @@ export function useWorkflowsListWorkflows<TData = Awaited<ReturnType<typeof work
           TError,
           Awaited<ReturnType<typeof workflowsListWorkflows>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkflowsListWorkflows<TData = Awaited<ReturnType<typeof workflowsListWorkflows>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsListWorkflows>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsListWorkflows>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -135,7 +137,7 @@ export function useWorkflowsListWorkflows<TData = Awaited<ReturnType<typeof work
  */
 
 export function useWorkflowsListWorkflows<TData = Awaited<ReturnType<typeof workflowsListWorkflows>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsListWorkflows>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsListWorkflows>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -196,15 +198,15 @@ export const workflowsStartWorkflow = async (startWorkflowRequest: StartWorkflow
 
 
 export const getWorkflowsStartWorkflowMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsStartWorkflow>>, TError,{data: StartWorkflowRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsStartWorkflow>>, TError,{data: StartWorkflowRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof workflowsStartWorkflow>>, TError,{data: StartWorkflowRequest}, TContext> => {
 
 const mutationKey = ['workflowsStartWorkflow'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -212,7 +214,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof workflowsStartWorkflow>>, {data: StartWorkflowRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  workflowsStartWorkflow(data,)
+          return  workflowsStartWorkflow(data,requestOptions)
         }
 
 
@@ -230,7 +232,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Start Workflow
  */
 export const useWorkflowsStartWorkflow = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsStartWorkflow>>, TError,{data: StartWorkflowRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsStartWorkflow>>, TError,{data: StartWorkflowRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof workflowsStartWorkflow>>,
         TError,
@@ -292,16 +294,16 @@ export const getWorkflowsGetWorkflowQueryKey = (streamId: string,) => {
     }
 
     
-export const getWorkflowsGetWorkflowQueryOptions = <TData = Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError = HTTPValidationError>(streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError, TData>>, }
+export const getWorkflowsGetWorkflowQueryOptions = <TData = Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError = HTTPValidationError>(streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getWorkflowsGetWorkflowQueryKey(streamId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof workflowsGetWorkflow>>> = ({ signal }) => workflowsGetWorkflow(streamId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof workflowsGetWorkflow>>> = ({ signal }) => workflowsGetWorkflow(streamId, { signal, ...requestOptions });
 
       
 
@@ -321,7 +323,7 @@ export function useWorkflowsGetWorkflow<TData = Awaited<ReturnType<typeof workfl
           TError,
           Awaited<ReturnType<typeof workflowsGetWorkflow>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkflowsGetWorkflow<TData = Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError = HTTPValidationError>(
@@ -331,11 +333,11 @@ export function useWorkflowsGetWorkflow<TData = Awaited<ReturnType<typeof workfl
           TError,
           Awaited<ReturnType<typeof workflowsGetWorkflow>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkflowsGetWorkflow<TData = Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError = HTTPValidationError>(
- streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError, TData>>, }
+ streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -343,7 +345,7 @@ export function useWorkflowsGetWorkflow<TData = Awaited<ReturnType<typeof workfl
  */
 
 export function useWorkflowsGetWorkflow<TData = Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError = HTTPValidationError>(
- streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError, TData>>, }
+ streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workflowsGetWorkflow>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -404,15 +406,15 @@ export const workflowsProcessMessage = async (processMessageRequest: ProcessMess
 
 
 export const getWorkflowsProcessMessageMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsProcessMessage>>, TError,{data: ProcessMessageRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsProcessMessage>>, TError,{data: ProcessMessageRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof workflowsProcessMessage>>, TError,{data: ProcessMessageRequest}, TContext> => {
 
 const mutationKey = ['workflowsProcessMessage'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -420,7 +422,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof workflowsProcessMessage>>, {data: ProcessMessageRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  workflowsProcessMessage(data,)
+          return  workflowsProcessMessage(data,requestOptions)
         }
 
 
@@ -438,7 +440,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Process Message
  */
 export const useWorkflowsProcessMessage = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsProcessMessage>>, TError,{data: ProcessMessageRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowsProcessMessage>>, TError,{data: ProcessMessageRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof workflowsProcessMessage>>,
         TError,

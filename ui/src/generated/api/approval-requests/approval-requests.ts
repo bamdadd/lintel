@@ -40,6 +40,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -88,15 +90,15 @@ export const approvalRequestsCreateApprovalRequest = async (createApprovalReques
 
 
 export const getApprovalRequestsCreateApprovalRequestMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsCreateApprovalRequest>>, TError,{data: CreateApprovalRequestBody}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsCreateApprovalRequest>>, TError,{data: CreateApprovalRequestBody}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsCreateApprovalRequest>>, TError,{data: CreateApprovalRequestBody}, TContext> => {
 
 const mutationKey = ['approvalRequestsCreateApprovalRequest'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -104,7 +106,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvalRequestsCreateApprovalRequest>>, {data: CreateApprovalRequestBody}> = (props) => {
           const {data} = props ?? {};
 
-          return  approvalRequestsCreateApprovalRequest(data,)
+          return  approvalRequestsCreateApprovalRequest(data,requestOptions)
         }
 
 
@@ -122,7 +124,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Approval Request
  */
 export const useApprovalRequestsCreateApprovalRequest = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsCreateApprovalRequest>>, TError,{data: CreateApprovalRequestBody}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsCreateApprovalRequest>>, TError,{data: CreateApprovalRequestBody}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof approvalRequestsCreateApprovalRequest>>,
         TError,
@@ -190,16 +192,16 @@ export const getApprovalRequestsListApprovalRequestsQueryKey = (params?: Approva
     }
 
     
-export const getApprovalRequestsListApprovalRequestsQueryOptions = <TData = Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError = HTTPValidationError>(params?: ApprovalRequestsListApprovalRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError, TData>>, }
+export const getApprovalRequestsListApprovalRequestsQueryOptions = <TData = Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError = HTTPValidationError>(params?: ApprovalRequestsListApprovalRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getApprovalRequestsListApprovalRequestsQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>> = ({ signal }) => approvalRequestsListApprovalRequests(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>> = ({ signal }) => approvalRequestsListApprovalRequests(params, { signal, ...requestOptions });
 
       
 
@@ -219,7 +221,7 @@ export function useApprovalRequestsListApprovalRequests<TData = Awaited<ReturnTy
           TError,
           Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useApprovalRequestsListApprovalRequests<TData = Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError = HTTPValidationError>(
@@ -229,11 +231,11 @@ export function useApprovalRequestsListApprovalRequests<TData = Awaited<ReturnTy
           TError,
           Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useApprovalRequestsListApprovalRequests<TData = Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError = HTTPValidationError>(
- params?: ApprovalRequestsListApprovalRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError, TData>>, }
+ params?: ApprovalRequestsListApprovalRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -241,7 +243,7 @@ export function useApprovalRequestsListApprovalRequests<TData = Awaited<ReturnTy
  */
 
 export function useApprovalRequestsListApprovalRequests<TData = Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError = HTTPValidationError>(
- params?: ApprovalRequestsListApprovalRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError, TData>>, }
+ params?: ApprovalRequestsListApprovalRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListApprovalRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -300,16 +302,16 @@ export const getApprovalRequestsListPendingApprovalRequestsQueryKey = () => {
     }
 
     
-export const getApprovalRequestsListPendingApprovalRequestsQueryOptions = <TData = Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError, TData>>, }
+export const getApprovalRequestsListPendingApprovalRequestsQueryOptions = <TData = Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getApprovalRequestsListPendingApprovalRequestsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>> = ({ signal }) => approvalRequestsListPendingApprovalRequests({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>> = ({ signal }) => approvalRequestsListPendingApprovalRequests({ signal, ...requestOptions });
 
       
 
@@ -329,7 +331,7 @@ export function useApprovalRequestsListPendingApprovalRequests<TData = Awaited<R
           TError,
           Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useApprovalRequestsListPendingApprovalRequests<TData = Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError = unknown>(
@@ -339,11 +341,11 @@ export function useApprovalRequestsListPendingApprovalRequests<TData = Awaited<R
           TError,
           Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useApprovalRequestsListPendingApprovalRequests<TData = Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -351,7 +353,7 @@ export function useApprovalRequestsListPendingApprovalRequests<TData = Awaited<R
  */
 
 export function useApprovalRequestsListPendingApprovalRequests<TData = Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsListPendingApprovalRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -417,16 +419,16 @@ export const getApprovalRequestsGetApprovalRequestQueryKey = (approvalId: string
     }
 
     
-export const getApprovalRequestsGetApprovalRequestQueryOptions = <TData = Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError = HTTPValidationError>(approvalId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError, TData>>, }
+export const getApprovalRequestsGetApprovalRequestQueryOptions = <TData = Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError = HTTPValidationError>(approvalId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getApprovalRequestsGetApprovalRequestQueryKey(approvalId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>> = ({ signal }) => approvalRequestsGetApprovalRequest(approvalId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>> = ({ signal }) => approvalRequestsGetApprovalRequest(approvalId, { signal, ...requestOptions });
 
       
 
@@ -446,7 +448,7 @@ export function useApprovalRequestsGetApprovalRequest<TData = Awaited<ReturnType
           TError,
           Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useApprovalRequestsGetApprovalRequest<TData = Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError = HTTPValidationError>(
@@ -456,11 +458,11 @@ export function useApprovalRequestsGetApprovalRequest<TData = Awaited<ReturnType
           TError,
           Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useApprovalRequestsGetApprovalRequest<TData = Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError = HTTPValidationError>(
- approvalId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError, TData>>, }
+ approvalId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -468,7 +470,7 @@ export function useApprovalRequestsGetApprovalRequest<TData = Awaited<ReturnType
  */
 
 export function useApprovalRequestsGetApprovalRequest<TData = Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError = HTTPValidationError>(
- approvalId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError, TData>>, }
+ approvalId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof approvalRequestsGetApprovalRequest>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -529,15 +531,15 @@ export const approvalRequestsApproveApprovalRequest = async (approvalId: string,
 
 
 export const getApprovalRequestsApproveApprovalRequestMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsApproveApprovalRequest>>, TError,{approvalId: string;data: DecisionBody}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsApproveApprovalRequest>>, TError,{approvalId: string;data: DecisionBody}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsApproveApprovalRequest>>, TError,{approvalId: string;data: DecisionBody}, TContext> => {
 
 const mutationKey = ['approvalRequestsApproveApprovalRequest'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -545,7 +547,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvalRequestsApproveApprovalRequest>>, {approvalId: string;data: DecisionBody}> = (props) => {
           const {approvalId,data} = props ?? {};
 
-          return  approvalRequestsApproveApprovalRequest(approvalId,data,)
+          return  approvalRequestsApproveApprovalRequest(approvalId,data,requestOptions)
         }
 
 
@@ -563,7 +565,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Approve Approval Request
  */
 export const useApprovalRequestsApproveApprovalRequest = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsApproveApprovalRequest>>, TError,{approvalId: string;data: DecisionBody}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsApproveApprovalRequest>>, TError,{approvalId: string;data: DecisionBody}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof approvalRequestsApproveApprovalRequest>>,
         TError,
@@ -619,15 +621,15 @@ export const approvalRequestsRejectApprovalRequest = async (approvalId: string,
 
 
 export const getApprovalRequestsRejectApprovalRequestMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsRejectApprovalRequest>>, TError,{approvalId: string;data: RejectBody}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsRejectApprovalRequest>>, TError,{approvalId: string;data: RejectBody}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsRejectApprovalRequest>>, TError,{approvalId: string;data: RejectBody}, TContext> => {
 
 const mutationKey = ['approvalRequestsRejectApprovalRequest'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -635,7 +637,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvalRequestsRejectApprovalRequest>>, {approvalId: string;data: RejectBody}> = (props) => {
           const {approvalId,data} = props ?? {};
 
-          return  approvalRequestsRejectApprovalRequest(approvalId,data,)
+          return  approvalRequestsRejectApprovalRequest(approvalId,data,requestOptions)
         }
 
 
@@ -653,7 +655,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Reject Approval Request
  */
 export const useApprovalRequestsRejectApprovalRequest = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsRejectApprovalRequest>>, TError,{approvalId: string;data: RejectBody}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalRequestsRejectApprovalRequest>>, TError,{approvalId: string;data: RejectBody}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof approvalRequestsRejectApprovalRequest>>,
         TError,

@@ -40,6 +40,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -88,16 +90,16 @@ export const getSettingsListConnectionsQueryKey = () => {
     }
 
     
-export const getSettingsListConnectionsQueryOptions = <TData = Awaited<ReturnType<typeof settingsListConnections>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsListConnections>>, TError, TData>>, }
+export const getSettingsListConnectionsQueryOptions = <TData = Awaited<ReturnType<typeof settingsListConnections>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsListConnections>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSettingsListConnectionsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof settingsListConnections>>> = ({ signal }) => settingsListConnections({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof settingsListConnections>>> = ({ signal }) => settingsListConnections({ signal, ...requestOptions });
 
       
 
@@ -117,7 +119,7 @@ export function useSettingsListConnections<TData = Awaited<ReturnType<typeof set
           TError,
           Awaited<ReturnType<typeof settingsListConnections>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSettingsListConnections<TData = Awaited<ReturnType<typeof settingsListConnections>>, TError = unknown>(
@@ -127,11 +129,11 @@ export function useSettingsListConnections<TData = Awaited<ReturnType<typeof set
           TError,
           Awaited<ReturnType<typeof settingsListConnections>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSettingsListConnections<TData = Awaited<ReturnType<typeof settingsListConnections>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsListConnections>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsListConnections>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -139,7 +141,7 @@ export function useSettingsListConnections<TData = Awaited<ReturnType<typeof set
  */
 
 export function useSettingsListConnections<TData = Awaited<ReturnType<typeof settingsListConnections>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsListConnections>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsListConnections>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -200,15 +202,15 @@ export const settingsCreateConnection = async (connectionRequest: ConnectionRequ
 
 
 export const getSettingsCreateConnectionMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsCreateConnection>>, TError,{data: ConnectionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsCreateConnection>>, TError,{data: ConnectionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof settingsCreateConnection>>, TError,{data: ConnectionRequest}, TContext> => {
 
 const mutationKey = ['settingsCreateConnection'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -216,7 +218,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof settingsCreateConnection>>, {data: ConnectionRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  settingsCreateConnection(data,)
+          return  settingsCreateConnection(data,requestOptions)
         }
 
 
@@ -234,7 +236,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Connection
  */
 export const useSettingsCreateConnection = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsCreateConnection>>, TError,{data: ConnectionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsCreateConnection>>, TError,{data: ConnectionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof settingsCreateConnection>>,
         TError,
@@ -296,16 +298,16 @@ export const getSettingsGetConnectionQueryKey = (connectionId: string,) => {
     }
 
     
-export const getSettingsGetConnectionQueryOptions = <TData = Awaited<ReturnType<typeof settingsGetConnection>>, TError = HTTPValidationError>(connectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetConnection>>, TError, TData>>, }
+export const getSettingsGetConnectionQueryOptions = <TData = Awaited<ReturnType<typeof settingsGetConnection>>, TError = HTTPValidationError>(connectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetConnection>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSettingsGetConnectionQueryKey(connectionId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof settingsGetConnection>>> = ({ signal }) => settingsGetConnection(connectionId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof settingsGetConnection>>> = ({ signal }) => settingsGetConnection(connectionId, { signal, ...requestOptions });
 
       
 
@@ -325,7 +327,7 @@ export function useSettingsGetConnection<TData = Awaited<ReturnType<typeof setti
           TError,
           Awaited<ReturnType<typeof settingsGetConnection>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSettingsGetConnection<TData = Awaited<ReturnType<typeof settingsGetConnection>>, TError = HTTPValidationError>(
@@ -335,11 +337,11 @@ export function useSettingsGetConnection<TData = Awaited<ReturnType<typeof setti
           TError,
           Awaited<ReturnType<typeof settingsGetConnection>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSettingsGetConnection<TData = Awaited<ReturnType<typeof settingsGetConnection>>, TError = HTTPValidationError>(
- connectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetConnection>>, TError, TData>>, }
+ connectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetConnection>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -347,7 +349,7 @@ export function useSettingsGetConnection<TData = Awaited<ReturnType<typeof setti
  */
 
 export function useSettingsGetConnection<TData = Awaited<ReturnType<typeof settingsGetConnection>>, TError = HTTPValidationError>(
- connectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetConnection>>, TError, TData>>, }
+ connectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetConnection>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -409,15 +411,15 @@ export const settingsUpdateConnection = async (connectionId: string,
 
 
 export const getSettingsUpdateConnectionMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateConnection>>, TError,{connectionId: string;data: UpdateConnectionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateConnection>>, TError,{connectionId: string;data: UpdateConnectionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateConnection>>, TError,{connectionId: string;data: UpdateConnectionRequest}, TContext> => {
 
 const mutationKey = ['settingsUpdateConnection'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -425,7 +427,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof settingsUpdateConnection>>, {connectionId: string;data: UpdateConnectionRequest}> = (props) => {
           const {connectionId,data} = props ?? {};
 
-          return  settingsUpdateConnection(connectionId,data,)
+          return  settingsUpdateConnection(connectionId,data,requestOptions)
         }
 
 
@@ -443,7 +445,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Connection
  */
 export const useSettingsUpdateConnection = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateConnection>>, TError,{connectionId: string;data: UpdateConnectionRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateConnection>>, TError,{connectionId: string;data: UpdateConnectionRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof settingsUpdateConnection>>,
         TError,
@@ -498,15 +500,15 @@ export const settingsDeleteConnection = async (connectionId: string, options?: R
 
 
 export const getSettingsDeleteConnectionMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsDeleteConnection>>, TError,{connectionId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsDeleteConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof settingsDeleteConnection>>, TError,{connectionId: string}, TContext> => {
 
 const mutationKey = ['settingsDeleteConnection'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -514,7 +516,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof settingsDeleteConnection>>, {connectionId: string}> = (props) => {
           const {connectionId} = props ?? {};
 
-          return  settingsDeleteConnection(connectionId,)
+          return  settingsDeleteConnection(connectionId,requestOptions)
         }
 
 
@@ -532,7 +534,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Connection
  */
 export const useSettingsDeleteConnection = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsDeleteConnection>>, TError,{connectionId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsDeleteConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof settingsDeleteConnection>>,
         TError,
@@ -587,15 +589,15 @@ export const settingsTestConnection = async (connectionId: string, options?: Req
 
 
 export const getSettingsTestConnectionMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsTestConnection>>, TError,{connectionId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsTestConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof settingsTestConnection>>, TError,{connectionId: string}, TContext> => {
 
 const mutationKey = ['settingsTestConnection'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -603,7 +605,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof settingsTestConnection>>, {connectionId: string}> = (props) => {
           const {connectionId} = props ?? {};
 
-          return  settingsTestConnection(connectionId,)
+          return  settingsTestConnection(connectionId,requestOptions)
         }
 
 
@@ -621,7 +623,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Test Connection
  */
 export const useSettingsTestConnection = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsTestConnection>>, TError,{connectionId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsTestConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof settingsTestConnection>>,
         TError,
@@ -676,16 +678,16 @@ export const getSettingsGetSettingsQueryKey = () => {
     }
 
     
-export const getSettingsGetSettingsQueryOptions = <TData = Awaited<ReturnType<typeof settingsGetSettings>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetSettings>>, TError, TData>>, }
+export const getSettingsGetSettingsQueryOptions = <TData = Awaited<ReturnType<typeof settingsGetSettings>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetSettings>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getSettingsGetSettingsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof settingsGetSettings>>> = ({ signal }) => settingsGetSettings({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof settingsGetSettings>>> = ({ signal }) => settingsGetSettings({ signal, ...requestOptions });
 
       
 
@@ -705,7 +707,7 @@ export function useSettingsGetSettings<TData = Awaited<ReturnType<typeof setting
           TError,
           Awaited<ReturnType<typeof settingsGetSettings>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSettingsGetSettings<TData = Awaited<ReturnType<typeof settingsGetSettings>>, TError = unknown>(
@@ -715,11 +717,11 @@ export function useSettingsGetSettings<TData = Awaited<ReturnType<typeof setting
           TError,
           Awaited<ReturnType<typeof settingsGetSettings>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useSettingsGetSettings<TData = Awaited<ReturnType<typeof settingsGetSettings>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetSettings>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetSettings>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -727,7 +729,7 @@ export function useSettingsGetSettings<TData = Awaited<ReturnType<typeof setting
  */
 
 export function useSettingsGetSettings<TData = Awaited<ReturnType<typeof settingsGetSettings>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetSettings>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof settingsGetSettings>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -788,15 +790,15 @@ export const settingsUpdateSettings = async (updateSettingsRequest: UpdateSettin
 
 
 export const getSettingsUpdateSettingsMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateSettings>>, TError,{data: UpdateSettingsRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateSettings>>, TError,{data: UpdateSettingsRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateSettings>>, TError,{data: UpdateSettingsRequest}, TContext> => {
 
 const mutationKey = ['settingsUpdateSettings'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -804,7 +806,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof settingsUpdateSettings>>, {data: UpdateSettingsRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  settingsUpdateSettings(data,)
+          return  settingsUpdateSettings(data,requestOptions)
         }
 
 
@@ -822,7 +824,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Settings
  */
 export const useSettingsUpdateSettings = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateSettings>>, TError,{data: UpdateSettingsRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settingsUpdateSettings>>, TError,{data: UpdateSettingsRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof settingsUpdateSettings>>,
         TError,

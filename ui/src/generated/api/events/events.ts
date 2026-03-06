@@ -29,6 +29,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -77,16 +79,16 @@ export const getEventsListEventTypesQueryKey = () => {
     }
 
     
-export const getEventsListEventTypesQueryOptions = <TData = Awaited<ReturnType<typeof eventsListEventTypes>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEventTypes>>, TError, TData>>, }
+export const getEventsListEventTypesQueryOptions = <TData = Awaited<ReturnType<typeof eventsListEventTypes>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEventTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getEventsListEventTypesQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsListEventTypes>>> = ({ signal }) => eventsListEventTypes({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsListEventTypes>>> = ({ signal }) => eventsListEventTypes({ signal, ...requestOptions });
 
       
 
@@ -106,7 +108,7 @@ export function useEventsListEventTypes<TData = Awaited<ReturnType<typeof events
           TError,
           Awaited<ReturnType<typeof eventsListEventTypes>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsListEventTypes<TData = Awaited<ReturnType<typeof eventsListEventTypes>>, TError = unknown>(
@@ -116,11 +118,11 @@ export function useEventsListEventTypes<TData = Awaited<ReturnType<typeof events
           TError,
           Awaited<ReturnType<typeof eventsListEventTypes>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsListEventTypes<TData = Awaited<ReturnType<typeof eventsListEventTypes>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEventTypes>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEventTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -128,7 +130,7 @@ export function useEventsListEventTypes<TData = Awaited<ReturnType<typeof events
  */
 
 export function useEventsListEventTypes<TData = Awaited<ReturnType<typeof eventsListEventTypes>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEventTypes>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEventTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -188,16 +190,16 @@ export const getEventsListEventsQueryKey = () => {
     }
 
     
-export const getEventsListEventsQueryOptions = <TData = Awaited<ReturnType<typeof eventsListEvents>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEvents>>, TError, TData>>, }
+export const getEventsListEventsQueryOptions = <TData = Awaited<ReturnType<typeof eventsListEvents>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getEventsListEventsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsListEvents>>> = ({ signal }) => eventsListEvents({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsListEvents>>> = ({ signal }) => eventsListEvents({ signal, ...requestOptions });
 
       
 
@@ -217,7 +219,7 @@ export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsList
           TError,
           Awaited<ReturnType<typeof eventsListEvents>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsListEvents>>, TError = unknown>(
@@ -227,11 +229,11 @@ export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsList
           TError,
           Awaited<ReturnType<typeof eventsListEvents>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsListEvents>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEvents>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -239,7 +241,7 @@ export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsList
  */
 
 export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsListEvents>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEvents>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -308,16 +310,16 @@ export const getEventsGetEventsByStreamQueryKey = (streamId: string,) => {
     }
 
     
-export const getEventsGetEventsByStreamQueryOptions = <TData = Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError = HTTPValidationError>(streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError, TData>>, }
+export const getEventsGetEventsByStreamQueryOptions = <TData = Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError = HTTPValidationError>(streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getEventsGetEventsByStreamQueryKey(streamId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsGetEventsByStream>>> = ({ signal }) => eventsGetEventsByStream(streamId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsGetEventsByStream>>> = ({ signal }) => eventsGetEventsByStream(streamId, { signal, ...requestOptions });
 
       
 
@@ -337,7 +339,7 @@ export function useEventsGetEventsByStream<TData = Awaited<ReturnType<typeof eve
           TError,
           Awaited<ReturnType<typeof eventsGetEventsByStream>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsGetEventsByStream<TData = Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError = HTTPValidationError>(
@@ -347,11 +349,11 @@ export function useEventsGetEventsByStream<TData = Awaited<ReturnType<typeof eve
           TError,
           Awaited<ReturnType<typeof eventsGetEventsByStream>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsGetEventsByStream<TData = Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError = HTTPValidationError>(
- streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError, TData>>, }
+ streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -359,7 +361,7 @@ export function useEventsGetEventsByStream<TData = Awaited<ReturnType<typeof eve
  */
 
 export function useEventsGetEventsByStream<TData = Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError = HTTPValidationError>(
- streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError, TData>>, }
+ streamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByStream>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -428,16 +430,16 @@ export const getEventsGetEventsByCorrelationQueryKey = (correlationId: string,) 
     }
 
     
-export const getEventsGetEventsByCorrelationQueryOptions = <TData = Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError = HTTPValidationError>(correlationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError, TData>>, }
+export const getEventsGetEventsByCorrelationQueryOptions = <TData = Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError = HTTPValidationError>(correlationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getEventsGetEventsByCorrelationQueryKey(correlationId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>> = ({ signal }) => eventsGetEventsByCorrelation(correlationId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>> = ({ signal }) => eventsGetEventsByCorrelation(correlationId, { signal, ...requestOptions });
 
       
 
@@ -457,7 +459,7 @@ export function useEventsGetEventsByCorrelation<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsGetEventsByCorrelation<TData = Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError = HTTPValidationError>(
@@ -467,11 +469,11 @@ export function useEventsGetEventsByCorrelation<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEventsGetEventsByCorrelation<TData = Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError = HTTPValidationError>(
- correlationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError, TData>>, }
+ correlationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -479,7 +481,7 @@ export function useEventsGetEventsByCorrelation<TData = Awaited<ReturnType<typeo
  */
 
 export function useEventsGetEventsByCorrelation<TData = Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError = HTTPValidationError>(
- correlationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError, TData>>, }
+ correlationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsGetEventsByCorrelation>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

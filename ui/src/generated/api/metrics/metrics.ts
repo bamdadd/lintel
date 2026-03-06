@@ -28,6 +28,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -76,16 +78,16 @@ export const getMetricsPiiMetricsQueryKey = () => {
     }
 
     
-export const getMetricsPiiMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metricsPiiMetrics>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsPiiMetrics>>, TError, TData>>, }
+export const getMetricsPiiMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metricsPiiMetrics>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsPiiMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getMetricsPiiMetricsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof metricsPiiMetrics>>> = ({ signal }) => metricsPiiMetrics({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof metricsPiiMetrics>>> = ({ signal }) => metricsPiiMetrics({ signal, ...requestOptions });
 
       
 
@@ -105,7 +107,7 @@ export function useMetricsPiiMetrics<TData = Awaited<ReturnType<typeof metricsPi
           TError,
           Awaited<ReturnType<typeof metricsPiiMetrics>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useMetricsPiiMetrics<TData = Awaited<ReturnType<typeof metricsPiiMetrics>>, TError = unknown>(
@@ -115,11 +117,11 @@ export function useMetricsPiiMetrics<TData = Awaited<ReturnType<typeof metricsPi
           TError,
           Awaited<ReturnType<typeof metricsPiiMetrics>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useMetricsPiiMetrics<TData = Awaited<ReturnType<typeof metricsPiiMetrics>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsPiiMetrics>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsPiiMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -127,7 +129,7 @@ export function useMetricsPiiMetrics<TData = Awaited<ReturnType<typeof metricsPi
  */
 
 export function useMetricsPiiMetrics<TData = Awaited<ReturnType<typeof metricsPiiMetrics>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsPiiMetrics>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsPiiMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -187,16 +189,16 @@ export const getMetricsAgentMetricsQueryKey = () => {
     }
 
     
-export const getMetricsAgentMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metricsAgentMetrics>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsAgentMetrics>>, TError, TData>>, }
+export const getMetricsAgentMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metricsAgentMetrics>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsAgentMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getMetricsAgentMetricsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof metricsAgentMetrics>>> = ({ signal }) => metricsAgentMetrics({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof metricsAgentMetrics>>> = ({ signal }) => metricsAgentMetrics({ signal, ...requestOptions });
 
       
 
@@ -216,7 +218,7 @@ export function useMetricsAgentMetrics<TData = Awaited<ReturnType<typeof metrics
           TError,
           Awaited<ReturnType<typeof metricsAgentMetrics>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useMetricsAgentMetrics<TData = Awaited<ReturnType<typeof metricsAgentMetrics>>, TError = unknown>(
@@ -226,11 +228,11 @@ export function useMetricsAgentMetrics<TData = Awaited<ReturnType<typeof metrics
           TError,
           Awaited<ReturnType<typeof metricsAgentMetrics>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useMetricsAgentMetrics<TData = Awaited<ReturnType<typeof metricsAgentMetrics>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsAgentMetrics>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsAgentMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -238,7 +240,7 @@ export function useMetricsAgentMetrics<TData = Awaited<ReturnType<typeof metrics
  */
 
 export function useMetricsAgentMetrics<TData = Awaited<ReturnType<typeof metricsAgentMetrics>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsAgentMetrics>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsAgentMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -298,16 +300,16 @@ export const getMetricsOverviewMetricsQueryKey = () => {
     }
 
     
-export const getMetricsOverviewMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError, TData>>, }
+export const getMetricsOverviewMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getMetricsOverviewMetricsQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof metricsOverviewMetrics>>> = ({ signal }) => metricsOverviewMetrics({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof metricsOverviewMetrics>>> = ({ signal }) => metricsOverviewMetrics({ signal, ...requestOptions });
 
       
 
@@ -327,7 +329,7 @@ export function useMetricsOverviewMetrics<TData = Awaited<ReturnType<typeof metr
           TError,
           Awaited<ReturnType<typeof metricsOverviewMetrics>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useMetricsOverviewMetrics<TData = Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError = unknown>(
@@ -337,11 +339,11 @@ export function useMetricsOverviewMetrics<TData = Awaited<ReturnType<typeof metr
           TError,
           Awaited<ReturnType<typeof metricsOverviewMetrics>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useMetricsOverviewMetrics<TData = Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -349,7 +351,7 @@ export function useMetricsOverviewMetrics<TData = Awaited<ReturnType<typeof metr
  */
 
 export function useMetricsOverviewMetrics<TData = Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsOverviewMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

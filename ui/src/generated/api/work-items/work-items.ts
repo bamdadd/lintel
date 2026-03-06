@@ -37,6 +37,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -85,15 +87,15 @@ export const workItemsCreateWorkItem = async (createWorkItemRequest: CreateWorkI
 
 
 export const getWorkItemsCreateWorkItemMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsCreateWorkItem>>, TError,{data: CreateWorkItemRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsCreateWorkItem>>, TError,{data: CreateWorkItemRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof workItemsCreateWorkItem>>, TError,{data: CreateWorkItemRequest}, TContext> => {
 
 const mutationKey = ['workItemsCreateWorkItem'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -101,7 +103,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof workItemsCreateWorkItem>>, {data: CreateWorkItemRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  workItemsCreateWorkItem(data,)
+          return  workItemsCreateWorkItem(data,requestOptions)
         }
 
 
@@ -119,7 +121,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Work Item
  */
 export const useWorkItemsCreateWorkItem = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsCreateWorkItem>>, TError,{data: CreateWorkItemRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsCreateWorkItem>>, TError,{data: CreateWorkItemRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof workItemsCreateWorkItem>>,
         TError,
@@ -187,16 +189,16 @@ export const getWorkItemsListWorkItemsQueryKey = (params?: WorkItemsListWorkItem
     }
 
     
-export const getWorkItemsListWorkItemsQueryOptions = <TData = Awaited<ReturnType<typeof workItemsListWorkItems>>, TError = HTTPValidationError>(params?: WorkItemsListWorkItemsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsListWorkItems>>, TError, TData>>, }
+export const getWorkItemsListWorkItemsQueryOptions = <TData = Awaited<ReturnType<typeof workItemsListWorkItems>>, TError = HTTPValidationError>(params?: WorkItemsListWorkItemsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsListWorkItems>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getWorkItemsListWorkItemsQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof workItemsListWorkItems>>> = ({ signal }) => workItemsListWorkItems(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof workItemsListWorkItems>>> = ({ signal }) => workItemsListWorkItems(params, { signal, ...requestOptions });
 
       
 
@@ -216,7 +218,7 @@ export function useWorkItemsListWorkItems<TData = Awaited<ReturnType<typeof work
           TError,
           Awaited<ReturnType<typeof workItemsListWorkItems>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkItemsListWorkItems<TData = Awaited<ReturnType<typeof workItemsListWorkItems>>, TError = HTTPValidationError>(
@@ -226,11 +228,11 @@ export function useWorkItemsListWorkItems<TData = Awaited<ReturnType<typeof work
           TError,
           Awaited<ReturnType<typeof workItemsListWorkItems>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkItemsListWorkItems<TData = Awaited<ReturnType<typeof workItemsListWorkItems>>, TError = HTTPValidationError>(
- params?: WorkItemsListWorkItemsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsListWorkItems>>, TError, TData>>, }
+ params?: WorkItemsListWorkItemsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsListWorkItems>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -238,7 +240,7 @@ export function useWorkItemsListWorkItems<TData = Awaited<ReturnType<typeof work
  */
 
 export function useWorkItemsListWorkItems<TData = Awaited<ReturnType<typeof workItemsListWorkItems>>, TError = HTTPValidationError>(
- params?: WorkItemsListWorkItemsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsListWorkItems>>, TError, TData>>, }
+ params?: WorkItemsListWorkItemsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsListWorkItems>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -304,16 +306,16 @@ export const getWorkItemsGetWorkItemQueryKey = (workItemId: string,) => {
     }
 
     
-export const getWorkItemsGetWorkItemQueryOptions = <TData = Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError = HTTPValidationError>(workItemId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError, TData>>, }
+export const getWorkItemsGetWorkItemQueryOptions = <TData = Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError = HTTPValidationError>(workItemId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getWorkItemsGetWorkItemQueryKey(workItemId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof workItemsGetWorkItem>>> = ({ signal }) => workItemsGetWorkItem(workItemId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof workItemsGetWorkItem>>> = ({ signal }) => workItemsGetWorkItem(workItemId, { signal, ...requestOptions });
 
       
 
@@ -333,7 +335,7 @@ export function useWorkItemsGetWorkItem<TData = Awaited<ReturnType<typeof workIt
           TError,
           Awaited<ReturnType<typeof workItemsGetWorkItem>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkItemsGetWorkItem<TData = Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError = HTTPValidationError>(
@@ -343,11 +345,11 @@ export function useWorkItemsGetWorkItem<TData = Awaited<ReturnType<typeof workIt
           TError,
           Awaited<ReturnType<typeof workItemsGetWorkItem>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useWorkItemsGetWorkItem<TData = Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError = HTTPValidationError>(
- workItemId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError, TData>>, }
+ workItemId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -355,7 +357,7 @@ export function useWorkItemsGetWorkItem<TData = Awaited<ReturnType<typeof workIt
  */
 
 export function useWorkItemsGetWorkItem<TData = Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError = HTTPValidationError>(
- workItemId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError, TData>>, }
+ workItemId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof workItemsGetWorkItem>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -416,15 +418,15 @@ export const workItemsUpdateWorkItem = async (workItemId: string,
 
 
 export const getWorkItemsUpdateWorkItemMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsUpdateWorkItem>>, TError,{workItemId: string;data: UpdateWorkItemRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsUpdateWorkItem>>, TError,{workItemId: string;data: UpdateWorkItemRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof workItemsUpdateWorkItem>>, TError,{workItemId: string;data: UpdateWorkItemRequest}, TContext> => {
 
 const mutationKey = ['workItemsUpdateWorkItem'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -432,7 +434,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof workItemsUpdateWorkItem>>, {workItemId: string;data: UpdateWorkItemRequest}> = (props) => {
           const {workItemId,data} = props ?? {};
 
-          return  workItemsUpdateWorkItem(workItemId,data,)
+          return  workItemsUpdateWorkItem(workItemId,data,requestOptions)
         }
 
 
@@ -450,7 +452,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Work Item
  */
 export const useWorkItemsUpdateWorkItem = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsUpdateWorkItem>>, TError,{workItemId: string;data: UpdateWorkItemRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsUpdateWorkItem>>, TError,{workItemId: string;data: UpdateWorkItemRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof workItemsUpdateWorkItem>>,
         TError,
@@ -504,15 +506,15 @@ export const workItemsRemoveWorkItem = async (workItemId: string, options?: Requ
 
 
 export const getWorkItemsRemoveWorkItemMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsRemoveWorkItem>>, TError,{workItemId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsRemoveWorkItem>>, TError,{workItemId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof workItemsRemoveWorkItem>>, TError,{workItemId: string}, TContext> => {
 
 const mutationKey = ['workItemsRemoveWorkItem'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -520,7 +522,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof workItemsRemoveWorkItem>>, {workItemId: string}> = (props) => {
           const {workItemId} = props ?? {};
 
-          return  workItemsRemoveWorkItem(workItemId,)
+          return  workItemsRemoveWorkItem(workItemId,requestOptions)
         }
 
 
@@ -538,7 +540,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Remove Work Item
  */
 export const useWorkItemsRemoveWorkItem = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsRemoveWorkItem>>, TError,{workItemId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workItemsRemoveWorkItem>>, TError,{workItemId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof workItemsRemoveWorkItem>>,
         TError,

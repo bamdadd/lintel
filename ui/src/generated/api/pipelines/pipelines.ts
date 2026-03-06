@@ -38,6 +38,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -86,15 +88,15 @@ export const pipelinesCreatePipeline = async (createPipelineRequest: CreatePipel
 
 
 export const getPipelinesCreatePipelineMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCreatePipeline>>, TError,{data: CreatePipelineRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCreatePipeline>>, TError,{data: CreatePipelineRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof pipelinesCreatePipeline>>, TError,{data: CreatePipelineRequest}, TContext> => {
 
 const mutationKey = ['pipelinesCreatePipeline'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -102,7 +104,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof pipelinesCreatePipeline>>, {data: CreatePipelineRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  pipelinesCreatePipeline(data,)
+          return  pipelinesCreatePipeline(data,requestOptions)
         }
 
 
@@ -120,7 +122,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Pipeline
  */
 export const usePipelinesCreatePipeline = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCreatePipeline>>, TError,{data: CreatePipelineRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCreatePipeline>>, TError,{data: CreatePipelineRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof pipelinesCreatePipeline>>,
         TError,
@@ -188,16 +190,16 @@ export const getPipelinesListPipelinesQueryKey = (params?: PipelinesListPipeline
     }
 
     
-export const getPipelinesListPipelinesQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesListPipelines>>, TError = HTTPValidationError>(params?: PipelinesListPipelinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListPipelines>>, TError, TData>>, }
+export const getPipelinesListPipelinesQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesListPipelines>>, TError = HTTPValidationError>(params?: PipelinesListPipelinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListPipelines>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getPipelinesListPipelinesQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesListPipelines>>> = ({ signal }) => pipelinesListPipelines(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesListPipelines>>> = ({ signal }) => pipelinesListPipelines(params, { signal, ...requestOptions });
 
       
 
@@ -217,7 +219,7 @@ export function usePipelinesListPipelines<TData = Awaited<ReturnType<typeof pipe
           TError,
           Awaited<ReturnType<typeof pipelinesListPipelines>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesListPipelines<TData = Awaited<ReturnType<typeof pipelinesListPipelines>>, TError = HTTPValidationError>(
@@ -227,11 +229,11 @@ export function usePipelinesListPipelines<TData = Awaited<ReturnType<typeof pipe
           TError,
           Awaited<ReturnType<typeof pipelinesListPipelines>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesListPipelines<TData = Awaited<ReturnType<typeof pipelinesListPipelines>>, TError = HTTPValidationError>(
- params?: PipelinesListPipelinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListPipelines>>, TError, TData>>, }
+ params?: PipelinesListPipelinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListPipelines>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -239,7 +241,7 @@ export function usePipelinesListPipelines<TData = Awaited<ReturnType<typeof pipe
  */
 
 export function usePipelinesListPipelines<TData = Awaited<ReturnType<typeof pipelinesListPipelines>>, TError = HTTPValidationError>(
- params?: PipelinesListPipelinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListPipelines>>, TError, TData>>, }
+ params?: PipelinesListPipelinesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListPipelines>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -305,16 +307,16 @@ export const getPipelinesGetPipelineQueryKey = (runId: string,) => {
     }
 
     
-export const getPipelinesGetPipelineQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError = HTTPValidationError>(runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError, TData>>, }
+export const getPipelinesGetPipelineQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError = HTTPValidationError>(runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getPipelinesGetPipelineQueryKey(runId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesGetPipeline>>> = ({ signal }) => pipelinesGetPipeline(runId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesGetPipeline>>> = ({ signal }) => pipelinesGetPipeline(runId, { signal, ...requestOptions });
 
       
 
@@ -334,7 +336,7 @@ export function usePipelinesGetPipeline<TData = Awaited<ReturnType<typeof pipeli
           TError,
           Awaited<ReturnType<typeof pipelinesGetPipeline>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesGetPipeline<TData = Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError = HTTPValidationError>(
@@ -344,11 +346,11 @@ export function usePipelinesGetPipeline<TData = Awaited<ReturnType<typeof pipeli
           TError,
           Awaited<ReturnType<typeof pipelinesGetPipeline>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesGetPipeline<TData = Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError = HTTPValidationError>(
- runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError, TData>>, }
+ runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -356,7 +358,7 @@ export function usePipelinesGetPipeline<TData = Awaited<ReturnType<typeof pipeli
  */
 
 export function usePipelinesGetPipeline<TData = Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError = HTTPValidationError>(
- runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError, TData>>, }
+ runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetPipeline>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -415,15 +417,15 @@ export const pipelinesDeletePipeline = async (runId: string, options?: RequestIn
 
 
 export const getPipelinesDeletePipelineMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesDeletePipeline>>, TError,{runId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesDeletePipeline>>, TError,{runId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof pipelinesDeletePipeline>>, TError,{runId: string}, TContext> => {
 
 const mutationKey = ['pipelinesDeletePipeline'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -431,7 +433,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof pipelinesDeletePipeline>>, {runId: string}> = (props) => {
           const {runId} = props ?? {};
 
-          return  pipelinesDeletePipeline(runId,)
+          return  pipelinesDeletePipeline(runId,requestOptions)
         }
 
 
@@ -449,7 +451,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Pipeline
  */
 export const usePipelinesDeletePipeline = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesDeletePipeline>>, TError,{runId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesDeletePipeline>>, TError,{runId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof pipelinesDeletePipeline>>,
         TError,
@@ -510,16 +512,16 @@ export const getPipelinesListStagesQueryKey = (runId: string,) => {
     }
 
     
-export const getPipelinesListStagesQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesListStages>>, TError = HTTPValidationError>(runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListStages>>, TError, TData>>, }
+export const getPipelinesListStagesQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesListStages>>, TError = HTTPValidationError>(runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListStages>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getPipelinesListStagesQueryKey(runId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesListStages>>> = ({ signal }) => pipelinesListStages(runId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesListStages>>> = ({ signal }) => pipelinesListStages(runId, { signal, ...requestOptions });
 
       
 
@@ -539,7 +541,7 @@ export function usePipelinesListStages<TData = Awaited<ReturnType<typeof pipelin
           TError,
           Awaited<ReturnType<typeof pipelinesListStages>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesListStages<TData = Awaited<ReturnType<typeof pipelinesListStages>>, TError = HTTPValidationError>(
@@ -549,11 +551,11 @@ export function usePipelinesListStages<TData = Awaited<ReturnType<typeof pipelin
           TError,
           Awaited<ReturnType<typeof pipelinesListStages>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesListStages<TData = Awaited<ReturnType<typeof pipelinesListStages>>, TError = HTTPValidationError>(
- runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListStages>>, TError, TData>>, }
+ runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListStages>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -561,7 +563,7 @@ export function usePipelinesListStages<TData = Awaited<ReturnType<typeof pipelin
  */
 
 export function usePipelinesListStages<TData = Awaited<ReturnType<typeof pipelinesListStages>>, TError = HTTPValidationError>(
- runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListStages>>, TError, TData>>, }
+ runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListStages>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -631,16 +633,16 @@ export const getPipelinesGetStageQueryKey = (runId: string,
 
     
 export const getPipelinesGetStageQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesGetStage>>, TError = HTTPValidationError>(runId: string,
-    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetStage>>, TError, TData>>, }
+    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetStage>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getPipelinesGetStageQueryKey(runId,stageId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesGetStage>>> = ({ signal }) => pipelinesGetStage(runId,stageId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesGetStage>>> = ({ signal }) => pipelinesGetStage(runId,stageId, { signal, ...requestOptions });
 
       
 
@@ -661,7 +663,7 @@ export function usePipelinesGetStage<TData = Awaited<ReturnType<typeof pipelines
           TError,
           Awaited<ReturnType<typeof pipelinesGetStage>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesGetStage<TData = Awaited<ReturnType<typeof pipelinesGetStage>>, TError = HTTPValidationError>(
@@ -672,12 +674,12 @@ export function usePipelinesGetStage<TData = Awaited<ReturnType<typeof pipelines
           TError,
           Awaited<ReturnType<typeof pipelinesGetStage>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function usePipelinesGetStage<TData = Awaited<ReturnType<typeof pipelinesGetStage>>, TError = HTTPValidationError>(
  runId: string,
-    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetStage>>, TError, TData>>, }
+    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetStage>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -686,7 +688,7 @@ export function usePipelinesGetStage<TData = Awaited<ReturnType<typeof pipelines
 
 export function usePipelinesGetStage<TData = Awaited<ReturnType<typeof pipelinesGetStage>>, TError = HTTPValidationError>(
  runId: string,
-    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetStage>>, TError, TData>>, }
+    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesGetStage>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -745,15 +747,15 @@ export const pipelinesCancelPipeline = async (runId: string, options?: RequestIn
 
 
 export const getPipelinesCancelPipelineMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCancelPipeline>>, TError,{runId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCancelPipeline>>, TError,{runId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof pipelinesCancelPipeline>>, TError,{runId: string}, TContext> => {
 
 const mutationKey = ['pipelinesCancelPipeline'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -761,7 +763,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof pipelinesCancelPipeline>>, {runId: string}> = (props) => {
           const {runId} = props ?? {};
 
-          return  pipelinesCancelPipeline(runId,)
+          return  pipelinesCancelPipeline(runId,requestOptions)
         }
 
 
@@ -779,7 +781,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Cancel Pipeline
  */
 export const usePipelinesCancelPipeline = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCancelPipeline>>, TError,{runId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesCancelPipeline>>, TError,{runId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof pipelinesCancelPipeline>>,
         TError,

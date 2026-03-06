@@ -37,6 +37,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -85,15 +87,15 @@ export const environmentsCreateEnvironment = async (createEnvironmentRequest: Cr
 
 
 export const getEnvironmentsCreateEnvironmentMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsCreateEnvironment>>, TError,{data: CreateEnvironmentRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsCreateEnvironment>>, TError,{data: CreateEnvironmentRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof environmentsCreateEnvironment>>, TError,{data: CreateEnvironmentRequest}, TContext> => {
 
 const mutationKey = ['environmentsCreateEnvironment'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -101,7 +103,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof environmentsCreateEnvironment>>, {data: CreateEnvironmentRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  environmentsCreateEnvironment(data,)
+          return  environmentsCreateEnvironment(data,requestOptions)
         }
 
 
@@ -119,7 +121,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Environment
  */
 export const useEnvironmentsCreateEnvironment = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsCreateEnvironment>>, TError,{data: CreateEnvironmentRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsCreateEnvironment>>, TError,{data: CreateEnvironmentRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof environmentsCreateEnvironment>>,
         TError,
@@ -187,16 +189,16 @@ export const getEnvironmentsListEnvironmentsQueryKey = (params?: EnvironmentsLis
     }
 
     
-export const getEnvironmentsListEnvironmentsQueryOptions = <TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, }
+export const getEnvironmentsListEnvironmentsQueryOptions = <TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getEnvironmentsListEnvironmentsQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof environmentsListEnvironments>>> = ({ signal }) => environmentsListEnvironments(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof environmentsListEnvironments>>> = ({ signal }) => environmentsListEnvironments(params, { signal, ...requestOptions });
 
       
 
@@ -216,7 +218,7 @@ export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof environmentsListEnvironments>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(
@@ -226,11 +228,11 @@ export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof environmentsListEnvironments>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(
- params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, }
+ params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -238,7 +240,7 @@ export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeo
  */
 
 export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(
- params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, }
+ params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -304,16 +306,16 @@ export const getEnvironmentsGetEnvironmentQueryKey = (environmentId: string,) =>
     }
 
     
-export const getEnvironmentsGetEnvironmentQueryOptions = <TData = Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError = HTTPValidationError>(environmentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError, TData>>, }
+export const getEnvironmentsGetEnvironmentQueryOptions = <TData = Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError = HTTPValidationError>(environmentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getEnvironmentsGetEnvironmentQueryKey(environmentId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof environmentsGetEnvironment>>> = ({ signal }) => environmentsGetEnvironment(environmentId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof environmentsGetEnvironment>>> = ({ signal }) => environmentsGetEnvironment(environmentId, { signal, ...requestOptions });
 
       
 
@@ -333,7 +335,7 @@ export function useEnvironmentsGetEnvironment<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof environmentsGetEnvironment>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEnvironmentsGetEnvironment<TData = Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError = HTTPValidationError>(
@@ -343,11 +345,11 @@ export function useEnvironmentsGetEnvironment<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof environmentsGetEnvironment>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useEnvironmentsGetEnvironment<TData = Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError = HTTPValidationError>(
- environmentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError, TData>>, }
+ environmentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -355,7 +357,7 @@ export function useEnvironmentsGetEnvironment<TData = Awaited<ReturnType<typeof 
  */
 
 export function useEnvironmentsGetEnvironment<TData = Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError = HTTPValidationError>(
- environmentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError, TData>>, }
+ environmentId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsGetEnvironment>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -416,15 +418,15 @@ export const environmentsUpdateEnvironment = async (environmentId: string,
 
 
 export const getEnvironmentsUpdateEnvironmentMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsUpdateEnvironment>>, TError,{environmentId: string;data: UpdateEnvironmentRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsUpdateEnvironment>>, TError,{environmentId: string;data: UpdateEnvironmentRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof environmentsUpdateEnvironment>>, TError,{environmentId: string;data: UpdateEnvironmentRequest}, TContext> => {
 
 const mutationKey = ['environmentsUpdateEnvironment'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -432,7 +434,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof environmentsUpdateEnvironment>>, {environmentId: string;data: UpdateEnvironmentRequest}> = (props) => {
           const {environmentId,data} = props ?? {};
 
-          return  environmentsUpdateEnvironment(environmentId,data,)
+          return  environmentsUpdateEnvironment(environmentId,data,requestOptions)
         }
 
 
@@ -450,7 +452,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Environment
  */
 export const useEnvironmentsUpdateEnvironment = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsUpdateEnvironment>>, TError,{environmentId: string;data: UpdateEnvironmentRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsUpdateEnvironment>>, TError,{environmentId: string;data: UpdateEnvironmentRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof environmentsUpdateEnvironment>>,
         TError,
@@ -504,15 +506,15 @@ export const environmentsDeleteEnvironment = async (environmentId: string, optio
 
 
 export const getEnvironmentsDeleteEnvironmentMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsDeleteEnvironment>>, TError,{environmentId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsDeleteEnvironment>>, TError,{environmentId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof environmentsDeleteEnvironment>>, TError,{environmentId: string}, TContext> => {
 
 const mutationKey = ['environmentsDeleteEnvironment'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -520,7 +522,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof environmentsDeleteEnvironment>>, {environmentId: string}> = (props) => {
           const {environmentId} = props ?? {};
 
-          return  environmentsDeleteEnvironment(environmentId,)
+          return  environmentsDeleteEnvironment(environmentId,requestOptions)
         }
 
 
@@ -538,7 +540,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Environment
  */
 export const useEnvironmentsDeleteEnvironment = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsDeleteEnvironment>>, TError,{environmentId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof environmentsDeleteEnvironment>>, TError,{environmentId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof environmentsDeleteEnvironment>>,
         TError,

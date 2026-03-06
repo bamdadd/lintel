@@ -25,6 +25,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -74,15 +76,15 @@ export const approvalsGrantApproval = async (grantApprovalRequest: GrantApproval
 
 
 export const getApprovalsGrantApprovalMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsGrantApproval>>, TError,{data: GrantApprovalRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsGrantApproval>>, TError,{data: GrantApprovalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof approvalsGrantApproval>>, TError,{data: GrantApprovalRequest}, TContext> => {
 
 const mutationKey = ['approvalsGrantApproval'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -90,7 +92,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvalsGrantApproval>>, {data: GrantApprovalRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  approvalsGrantApproval(data,)
+          return  approvalsGrantApproval(data,requestOptions)
         }
 
 
@@ -108,7 +110,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Grant Approval
  */
 export const useApprovalsGrantApproval = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsGrantApproval>>, TError,{data: GrantApprovalRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsGrantApproval>>, TError,{data: GrantApprovalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof approvalsGrantApproval>>,
         TError,
@@ -164,15 +166,15 @@ export const approvalsRejectApproval = async (rejectApprovalRequest: RejectAppro
 
 
 export const getApprovalsRejectApprovalMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsRejectApproval>>, TError,{data: RejectApprovalRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsRejectApproval>>, TError,{data: RejectApprovalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof approvalsRejectApproval>>, TError,{data: RejectApprovalRequest}, TContext> => {
 
 const mutationKey = ['approvalsRejectApproval'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -180,7 +182,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvalsRejectApproval>>, {data: RejectApprovalRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  approvalsRejectApproval(data,)
+          return  approvalsRejectApproval(data,requestOptions)
         }
 
 
@@ -198,7 +200,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Reject Approval
  */
 export const useApprovalsRejectApproval = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsRejectApproval>>, TError,{data: RejectApprovalRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvalsRejectApproval>>, TError,{data: RejectApprovalRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof approvalsRejectApproval>>,
         TError,

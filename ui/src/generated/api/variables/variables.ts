@@ -37,6 +37,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -85,15 +87,15 @@ export const variablesCreateVariable = async (createVariableRequest: CreateVaria
 
 
 export const getVariablesCreateVariableMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesCreateVariable>>, TError,{data: CreateVariableRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesCreateVariable>>, TError,{data: CreateVariableRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof variablesCreateVariable>>, TError,{data: CreateVariableRequest}, TContext> => {
 
 const mutationKey = ['variablesCreateVariable'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -101,7 +103,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof variablesCreateVariable>>, {data: CreateVariableRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  variablesCreateVariable(data,)
+          return  variablesCreateVariable(data,requestOptions)
         }
 
 
@@ -119,7 +121,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Variable
  */
 export const useVariablesCreateVariable = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesCreateVariable>>, TError,{data: CreateVariableRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesCreateVariable>>, TError,{data: CreateVariableRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof variablesCreateVariable>>,
         TError,
@@ -187,16 +189,16 @@ export const getVariablesListVariablesQueryKey = (params?: VariablesListVariable
     }
 
     
-export const getVariablesListVariablesQueryOptions = <TData = Awaited<ReturnType<typeof variablesListVariables>>, TError = HTTPValidationError>(params?: VariablesListVariablesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesListVariables>>, TError, TData>>, }
+export const getVariablesListVariablesQueryOptions = <TData = Awaited<ReturnType<typeof variablesListVariables>>, TError = HTTPValidationError>(params?: VariablesListVariablesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesListVariables>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getVariablesListVariablesQueryKey(params);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof variablesListVariables>>> = ({ signal }) => variablesListVariables(params, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof variablesListVariables>>> = ({ signal }) => variablesListVariables(params, { signal, ...requestOptions });
 
       
 
@@ -216,7 +218,7 @@ export function useVariablesListVariables<TData = Awaited<ReturnType<typeof vari
           TError,
           Awaited<ReturnType<typeof variablesListVariables>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useVariablesListVariables<TData = Awaited<ReturnType<typeof variablesListVariables>>, TError = HTTPValidationError>(
@@ -226,11 +228,11 @@ export function useVariablesListVariables<TData = Awaited<ReturnType<typeof vari
           TError,
           Awaited<ReturnType<typeof variablesListVariables>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useVariablesListVariables<TData = Awaited<ReturnType<typeof variablesListVariables>>, TError = HTTPValidationError>(
- params?: VariablesListVariablesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesListVariables>>, TError, TData>>, }
+ params?: VariablesListVariablesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesListVariables>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -238,7 +240,7 @@ export function useVariablesListVariables<TData = Awaited<ReturnType<typeof vari
  */
 
 export function useVariablesListVariables<TData = Awaited<ReturnType<typeof variablesListVariables>>, TError = HTTPValidationError>(
- params?: VariablesListVariablesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesListVariables>>, TError, TData>>, }
+ params?: VariablesListVariablesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesListVariables>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -304,16 +306,16 @@ export const getVariablesGetVariableQueryKey = (variableId: string,) => {
     }
 
     
-export const getVariablesGetVariableQueryOptions = <TData = Awaited<ReturnType<typeof variablesGetVariable>>, TError = HTTPValidationError>(variableId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesGetVariable>>, TError, TData>>, }
+export const getVariablesGetVariableQueryOptions = <TData = Awaited<ReturnType<typeof variablesGetVariable>>, TError = HTTPValidationError>(variableId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesGetVariable>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getVariablesGetVariableQueryKey(variableId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof variablesGetVariable>>> = ({ signal }) => variablesGetVariable(variableId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof variablesGetVariable>>> = ({ signal }) => variablesGetVariable(variableId, { signal, ...requestOptions });
 
       
 
@@ -333,7 +335,7 @@ export function useVariablesGetVariable<TData = Awaited<ReturnType<typeof variab
           TError,
           Awaited<ReturnType<typeof variablesGetVariable>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useVariablesGetVariable<TData = Awaited<ReturnType<typeof variablesGetVariable>>, TError = HTTPValidationError>(
@@ -343,11 +345,11 @@ export function useVariablesGetVariable<TData = Awaited<ReturnType<typeof variab
           TError,
           Awaited<ReturnType<typeof variablesGetVariable>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useVariablesGetVariable<TData = Awaited<ReturnType<typeof variablesGetVariable>>, TError = HTTPValidationError>(
- variableId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesGetVariable>>, TError, TData>>, }
+ variableId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesGetVariable>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -355,7 +357,7 @@ export function useVariablesGetVariable<TData = Awaited<ReturnType<typeof variab
  */
 
 export function useVariablesGetVariable<TData = Awaited<ReturnType<typeof variablesGetVariable>>, TError = HTTPValidationError>(
- variableId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesGetVariable>>, TError, TData>>, }
+ variableId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof variablesGetVariable>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -416,15 +418,15 @@ export const variablesUpdateVariable = async (variableId: string,
 
 
 export const getVariablesUpdateVariableMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesUpdateVariable>>, TError,{variableId: string;data: UpdateVariableRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesUpdateVariable>>, TError,{variableId: string;data: UpdateVariableRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof variablesUpdateVariable>>, TError,{variableId: string;data: UpdateVariableRequest}, TContext> => {
 
 const mutationKey = ['variablesUpdateVariable'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -432,7 +434,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof variablesUpdateVariable>>, {variableId: string;data: UpdateVariableRequest}> = (props) => {
           const {variableId,data} = props ?? {};
 
-          return  variablesUpdateVariable(variableId,data,)
+          return  variablesUpdateVariable(variableId,data,requestOptions)
         }
 
 
@@ -450,7 +452,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Variable
  */
 export const useVariablesUpdateVariable = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesUpdateVariable>>, TError,{variableId: string;data: UpdateVariableRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesUpdateVariable>>, TError,{variableId: string;data: UpdateVariableRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof variablesUpdateVariable>>,
         TError,
@@ -504,15 +506,15 @@ export const variablesDeleteVariable = async (variableId: string, options?: Requ
 
 
 export const getVariablesDeleteVariableMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesDeleteVariable>>, TError,{variableId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesDeleteVariable>>, TError,{variableId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof variablesDeleteVariable>>, TError,{variableId: string}, TContext> => {
 
 const mutationKey = ['variablesDeleteVariable'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -520,7 +522,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof variablesDeleteVariable>>, {variableId: string}> = (props) => {
           const {variableId} = props ?? {};
 
-          return  variablesDeleteVariable(variableId,)
+          return  variablesDeleteVariable(variableId,requestOptions)
         }
 
 
@@ -538,7 +540,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Variable
  */
 export const useVariablesDeleteVariable = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesDeleteVariable>>, TError,{variableId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof variablesDeleteVariable>>, TError,{variableId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof variablesDeleteVariable>>,
         TError,

@@ -39,6 +39,8 @@ import type {
 import { customInstance } from '../../../shared/api/client';
 
 
+type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
 
 
 /**
@@ -87,16 +89,16 @@ export const getAiProvidersListAiProvidersQueryKey = () => {
     }
 
     
-export const getAiProvidersListAiProvidersQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError, TData>>, }
+export const getAiProvidersListAiProvidersQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAiProvidersListAiProvidersQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersListAiProviders>>> = ({ signal }) => aiProvidersListAiProviders({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersListAiProviders>>> = ({ signal }) => aiProvidersListAiProviders({ signal, ...requestOptions });
 
       
 
@@ -116,7 +118,7 @@ export function useAiProvidersListAiProviders<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof aiProvidersListAiProviders>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersListAiProviders<TData = Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError = unknown>(
@@ -126,11 +128,11 @@ export function useAiProvidersListAiProviders<TData = Awaited<ReturnType<typeof 
           TError,
           Awaited<ReturnType<typeof aiProvidersListAiProviders>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersListAiProviders<TData = Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -138,7 +140,7 @@ export function useAiProvidersListAiProviders<TData = Awaited<ReturnType<typeof 
  */
 
 export function useAiProvidersListAiProviders<TData = Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAiProviders>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -199,15 +201,15 @@ export const aiProvidersCreateAiProvider = async (createAIProviderRequest: Creat
 
 
 export const getAiProvidersCreateAiProviderMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersCreateAiProvider>>, TError,{data: CreateAIProviderRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersCreateAiProvider>>, TError,{data: CreateAIProviderRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof aiProvidersCreateAiProvider>>, TError,{data: CreateAIProviderRequest}, TContext> => {
 
 const mutationKey = ['aiProvidersCreateAiProvider'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -215,7 +217,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof aiProvidersCreateAiProvider>>, {data: CreateAIProviderRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  aiProvidersCreateAiProvider(data,)
+          return  aiProvidersCreateAiProvider(data,requestOptions)
         }
 
 
@@ -233,7 +235,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Create Ai Provider
  */
 export const useAiProvidersCreateAiProvider = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersCreateAiProvider>>, TError,{data: CreateAIProviderRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersCreateAiProvider>>, TError,{data: CreateAIProviderRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof aiProvidersCreateAiProvider>>,
         TError,
@@ -288,16 +290,16 @@ export const getAiProvidersListProviderTypesQueryKey = () => {
     }
 
     
-export const getAiProvidersListProviderTypesQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError, TData>>, }
+export const getAiProvidersListProviderTypesQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAiProvidersListProviderTypesQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>> = ({ signal }) => aiProvidersListProviderTypes({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>> = ({ signal }) => aiProvidersListProviderTypes({ signal, ...requestOptions });
 
       
 
@@ -317,7 +319,7 @@ export function useAiProvidersListProviderTypes<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof aiProvidersListProviderTypes>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersListProviderTypes<TData = Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError = unknown>(
@@ -327,11 +329,11 @@ export function useAiProvidersListProviderTypes<TData = Awaited<ReturnType<typeo
           TError,
           Awaited<ReturnType<typeof aiProvidersListProviderTypes>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersListProviderTypes<TData = Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -339,7 +341,7 @@ export function useAiProvidersListProviderTypes<TData = Awaited<ReturnType<typeo
  */
 
 export function useAiProvidersListProviderTypes<TData = Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderTypes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -399,16 +401,16 @@ export const getAiProvidersGetDefaultProviderQueryKey = () => {
     }
 
     
-export const getAiProvidersGetDefaultProviderQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError, TData>>, }
+export const getAiProvidersGetDefaultProviderQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAiProvidersGetDefaultProviderQueryKey();
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>> = ({ signal }) => aiProvidersGetDefaultProvider({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>> = ({ signal }) => aiProvidersGetDefaultProvider({ signal, ...requestOptions });
 
       
 
@@ -428,7 +430,7 @@ export function useAiProvidersGetDefaultProvider<TData = Awaited<ReturnType<type
           TError,
           Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersGetDefaultProvider<TData = Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError = unknown>(
@@ -438,11 +440,11 @@ export function useAiProvidersGetDefaultProvider<TData = Awaited<ReturnType<type
           TError,
           Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersGetDefaultProvider<TData = Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -450,7 +452,7 @@ export function useAiProvidersGetDefaultProvider<TData = Awaited<ReturnType<type
  */
 
 export function useAiProvidersGetDefaultProvider<TData = Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError, TData>>, }
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetDefaultProvider>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -517,16 +519,16 @@ export const getAiProvidersGetAiProviderQueryKey = (providerId: string,) => {
     }
 
     
-export const getAiProvidersGetAiProviderQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError = HTTPValidationError>(providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError, TData>>, }
+export const getAiProvidersGetAiProviderQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError = HTTPValidationError>(providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
 ) => {
 
-const {query: queryOptions} = options ?? {};
+const {query: queryOptions, request: requestOptions} = options ?? {};
 
   const queryKey =  queryOptions?.queryKey ?? getAiProvidersGetAiProviderQueryKey(providerId);
 
   
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>> = ({ signal }) => aiProvidersGetAiProvider(providerId, { signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>> = ({ signal }) => aiProvidersGetAiProvider(providerId, { signal, ...requestOptions });
 
       
 
@@ -546,7 +548,7 @@ export function useAiProvidersGetAiProvider<TData = Awaited<ReturnType<typeof ai
           TError,
           Awaited<ReturnType<typeof aiProvidersGetAiProvider>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersGetAiProvider<TData = Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError = HTTPValidationError>(
@@ -556,11 +558,11 @@ export function useAiProvidersGetAiProvider<TData = Awaited<ReturnType<typeof ai
           TError,
           Awaited<ReturnType<typeof aiProvidersGetAiProvider>>
         > , 'initialData'
-      >, }
+      >, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAiProvidersGetAiProvider<TData = Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError = HTTPValidationError>(
- providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError, TData>>, }
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -568,7 +570,7 @@ export function useAiProvidersGetAiProvider<TData = Awaited<ReturnType<typeof ai
  */
 
 export function useAiProvidersGetAiProvider<TData = Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError = HTTPValidationError>(
- providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError, TData>>, }
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersGetAiProvider>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -630,15 +632,15 @@ export const aiProvidersUpdateAiProvider = async (providerId: string,
 
 
 export const getAiProvidersUpdateAiProviderMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateAiProvider>>, TError,{providerId: string;data: UpdateAIProviderRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateAiProvider>>, TError,{providerId: string;data: UpdateAIProviderRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateAiProvider>>, TError,{providerId: string;data: UpdateAIProviderRequest}, TContext> => {
 
 const mutationKey = ['aiProvidersUpdateAiProvider'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -646,7 +648,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof aiProvidersUpdateAiProvider>>, {providerId: string;data: UpdateAIProviderRequest}> = (props) => {
           const {providerId,data} = props ?? {};
 
-          return  aiProvidersUpdateAiProvider(providerId,data,)
+          return  aiProvidersUpdateAiProvider(providerId,data,requestOptions)
         }
 
 
@@ -664,7 +666,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Ai Provider
  */
 export const useAiProvidersUpdateAiProvider = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateAiProvider>>, TError,{providerId: string;data: UpdateAIProviderRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateAiProvider>>, TError,{providerId: string;data: UpdateAIProviderRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof aiProvidersUpdateAiProvider>>,
         TError,
@@ -719,15 +721,15 @@ export const aiProvidersDeleteAiProvider = async (providerId: string, options?: 
 
 
 export const getAiProvidersDeleteAiProviderMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersDeleteAiProvider>>, TError,{providerId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersDeleteAiProvider>>, TError,{providerId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof aiProvidersDeleteAiProvider>>, TError,{providerId: string}, TContext> => {
 
 const mutationKey = ['aiProvidersDeleteAiProvider'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -735,7 +737,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof aiProvidersDeleteAiProvider>>, {providerId: string}> = (props) => {
           const {providerId} = props ?? {};
 
-          return  aiProvidersDeleteAiProvider(providerId,)
+          return  aiProvidersDeleteAiProvider(providerId,requestOptions)
         }
 
 
@@ -753,7 +755,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Delete Ai Provider
  */
 export const useAiProvidersDeleteAiProvider = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersDeleteAiProvider>>, TError,{providerId: string}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersDeleteAiProvider>>, TError,{providerId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof aiProvidersDeleteAiProvider>>,
         TError,
@@ -810,15 +812,15 @@ export const aiProvidersUpdateApiKey = async (providerId: string,
 
 
 export const getAiProvidersUpdateApiKeyMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateApiKey>>, TError,{providerId: string;data: UpdateAPIKeyRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateApiKey>>, TError,{providerId: string;data: UpdateAPIKeyRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
 ): UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateApiKey>>, TError,{providerId: string;data: UpdateAPIKeyRequest}, TContext> => {
 
 const mutationKey = ['aiProvidersUpdateApiKey'];
-const {mutation: mutationOptions} = options ?
+const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
       : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
+      : {mutation: { mutationKey, }, request: undefined};
 
       
 
@@ -826,7 +828,7 @@ const {mutation: mutationOptions} = options ?
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof aiProvidersUpdateApiKey>>, {providerId: string;data: UpdateAPIKeyRequest}> = (props) => {
           const {providerId,data} = props ?? {};
 
-          return  aiProvidersUpdateApiKey(providerId,data,)
+          return  aiProvidersUpdateApiKey(providerId,data,requestOptions)
         }
 
 
@@ -844,7 +846,7 @@ const {mutation: mutationOptions} = options ?
  * @summary Update Api Key
  */
 export const useAiProvidersUpdateApiKey = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateApiKey>>, TError,{providerId: string;data: UpdateAPIKeyRequest}, TContext>, }
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiProvidersUpdateApiKey>>, TError,{providerId: string;data: UpdateAPIKeyRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof aiProvidersUpdateApiKey>>,
         TError,
