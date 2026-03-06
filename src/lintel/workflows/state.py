@@ -17,6 +17,7 @@ class ThreadWorkflowState(TypedDict):
     plan: dict[str, Any]
     agent_outputs: Annotated[list[dict[str, Any]], add]
     pending_approvals: list[str]
+    sandbox_id: str | None
     sandbox_results: Annotated[list[dict[str, Any]], add]
     pr_url: str
     error: str | None
