@@ -5,7 +5,10 @@ from __future__ import annotations
 import io
 import os
 import tarfile
-from collections.abc import Iterable
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def create_tar(file_path: str, content: str) -> io.BytesIO:

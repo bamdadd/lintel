@@ -32,14 +32,14 @@ class DockerSandboxManager:
         self._containers: dict[str, Any] = {}
         self._client: Any | None = None
 
-    def _get_client(self) -> Any:
+    def _get_client(self) -> Any:  # noqa: ANN401
         if self._client is None:
             import docker  # type: ignore[import-untyped]
 
             self._client = docker.from_env()
         return self._client
 
-    def _get_container(self, sandbox_id: str) -> Any:
+    def _get_container(self, sandbox_id: str) -> Any:  # noqa: ANN401
         container = self._containers.get(sandbox_id)
         if container is None:
             raise SandboxNotFoundError(sandbox_id)
@@ -131,9 +131,7 @@ class DockerSandboxManager:
         except Exception as exc:
             raise SandboxExecutionError(f"Failed to write {path}") from exc
 
-    async def list_files(
-        self, sandbox_id: str, path: str = "/workspace"
-    ) -> list[str]:
+    async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
         from lintel.contracts.types import SandboxJob
 
         result = await self.execute(
