@@ -24,6 +24,7 @@ class TestRouteDecision:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -40,6 +41,7 @@ class TestRouteDecision:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -56,6 +58,7 @@ class TestRouteDecision:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -72,6 +75,7 @@ class TestRouteDecision:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -126,6 +130,7 @@ class TestNodeFunctions:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -145,6 +150,7 @@ class TestNodeFunctions:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -164,6 +170,7 @@ class TestNodeFunctions:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -183,6 +190,7 @@ class TestNodeFunctions:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -202,6 +210,7 @@ class TestNodeFunctions:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
@@ -211,6 +220,8 @@ class TestNodeFunctions:
         assert len(result["plan"]["tasks"]) > 0
 
     async def test_implement_produces_sandbox_results(self) -> None:
+        from tests.unit.workflows.test_implement_node import DummySandboxManager
+
         from lintel.workflows.nodes.implement import spawn_implementation
 
         state = ThreadWorkflowState(
@@ -222,11 +233,12 @@ class TestNodeFunctions:
             plan={"tasks": ["task1"]},
             agent_outputs=[],
             pending_approvals=[],
+            sandbox_id=None,
             sandbox_results=[],
             pr_url="",
             error=None,
         )
-        result = await spawn_implementation(state)
+        result = await spawn_implementation(state, sandbox_manager=DummySandboxManager())
         assert len(result["sandbox_results"]) > 0
 
     async def test_review_produces_agent_output(self) -> None:

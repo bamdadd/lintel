@@ -1,4 +1,4 @@
-"""Tests for the Docker sandbox backend."""
+"""Tests for the Docker sandbox backend (legacy test file, updated for new API)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class TestDockerSandboxManager:
         mock_client = MagicMock()
         mock_container = MagicMock()
         mock_client.containers.create.return_value = mock_container
-        manager._get_client = lambda: mock_client  # type: ignore[assignment]
+        manager._client = mock_client
 
         config = SandboxConfig(image="python:3.12-slim")
         thread_ref = ThreadRef("W1", "C1", "t1")
@@ -24,7 +24,7 @@ class TestDockerSandboxManager:
         assert sandbox_id is not None
         create_kwargs = mock_client.containers.create.call_args
         assert create_kwargs[1]["cap_drop"] == ["ALL"]
-        assert create_kwargs[1]["read_only"] is True
+        assert create_kwargs[1]["read_only"] is False  # writable for workspace
         assert create_kwargs[1]["network_mode"] == "none"
         assert create_kwargs[1]["security_opt"] == ["no-new-privileges:true"]
         assert create_kwargs[1]["user"] == "1000:1000"
@@ -35,7 +35,7 @@ class TestDockerSandboxManager:
         mock_container = MagicMock()
         mock_container.exec_run.return_value = MagicMock(
             exit_code=0,
-            output=b"test output",
+            output=(b"test output", b""),
         )
         manager._containers["sandbox-1"] = mock_container
 
@@ -64,11 +64,12 @@ class TestDockerSandboxManager:
         manager = DockerSandboxManager()
         mock_container = MagicMock()
         mock_container.exec_run.return_value = MagicMock(
-            output=b"diff --git a/file.py b/file.py",
+            exit_code=0,
+            output=(b"diff --git a/file.py b/file.py", b""),
         )
         manager._containers["sandbox-1"] = mock_container
 
         artifacts = await manager.collect_artifacts("sandbox-1")
 
-        assert len(artifacts) == 1
-        assert artifacts[0]["type"] == "diff"
+        assert artifacts["type"] == "diff"
+        assert "diff --git" in artifacts["content"]
