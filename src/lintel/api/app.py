@@ -62,6 +62,7 @@ from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
+from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -104,6 +105,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.approval_request_store = InMemoryApprovalRequestStore()
     app.state.chat_store = ChatStore()
     app.state.agent_definition_store = AgentDefinitionStore()
+    app.state.sandbox_manager = DockerSandboxManager()
 
     yield
     # Cleanup

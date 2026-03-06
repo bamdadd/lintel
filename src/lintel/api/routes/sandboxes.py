@@ -1,90 +1,129 @@
-"""Sandbox job endpoints."""
+"""Sandbox management endpoints."""
 
-from dataclasses import asdict
-from datetime import UTC, datetime
+from __future__ import annotations
+
 from typing import Any
-from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from lintel.contracts.commands import ScheduleSandboxJob
-from lintel.contracts.types import AgentRole, SandboxStatus, ThreadRef
+from lintel.contracts.errors import SandboxNotFoundError
+from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
 
 router = APIRouter()
 
 
-def get_sandbox_registry(request: Request) -> dict[str, dict[str, Any]]:
-    """Get sandbox registry from app state."""
-    if not hasattr(request.app.state, "sandbox_registry"):
-        request.app.state.sandbox_registry = {}
-    return request.app.state.sandbox_registry  # type: ignore[no-any-return]
-
-
-class ScheduleSandboxJobRequest(BaseModel):
+class CreateSandboxRequest(BaseModel):
     workspace_id: str
     channel_id: str
     thread_ts: str
-    agent_role: AgentRole
-    repo_url: str
-    base_sha: str
-    commands: list[str]
+    image: str = "python:3.12-slim"
+    network_enabled: bool = False
+
+
+class ExecuteRequest(BaseModel):
+    command: str
+    workdir: str | None = None
+    timeout_seconds: int = 300
+
+
+class WriteFileRequest(BaseModel):
+    path: str
+    content: str
 
 
 @router.post("/sandboxes", status_code=201)
-async def schedule_sandbox_job(
-    body: ScheduleSandboxJobRequest,
+async def create_sandbox(
+    body: CreateSandboxRequest,
     request: Request,
-) -> dict[str, Any]:
+) -> dict[str, str]:
+    """Create a new sandbox environment."""
+    manager = request.app.state.sandbox_manager
+    config = SandboxConfig(image=body.image, network_enabled=body.network_enabled)
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
         channel_id=body.channel_id,
         thread_ts=body.thread_ts,
     )
-    correlation_id = uuid4()
-    command = ScheduleSandboxJob(
-        thread_ref=thread_ref,
-        agent_role=body.agent_role,
-        repo_url=body.repo_url,
-        base_sha=body.base_sha,
-        commands=body.commands,
-        correlation_id=correlation_id,
-    )
-    sandbox_id = str(correlation_id)
-    registry = get_sandbox_registry(request)
-    registry[sandbox_id] = {
-        "sandbox_id": sandbox_id,
-        "status": SandboxStatus.PENDING.value,
-        "repo_url": body.repo_url,
-        "base_sha": body.base_sha,
-        "commands": body.commands,
-        "agent_role": body.agent_role.value,
-        "thread_ref": asdict(thread_ref),
-        "created_at": datetime.now(UTC).isoformat(),
-    }
-    return asdict(command)
-
-
-@router.get("/sandboxes")
-async def list_sandboxes(request: Request) -> list[dict[str, Any]]:
-    """List all tracked sandbox jobs."""
-    registry = get_sandbox_registry(request)
-    return list(registry.values())
+    sandbox_id = await manager.create(config, thread_ref)
+    return {"sandbox_id": sandbox_id}
 
 
 @router.get("/sandboxes/{sandbox_id}")
-async def get_sandbox(sandbox_id: str, request: Request) -> dict[str, Any]:
-    """Get details of a specific sandbox job."""
-    registry = get_sandbox_registry(request)
-    if sandbox_id not in registry:
+async def get_sandbox_status(
+    sandbox_id: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Get sandbox status."""
+    manager = request.app.state.sandbox_manager
+    try:
+        status = await manager.get_status(sandbox_id)
+        return {"sandbox_id": sandbox_id, "status": status.value}
+    except SandboxNotFoundError:
         raise HTTPException(status_code=404, detail="Sandbox not found")
-    return registry[sandbox_id]
+
+
+@router.post("/sandboxes/{sandbox_id}/execute")
+async def execute_command(
+    sandbox_id: str,
+    body: ExecuteRequest,
+    request: Request,
+) -> dict[str, Any]:
+    """Execute a command in a sandbox."""
+    manager = request.app.state.sandbox_manager
+    try:
+        result = await manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=body.command,
+                workdir=body.workdir,
+                timeout_seconds=body.timeout_seconds,
+            ),
+        )
+        return {
+            "exit_code": result.exit_code,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
+    except SandboxNotFoundError:
+        raise HTTPException(status_code=404, detail="Sandbox not found")
+
+
+@router.post("/sandboxes/{sandbox_id}/files")
+async def write_file(
+    sandbox_id: str,
+    body: WriteFileRequest,
+    request: Request,
+) -> dict[str, str]:
+    """Write a file to the sandbox."""
+    manager = request.app.state.sandbox_manager
+    try:
+        await manager.write_file(sandbox_id, body.path, body.content)
+        return {"status": "written", "path": body.path}
+    except SandboxNotFoundError:
+        raise HTTPException(status_code=404, detail="Sandbox not found")
+
+
+@router.get("/sandboxes/{sandbox_id}/files")
+async def read_file(
+    sandbox_id: str,
+    path: str,
+    request: Request,
+) -> dict[str, str]:
+    """Read a file from the sandbox."""
+    manager = request.app.state.sandbox_manager
+    try:
+        content = await manager.read_file(sandbox_id, path)
+        return {"path": path, "content": content}
+    except SandboxNotFoundError:
+        raise HTTPException(status_code=404, detail="Sandbox not found")
 
 
 @router.delete("/sandboxes/{sandbox_id}", status_code=204)
 async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
-    """Mark a sandbox as destroyed."""
-    registry = get_sandbox_registry(request)
-    if sandbox_id not in registry:
+    """Destroy a sandbox."""
+    manager = request.app.state.sandbox_manager
+    try:
+        await manager.destroy(sandbox_id)
+    except SandboxNotFoundError:
         raise HTTPException(status_code=404, detail="Sandbox not found")
-    registry[sandbox_id]["status"] = SandboxStatus.DESTROYED.value
