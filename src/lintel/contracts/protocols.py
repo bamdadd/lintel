@@ -13,7 +13,17 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
-    from lintel.contracts.types import AgentRole, Credential, ModelPolicy, Repository, ThreadRef
+    from lintel.contracts.types import (
+        AgentRole,
+        Credential,
+        ModelPolicy,
+        Repository,
+        SandboxConfig,
+        SandboxJob,
+        SandboxResult,
+        SandboxStatus,
+        ThreadRef,
+    )
 
 
 class EventStore(Protocol):
@@ -128,39 +138,53 @@ class ModelRouter(Protocol):
     ) -> dict[str, Any]: ...
 
 
-class CommandResult(Protocol):
-    exit_code: int
-    stdout: str
-    stderr: str
-
-
 class SandboxManager(Protocol):
-    """Manages isolated sandbox containers for code execution."""
+    """Manages isolated sandbox environments for agent code execution."""
 
-    async def create_sandbox(
+    async def create(
         self,
-        job_id: UUID,
-        repo_url: str,
-        base_sha: str,
-        branch_name: str,
-        devcontainer_config: dict[str, Any] | None = None,
+        config: SandboxConfig,
+        thread_ref: ThreadRef,
     ) -> str: ...
 
-    async def execute_command(
+    async def execute(
         self,
-        container_id: str,
-        command: str,
-        timeout: int = 300,
-    ) -> CommandResult: ...
+        sandbox_id: str,
+        job: SandboxJob,
+    ) -> SandboxResult: ...
+
+    async def read_file(
+        self,
+        sandbox_id: str,
+        path: str,
+    ) -> str: ...
+
+    async def write_file(
+        self,
+        sandbox_id: str,
+        path: str,
+        content: str,
+    ) -> None: ...
+
+    async def list_files(
+        self,
+        sandbox_id: str,
+        path: str = "/workspace",
+    ) -> list[str]: ...
+
+    async def get_status(
+        self,
+        sandbox_id: str,
+    ) -> SandboxStatus: ...
 
     async def collect_artifacts(
         self,
-        container_id: str,
+        sandbox_id: str,
     ) -> dict[str, Any]: ...
 
-    async def destroy_sandbox(
+    async def destroy(
         self,
-        container_id: str,
+        sandbox_id: str,
     ) -> None: ...
 
 

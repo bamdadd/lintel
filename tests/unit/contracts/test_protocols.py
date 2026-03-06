@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 from lintel.contracts.protocols import (
     ChannelAdapter,
-    CommandResult,
     Deidentifier,
     DeidentifyResult,
     EventStore,
@@ -17,7 +16,7 @@ from lintel.contracts.protocols import (
     SandboxManager,
     SkillRegistry,
 )
-from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
+from lintel.contracts.types import AgentRole, ModelPolicy, SandboxResult, SandboxStatus, ThreadRef
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -35,12 +34,11 @@ class TestProtocolsAreImportable:
             PIIVault,
             ChannelAdapter,
             ModelRouter,
-            CommandResult,
             SandboxManager,
             RepoProvider,
             SkillRegistry,
         ]
-        assert len(protocols) == 10
+        assert len(protocols) == 9
 
 
 class TestEventStoreConformance:
@@ -188,41 +186,45 @@ class TestPIIVaultConformance:
 
 class TestSandboxManagerConformance:
     def test_conformance(self) -> None:
-        @dataclass
-        class FakeCommandResult:
-            exit_code: int = 0
-            stdout: str = ""
-            stderr: str = ""
+        from lintel.contracts.types import SandboxConfig, SandboxJob
 
         class FakeSandbox:
-            async def create_sandbox(
+            async def create(
                 self,
-                job_id: UUID,
-                repo_url: str,
-                base_sha: str,
-                branch_name: str,
-                devcontainer_config: dict[str, Any] | None = None,
+                config: SandboxConfig,
+                thread_ref: ThreadRef,
             ) -> str:
-                return "container-123"
+                return "sandbox-123"
 
-            async def execute_command(
+            async def execute(
                 self,
-                container_id: str,
-                command: str,
-                timeout: int = 300,
-            ) -> FakeCommandResult:
-                return FakeCommandResult()
+                sandbox_id: str,
+                job: SandboxJob,
+            ) -> SandboxResult:
+                return SandboxResult(exit_code=0)
+
+            async def read_file(self, sandbox_id: str, path: str) -> str:
+                return ""
+
+            async def write_file(
+                self, sandbox_id: str, path: str, content: str
+            ) -> None:
+                pass
+
+            async def list_files(
+                self, sandbox_id: str, path: str = "/workspace"
+            ) -> list[str]:
+                return []
+
+            async def get_status(self, sandbox_id: str) -> SandboxStatus:
+                return SandboxStatus.RUNNING
 
             async def collect_artifacts(
-                self,
-                container_id: str,
+                self, sandbox_id: str
             ) -> dict[str, Any]:
                 return {}
 
-            async def destroy_sandbox(
-                self,
-                container_id: str,
-            ) -> None:
+            async def destroy(self, sandbox_id: str) -> None:
                 pass
 
         sandbox: SandboxManager = FakeSandbox()  # type: ignore[assignment]
@@ -290,14 +292,3 @@ class TestSkillRegistryConformance:
         assert registry is not None
 
 
-class TestCommandResultConformance:
-    def test_conformance(self) -> None:
-        @dataclass
-        class FakeResult:
-            exit_code: int = 0
-            stdout: str = ""
-            stderr: str = ""
-
-        result: CommandResult = FakeResult()  # type: ignore[assignment]
-        assert result is not None
-        assert result.exit_code == 0
