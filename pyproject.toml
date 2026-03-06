@@ -59,3 +59,15 @@ testpaths = ["tests"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["asyncpg", "asyncpg.*"]
+ignore_missing_imports = true
+follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "lintel.infrastructure.event_store.postgres",
+    "lintel.infrastructure.event_store.migrate",
+]
+disallow_untyped_calls = false
