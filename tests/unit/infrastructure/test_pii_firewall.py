@@ -39,9 +39,7 @@ class TestPlaceholderManager:
         assert p1 == "<PERSON_1>"
         assert p2 == "<PERSON_2>"
 
-    def test_different_entity_types_have_separate_counters(
-        self, thread_ref: ThreadRef
-    ) -> None:
+    def test_different_entity_types_have_separate_counters(self, thread_ref: ThreadRef) -> None:
         mgr = PlaceholderManager()
         p1 = mgr.get_or_create(thread_ref, "PERSON", "John Doe")
         p2 = mgr.get_or_create(thread_ref, "EMAIL_ADDRESS", "john@example.com")
@@ -69,9 +67,7 @@ class TestPresidioFirewall:
         from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
 
         firewall = PresidioFirewall(vault=vault)
-        result = await firewall.analyze_and_anonymize(
-            "Hello world, no PII here.", thread_ref
-        )
+        result = await firewall.analyze_and_anonymize("Hello world, no PII here.", thread_ref)
         assert result.sanitized_text == "Hello world, no PII here."
         assert result.entities_detected == []
         assert result.placeholder_count == 0
@@ -105,22 +101,16 @@ class TestPresidioFirewall:
         assert "[BLOCKED" in result.sanitized_text
         assert result.placeholder_count == 0
 
-    async def test_stores_mappings_in_vault(
-        self, thread_ref: ThreadRef, vault: AsyncMock
-    ) -> None:
+    async def test_stores_mappings_in_vault(self, thread_ref: ThreadRef, vault: AsyncMock) -> None:
         from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
 
         firewall = PresidioFirewall(vault=vault, risk_threshold=0.9)
-        await firewall.analyze_and_anonymize(
-            "Contact John Smith at the office.", thread_ref
-        )
+        await firewall.analyze_and_anonymize("Contact John Smith at the office.", thread_ref)
         if vault.store_mapping.call_count > 0:
             call_kwargs = vault.store_mapping.call_args
             assert call_kwargs is not None
 
-    async def test_detects_api_key(
-        self, thread_ref: ThreadRef, vault: AsyncMock
-    ) -> None:
+    async def test_detects_api_key(self, thread_ref: ThreadRef, vault: AsyncMock) -> None:
         from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
 
         firewall = PresidioFirewall(vault=vault, risk_threshold=0.9)
@@ -131,9 +121,7 @@ class TestPresidioFirewall:
         has_key = "API_KEY" in entity_types or "AWS_ACCESS_KEY" in entity_types
         assert has_key or result.placeholder_count > 0
 
-    async def test_detects_connection_string(
-        self, thread_ref: ThreadRef, vault: AsyncMock
-    ) -> None:
+    async def test_detects_connection_string(self, thread_ref: ThreadRef, vault: AsyncMock) -> None:
         from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
 
         firewall = PresidioFirewall(vault=vault, risk_threshold=0.9)
@@ -150,12 +138,8 @@ class TestPresidioFirewall:
         from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
 
         firewall = PresidioFirewall(vault=vault, risk_threshold=0.9)
-        r1 = await firewall.analyze_and_anonymize(
-            "Contact John Smith please.", thread_ref
-        )
-        r2 = await firewall.analyze_and_anonymize(
-            "John Smith called again.", thread_ref
-        )
+        r1 = await firewall.analyze_and_anonymize("Contact John Smith please.", thread_ref)
+        r2 = await firewall.analyze_and_anonymize("John Smith called again.", thread_ref)
         # Same person should get same placeholder in both calls
         if r1.placeholder_count > 0 and r2.placeholder_count > 0:
             # Extract placeholder from sanitized text

@@ -52,8 +52,7 @@ class PostgresPIIVault:
     ) -> str:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT encrypted_raw FROM pii_vault "
-                "WHERE thread_ref = $1 AND placeholder = $2",
+                "SELECT encrypted_raw FROM pii_vault WHERE thread_ref = $1 AND placeholder = $2",
                 thread_ref.stream_id,
                 placeholder,
             )

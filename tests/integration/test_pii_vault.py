@@ -45,9 +45,7 @@ async def test_store_and_reveal(vault: PostgresPIIVault, thread_ref: ThreadRef) 
     assert revealed == "John Doe"
 
 
-async def test_reveal_nonexistent_raises(
-    vault: PostgresPIIVault, thread_ref: ThreadRef
-) -> None:
+async def test_reveal_nonexistent_raises(vault: PostgresPIIVault, thread_ref: ThreadRef) -> None:
     with pytest.raises(ValueError, match="No vault entry"):
         await vault.reveal(thread_ref, "<MISSING_1>", revealer_id="admin")
 

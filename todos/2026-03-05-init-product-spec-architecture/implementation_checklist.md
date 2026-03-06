@@ -62,14 +62,14 @@ graph LR
 
 ## Phase 4: PII Firewall & Vault
 
-- [ ] Step 4.1: Presidio analyzer + anonymizer wrapper
+- [x] Step 4.1: Presidio analyzer + anonymizer wrapper
   - Blocked by: Phase 2
-- [ ] Step 4.2: Stable per-thread placeholders
-- [ ] Step 4.3: Encrypted vault (Fernet) for PII mappings
-- [ ] Step 4.4: Fail-closed behavior (block above threshold)
-- [ ] Step 4.5: Custom recognizers (API keys, connection strings)
-- [ ] Step 4.6: PII events (PIIDetected, PIIAnonymised, PIIResidualRiskBlocked)
-- [ ] Validation: `task test -- tests/unit/pii/`
+- [x] Step 4.2: Stable per-thread placeholders
+- [x] Step 4.3: Encrypted vault (Fernet) for PII mappings
+- [x] Step 4.4: Fail-closed behavior (block above threshold)
+- [x] Step 4.5: Custom recognizers (API keys, connection strings)
+- [x] Step 4.6: PII events (PIIDetected, PIIAnonymised, PIIResidualRiskBlocked)
+- [x] Validation: `task test -- tests/unit/infrastructure/test_pii_firewall.py`
 
 ## Phase 5: Configuration & Observability
 
