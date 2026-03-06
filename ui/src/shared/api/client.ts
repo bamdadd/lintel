@@ -12,28 +12,17 @@ export class ApiError extends Error {
   }
 }
 
-export async function customInstance<T>({
-  url,
-  method,
-  params,
-  data,
-  headers,
-}: {
-  url: string;
-  method: string;
-  params?: Record<string, string>;
-  data?: unknown;
-  headers?: Record<string, string>;
-}): Promise<T> {
-  const searchParams = params ? `?${new URLSearchParams(params)}` : '';
-  const response = await fetch(`${url}${searchParams}`, {
-    method,
+export async function customInstance<T>(
+  url: string,
+  options?: RequestInit,
+): Promise<T> {
+  const response = await fetch(url, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
       'X-Correlation-ID': crypto.randomUUID(),
-      ...headers,
+      ...options?.headers,
     },
-    ...(data ? { body: JSON.stringify(data) } : {}),
   });
 
   const correlationId =
@@ -45,11 +34,13 @@ export async function customInstance<T>({
       .catch(() => ({ detail: response.statusText }));
     throw new ApiError(
       response.status,
-      body.detail ?? response.statusText,
+      (body as { detail?: string }).detail ?? response.statusText,
       correlationId,
     );
   }
 
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+
+  const data = await response.json();
+  return { data, status: response.status, headers: response.headers } as T;
 }
