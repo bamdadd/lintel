@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: lintel
+      POSTGRES_USER: lintel
+      POSTGRES_PASSWORD: lintel
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lintel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: ["--jetstream", "--http_port", "8222"]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  lintel:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      LINTEL_DB_DSN: postgresql://lintel:lintel@postgres:5432/lintel
+      LINTEL_NATS_URL: nats://nats:4222
+      LINTEL_SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      LINTEL_SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      LINTEL_SLACK_APP_TOKEN: ${SLACK_APP_TOKEN:-}
+      LINTEL_PII_VAULT_ENCRYPTION_KEY: ${PII_VAULT_ENCRYPTION_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  pgdata:
