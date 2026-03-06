@@ -76,5 +76,53 @@ class ModelPolicy:
     temperature: float = 0.0
 
 
+@dataclass(frozen=True)
+class SkillDescriptor:
+    """Metadata describing a registered skill."""
+
+    name: str
+    version: str
+    description: str = ""
+    input_schema: dict[str, object] | None = None
+    output_schema: dict[str, object] | None = None
+    execution_mode: SkillExecutionMode = SkillExecutionMode.INLINE
+    allowed_agent_roles: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True)
+class SkillResult:
+    """Result of a skill invocation."""
+
+    success: bool
+    output: dict[str, object] | None = None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class SandboxConfig:
+    """Configuration for creating a sandbox container."""
+
+    image: str = "python:3.12-slim"
+    memory_limit: str = "512m"
+    cpu_quota: int = 50000
+
+
+@dataclass(frozen=True)
+class SandboxJob:
+    """A command to execute in a sandbox."""
+
+    command: str
+    workdir: str | None = None
+
+
+@dataclass(frozen=True)
+class SandboxResult:
+    """Result of a sandbox command execution."""
+
+    exit_code: int
+    stdout: str = ""
+    stderr: str = ""
+
+
 CorrelationId = NewType("CorrelationId", UUID)
 EventId = NewType("EventId", UUID)

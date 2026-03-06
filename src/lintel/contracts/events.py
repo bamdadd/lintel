@@ -146,6 +146,24 @@ class HumanApprovalRejected(EventEnvelope):
     event_type: str = "HumanApprovalRejected"
 
 
+# --- Skill Events ---
+
+
+@dataclass(frozen=True)
+class SkillInvoked(EventEnvelope):
+    event_type: str = "SkillInvoked"
+
+
+@dataclass(frozen=True)
+class SkillSucceeded(EventEnvelope):
+    event_type: str = "SkillSucceeded"
+
+
+@dataclass(frozen=True)
+class SkillFailed(EventEnvelope):
+    event_type: str = "SkillFailed"
+
+
 # --- Security Events ---
 
 
@@ -181,6 +199,9 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         AgentStepCompleted,
         ModelSelected,
         ModelCallCompleted,
+        SkillInvoked,
+        SkillSucceeded,
+        SkillFailed,
         SandboxJobScheduled,
         SandboxCreated,
         SandboxArtifactsCollected,
