@@ -69,5 +69,6 @@ follow_untyped_imports = true
 module = [
     "lintel.infrastructure.event_store.postgres",
     "lintel.infrastructure.event_store.migrate",
+    "lintel.infrastructure.vault.postgres_vault",
 ]
 disallow_untyped_calls = false
