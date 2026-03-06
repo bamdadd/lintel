@@ -50,6 +50,25 @@ class WorkflowPhase(StrEnum):
     CLOSED = "closed"
 
 
+class RepoStatus(StrEnum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    ERROR = "error"
+
+
+@dataclass(frozen=True)
+class Repository:
+    """A registered git repository that workflows can operate on."""
+
+    repo_id: str
+    name: str
+    url: str
+    default_branch: str = "main"
+    owner: str = ""
+    provider: str = "github"
+    status: RepoStatus = RepoStatus.ACTIVE
+
+
 class SandboxStatus(StrEnum):
     PENDING = "pending"
     CREATING = "creating"

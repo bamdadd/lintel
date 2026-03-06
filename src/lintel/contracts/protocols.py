@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
-    from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
+    from lintel.contracts.types import AgentRole, ModelPolicy, Repository, ThreadRef
 
 
 class EventStore(Protocol):
@@ -164,6 +164,22 @@ class SandboxManager(Protocol):
     ) -> None: ...
 
 
+class RepositoryStore(Protocol):
+    """Persistence for registered repositories."""
+
+    async def add(self, repository: Repository) -> None: ...
+
+    async def get(self, repo_id: str) -> Repository | None: ...
+
+    async def get_by_url(self, url: str) -> Repository | None: ...
+
+    async def list_all(self) -> list[Repository]: ...
+
+    async def update(self, repository: Repository) -> None: ...
+
+    async def remove(self, repo_id: str) -> None: ...
+
+
 class RepoProvider(Protocol):
     """Git and PR operations for a repository host."""
 
@@ -181,13 +197,47 @@ class RepoProvider(Protocol):
         base_sha: str,
     ) -> None: ...
 
+    async def commit_and_push(
+        self,
+        workdir: str,
+        message: str,
+        branch: str,
+    ) -> str: ...
+
     async def create_pr(
         self,
         repo_url: str,
-        branch_name: str,
+        head: str,
+        base: str,
         title: str,
         body: str,
-    ) -> dict[str, Any]: ...
+    ) -> str: ...
+
+    async def add_comment(
+        self,
+        repo_url: str,
+        pr_number: int,
+        body: str,
+    ) -> None: ...
+
+    async def list_branches(
+        self,
+        repo_url: str,
+    ) -> list[str]: ...
+
+    async def get_file_content(
+        self,
+        repo_url: str,
+        path: str,
+        ref: str = "HEAD",
+    ) -> str: ...
+
+    async def list_commits(
+        self,
+        repo_url: str,
+        branch: str,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]: ...
 
 
 class SkillRegistry(Protocol):

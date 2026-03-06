@@ -39,13 +39,33 @@ class GitHubRepoProvider:
             raise RuntimeError(msg)
         return stdout.decode().strip()
 
-    async def clone(self, repo_url: str, branch: str, dest: str) -> None:
-        await self._run_git("clone", "--branch", branch, "--depth", "1", repo_url, dest)
+    async def clone_repo(self, repo_url: str, branch: str, target_dir: str) -> None:
+        auth_url = self._inject_token(repo_url)
+        await self._run_git("clone", "--branch", branch, "--depth", "1", auth_url, target_dir)
         logger.info("repo_cloned", repo_url=repo_url, branch=branch)
 
-    async def create_branch(self, repo_url: str, base: str, name: str) -> None:
-        await self._run_git("checkout", "-b", name, cwd=base)
-        logger.info("branch_created", branch=name)
+    async def create_branch(self, repo_url: str, branch_name: str, base_sha: str) -> None:
+        import httpx
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/git/refs"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                headers=self._headers(),
+                json={"ref": f"refs/heads/{branch_name}", "sha": base_sha},
+            )
+            resp.raise_for_status()
+        logger.info("branch_created", branch=branch_name)
+
+    def _inject_token(self, repo_url: str) -> str:
+        if repo_url.startswith("https://") and self._token:
+            return repo_url.replace("https://", f"https://x-access-token:{self._token}@")
+        return repo_url
+
+    def _parse_owner_repo(self, repo_url: str) -> tuple[str, str]:
+        parts = repo_url.rstrip("/").rstrip(".git").split("/")
+        return parts[-2], parts[-1]
 
     async def commit_and_push(self, workdir: str, message: str, branch: str) -> str:
         await self._run_git("add", "-A", cwd=workdir)
@@ -65,8 +85,8 @@ class GitHubRepoProvider:
     ) -> str:
         import httpx
 
-        owner_repo = repo_url.rstrip("/").split("/")[-2:]
-        url = f"{self._api_base}/repos/{owner_repo[0]}/{owner_repo[1]}/pulls"
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/pulls"
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -83,8 +103,8 @@ class GitHubRepoProvider:
     async def add_comment(self, repo_url: str, pr_number: int, body: str) -> None:
         import httpx
 
-        owner_repo = repo_url.rstrip("/").split("/")[-2:]
-        url = f"{self._api_base}/repos/{owner_repo[0]}/{owner_repo[1]}/issues/{pr_number}/comments"
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/issues/{pr_number}/comments"
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -93,3 +113,58 @@ class GitHubRepoProvider:
                 json={"body": body},
             )
             resp.raise_for_status()
+
+    async def list_branches(self, repo_url: str) -> list[str]:
+        import httpx
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/branches"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=self._headers())
+            resp.raise_for_status()
+            return [b["name"] for b in resp.json()]
+
+    async def get_file_content(self, repo_url: str, path: str, ref: str = "HEAD") -> str:
+        import httpx
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/contents/{path}"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url,
+                headers=self._headers(),
+                params={"ref": ref},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            import base64
+
+            content: str = base64.b64decode(data["content"]).decode()
+            return content
+
+    async def list_commits(
+        self, repo_url: str, branch: str, limit: int = 20
+    ) -> list[dict[str, Any]]:
+        import httpx
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/commits"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url,
+                headers=self._headers(),
+                params={"sha": branch, "per_page": limit},
+            )
+            resp.raise_for_status()
+            return [
+                {
+                    "sha": c["sha"],
+                    "message": c["commit"]["message"],
+                    "author": c["commit"]["author"]["name"],
+                    "date": c["commit"]["author"]["date"],
+                }
+                for c in resp.json()
+            ]
