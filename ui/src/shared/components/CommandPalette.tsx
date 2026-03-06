@@ -13,10 +13,12 @@ import {
   IconBriefcase,
   IconPlayerPlay,
   IconSettings,
+  IconMessageCircle,
 } from '@tabler/icons-react';
 
 const navActions = [
   { id: 'dashboard', label: 'Dashboard', description: 'Go to dashboard', path: '/', icon: IconDashboard },
+  { id: 'chat', label: 'Chat', description: 'Chat with agents', path: '/chat', icon: IconMessageCircle },
   { id: 'threads', label: 'Threads', description: 'View all threads', path: '/threads', icon: IconMessages },
   { id: 'workflows', label: 'Workflows', description: 'Manage workflow definitions', path: '/workflows', icon: IconGitBranch },
   { id: 'repositories', label: 'Repositories', description: 'Manage repositories', path: '/repositories', icon: IconFolder },

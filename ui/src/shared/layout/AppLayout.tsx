@@ -15,6 +15,7 @@ import { ConnectionStatus } from '@/shared/components/ConnectionStatus';
 
 const navItems = [
   { label: 'Dashboard', path: '/' },
+  { label: 'Chat', path: '/chat' },
   { label: 'Threads', path: '/threads' },
   { label: 'Workflows', path: '/workflows' },
   { label: 'Repositories', path: '/repositories' },
