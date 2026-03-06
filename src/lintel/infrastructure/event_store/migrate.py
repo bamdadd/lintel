@@ -11,7 +11,10 @@ import asyncpg
 
 async def run_migrations(dsn: str | None = None) -> None:
     """Run all SQL migrations in order."""
-    dsn = dsn or os.environ.get("DATABASE_URL", "postgresql://localhost:5432/lintel")
+    dsn = dsn or os.environ.get(
+        "LINTEL_DB_DSN",
+        os.environ.get("DATABASE_URL", "postgresql://lintel:lintel@localhost:5432/lintel"),
+    )
     conn = await asyncpg.connect(dsn)
     try:
         migrations_dir = Path(__file__).resolve().parents[4] / "migrations"

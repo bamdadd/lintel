@@ -40,7 +40,7 @@ class ChatStore:
     def __init__(self) -> None:
         self._conversations: dict[str, dict[str, Any]] = {}
 
-    def create(
+    async def create(
         self,
         *,
         conversation_id: str,
@@ -60,13 +60,13 @@ class ChatStore:
         self._conversations[conversation_id] = conv
         return conv
 
-    def get(self, conversation_id: str) -> dict[str, Any] | None:
+    async def get(self, conversation_id: str) -> dict[str, Any] | None:
         return self._conversations.get(conversation_id)
 
-    def delete(self, conversation_id: str) -> bool:
+    async def delete(self, conversation_id: str) -> bool:
         return self._conversations.pop(conversation_id, None) is not None
 
-    def list_all(
+    async def list_all(
         self,
         *,
         user_id: str | None = None,
@@ -79,7 +79,7 @@ class ChatStore:
             results = [c for c in results if c["project_id"] == project_id]
         return results
 
-    def add_message(
+    async def add_message(
         self,
         conversation_id: str,
         *,
@@ -122,19 +122,19 @@ ChatStoreDep = Annotated[ChatStore, Depends(get_chat_store)]
 
 
 @router.post("/chat/conversations", status_code=201)
-def create_conversation(
+async def create_conversation(
     body: StartConversationRequest,
     store: ChatStoreDep,
 ) -> dict[str, Any]:
     """Start a new conversation."""
     conversation_id = uuid4().hex
-    conv = store.create(
+    conv = await store.create(
         conversation_id=conversation_id,
         user_id=body.user_id,
         display_name=body.display_name,
         project_id=body.project_id,
     )
-    store.add_message(
+    await store.add_message(
         conversation_id,
         user_id=body.user_id,
         display_name=body.display_name,
@@ -142,7 +142,7 @@ def create_conversation(
         content=body.message,
     )
     stub = "[stub] Message received. AI processing not yet connected."
-    store.add_message(
+    await store.add_message(
         conversation_id,
         user_id="system",
         display_name="Lintel",
@@ -153,22 +153,22 @@ def create_conversation(
 
 
 @router.get("/chat/conversations")
-def list_conversations(
+async def list_conversations(
     store: ChatStoreDep,
     user_id: str | None = None,
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """List conversations with optional filters."""
-    return store.list_all(user_id=user_id, project_id=project_id)
+    return await store.list_all(user_id=user_id, project_id=project_id)
 
 
 @router.get("/chat/conversations/{conversation_id}")
-def get_conversation(
+async def get_conversation(
     conversation_id: str,
     store: ChatStoreDep,
 ) -> dict[str, Any]:
     """Get a conversation with its message history."""
-    conv = store.get(conversation_id)
+    conv = await store.get(conversation_id)
     if conv is None:
         raise HTTPException(
             status_code=404,
@@ -181,7 +181,7 @@ def get_conversation(
     "/chat/conversations/{conversation_id}/messages",
     status_code=201,
 )
-def send_message(
+async def send_message(
     conversation_id: str,
     body: SendMessageRequest,
     store: ChatStoreDep,
@@ -193,7 +193,7 @@ def send_message(
             detail="role must be one of: user, agent, system",
         )
     try:
-        return store.add_message(
+        return await store.add_message(
             conversation_id,
             user_id=body.user_id,
             display_name=body.display_name,
@@ -211,12 +211,12 @@ def send_message(
     "/chat/conversations/{conversation_id}",
     status_code=204,
 )
-def delete_conversation(
+async def delete_conversation(
     conversation_id: str,
     store: ChatStoreDep,
 ) -> None:
     """Delete a conversation."""
-    if not store.delete(conversation_id):
+    if not await store.delete(conversation_id):
         raise HTTPException(
             status_code=404,
             detail=f"Conversation {conversation_id} not found",

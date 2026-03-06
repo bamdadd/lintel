@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from fastapi.routing import APIRoute
 
 from lintel.api.middleware import CorrelationMiddleware
@@ -63,18 +66,110 @@ from lintel.api.routes.triggers import InMemoryTriggerStore
 from lintel.api.routes.users import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
 from lintel.api.routes.work_items import WorkItemStore
+from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+
+def _create_in_memory_stores() -> dict[str, Any]:
+    """Create all in-memory stores for development without a database."""
+    return {
+        "event_store": InMemoryEventStore(),
+        "repository_store": InMemoryRepositoryStore(),
+        "skill_store": InMemorySkillStore(),
+        "credential_store": InMemoryCredentialStore(),
+        "ai_provider_store": InMemoryAIProviderStore(),
+        "project_store": ProjectStore(),
+        "work_item_store": WorkItemStore(),
+        "pipeline_store": InMemoryPipelineStore(),
+        "environment_store": InMemoryEnvironmentStore(),
+        "trigger_store": InMemoryTriggerStore(),
+        "variable_store": InMemoryVariableStore(),
+        "user_store": InMemoryUserStore(),
+        "team_store": InMemoryTeamStore(),
+        "policy_store": InMemoryPolicyStore(),
+        "notification_rule_store": NotificationRuleStore(),
+        "audit_entry_store": AuditEntryStore(),
+        "code_artifact_store": CodeArtifactStore(),
+        "test_result_store": TestResultStore(),
+        "approval_request_store": InMemoryApprovalRequestStore(),
+        "chat_store": ChatStore(),
+        "agent_definition_store": AgentDefinitionStore(),
+    }
+
+
+def _create_postgres_stores(pool: object) -> dict[str, Any]:
+    """Create all Postgres-backed stores."""
+    from lintel.infrastructure.event_store.postgres import PostgresEventStore
+    from lintel.infrastructure.persistence.stores import (
+        PostgresAgentDefinitionStore,
+        PostgresAIProviderStore,
+        PostgresApprovalRequestStore,
+        PostgresAuditEntryStore,
+        PostgresChatStore,
+        PostgresCodeArtifactStore,
+        PostgresCredentialStore,
+        PostgresEnvironmentStore,
+        PostgresNotificationRuleStore,
+        PostgresPipelineStore,
+        PostgresPolicyStore,
+        PostgresProjectStore,
+        PostgresRepositoryStore,
+        PostgresSkillStore,
+        PostgresTeamStore,
+        PostgresTestResultStore,
+        PostgresTriggerStore,
+        PostgresUserStore,
+        PostgresVariableStore,
+        PostgresWorkItemStore,
+    )
+
+    return {
+        "event_store": PostgresEventStore(pool),
+        "repository_store": PostgresRepositoryStore(pool),
+        "skill_store": PostgresSkillStore(pool),
+        "credential_store": PostgresCredentialStore(pool),
+        "ai_provider_store": PostgresAIProviderStore(pool),
+        "project_store": PostgresProjectStore(pool),
+        "work_item_store": PostgresWorkItemStore(pool),
+        "pipeline_store": PostgresPipelineStore(pool),
+        "environment_store": PostgresEnvironmentStore(pool),
+        "trigger_store": PostgresTriggerStore(pool),
+        "variable_store": PostgresVariableStore(pool),
+        "user_store": PostgresUserStore(pool),
+        "team_store": PostgresTeamStore(pool),
+        "policy_store": PostgresPolicyStore(pool),
+        "notification_rule_store": PostgresNotificationRuleStore(pool),
+        "audit_entry_store": PostgresAuditEntryStore(pool),
+        "code_artifact_store": PostgresCodeArtifactStore(pool),
+        "test_result_store": PostgresTestResultStore(pool),
+        "approval_request_store": PostgresApprovalRequestStore(pool),
+        "chat_store": PostgresChatStore(pool),
+        "agent_definition_store": PostgresAgentDefinitionStore(pool),
+    }
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    # Determine storage backend
+    dsn = os.environ.get("LINTEL_DB_DSN")
+    db_pool = None
+
+    if dsn:
+        import asyncpg
+
+        db_pool = await asyncpg.create_pool(dsn)
+        stores = _create_postgres_stores(db_pool)
+    else:
+        stores = _create_in_memory_stores()
+
+    # Assign all stores to app state
+    for name, store in stores.items():
+        setattr(app.state, name, store)
+
     # Initialize projections
     thread_status = ThreadStatusProjection()
     task_backlog = TaskBacklogProjection()
@@ -82,42 +177,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await engine.register(thread_status)
     await engine.register(task_backlog)
 
-    repository_store = InMemoryRepositoryStore()
-    skill_store = InMemorySkillStore()
-    credential_store = InMemoryCredentialStore()
-    ai_provider_store = InMemoryAIProviderStore()
-
     app.state.thread_status_projection = thread_status
     app.state.task_backlog_projection = task_backlog
     app.state.projection_engine = engine
-    app.state.repository_store = repository_store
-    app.state.skill_store = skill_store
-    app.state.credential_store = credential_store
-    app.state.ai_provider_store = ai_provider_store
-    app.state.project_store = ProjectStore()
-    app.state.work_item_store = WorkItemStore()
-    app.state.pipeline_store = InMemoryPipelineStore()
-    app.state.environment_store = InMemoryEnvironmentStore()
-    app.state.trigger_store = InMemoryTriggerStore()
-    app.state.variable_store = InMemoryVariableStore()
-    app.state.user_store = InMemoryUserStore()
-    app.state.team_store = InMemoryTeamStore()
-    app.state.policy_store = InMemoryPolicyStore()
-    app.state.notification_rule_store = NotificationRuleStore()
-    app.state.audit_entry_store = AuditEntryStore()
-    app.state.code_artifact_store = CodeArtifactStore()
-    app.state.test_result_store = TestResultStore()
-    app.state.approval_request_store = InMemoryApprovalRequestStore()
-    app.state.chat_store = ChatStore()
-    app.state.agent_definition_store = AgentDefinitionStore()
     app.state.sandbox_manager = DockerSandboxManager()
 
     yield
     # Cleanup
+    if db_pool is not None:
+        await db_pool.close()
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
+
     def _generate_unique_id(route: APIRoute) -> str:
         if route.tags:
             return f"{route.tags[0]}_{route.name}"

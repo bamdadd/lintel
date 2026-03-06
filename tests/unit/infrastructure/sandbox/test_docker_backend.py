@@ -69,6 +69,30 @@ class TestCreate:
         call_kwargs = client.containers.create.call_args[1]
         assert call_kwargs["network_mode"] == "bridge"
 
+    async def test_pulls_image_when_not_found_locally(self) -> None:
+        manager = DockerSandboxManager()
+        container = MagicMock()
+        client = MagicMock()
+        client.images.get.side_effect = Exception("not found")
+        client.containers.create.return_value = container
+        manager._client = client
+
+        await manager.create(SandboxConfig(), _make_thread_ref())
+
+        client.images.pull.assert_called_once_with(SandboxConfig().image)
+        client.containers.create.assert_called_once()
+
+    async def test_skips_pull_when_image_exists(self) -> None:
+        manager = DockerSandboxManager()
+        container = MagicMock()
+        client = MagicMock()
+        client.containers.create.return_value = container
+        manager._client = client
+
+        await manager.create(SandboxConfig(), _make_thread_ref())
+
+        client.images.pull.assert_not_called()
+
     async def test_environment_passed(self) -> None:
         manager = DockerSandboxManager()
         container = MagicMock()

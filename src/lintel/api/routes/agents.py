@@ -17,26 +17,27 @@ class AgentDefinitionStore:
     def __init__(self) -> None:
         self._definitions: dict[str, dict[str, Any]] = {}
 
-    def list_all(self) -> list[dict[str, Any]]:
+    async def list_all(self) -> list[dict[str, Any]]:
         return list(self._definitions.values())
 
-    def get(self, agent_id: str) -> dict[str, Any] | None:
+    async def get(self, agent_id: str) -> dict[str, Any] | None:
         return self._definitions.get(agent_id)
 
-    def create(self, definition: dict[str, Any]) -> dict[str, Any]:
+    async def create(self, definition: dict[str, Any]) -> dict[str, Any]:
         agent_id = definition["agent_id"]
         if agent_id in self._definitions:
-            raise ValueError(f"Agent definition '{agent_id}' already exists")
+            msg = f"Agent definition '{agent_id}' already exists"
+            raise ValueError(msg)
         self._definitions[agent_id] = definition
         return definition
 
-    def update(self, agent_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+    async def update(self, agent_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         if agent_id not in self._definitions:
             raise KeyError(agent_id)
         self._definitions[agent_id].update(updates)
         return self._definitions[agent_id]
 
-    def delete(self, agent_id: str) -> None:
+    async def delete(self, agent_id: str) -> None:
         if agent_id not in self._definitions:
             raise KeyError(agent_id)
         del self._definitions[agent_id]
@@ -198,7 +199,7 @@ async def create_agent_definition(
     definition = body.model_dump()
     definition["model_policy"] = body.model_policy.model_dump()
     try:
-        return store.create(definition)
+        return await store.create(definition)
     except ValueError:
         raise HTTPException(  # noqa: B904
             status_code=409,
@@ -211,7 +212,7 @@ async def list_agent_definitions(
     store: AgentDefStoreDep,
 ) -> list[dict[str, Any]]:
     """List all custom agent definitions."""
-    return store.list_all()
+    return await store.list_all()
 
 
 @router.get("/agents/definitions/{agent_id}")
@@ -220,7 +221,7 @@ async def get_agent_definition(
     store: AgentDefStoreDep,
 ) -> dict[str, Any]:
     """Get a specific custom agent definition."""
-    definition = store.get(agent_id)
+    definition = await store.get(agent_id)
     if definition is None:
         raise HTTPException(
             status_code=404,
@@ -240,7 +241,7 @@ async def update_agent_definition(
     if "model_policy" in updates:
         updates["model_policy"] = body.model_policy.model_dump()  # type: ignore[union-attr]
     try:
-        return store.update(agent_id, updates)
+        return await store.update(agent_id, updates)
     except KeyError:
         raise HTTPException(  # noqa: B904
             status_code=404,
@@ -255,7 +256,7 @@ async def delete_agent_definition(
 ) -> None:
     """Delete a custom agent definition."""
     try:
-        store.delete(agent_id)
+        await store.delete(agent_id)
     except KeyError:
         raise HTTPException(  # noqa: B904
             status_code=404,

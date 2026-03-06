@@ -55,6 +55,11 @@ class DockerSandboxManager:
 
         environment = dict(config.environment) if config.environment else {}
 
+        try:
+            await asyncio.to_thread(client.images.get, config.image)
+        except Exception:
+            await asyncio.to_thread(client.images.pull, config.image)
+
         container = await asyncio.to_thread(
             client.containers.create,
             image=config.image,
