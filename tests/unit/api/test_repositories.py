@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 from fastapi.testclient import TestClient
 
 from lintel.api.app import create_app

@@ -183,34 +183,150 @@ Collapsible sidebar on smaller screens. Mantine `AppShell` component handles the
 
 ## API Dependencies
 
-The UI consumes these existing and planned API endpoints:
+All 52 endpoints required by the UI exist. All use in-memory stores; some return stub data pending real infrastructure.
 
-| Endpoint | Exists | Used by |
+### Health
+
+| Endpoint | Used by |
+|---|---|
+| `GET /healthz` | Header status, setup wizard |
+
+### Threads
+
+| Endpoint | Used by |
+|---|---|
+| `GET /api/v1/threads` | Threads list, dashboard |
+
+### Events
+
+| Endpoint | Used by | Notes |
 |---|---|---|
-| `GET /healthz` | Yes | Header status, setup wizard |
-| `GET /api/v1/threads` | Yes | Threads list, dashboard |
-| `GET /api/v1/events` | Yes | Events page, dashboard feed |
-| `POST /api/v1/repositories` | Yes | Repo registration |
-| `GET /api/v1/repositories` | Yes | Repo list |
-| `GET /api/v1/repositories/:id` | Yes | Repo detail |
-| `PATCH /api/v1/repositories/:id` | Yes | Repo edit |
-| `DELETE /api/v1/repositories/:id` | Yes | Repo removal |
-| `GET /api/v1/threads/:streamId/events` | Needed | Thread detail timeline |
-| `POST /api/v1/threads/:streamId/approve` | Needed | Approval gates |
-| `POST /api/v1/threads/:streamId/reject` | Needed | Approval gates |
-| `GET /api/v1/agents` | Needed | Agent config |
-| `PUT /api/v1/agents/:role/policy` | Needed | Model policy config |
-| `GET /api/v1/skills` | Needed | Skills list |
-| `POST /api/v1/skills` | Needed | Skill registration |
-| `GET /api/v1/sandboxes` | Needed | Sandbox monitor |
-| `DELETE /api/v1/sandboxes/:id` | Needed | Sandbox destroy |
-| `GET /api/v1/events/stream` | Needed | Correlation view, advanced filtering |
-| `GET /api/v1/settings/connections` | Needed | Settings, setup wizard |
-| `PUT /api/v1/settings/connections/:type` | Needed | Settings, setup wizard |
-| `POST /api/v1/settings/connections/:type/test` | Needed | Connection testing |
-| `GET /api/v1/workflows` | Needed | Workflow editor |
-| `POST /api/v1/workflows` | Needed | Save workflow |
-| `GET /api/v1/metrics/pii` | Needed | Security dashboard charts |
+| `GET /api/v1/events` | Events page, dashboard feed | |
+| `GET /api/v1/events/types` | Events filter dropdown | Returns all 28 registered event type names |
+| `GET /api/v1/events/stream/:stream_id` | Thread detail timeline | Stub -- returns empty list, needs EventStore |
+| `GET /api/v1/events/correlation/:correlation_id` | Correlation view | Stub -- returns empty list, needs EventStore |
+
+### Repositories
+
+| Endpoint | Used by |
+|---|---|
+| `POST /api/v1/repositories` | Repo registration |
+| `GET /api/v1/repositories` | Repo list |
+| `GET /api/v1/repositories/:id` | Repo detail |
+| `PATCH /api/v1/repositories/:id` | Repo edit |
+| `DELETE /api/v1/repositories/:id` | Repo removal |
+
+### Credentials
+
+| Endpoint | Used by | Notes |
+|---|---|---|
+| `POST /api/v1/credentials` | Store SSH key or GitHub token | Secrets masked on read |
+| `GET /api/v1/credentials` | List all credentials | |
+| `GET /api/v1/credentials/:id` | Get credential detail | |
+| `GET /api/v1/credentials/repo/:repo_id` | Credentials for a repo | |
+| `DELETE /api/v1/credentials/:id` | Revoke and delete | |
+
+### Workflows
+
+| Endpoint | Used by |
+|---|---|
+| `POST /api/v1/workflows` | Start workflow |
+| `GET /api/v1/workflows` | Workflow list |
+| `GET /api/v1/workflows/:stream_id` | Workflow detail |
+| `POST /api/v1/workflows/messages` | Process incoming message |
+
+### Workflow Definitions
+
+| Endpoint | Used by | Notes |
+|---|---|---|
+| `POST /api/v1/workflow-definitions` | Save workflow graph | |
+| `GET /api/v1/workflow-definitions` | List all definitions | Ships with "Feature to PR" template |
+| `GET /api/v1/workflow-definitions/templates` | List templates only | |
+| `GET /api/v1/workflow-definitions/:id` | Get definition | |
+| `PUT /api/v1/workflow-definitions/:id` | Update definition | |
+| `DELETE /api/v1/workflow-definitions/:id` | Delete definition | |
+
+### Agents
+
+| Endpoint | Used by | Notes |
+|---|---|---|
+| `GET /api/v1/agents/roles` | Agent role list | Returns all 6 roles |
+| `GET /api/v1/agents/policies` | All model policies | Defaults all roles to claude-sonnet-4-20250514 |
+| `GET /api/v1/agents/policies/:role` | Single role policy | |
+| `PUT /api/v1/agents/policies/:role` | Update model policy | provider, model_name, max_tokens, temperature |
+| `POST /api/v1/agents/test-prompt` | Test agent prompt | Stub -- returns dry-run echo, needs ModelRouter |
+| `POST /api/v1/agents/steps` | Schedule agent step | |
+
+### Approvals
+
+| Endpoint | Used by |
+|---|---|
+| `POST /api/v1/approvals/grant` | Grant approval |
+| `POST /api/v1/approvals/reject` | Reject approval |
+
+### Sandboxes
+
+| Endpoint | Used by | Notes |
+|---|---|---|
+| `POST /api/v1/sandboxes` | Schedule sandbox job | Registers in in-memory registry |
+| `GET /api/v1/sandboxes` | Sandbox list | |
+| `GET /api/v1/sandboxes/:id` | Sandbox detail | |
+| `DELETE /api/v1/sandboxes/:id` | Destroy sandbox | Marks status as `destroyed` |
+
+### Skills
+
+| Endpoint | Used by |
+|---|---|
+| `POST /api/v1/skills` | Skill registration |
+| `GET /api/v1/skills` | Skills list |
+| `GET /api/v1/skills/:skill_id` | Skill detail |
+| `POST /api/v1/skills/:skill_id/invoke` | Skill invocation (echo stub) |
+
+### PII & Vault
+
+| Endpoint | Used by | Notes |
+|---|---|---|
+| `POST /api/v1/pii/reveal` | PII reveal request | Logs to vault, increments stats |
+| `GET /api/v1/pii/vault/log` | Vault activity log | |
+| `GET /api/v1/pii/stats` | PII detection stats | Counters only update via reveal |
+
+### Metrics
+
+| Endpoint | Used by | Notes |
+|---|---|---|
+| `GET /api/v1/metrics/pii` | Security dashboard | Same counters as `/pii/stats` |
+| `GET /api/v1/metrics/agents` | Agent activity | Last 100 entries |
+| `GET /api/v1/metrics/overview` | Dashboard overview | Combined PII + sandbox + connection counts |
+
+### Settings
+
+| Endpoint | Used by | Notes |
+|---|---|---|
+| `POST /api/v1/settings/connections` | Create connection | Types: slack, github, llm_provider, postgres, nats |
+| `GET /api/v1/settings/connections` | List connections | |
+| `GET /api/v1/settings/connections/:id` | Get connection | |
+| `PATCH /api/v1/settings/connections/:id` | Update connection | |
+| `DELETE /api/v1/settings/connections/:id` | Remove connection | |
+| `POST /api/v1/settings/connections/:id/test` | Test connection | Stub -- always returns `ok` |
+| `GET /api/v1/settings` | General settings | workspace_name, default_model_provider, pii_detection_enabled, sandbox_enabled, max_concurrent_workflows |
+| `PATCH /api/v1/settings` | Update general settings | |
+
+### Admin
+
+| Endpoint | Used by |
+|---|---|
+| `POST /api/v1/admin/reset-projections` | Settings danger zone |
+
+### Stubs Needing Real Infrastructure
+
+| Stub | What's needed |
+|---|---|
+| Event stream/correlation queries | PostgreSQL EventStore wired to read_stream / read_by_correlation |
+| Agent test-prompt | ModelRouter integration to actually call an LLM |
+| Connection test | Real connectivity checks per type (pg_isready, NATS ping, Slack auth.test, LLM completion) |
+| Sandbox lifecycle | Real SandboxManager (container runtime) instead of in-memory status tracking |
+| PII stats | Deidentifier pipeline feeding counters from actual message processing |
+| All in-memory stores | Persistent storage (Postgres) for workflow definitions, settings, policies, credentials, sandbox registry, skills -- all reset on restart currently |
 
 ## File Structure
 

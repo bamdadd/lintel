@@ -123,6 +123,19 @@ class SandboxDestroyed(EventEnvelope):
     event_type: str = "SandboxDestroyed"
 
 
+# --- Credential Events ---
+
+
+@dataclass(frozen=True)
+class CredentialStored(EventEnvelope):
+    event_type: str = "CredentialStored"
+
+
+@dataclass(frozen=True)
+class CredentialRevoked(EventEnvelope):
+    event_type: str = "CredentialRevoked"
+
+
 # --- Repo Events ---
 
 
@@ -236,6 +249,8 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         SandboxCreated,
         SandboxArtifactsCollected,
         SandboxDestroyed,
+        CredentialStored,
+        CredentialRevoked,
         RepositoryRegistered,
         RepositoryUpdated,
         RepositoryRemoved,

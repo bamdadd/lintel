@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
-    from lintel.contracts.types import AgentRole, ModelPolicy, Repository, ThreadRef
+    from lintel.contracts.types import AgentRole, Credential, ModelPolicy, Repository, ThreadRef
 
 
 class EventStore(Protocol):
@@ -162,6 +162,27 @@ class SandboxManager(Protocol):
         self,
         container_id: str,
     ) -> None: ...
+
+
+class CredentialStore(Protocol):
+    """Secure storage for SSH keys and GitHub tokens."""
+
+    async def store(
+        self,
+        credential_id: str,
+        credential_type: str,
+        name: str,
+        secret: str,
+        repo_ids: list[str] | None = None,
+    ) -> Credential: ...
+
+    async def get(self, credential_id: str) -> Credential | None: ...
+
+    async def list_all(self) -> list[Credential]: ...
+
+    async def list_by_repo(self, repo_id: str) -> list[Credential]: ...
+
+    async def revoke(self, credential_id: str) -> None: ...
 
 
 class RepositoryStore(Protocol):

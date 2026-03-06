@@ -33,6 +33,12 @@ class InMemoryProjectionEngine:
             if event.event_type in projection.handled_event_types:
                 await projection.project(event)
 
+    async def reset_all(self) -> None:
+        """Reset all projections to empty state."""
+        for projection in self._projections:
+            await projection.rebuild([])
+        logger.info("projections_reset", count=len(self._projections))
+
     async def rebuild_all(self, stream_id: str) -> None:
         if not self._event_store:
             msg = "EventStore required for rebuild"
