@@ -225,6 +225,136 @@ class PolicyDecisionRecorded(EventEnvelope):
     event_type: str = "PolicyDecisionRecorded"
 
 
+# --- Project Events ---
+
+
+@dataclass(frozen=True)
+class ProjectCreated(EventEnvelope):
+    event_type: str = "ProjectCreated"
+
+
+@dataclass(frozen=True)
+class ProjectUpdated(EventEnvelope):
+    event_type: str = "ProjectUpdated"
+
+
+@dataclass(frozen=True)
+class ProjectArchived(EventEnvelope):
+    event_type: str = "ProjectArchived"
+
+
+# --- Work Item Events ---
+
+
+@dataclass(frozen=True)
+class WorkItemCreated(EventEnvelope):
+    event_type: str = "WorkItemCreated"
+
+
+@dataclass(frozen=True)
+class WorkItemUpdated(EventEnvelope):
+    event_type: str = "WorkItemUpdated"
+
+
+@dataclass(frozen=True)
+class WorkItemCompleted(EventEnvelope):
+    event_type: str = "WorkItemCompleted"
+
+
+# --- Pipeline Events ---
+
+
+@dataclass(frozen=True)
+class PipelineRunStarted(EventEnvelope):
+    event_type: str = "PipelineRunStarted"
+
+
+@dataclass(frozen=True)
+class PipelineStageCompleted(EventEnvelope):
+    event_type: str = "PipelineStageCompleted"
+
+
+@dataclass(frozen=True)
+class PipelineRunCompleted(EventEnvelope):
+    event_type: str = "PipelineRunCompleted"
+
+
+@dataclass(frozen=True)
+class PipelineRunFailed(EventEnvelope):
+    event_type: str = "PipelineRunFailed"
+
+
+# --- Environment Events ---
+
+
+@dataclass(frozen=True)
+class EnvironmentCreated(EventEnvelope):
+    event_type: str = "EnvironmentCreated"
+
+
+# --- Trigger Events ---
+
+
+@dataclass(frozen=True)
+class TriggerFired(EventEnvelope):
+    event_type: str = "TriggerFired"
+
+
+# --- Artifact & Test Events ---
+
+
+@dataclass(frozen=True)
+class ArtifactStored(EventEnvelope):
+    event_type: str = "ArtifactStored"
+
+
+@dataclass(frozen=True)
+class TestRunCompleted(EventEnvelope):
+    event_type: str = "TestRunCompleted"
+
+
+# --- Approval Events ---
+
+
+@dataclass(frozen=True)
+class ApprovalRequested(EventEnvelope):
+    event_type: str = "ApprovalRequested"
+
+
+@dataclass(frozen=True)
+class ApprovalExpired(EventEnvelope):
+    event_type: str = "ApprovalExpired"
+
+
+# --- Notification Events ---
+
+
+@dataclass(frozen=True)
+class NotificationSent(EventEnvelope):
+    event_type: str = "NotificationSent"
+
+
+# --- User & Team Events ---
+
+
+@dataclass(frozen=True)
+class UserCreated(EventEnvelope):
+    event_type: str = "UserCreated"
+
+
+@dataclass(frozen=True)
+class TeamCreated(EventEnvelope):
+    event_type: str = "TeamCreated"
+
+
+# --- Audit Events ---
+
+
+@dataclass(frozen=True)
+class AuditRecorded(EventEnvelope):
+    event_type: str = "AuditRecorded"
+
+
 # --- Event Registry ---
 
 EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
@@ -264,6 +394,26 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         VaultRevealRequested,
         VaultRevealGranted,
         PolicyDecisionRecorded,
+        ProjectCreated,
+        ProjectUpdated,
+        ProjectArchived,
+        WorkItemCreated,
+        WorkItemUpdated,
+        WorkItemCompleted,
+        PipelineRunStarted,
+        PipelineStageCompleted,
+        PipelineRunCompleted,
+        PipelineRunFailed,
+        EnvironmentCreated,
+        TriggerFired,
+        ArtifactStored,
+        TestRunCompleted,
+        ApprovalRequested,
+        ApprovalExpired,
+        NotificationSent,
+        UserCreated,
+        TeamCreated,
+        AuditRecorded,
     ]
 }
 
