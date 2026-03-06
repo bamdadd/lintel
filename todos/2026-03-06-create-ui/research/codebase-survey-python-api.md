@@ -322,15 +322,90 @@ The UI should send `X-Correlation-ID: <uuid>` on all requests. The middleware ec
 
 ---
 
+## Uncommitted Changes (as of 2026-03-06)
+
+The working tree contains significant uncommitted additions that expand the API surface:
+
+### 15 New Route Files (80 new endpoints)
+
+| Route File | Domain | Endpoints |
+|-----------|--------|-----------|
+| `ai_providers.py` | AI model provider management | CRUD + test |
+| `approval_requests.py` | Structured approval tracking | CRUD + approve/reject |
+| `artifacts.py` | Code artifacts + test results | CRUD for both |
+| `audit.py` | Audit trail | List + detail |
+| `chat.py` | Chat/conversation | TBD |
+| `environments.py` | Deployment environments | CRUD |
+| `notifications.py` | Notification rules | CRUD |
+| `pipelines.py` | Pipeline runs + stages | CRUD + stage management |
+| `policies.py` | Governance policies | CRUD |
+| `projects.py` | Project management | CRUD |
+| `teams.py` | Team management | CRUD |
+| `triggers.py` | Pipeline triggers | CRUD |
+| `users.py` | User management | CRUD |
+| `variables.py` | Runtime variables | CRUD |
+| `work_items.py` | Work item tracking | CRUD |
+
+### 14+ New Domain Types in `contracts/types.py`
+
+| Type | Kind | Description |
+|------|------|-------------|
+| `AIProviderType` | StrEnum (7 values) | anthropic, openai, azure_openai, google, ollama, bedrock, custom |
+| `AIProvider` | dataclass | Configured AI model provider with API credentials |
+| `ProjectStatus` | StrEnum (3) | active, paused, archived |
+| `Project` | dataclass | Links repo, channel, workflow config, credentials |
+| `WorkItemStatus` | StrEnum (7) | open, in_progress, in_review, approved, merged, closed, failed |
+| `WorkItemType` | StrEnum (4) | feature, bug, refactor, task |
+| `WorkItem` | dataclass | Individual unit of work through pipeline |
+| `PipelineStatus` | StrEnum (6) | pending, running, paused, succeeded, failed, cancelled |
+| `StageStatus` | StrEnum (5) | pending, running, succeeded, failed, skipped |
+| `Stage` | dataclass | Single step in a pipeline execution |
+| `PipelineRun` | dataclass | Specific execution of a workflow/pipeline |
+| `EnvironmentType` | StrEnum (4) | development, staging, production, sandbox |
+| `Environment` | dataclass | Target deployment context |
+| `Variable` | dataclass | Runtime variable scoped to project/environment |
+| `TriggerType` | StrEnum (5) | slack_message, webhook, schedule, pr_event, manual |
+| `Trigger` | dataclass | What starts a pipeline |
+| `CodeArtifact` | dataclass | File changes produced by an agent |
+| `TestVerdict` | StrEnum (4) | passed, failed, error, skipped |
+| `TestResult` | dataclass | Structured test execution output |
+| `ApprovalStatus` | StrEnum (4) | pending, approved, rejected, expired |
+| `ApprovalRequest` | dataclass | Pending approval with state and metadata |
+| `AgentSession` | dataclass | Agent execution within a pipeline stage |
+| `NotificationChannel` | StrEnum (3) | slack, email, webhook |
+| `NotificationRule` | dataclass | When/how to notify users |
+| `PolicyAction` | StrEnum (4) | require_approval, auto_approve, block, notify |
+| `Policy` | dataclass | Governance rule for workflow behavior |
+| `UserRole` | StrEnum (3) | admin, member, viewer |
+| `User` | dataclass | Platform user |
+| `Team` | dataclass | Group of users with shared permissions |
+| `AuditEntry` | dataclass | Who did what, when |
+
+### Modified Files
+- `app.py` — Registers all 15 new routers + initializes 14 new in-memory stores in lifespan
+- `agents.py` — Expanded with additional endpoints
+- `contracts/events.py` — New event types added
+- `contracts/types.py` — 14+ new domain types and StrEnums
+- `CredentialType` — Added `ai_provider_api_key` variant
+
+### Impact on UI
+- Total route files: **29** (was 14)
+- Total endpoints: **~136** (was 56)
+- Total StrEnum types: **~20** (was 7)
+- Total frozen dataclasses: **~22** (was 8)
+- New UI pages needed: Projects, Work Items, Pipeline Runs, Environments, Users/Teams, Policies, Audit, Notifications, Triggers, Variables, AI Providers, Artifacts
+
+---
+
 ## Metrics
 
 | Metric | Value |
 |--------|-------|
-| Total Route Files | 14 |
-| Total Endpoints | 56 |
+| Total Route Files | 29 (14 committed + 15 uncommitted) |
+| Total Endpoints | ~136 (56 committed + ~80 uncommitted) |
 | Primary Language | Python 3.12+ |
-| Event Types | 34 |
-| Command Types | 13 |
+| Event Types | 34+ (new events uncommitted) |
+| Command Types | 13+ |
 | Authentication | None |
 | CORS | Not configured |
 | Response Models | None (all `dict[str,Any]`) |

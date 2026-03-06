@@ -2,13 +2,13 @@
 
 **EXECUTIVE SUMMARY**
 
-Lintel's backend is API-complete: 56 endpoints across 14 route files, all returning stub data from in-memory stores. The domain contracts (`types.py`, `events.py`) are well-structured frozen dataclasses that map cleanly to TypeScript. However, two blockers must be resolved before any UI work: (1) no CORS middleware and (2) no typed response models (all endpoints return `dict[str, Any]`, making OpenAPI-based TypeScript client generation useless).
+Lintel's backend is API-complete: ~136 endpoints across 29 route files (14 committed + 15 uncommitted), all returning stub data from in-memory stores. The domain contracts (`types.py`, `events.py`) define ~20 `StrEnum` types, ~22 frozen dataclasses, and 34 event types that map cleanly to TypeScript. However, two blockers must be resolved before any UI work: (1) no CORS middleware and (2) no typed response models (all endpoints return `dict[str, Any]`, making OpenAPI-based TypeScript client generation useless).
 
 The frontend is pure greenfield -- no `ui/` directory, no Node.js tooling, no `.gitignore` entries for frontend artifacts. The planned tech stack (React 18 + Mantine v7 + TanStack Query v5 + React Flow + Vite) is well-supported by current best practices and framework documentation.
 
 - **Recommended Approach**: Option A -- Orval-Generated TypeScript Client with Feature-Based SPA
-- **Why**: Eliminates manual type maintenance for 56 endpoints; Orval generates TanStack Query hooks per tag group; feature-based folders scale to 11+ page sections
-- **Trade-offs**: Requires adding Pydantic response models to all endpoints first (M effort on backend)
+- **Why**: Eliminates manual type maintenance for ~136 endpoints; Orval generates TanStack Query hooks per tag group; feature-based folders scale to 15+ page sections
+- **Trade-offs**: Requires adding Pydantic response models to all endpoints first (L effort on backend)
 - **Confidence**: High -- all frameworks are production-proven; the API surface is well-defined
 - **Next Step**: User decision required -- review options below
 
@@ -19,11 +19,11 @@ The frontend is pure greenfield -- no `ui/` directory, no Node.js tooling, no `.
 - **Original Task**: Build a React SPA web dashboard serving as the control plane for Lintel -- managing agents, workflows, connections, repositories, and observability
 - **Success Criteria**: 11 page sections functional; setup wizard for first-run onboarding; real-time event feed; visual workflow editor; dark mode; `Cmd+K` command palette
 - **Key Questions**: How to integrate with the existing FastAPI backend? Hand-write or auto-generate the TypeScript API client? How to structure a 10+ page SPA for maintainability?
-- **Assumptions to Validate**: The 56 API endpoints are sufficient for all UI features; Mantine v7 covers the needed components; React Flow can handle the workflow editor requirements
+- **Assumptions to Validate**: The ~136 API endpoints are sufficient for all UI features; Mantine v7 covers the needed components; React Flow can handle the workflow editor requirements
 
 ## 2. Investigation Summary
 
-- **Codebase survey (python-api)**: Analyzed 14 route files, 56 endpoints, all domain contracts. Found: no CORS, no response models, all stores in-memory.
+- **Codebase survey (python-api)**: Analyzed 29 route files (~136 endpoints), all domain contracts. Found: no CORS, no response models, all stores in-memory. Includes 15 uncommitted route files adding ~80 new endpoints.
 - **Codebase survey (react-ui)**: Confirmed pure greenfield -- no `ui/` directory, no frontend code, no Node tooling.
 - **Framework documentation**: Reviewed Mantine v7 (AppShell, Stepper, forms, charts, notifications, dark mode), TanStack Query v5 (polling, mutations, cache), React Flow (custom nodes, drag-and-drop), React Router v7 (nested layouts), Vite (proxy, build), FastAPI (StaticFiles, CORS, SSE, OpenAPI), Pydantic v2 (response models, serializers).
 - **Web research**: Surveyed 2025-2026 best practices for admin dashboards, FastAPI+React integration, TypeScript client generation (Orval, @hey-api/openapi-ts), SSE streaming.
@@ -33,8 +33,8 @@ The frontend is pure greenfield -- no `ui/` directory, no Node.js tooling, no `.
 
 ## 3. Key Findings
 
-### Finding 1: All 56 Endpoints Return Untyped Dicts
-- **Discovery**: Every route handler returns `dict[str, Any]` or `list[dict[str, Any]]`. The OpenAPI schema has empty object types for all responses.
+### Finding 1: All ~136 Endpoints Return Untyped Dicts
+- **Discovery**: Every route handler returns `dict[str, Any]` or `list[dict[str, Any]]`. The OpenAPI schema has empty object types for all responses. This applies to all 29 route files (14 committed + 15 uncommitted).
 - **Evidence**: [CLEAN-01, REPO-03]
 - **Implication**: TypeScript client generation (Orval, openapi-typescript) produces `Record<string, unknown>` -- useless. Either add Pydantic response models (Option A) or hand-write TypeScript types (Option B/C).
 
@@ -44,9 +44,9 @@ The frontend is pure greenfield -- no `ui/` directory, no Node.js tooling, no `.
 - **Implication**: Must add `CORSMiddleware` or use Vite proxy. Both are XS effort.
 
 ### Finding 3: Domain Contracts Are Clean and Complete
-- **Discovery**: `contracts/types.py` defines 7 `StrEnum` types and 8 frozen dataclasses. `contracts/events.py` defines 34 event types with a complete registry. These map 1:1 to TypeScript union types and interfaces.
+- **Discovery**: `contracts/types.py` defines ~20 `StrEnum` types and ~22 frozen dataclasses (7 StrEnums + 8 dataclasses committed; ~13 StrEnums + ~14 dataclasses uncommitted). `contracts/events.py` defines 34 event types with a complete registry. These map 1:1 to TypeScript union types and interfaces.
 - **Evidence**: [REPO-07, REPO-08]
-- **Implication**: TypeScript type mirroring is mechanical -- can be auto-generated from OpenAPI if response models are added.
+- **Implication**: TypeScript type mirroring is mechanical -- can be auto-generated from OpenAPI if response models are added. The expanded type surface (~42 total types) increases the value of auto-generation over hand-writing.
 
 ### Finding 4: In-Memory Stores Reset on Every Restart
 - **Discovery**: All data stores live on `app.state` and are initialized fresh in the lifespan handler. No persistence.
@@ -59,7 +59,7 @@ The frontend is pure greenfield -- no `ui/` directory, no Node.js tooling, no `.
 - **Implication**: Minimal custom component development needed. Focus effort on the React Flow workflow editor and data integration.
 
 ### Finding 6: Orval Generates Complete TanStack Query Hooks from OpenAPI
-- **Discovery**: Orval in `react-query` + `tags-split` mode generates one typed hook file per endpoint tag -- `useQuery` for reads, `useMutation` for writes, with cache invalidation. Zero manual hook writing for 56 endpoints.
+- **Discovery**: Orval in `react-query` + `tags-split` mode generates one typed hook file per endpoint tag -- `useQuery` for reads, `useMutation` for writes, with cache invalidation. Zero manual hook writing for ~136 endpoints.
 - **Evidence**: [WEB-06 python-api, DOCS-16]
 - **Implication**: If Pydantic response models are added, the entire API client layer is auto-generated with full type safety.
 
@@ -71,7 +71,7 @@ The frontend is pure greenfield -- no `ui/` directory, no Node.js tooling, no `.
 ## 4. Analysis & Synthesis
 
 ### Current State
-The backend API surface is complete but unpolished for web client consumption. All 56 endpoints work and return valid-shaped data, but without typed response models the OpenAPI contract is meaningless for code generation. The domain layer (`contracts/`) is exemplary -- clean frozen dataclasses with `StrEnum` constants that map directly to TypeScript. The architecture boundary between contracts and infrastructure is well-maintained.
+The backend API surface is extensive: ~136 endpoints across 29 route files (14 committed + 15 uncommitted). All return `dict[str, Any]` -- without typed response models the OpenAPI contract is meaningless for code generation. The domain layer (`contracts/`) defines ~20 StrEnums and ~22 frozen dataclasses covering threads, workflows, agents, approvals, credentials, PII, sandboxes, settings, skills, projects, pipelines, and more.
 
 ### Constraints & Opportunities
 **Constraints:**
@@ -99,14 +99,14 @@ The backend API surface is complete but unpolished for web client consumption. A
 **Core Idea**: Add Pydantic response models to all FastAPI endpoints, then use Orval to auto-generate typed TanStack Query hooks. Build the SPA with feature-based folders.
 
 **Approach Overview**:
-- Backend prep: Add ~25 Pydantic response models, add CORS, add `generate_unique_id_function`
+- Backend prep: Add ~45 Pydantic response models (covering ~136 endpoints), add CORS, add `generate_unique_id_function`
 - Frontend scaffold: Vite + React 18 + TypeScript with bun
 - API layer: Orval generates `useQuery`/`useMutation` hooks per endpoint tag
 - Structure: `features/` per domain, `shared/` for cross-cutting, `app/` for routing
 
 **Key Trade-offs**:
 - Pros:
-  - Zero manual API hook writing for 56 endpoints [WEB-06 python-api]
+  - Zero manual API hook writing for ~136 endpoints [WEB-06 python-api]
   - Types stay in sync automatically -- change Python model, re-run Orval [DOCS-16]
   - Feature-based folders scale to 11+ page sections [WEB-16]
   - Mantine covers most UI needs out of the box [MANTINE-01 through MANTINE-10]
@@ -115,7 +115,7 @@ The backend API surface is complete but unpolished for web client consumption. A
   - Orval adds a build step and dependency
   - Generated code may need customization for complex transforms (snake_case -> camelCase)
 
-**Complexity**: M (backend prep) + L (frontend build)
+**Complexity**: L (backend prep: ~45 response models) + L (frontend build)
 **Best When**: Team values type safety and has capacity for backend model work upfront
 
 ### Option B: Hand-Written TypeScript Client + Feature-Based SPA
@@ -133,7 +133,7 @@ The backend API surface is complete but unpolished for web client consumption. A
   - Full control over API client shape and transforms
   - No Orval dependency or build step
 - Cons:
-  - Manual type maintenance across 56 endpoints (drift risk) [CLEAN-01]
+  - Manual type maintenance across ~136 endpoints with ~42 domain types (high drift risk) [CLEAN-01]
   - Must hand-write every `useQuery`/`useMutation` hook
   - No server-side response validation (backend returns `dict[str, Any]`)
   - OpenAPI spec remains unusable for documentation
@@ -167,12 +167,12 @@ The backend API surface is complete but unpolished for web client consumption. A
 **Recommended Approach**: Option A -- Orval-Generated Client + Feature-Based SPA
 
 **Why This Option Wins**:
-- With 56 endpoints, hand-writing and maintaining typed hooks is error-prone and tedious. Orval eliminates this entire class of work. [WEB-06 python-api]
-- The domain dataclasses in `contracts/types.py` are already well-defined -- mirroring them as Pydantic response models is mechanical. [REPO-07]
+- With ~136 endpoints and ~42 domain types, hand-writing and maintaining typed hooks is error-prone and tedious. Orval eliminates this entire class of work. [WEB-06 python-api]
+- The domain dataclasses in `contracts/types.py` are already well-defined (~20 StrEnums, ~22 dataclasses) -- mirroring them as Pydantic response models is mechanical. [REPO-07]
 - The type chain (Pydantic -> OpenAPI -> Orval -> TypeScript) provides end-to-end type safety with a single source of truth. [DOCS-16]
 
 **Trade-offs Accepted**:
-- M-effort backend work (Pydantic response models) must happen before Orval can generate useful types
+- L-effort backend work (~45 Pydantic response models) must happen before Orval can generate useful types
 - Orval adds a build step (`bunx orval` in pre-commit or CI)
 
 **Key Risks**:
@@ -191,8 +191,8 @@ See [risks.md](./research/risks.md) for detailed risk analysis.
 Review the solution options above and select the approach that best fits project constraints and priorities.
 
 **Questions to Consider**:
-- Is the M-effort for Pydantic response models acceptable before starting UI work?
-- Should we use bun (confirmed by user) for package management?
+- Is the L-effort for ~45 Pydantic response models acceptable before starting UI work?
+- Package manager: bun (confirmed by user)
 - Do we want MSW for frontend-only development, or always run the real backend?
 
 **Once Direction is Chosen**:
@@ -214,10 +214,10 @@ The plan phase will provide:
 ### Codebase Survey - python-api
 **Purpose**: Complete backend API surface for UI integration
 
-**Summary**: 56 endpoints across 14 route files. All return `dict[str, Any]`. Domain contracts (7 StrEnums, 8 dataclasses, 34 event types) are clean. No CORS, no auth, all stores in-memory.
+**Summary**: ~136 endpoints across 29 route files (14 committed + 15 uncommitted). All return `dict[str, Any]`. Domain contracts (~20 StrEnums, ~22 dataclasses, 34 event types) are clean. No CORS, no auth, all stores in-memory.
 
 **Key Findings**:
-- 56 endpoints mapped with request/response shapes
+- ~136 endpoints mapped with request/response shapes
 - TypeScript type equivalents derived from domain dataclasses
 - `X-Correlation-ID` middleware must be propagated by UI
 - `stream_id` format: `thread:{workspace_id}:{channel_id}:{thread_ts}`
@@ -303,7 +303,7 @@ The plan phase will provide:
 ### Web Research - python-api
 **Purpose**: FastAPI + React integration, TypeScript client generation, SSE
 
-**Summary**: Orval in `react-query` + `tags-split` mode is recommended for 56 endpoints. Native FastAPI SSE (0.135.0+) for event streaming. Single-container Docker deployment. Commit `openapi.json` and regenerate client in CI.
+**Summary**: Orval in `react-query` + `tags-split` mode is recommended for the ~136 endpoints. Native FastAPI SSE (0.135.0+) for event streaming. Single-container Docker deployment. Commit `openapi.json` and regenerate client in CI.
 
 **Key Findings**:
 - Orval generates TanStack Query hooks per endpoint tag
@@ -337,10 +337,10 @@ The plan phase will provide:
 ### Clean Code - python-api
 **Purpose**: API code quality for UI integration readiness
 
-**Summary**: 10 issues found. Top 3 blockers: no typed response models (40 endpoints), no CORS, no auth. Medium issues: placeholder 200 responses, verb-in-path routes, duplicate endpoints, inconsistent DI.
+**Summary**: 10 issues found. Top 3 blockers: no typed response models (~136 endpoints), no CORS, no auth. Medium issues: placeholder 200 responses, verb-in-path routes, duplicate endpoints, inconsistent DI.
 
 **Key Findings**:
-- All 40 endpoints return `dict[str, Any]` -- blocks TypeScript codegen
+- All ~136 endpoints return `dict[str, Any]` -- blocks TypeScript codegen
 - No CORS -- blocks all browser requests
 - `GET /threads` and `GET /workflows` return identical data
 - 7 lazy `hasattr` init functions scattered across route files
