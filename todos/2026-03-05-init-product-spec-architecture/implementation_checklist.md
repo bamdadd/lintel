@@ -92,14 +92,14 @@ graph LR
 
 ## Phase 7: Workflow Engine (LangGraph)
 
-- [ ] Step 7.1: LangGraph StateGraph wrapper behind Lintel abstractions
+- [x] Step 7.1: LangGraph StateGraph wrapper behind Lintel abstractions
   - Blocked by: Phases 3, 6
-- [ ] Step 7.2: Thread graph pattern (ingest -> route -> plan -> implement -> review -> close)
-- [ ] Step 7.3: Postgres checkpointing
-- [ ] Step 7.4: Human approval gates (interrupt_before)
-- [ ] Step 7.5: Parallel agent spawning (Send API)
-- [ ] Step 7.6: Workflow events (WorkflowStarted, WorkflowAdvanced, etc.)
-- [ ] Validation: `task test -- tests/unit/workflows/`
+- [x] Step 7.2: Thread graph pattern (ingest -> route -> plan -> implement -> review -> close)
+- [x] Step 7.3: Postgres checkpointing
+- [x] Step 7.4: Human approval gates (interrupt_before)
+- [x] Step 7.5: Parallel agent spawning (Send API)
+- [x] Step 7.6: Workflow events (WorkflowStarted, WorkflowAdvanced, etc.)
+- [x] Validation: `task test -- tests/unit/workflows/`
 
 ## Phase 8: Agent Runtime & Model Router
 
