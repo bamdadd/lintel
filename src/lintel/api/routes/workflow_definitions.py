@@ -2,9 +2,10 @@
 
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -57,7 +58,7 @@ def get_workflow_defs(request: Request) -> dict[str, dict[str, Any]]:
 
 
 class CreateWorkflowDefRequest(BaseModel):
-    definition_id: str
+    definition_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     description: str = ""
     is_template: bool = False

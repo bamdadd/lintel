@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -21,9 +21,17 @@ import {
   Title,
   ActionIcon,
   Text,
+  Loader,
+  Center,
 } from '@mantine/core';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useParams } from 'react-router';
+import {
+  useWorkflowDefinitionsGetWorkflowDefinition,
+  useWorkflowDefinitionsCreateWorkflowDefinition,
+  useWorkflowDefinitionsUpdateWorkflowDefinition,
+} from '@/generated/api/workflow-definitions/workflow-definitions';
 import { AgentStepNode } from '../components/nodes/AgentStepNode';
 import { ApprovalGateNode } from '../components/nodes/ApprovalGateNode';
 
@@ -56,9 +64,31 @@ const initialEdges = [
 ];
 
 export function Component() {
+  const { id } = useParams<{ id: string }>();
+  const { data: defResp, isLoading } = useWorkflowDefinitionsGetWorkflowDefinition(id ?? '', {
+    query: { enabled: !!id },
+  });
+  const createMut = useWorkflowDefinitionsCreateWorkflowDefinition();
+  const updateMut = useWorkflowDefinitionsUpdateWorkflowDefinition();
+
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [workflowName, setWorkflowName] = useState('Untitled Workflow');
+  const [loaded, setLoaded] = useState(false);
+
+  // Load existing workflow definition
+  useEffect(() => {
+    if (loaded || !defResp?.data) return;
+    const def = defResp.data as Record<string, unknown>;
+    if (def.name) setWorkflowName(String(def.name));
+    const graph = def.graph as { nodes?: Node[]; edges?: { id: string; source: string; target: string }[] } | undefined;
+    if (graph?.nodes?.length) {
+      setNodes(graph.nodes);
+      setEdges(graph.edges ?? []);
+    }
+    setLoaded(true);
+  }, [defResp, loaded, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -108,14 +138,31 @@ export function Component() {
     );
   };
 
+  if (id && isLoading) return <Center py="xl"><Loader /></Center>;
+
   const handleSave = () => {
-    const workflow = {
+    const graph = {
       nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
       edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target })),
     };
-    // TODO: persist via API when workflow definitions support saving
-    console.log('Workflow:', JSON.stringify(workflow, null, 2));
-    notifications.show({ title: 'Saved', message: 'Workflow saved (local only)', color: 'green' });
+
+    if (id) {
+      updateMut.mutate(
+        { definitionId: id, data: { name: workflowName, graph } },
+        {
+          onSuccess: () => notifications.show({ title: 'Saved', message: 'Workflow updated', color: 'green' }),
+          onError: () => notifications.show({ title: 'Error', message: 'Failed to save', color: 'red' }),
+        },
+      );
+    } else {
+      createMut.mutate(
+        { data: { name: workflowName, graph } },
+        {
+          onSuccess: () => notifications.show({ title: 'Created', message: 'Workflow created', color: 'green' }),
+          onError: () => notifications.show({ title: 'Error', message: 'Failed to create', color: 'red' }),
+        },
+      );
+    }
   };
 
   return (
@@ -136,17 +183,26 @@ export function Component() {
           <Controls />
           <MiniMap />
           <Panel position="top-left">
-            <Group gap="xs">
-              <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => addNode('agentStep')}>
-                Agent Step
-              </Button>
-              <Button size="xs" leftSection={<IconPlus size={14} />} variant="light" onClick={() => addNode('approvalGate')}>
-                Approval Gate
-              </Button>
-              <Button size="xs" variant="filled" color="green" onClick={handleSave}>
-                Save
-              </Button>
-            </Group>
+            <Stack gap="xs">
+              <TextInput
+                size="xs"
+                placeholder="Workflow name"
+                value={workflowName}
+                onChange={(e) => setWorkflowName(e.currentTarget.value)}
+                style={{ width: 200 }}
+              />
+              <Group gap="xs">
+                <Button size="xs" leftSection={<IconPlus size={14} />} onClick={() => addNode('agentStep')}>
+                  Agent Step
+                </Button>
+                <Button size="xs" leftSection={<IconPlus size={14} />} variant="light" onClick={() => addNode('approvalGate')}>
+                  Approval Gate
+                </Button>
+                <Button size="xs" variant="filled" color="green" onClick={handleSave} loading={updateMut.isPending || createMut.isPending}>
+                  Save
+                </Button>
+              </Group>
+            </Stack>
           </Panel>
         </ReactFlow>
       </div>

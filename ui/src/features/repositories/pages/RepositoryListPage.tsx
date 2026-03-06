@@ -12,6 +12,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { notifications } from '@mantine/notifications';
 import {
   useRepositoriesListRepositories,
@@ -36,6 +37,7 @@ export function Component() {
   const registerMutation = useRepositoriesRegisterRepository();
   const deleteMutation = useRepositoriesRemoveRepository();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [opened, { open, close }] = useDisclosure(false);
   const [form, setForm] = useState({ name: '', url: '', credential_ids: [] as string[] });
   const repos = resp?.data;
@@ -104,7 +106,7 @@ export function Component() {
           </Table.Thead>
           <Table.Tbody>
             {repos.map((r, i) => (
-              <Table.Tr key={i}>
+              <Table.Tr key={i} style={{ cursor: 'pointer' }} onClick={() => void navigate(`/repositories/${String(r.repo_id ?? '')}`)}>
                 <Table.Td>{String(r.name ?? '')}</Table.Td>
                 <Table.Td>{String(r.url ?? '')}</Table.Td>
                 <Table.Td>{String(r.default_branch ?? 'main')}</Table.Td>

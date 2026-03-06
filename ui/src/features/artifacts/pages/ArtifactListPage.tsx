@@ -1,10 +1,11 @@
 import {
   Title, Stack, Table, Loader, Center, Badge, Text, Tabs, Group, TextInput,
-  Modal, ScrollArea, Code,
+  Modal, ScrollArea, Code, Progress,
 } from '@mantine/core';
 import { useState } from 'react';
 import {
   useArtifactsListArtifacts,
+  useArtifactsListTestResults,
 } from '@/generated/api/artifacts/artifacts';
 import { EmptyState } from '@/shared/components/EmptyState';
 
@@ -36,18 +37,23 @@ const verdictColor: Record<string, string> = { passed: 'green', failed: 'red', e
 
 export function Component() {
   const { data: artifactsResp, isLoading: artLoading } = useArtifactsListArtifacts();
+  const { data: testsResp, isLoading: testsLoading } = useArtifactsListTestResults();
   const [filter, setFilter] = useState('');
   const [viewArtifact, setViewArtifact] = useState<ArtifactItem | null>(null);
 
-  // Test results use a separate query - for now we'll fetch via artifacts endpoint
-  // In a real app these would be separate tabs with separate queries
-
-  if (artLoading) return <Center py="xl"><Loader /></Center>;
+  if (artLoading || testsLoading) return <Center py="xl"><Loader /></Center>;
 
   const artifacts = (artifactsResp?.data ?? []) as ArtifactItem[];
+  const testResults = (testsResp?.data ?? []) as TestResultItem[];
+
   const filteredArtifacts = artifacts.filter((a) =>
     a.path?.toLowerCase().includes(filter.toLowerCase())
     || a.artifact_type?.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const filteredTests = testResults.filter((t) =>
+    t.verdict?.toLowerCase().includes(filter.toLowerCase())
+    || t.run_id?.toLowerCase().includes(filter.toLowerCase())
   );
 
   return (
@@ -60,7 +66,7 @@ export function Component() {
       <Tabs defaultValue="artifacts">
         <Tabs.List>
           <Tabs.Tab value="artifacts">Code Artifacts ({artifacts.length})</Tabs.Tab>
-          <Tabs.Tab value="tests">Test Results</Tabs.Tab>
+          <Tabs.Tab value="tests">Test Results ({testResults.length})</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="artifacts" pt="sm">
@@ -91,7 +97,47 @@ export function Component() {
         </Tabs.Panel>
 
         <Tabs.Panel value="tests" pt="sm">
-          <EmptyState title="No test results" description="Test results appear after pipeline stages complete" />
+          {testResults.length === 0 ? (
+            <EmptyState title="No test results" description="Test results appear after pipeline stages complete" />
+          ) : (
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Run</Table.Th>
+                  <Table.Th>Stage</Table.Th>
+                  <Table.Th>Verdict</Table.Th>
+                  <Table.Th>Results</Table.Th>
+                  <Table.Th>Pass Rate</Table.Th>
+                  <Table.Th>Created</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {filteredTests.map((t) => {
+                  const passRate = t.total > 0 ? Math.round((t.passed / t.total) * 100) : 0;
+                  return (
+                    <Table.Tr key={t.result_id}>
+                      <Table.Td><Text size="xs" ff="monospace">{t.run_id?.slice(0, 8)}</Text></Table.Td>
+                      <Table.Td><Text size="xs" ff="monospace">{t.stage_id?.slice(0, 8)}</Text></Table.Td>
+                      <Table.Td><Badge color={verdictColor[t.verdict] ?? 'gray'}>{t.verdict}</Badge></Table.Td>
+                      <Table.Td>
+                        <Group gap={4}>
+                          <Badge size="sm" color="green" variant="light">{t.passed} pass</Badge>
+                          {t.failed > 0 && <Badge size="sm" color="red" variant="light">{t.failed} fail</Badge>}
+                          {t.errors > 0 && <Badge size="sm" color="orange" variant="light">{t.errors} err</Badge>}
+                          {t.skipped > 0 && <Badge size="sm" color="gray" variant="light">{t.skipped} skip</Badge>}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td style={{ width: 120 }}>
+                        <Progress value={passRate} color={passRate === 100 ? 'green' : passRate > 80 ? 'yellow' : 'red'} size="sm" />
+                        <Text size="xs" ta="center">{passRate}%</Text>
+                      </Table.Td>
+                      <Table.Td><Text size="sm">{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</Text></Table.Td>
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          )}
         </Tabs.Panel>
       </Tabs>
 

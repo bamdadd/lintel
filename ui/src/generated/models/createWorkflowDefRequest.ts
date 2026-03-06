@@ -7,7 +7,7 @@
 import type { CreateWorkflowDefRequestGraph } from './createWorkflowDefRequestGraph';
 
 export interface CreateWorkflowDefRequest {
-  definition_id: string;
+  definition_id?: string;
   name: string;
   description?: string;
   is_template?: boolean;
