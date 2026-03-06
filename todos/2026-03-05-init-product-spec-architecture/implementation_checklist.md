@@ -82,13 +82,13 @@ graph LR
 
 ## Phase 6: Slack Channel Adapter
 
-- [ ] Step 6.1: ChannelAdapter protocol implementation with Slack Bolt
+- [x] Step 6.1: ChannelAdapter protocol implementation with Slack Bolt
   - Blocked by: Phases 3, 4
-- [ ] Step 6.2: Inbound event translation (Slack -> canonical events)
-- [ ] Step 6.3: Outbound message formatting (Block Kit)
-- [ ] Step 6.4: Interactive components (approval buttons, reactions)
-- [ ] Step 6.5: Thread context management
-- [ ] Validation: `task test -- tests/unit/channels/`
+- [x] Step 6.2: Inbound event translation (Slack -> canonical events)
+- [x] Step 6.3: Outbound message formatting (Block Kit)
+- [x] Step 6.4: Interactive components (approval buttons, reactions)
+- [x] Step 6.5: Thread context management
+- [x] Validation: `task test -- tests/unit/channels/`
 
 ## Phase 7: Workflow Engine (LangGraph)
 
