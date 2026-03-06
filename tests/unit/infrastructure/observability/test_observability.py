@@ -11,6 +11,7 @@ from lintel.infrastructure.observability.correlation import (
     set_correlation_id,
 )
 from lintel.infrastructure.observability.logging import configure_logging
+from lintel.infrastructure.observability.metrics import configure_metrics
 from lintel.infrastructure.observability.tracing import configure_tracing
 
 
@@ -69,3 +70,19 @@ class TestConfigureTracing:
     def test_with_endpoint(self) -> None:
         tracer = configure_tracing(otel_endpoint="http://localhost:4317")
         assert tracer is not None
+
+
+class TestConfigureMetrics:
+    def test_creates_meter(self) -> None:
+        meter = configure_metrics()
+        assert meter is not None
+
+    def test_creates_counters(self) -> None:
+        meter = configure_metrics()
+        counter = meter.create_counter("test_counter")
+        assert counter is not None
+
+    def test_creates_histogram(self) -> None:
+        meter = configure_metrics()
+        histogram = meter.create_histogram("test_histogram")
+        assert histogram is not None
