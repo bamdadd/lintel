@@ -935,6 +935,31 @@
       }
     },
     "/api/v1/sandboxes": {
+      "get": {
+        "tags": [
+          "sandboxes"
+        ],
+        "summary": "List Sandboxes",
+        "description": "List all sandbox environments.",
+        "operationId": "sandboxes_list_sandboxes",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Sandboxes List Sandboxes"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "sandboxes"
@@ -6613,6 +6638,16 @@
             "type": "boolean",
             "title": "Network Enabled",
             "default": false
+          },
+          "devcontainer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DevcontainerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6960,6 +6995,83 @@
           "decided_by"
         ],
         "title": "DecisionBody"
+      },
+      "DevcontainerConfig": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "sandbox"
+          },
+          "image": {
+            "type": "string",
+            "title": "Image",
+            "default": "mcr.microsoft.com/devcontainers/base:ubuntu"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/DevcontainerFeature"
+            },
+            "type": "array",
+            "title": "Features",
+            "default": []
+          },
+          "forward_ports": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Forward Ports",
+            "default": []
+          },
+          "post_create_command": {
+            "type": "string",
+            "title": "Post Create Command",
+            "default": ""
+          },
+          "post_start_command": {
+            "type": "string",
+            "title": "Post Start Command",
+            "default": ""
+          },
+          "remote_env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Remote Env",
+            "default": {}
+          },
+          "customizations": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Customizations",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "DevcontainerConfig",
+        "description": "Devcontainer-compatible sandbox configuration."
+      },
+      "DevcontainerFeature": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "options": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Options",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "DevcontainerFeature",
+        "description": "A devcontainer feature reference."
       },
       "EnvironmentType": {
         "type": "string",

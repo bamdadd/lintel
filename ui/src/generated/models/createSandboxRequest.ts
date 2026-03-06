@@ -4,6 +4,7 @@
  * Lintel
  * OpenAPI spec version: 0.1.0
  */
+import type { DevcontainerConfig } from './devcontainerConfig';
 
 export interface CreateSandboxRequest {
   workspace_id: string;
@@ -11,4 +12,5 @@ export interface CreateSandboxRequest {
   thread_ts: string;
   image?: string;
   network_enabled?: boolean;
+  devcontainer?: DevcontainerConfig | null;
 }

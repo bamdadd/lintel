@@ -30,6 +30,7 @@ import type {
   SandboxesCreateSandbox201,
   SandboxesExecuteCommand200,
   SandboxesGetSandboxStatus200,
+  SandboxesListSandboxes200Item,
   SandboxesReadFile200,
   SandboxesReadFileParams,
   SandboxesWriteFile200,
@@ -40,6 +41,117 @@ import { customInstance } from '../../../shared/api/client';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
+
+/**
+ * List all sandbox environments.
+ * @summary List Sandboxes
+ */
+export type sandboxesListSandboxesResponse200 = {
+  data: SandboxesListSandboxes200Item[]
+  status: 200
+}
+
+export type sandboxesListSandboxesResponseSuccess = (sandboxesListSandboxesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type sandboxesListSandboxesResponse = (sandboxesListSandboxesResponseSuccess)
+
+export const getSandboxesListSandboxesUrl = () => {
+
+
+  
+
+  return `/api/v1/sandboxes`
+}
+
+export const sandboxesListSandboxes = async ( options?: RequestInit): Promise<sandboxesListSandboxesResponse> => {
+  
+  return customInstance<sandboxesListSandboxesResponse>(getSandboxesListSandboxesUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getSandboxesListSandboxesQueryKey = () => {
+    return [
+    `/api/v1/sandboxes`
+    ] as const;
+    }
+
+    
+export const getSandboxesListSandboxesQueryOptions = <TData = Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSandboxesListSandboxesQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesListSandboxes>>> = ({ signal }) => sandboxesListSandboxes({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SandboxesListSandboxesQueryResult = NonNullable<Awaited<ReturnType<typeof sandboxesListSandboxes>>>
+export type SandboxesListSandboxesQueryError = unknown
+
+
+export function useSandboxesListSandboxes<TData = Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesListSandboxes>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesListSandboxes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesListSandboxes<TData = Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesListSandboxes>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesListSandboxes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesListSandboxes<TData = Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Sandboxes
+ */
+
+export function useSandboxesListSandboxes<TData = Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxes>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSandboxesListSandboxesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
 
 
 
