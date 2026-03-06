@@ -59,6 +59,22 @@ make serve
 make all
 ```
 
+## Local development with Docker
+
+```bash
+# Copy and fill in environment variables
+cp .env.example .env
+
+# Start all services (Postgres, NATS, Lintel)
+cd ops && docker compose up -d
+
+# Verify
+curl http://localhost:8000/healthz
+
+# Stop
+cd ops && docker compose down
+```
+
 ## Available commands
 
 Run `make help` to see all targets.
