@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import NotificationChannel, NotificationRule
 
@@ -48,7 +50,7 @@ def _rule_to_dict(rule: NotificationRule) -> dict[str, Any]:
 
 
 class CreateNotificationRuleRequest(BaseModel):
-    rule_id: str
+    rule_id: str = Field(default_factory=lambda: str(uuid4()))
     project_id: str
     event_types: list[str] = []
     channel: NotificationChannel = NotificationChannel.SLACK

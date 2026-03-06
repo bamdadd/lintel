@@ -5,7 +5,7 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
 
@@ -58,9 +58,9 @@ def get_pipeline_store(request: Request) -> InMemoryPipelineStore:
 
 
 class CreatePipelineRequest(BaseModel):
-    run_id: str
+    run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     project_id: str
-    work_item_id: str
+    work_item_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     workflow_definition_id: str = "feature_to_pr"
     trigger_type: str = ""
     trigger_id: str = ""

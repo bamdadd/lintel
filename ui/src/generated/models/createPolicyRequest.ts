@@ -7,7 +7,7 @@
 import type { PolicyAction } from './policyAction';
 
 export interface CreatePolicyRequest {
-  policy_id: string;
+  policy_id?: string;
   name: string;
   event_type?: string;
   condition?: string;

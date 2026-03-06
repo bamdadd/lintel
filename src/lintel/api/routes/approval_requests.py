@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import ApprovalRequest, ApprovalStatus
 
@@ -61,7 +63,7 @@ StoreDep = Annotated[InMemoryApprovalRequestStore, Depends(get_approval_request_
 
 
 class CreateApprovalRequestBody(BaseModel):
-    approval_id: str
+    approval_id: str = Field(default_factory=lambda: str(uuid4()))
     run_id: str
     gate_type: str
     requested_by: str = ""

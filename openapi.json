@@ -6257,7 +6257,6 @@
         },
         "type": "object",
         "required": [
-          "provider_id",
           "provider_type",
           "name"
         ],
@@ -6334,7 +6333,6 @@
         },
         "type": "object",
         "required": [
-          "approval_id",
           "run_id",
           "gate_type"
         ],
@@ -6438,7 +6436,6 @@
         },
         "type": "object",
         "required": [
-          "artifact_id",
           "work_item_id",
           "run_id",
           "artifact_type"
@@ -6479,7 +6476,6 @@
         },
         "type": "object",
         "required": [
-          "environment_id",
           "name"
         ],
         "title": "CreateEnvironmentRequest"
@@ -6519,7 +6515,6 @@
         },
         "type": "object",
         "required": [
-          "rule_id",
           "project_id"
         ],
         "title": "CreateNotificationRuleRequest"
@@ -6556,9 +6551,7 @@
         },
         "type": "object",
         "required": [
-          "run_id",
-          "project_id",
-          "work_item_id"
+          "project_id"
         ],
         "title": "CreatePipelineRequest"
       },
@@ -6602,7 +6595,6 @@
         },
         "type": "object",
         "required": [
-          "policy_id",
           "name"
         ],
         "title": "CreatePolicyRequest"
@@ -6805,7 +6797,6 @@
         },
         "type": "object",
         "required": [
-          "result_id",
           "run_id",
           "stage_id",
           "verdict"
@@ -6849,7 +6840,6 @@
         },
         "type": "object",
         "required": [
-          "trigger_id",
           "project_id",
           "trigger_type",
           "name"
@@ -6927,7 +6917,6 @@
         },
         "type": "object",
         "required": [
-          "variable_id",
           "key",
           "value"
         ],
@@ -6983,7 +6972,6 @@
         },
         "type": "object",
         "required": [
-          "work_item_id",
           "project_id",
           "title"
         ],

@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import AIProvider, AIProviderType
 
@@ -64,7 +66,7 @@ def get_ai_provider_store(request: Request) -> InMemoryAIProviderStore:
 
 
 class CreateAIProviderRequest(BaseModel):
-    provider_id: str
+    provider_id: str = Field(default_factory=lambda: str(uuid4()))
     provider_type: AIProviderType
     name: str
     api_key: str = ""

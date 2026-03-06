@@ -86,6 +86,46 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/teams/pages/TeamListPage'),
       },
       {
+        path: 'notifications',
+        lazy: () => import('@/features/notifications/pages/NotificationListPage'),
+      },
+      {
+        path: 'audit',
+        lazy: () => import('@/features/audit/pages/AuditLogPage'),
+      },
+      {
+        path: 'triggers',
+        lazy: () => import('@/features/triggers/pages/TriggerListPage'),
+      },
+      {
+        path: 'variables',
+        lazy: () => import('@/features/variables/pages/VariableListPage'),
+      },
+      {
+        path: 'environments',
+        lazy: () => import('@/features/environments/pages/EnvironmentListPage'),
+      },
+      {
+        path: 'policies',
+        lazy: () => import('@/features/policies/pages/PolicyListPage'),
+      },
+      {
+        path: 'ai-providers',
+        lazy: () => import('@/features/ai-providers/pages/AIProviderListPage'),
+      },
+      {
+        path: 'artifacts',
+        lazy: () => import('@/features/artifacts/pages/ArtifactListPage'),
+      },
+      {
+        path: 'approvals',
+        lazy: () => import('@/features/approval-requests/pages/ApprovalRequestListPage'),
+      },
+      {
+        path: 'work-items',
+        lazy: () => import('@/features/work-items/pages/WorkItemListPage'),
+      },
+      {
         path: 'settings',
         lazy: () => import('@/features/settings/pages/SettingsPage'),
       },

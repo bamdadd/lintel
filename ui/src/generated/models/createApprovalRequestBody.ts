@@ -6,7 +6,7 @@
  */
 
 export interface CreateApprovalRequestBody {
-  approval_id: string;
+  approval_id?: string;
   run_id: string;
   gate_type: string;
   requested_by?: string;

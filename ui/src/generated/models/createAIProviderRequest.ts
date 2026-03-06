@@ -8,7 +8,7 @@ import type { AIProviderType } from './aIProviderType';
 import type { CreateAIProviderRequestConfig } from './createAIProviderRequestConfig';
 
 export interface CreateAIProviderRequest {
-  provider_id: string;
+  provider_id?: string;
   provider_type: AIProviderType;
   name: string;
   api_key?: string;

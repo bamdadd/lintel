@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Environment, EnvironmentType
 
@@ -46,7 +48,7 @@ def get_environment_store(request: Request) -> InMemoryEnvironmentStore:
 
 
 class CreateEnvironmentRequest(BaseModel):
-    environment_id: str
+    environment_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     env_type: EnvironmentType = EnvironmentType.DEVELOPMENT
     project_id: str = ""

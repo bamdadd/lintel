@@ -7,7 +7,7 @@
 import type { NotificationChannel } from './notificationChannel';
 
 export interface CreateNotificationRuleRequest {
-  rule_id: string;
+  rule_id?: string;
   project_id: string;
   event_types?: string[];
   channel?: NotificationChannel;

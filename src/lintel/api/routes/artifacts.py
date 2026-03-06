@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import CodeArtifact, TestResult, TestVerdict
 
@@ -82,7 +84,7 @@ def _test_result_to_dict(result: TestResult) -> dict[str, Any]:
 
 
 class CreateCodeArtifactRequest(BaseModel):
-    artifact_id: str
+    artifact_id: str = Field(default_factory=lambda: str(uuid4()))
     work_item_id: str
     run_id: str
     artifact_type: str
@@ -92,7 +94,7 @@ class CreateCodeArtifactRequest(BaseModel):
 
 
 class CreateTestResultRequest(BaseModel):
-    result_id: str
+    result_id: str = Field(default_factory=lambda: str(uuid4()))
     run_id: str
     stage_id: str
     verdict: TestVerdict

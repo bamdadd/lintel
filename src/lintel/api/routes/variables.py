@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Variable
 
@@ -64,7 +66,7 @@ def get_variable_store(request: Request) -> InMemoryVariableStore:
 
 
 class CreateVariableRequest(BaseModel):
-    variable_id: str
+    variable_id: str = Field(default_factory=lambda: str(uuid4()))
     key: str
     value: str
     project_id: str = ""

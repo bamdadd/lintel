@@ -6,7 +6,7 @@
  */
 
 export interface CreateVariableRequest {
-  variable_id: string;
+  variable_id?: string;
   key: string;
   value: string;
   project_id?: string;

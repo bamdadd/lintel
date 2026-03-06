@@ -7,7 +7,7 @@
 import type { TestVerdict } from './testVerdict';
 
 export interface CreateTestResultRequest {
-  result_id: string;
+  result_id?: string;
   run_id: string;
   stage_id: string;
   verdict: TestVerdict;

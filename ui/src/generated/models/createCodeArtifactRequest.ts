@@ -7,7 +7,7 @@
 import type { CreateCodeArtifactRequestMetadata } from './createCodeArtifactRequestMetadata';
 
 export interface CreateCodeArtifactRequest {
-  artifact_id: string;
+  artifact_id?: string;
   work_item_id: string;
   run_id: string;
   artifact_type: string;

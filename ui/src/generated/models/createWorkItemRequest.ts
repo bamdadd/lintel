@@ -8,7 +8,7 @@ import type { WorkItemStatus } from './workItemStatus';
 import type { WorkItemType } from './workItemType';
 
 export interface CreateWorkItemRequest {
-  work_item_id: string;
+  work_item_id?: string;
   project_id: string;
   title: string;
   description?: string;

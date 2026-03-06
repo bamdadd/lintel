@@ -8,7 +8,7 @@ import type { CreateEnvironmentRequestConfig } from './createEnvironmentRequestC
 import type { EnvironmentType } from './environmentType';
 
 export interface CreateEnvironmentRequest {
-  environment_id: string;
+  environment_id?: string;
   name: string;
   env_type?: EnvironmentType;
   project_id?: string;

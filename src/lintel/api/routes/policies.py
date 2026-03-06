@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Policy, PolicyAction
 
@@ -42,7 +44,7 @@ def get_policy_store(request: Request) -> InMemoryPolicyStore:
 
 
 class CreatePolicyRequest(BaseModel):
-    policy_id: str
+    policy_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     event_type: str = ""
     condition: str = ""

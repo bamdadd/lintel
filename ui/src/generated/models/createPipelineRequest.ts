@@ -6,9 +6,9 @@
  */
 
 export interface CreatePipelineRequest {
-  run_id: string;
+  run_id?: string;
   project_id: string;
-  work_item_id: string;
+  work_item_id?: string;
   workflow_definition_id?: string;
   trigger_type?: string;
   trigger_id?: string;

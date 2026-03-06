@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Trigger, TriggerType
 
@@ -61,7 +63,7 @@ def get_trigger_store(request: Request) -> InMemoryTriggerStore:
 
 
 class CreateTriggerRequest(BaseModel):
-    trigger_id: str
+    trigger_id: str = Field(default_factory=lambda: str(uuid4()))
     project_id: str
     trigger_type: TriggerType
     name: str

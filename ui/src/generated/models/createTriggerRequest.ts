@@ -8,7 +8,7 @@ import type { CreateTriggerRequestConfig } from './createTriggerRequestConfig';
 import type { TriggerType } from './triggerType';
 
 export interface CreateTriggerRequest {
-  trigger_id: string;
+  trigger_id?: string;
   project_id: string;
   trigger_type: TriggerType;
   name: string;

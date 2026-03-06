@@ -4,7 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from uuid import uuid4
+
+from pydantic import BaseModel, Field
 
 from lintel.contracts.types import WorkItem, WorkItemStatus, WorkItemType
 
@@ -42,7 +44,7 @@ def get_work_item_store(request: Request) -> WorkItemStore:
 
 
 class CreateWorkItemRequest(BaseModel):
-    work_item_id: str
+    work_item_id: str = Field(default_factory=lambda: str(uuid4()))
     project_id: str
     title: str
     description: str = ""
