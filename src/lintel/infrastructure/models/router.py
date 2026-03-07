@@ -102,7 +102,7 @@ class DefaultModelRouter:
             kwargs["api_base"] = effective_base.rstrip("/")
 
         response = await litellm.acompletion(**kwargs)
-        return {
+        result: dict[str, Any] = {
             "content": response.choices[0].message.content,
             "usage": {
                 "input_tokens": response.usage.prompt_tokens,
@@ -110,6 +110,21 @@ class DefaultModelRouter:
             },
             "model": response.model,
         }
+        # Propagate tool calls if present
+        msg = response.choices[0].message
+        if hasattr(msg, "tool_calls") and msg.tool_calls:
+            result["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for tc in msg.tool_calls
+            ]
+        return result
 
     async def stream_model(
         self,

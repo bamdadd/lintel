@@ -15,7 +15,10 @@ import {
   Badge,
   Select,
 } from '@mantine/core';
-import { IconSend, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconSend, IconPlus, IconTrash, IconCopy, IconCheck } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '../chat-markdown.css';
 import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -41,6 +44,21 @@ interface Conversation {
   created_at: string;
   model_id: string | null;
   messages: Message[];
+}
+
+function CopyBtn({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={handleCopy} title="Copy" ml={4}>
+      {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+    </ActionIcon>
+  );
 }
 
 export function Component() {
@@ -336,11 +354,13 @@ export function Component() {
                     </Center>
                   )}
                   {messages.map((m) => (
-                    <Group
+                    <Box
                       key={m.message_id}
-                      justify={m.role === 'user' ? 'flex-end' : 'flex-start'}
-                      align="flex-end"
-                      gap="xs"
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                      }}
                     >
                       <Paper
                         p="sm"
@@ -360,18 +380,23 @@ export function Component() {
                             {new Date(m.timestamp).toLocaleTimeString()}
                           </Text>
                         </Group>
-                        <Text
-                          size="sm"
-                          style={{ whiteSpace: 'pre-wrap' }}
-                          c={m.role === 'user' ? 'white' : undefined}
-                        >
-                          {m.content}
-                        </Text>
+                        {m.role === 'user' ? (
+                          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }} c="white">
+                            {m.content}
+                          </Text>
+                        ) : (
+                          <Box className="chat-markdown" fz="sm">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {m.content}
+                            </ReactMarkdown>
+                          </Box>
+                        )}
                       </Paper>
-                    </Group>
+                      <CopyBtn content={m.content} />
+                    </Box>
                   ))}
                   {isThinking && streamingContent && (
-                    <Group justify="flex-start" align="flex-end" gap="xs">
+                    <Box style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                       <Paper
                         p="sm"
                         radius="md"
@@ -381,11 +406,14 @@ export function Component() {
                         <Group gap="xs" mb={4}>
                           <Badge size="xs" variant="light">Lintel</Badge>
                         </Group>
-                        <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                          {streamingContent}
-                        </Text>
+                        <Box className="chat-markdown" fz="sm">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {streamingContent}
+                          </ReactMarkdown>
+                        </Box>
                       </Paper>
-                    </Group>
+                      <CopyBtn content={streamingContent} />
+                    </Box>
                   )}
                   {isThinking && !streamingContent && (
                     <Group justify="flex-start" align="flex-end" gap="xs">

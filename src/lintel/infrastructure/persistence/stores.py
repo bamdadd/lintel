@@ -84,6 +84,18 @@ class PostgresAIProviderStore(PostgresCrudStore):
             )
 
 
+class PostgresMCPServerStore(PostgresCrudStore):
+    """MCP server store."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        from lintel.contracts.types import MCPServer
+
+        super().__init__(pool, "mcp_server", "server_id", MCPServer)
+
+    async def list_enabled(self) -> list[Any]:
+        return await self.list_all(enabled="true")
+
+
 class PostgresCredentialStore(PostgresCrudStore):
     """Credential store with secret management."""
 

@@ -680,5 +680,17 @@ class JobInput:
     passed_constraints: tuple[PassedConstraint, ...] = ()
 
 
+@dataclass(frozen=True)
+class MCPServer:
+    """A configured MCP server that provides tools to chat sessions."""
+
+    server_id: str
+    name: str
+    url: str
+    enabled: bool = True
+    description: str = ""
+    config: dict[str, object] | None = None
+
+
 CorrelationId = NewType("CorrelationId", UUID)
 EventId = NewType("EventId", UUID)

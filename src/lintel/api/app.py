@@ -30,6 +30,7 @@ from lintel.api.routes import (
     environments,
     events,
     health,
+    mcp_servers,
     metrics,
     models,
     notifications,
@@ -60,6 +61,7 @@ from lintel.api.routes.audit import AuditEntryStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.credentials import InMemoryCredentialStore
 from lintel.api.routes.environments import InMemoryEnvironmentStore
+from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
 from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.api.routes.notifications import NotificationRuleStore
 from lintel.api.routes.pipelines import InMemoryPipelineStore
@@ -152,6 +154,7 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "agent_definition_store": AgentDefinitionStore(),
         "model_store": InMemoryModelStore(),
         "model_assignment_store": InMemoryModelAssignmentStore(),
+        "mcp_server_store": InMemoryMCPServerStore(),
     }
 
 
@@ -167,6 +170,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         PostgresCodeArtifactStore,
         PostgresCredentialStore,
         PostgresEnvironmentStore,
+        PostgresMCPServerStore,
         PostgresModelAssignmentStore,
         PostgresModelStore,
         PostgresNotificationRuleStore,
@@ -207,6 +211,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "agent_definition_store": PostgresAgentDefinitionStore(pool),
         "model_store": PostgresModelStore(pool),
         "model_assignment_store": PostgresModelAssignmentStore(pool),
+        "mcp_server_store": PostgresMCPServerStore(pool),
     }
 
 
@@ -218,6 +223,12 @@ async def _noop_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    # Configure structured logging so structlog output appears in console
+    from lintel.infrastructure.observability.logging import configure_logging
+
+    log_level = os.environ.get("LINTEL_LOG_LEVEL", "INFO").upper()
+    configure_logging(log_level=log_level, log_format="console")
+
     # Determine storage backend from LINTEL_STORAGE_BACKEND setting.
     # Values: "postgres" (requires LINTEL_DB_DSN), "memory" (default).
     storage_backend = os.environ.get("LINTEL_STORAGE_BACKEND", "").lower()
@@ -265,11 +276,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     dispatcher.register(StartWorkflow, executor.execute)
     app.state.command_dispatcher = dispatcher
 
-    # Wire chat router with model router (if providers are configured)
+    # Wire chat router with model router and MCP tool support
     ollama_base = os.environ.get("OLLAMA_API_BASE", "http://localhost:11434")
     model_router = DefaultModelRouter(ollama_api_base=ollama_base)
-    chat_router = ChatRouter(model_router=model_router)
+
+    from lintel.infrastructure.mcp.tool_client import MCPToolClient
+
+    mcp_tool_client = MCPToolClient()
+    chat_router = ChatRouter(
+        model_router=model_router,
+        mcp_tool_client=mcp_tool_client,
+        mcp_server_store=stores["mcp_server_store"],
+    )
     app.state.chat_router = chat_router
+    app.state.mcp_tool_client = mcp_tool_client
 
     # Seed built-in agents and skills
     await _seed_defaults(stores)
@@ -345,8 +365,19 @@ def create_app() -> FastAPI:
     app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
     app.include_router(models.router, prefix="/api/v1", tags=["models"])
+    app.include_router(mcp_servers.router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+
+    # Expose all API endpoints as MCP tools/resources
+    from fastapi_mcp import FastApiMCP  # type: ignore[import-untyped]
+
+    mcp = FastApiMCP(
+        app,
+        name="Lintel MCP",
+        describe_all_responses=True,
+    )
+    mcp.mount_http()
 
     # Serve SPA static files in production (must be last)
     static_dir = Path(__file__).parent / "static"

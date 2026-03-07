@@ -24,6 +24,7 @@ dependencies = [
     "opentelemetry-exporter-otlp>=1.29",
     "cryptography>=44.0",
     "nats-py>=2.9",
+    "fastapi-mcp>=0.4.0",
 ]
 
 [project.optional-dependencies]

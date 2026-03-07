@@ -45,7 +45,7 @@ db-down: ## Stop PostgreSQL
 	docker compose down
 
 serve-db: db-up migrate ## Start dev server with PostgreSQL storage
-	LINTEL_STORAGE_BACKEND=postgres LINTEL_DB_DSN=postgresql://lintel:lintel@localhost:5432/lintel uv run uvicorn lintel.api.app:app --reload --port 8000
+	LINTEL_STORAGE_BACKEND=postgres LINTEL_DB_DSN=postgresql://lintel:lintel@localhost:5432/lintel LITELLM_LOG=DEBUG uv run uvicorn lintel.api.app:app --reload --port 8000
 
 migrate: ## Run event store migrations
 	LINTEL_DB_DSN=$${LINTEL_DB_DSN:-postgresql://lintel:lintel@localhost:5432/lintel} \

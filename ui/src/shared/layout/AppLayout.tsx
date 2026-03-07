@@ -40,6 +40,7 @@ import {
   IconPackage,
   IconCheckbox,
   IconListCheck,
+  IconPlug,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -78,6 +79,7 @@ const navSections: NavSection[] = [
       { label: 'Skills', path: '/skills', icon: IconCode },
       { label: 'AI Providers', path: '/ai-providers', icon: IconBrain },
       { label: 'Models', path: '/models', icon: IconCpu },
+      { label: 'MCP Servers', path: '/mcp-servers', icon: IconPlug },
     ],
   },
   {
