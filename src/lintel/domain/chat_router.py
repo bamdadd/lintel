@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 WORKFLOW_KEYWORDS: dict[str, list[str]] = {
     "feature_to_pr": ["build", "implement", "create", "add feature", "new feature", "develop"],
     "bug_fix": ["fix", "bug", "broken", "error", "crash", "regression"],
-    "refactor": ["refactor", "clean up", "modernize", "restructure", "simplify"],
+    "refactor": ["refactor", "clean up", "modernize", "restructure", "simplify", "remove the need", "get rid of", "eliminate"],
     "code_review": ["review", "check code", "audit code", "look at the code"],
     "security_audit": ["security", "vulnerability", "cve", "penetration"],
     "documentation": ["document", "write docs", "update readme", "api docs"],
@@ -56,17 +56,33 @@ class ChatRouter:
         model_policy: ModelPolicy | None = None,
         api_base: str | None = None,
     ) -> ChatRouterResult:
+        keyword_result = self._classify_with_keywords(message)
+
         if self._model_router is not None:
             try:
-                return await self._classify_with_llm(
+                llm_result = await self._classify_with_llm(
                     message,
                     model_policy=model_policy,
                     api_base=api_base,
                 )
+                # If keywords say it's a workflow but LLM says chat, trust keywords —
+                # LLMs often misclassify actionable requests as chat replies
+                if (
+                    keyword_result.action == "start_workflow"
+                    and llm_result.action == "chat_reply"
+                ):
+                    logger.info(
+                        "classify_override_llm_with_keywords",
+                        llm_action=llm_result.action,
+                        keyword_action=keyword_result.action,
+                        workflow_type=keyword_result.workflow_type,
+                    )
+                    return keyword_result
+                return llm_result
             except Exception:
                 logger.warning("llm_classify_failed, falling back to keywords")
 
-        return self._classify_with_keywords(message)
+        return keyword_result
 
     async def _classify_with_llm(
         self,
@@ -90,19 +106,25 @@ class ChatRouter:
                     "role": "system",
                     "content": (
                         "You are a message classifier for a software engineering platform. "
-                        "Classify the user message as either a simple question/chat (reply "
-                        "directly) or a task that requires a development workflow.\n\n"
-                        "If it's a simple question, respond with:\n"
+                        "Classify the user message as either a simple question/chat OR "
+                        "a task that requires a development workflow.\n\n"
+                        "IMPORTANT: If the user is asking to CHANGE, MODIFY, BUILD, REMOVE, "
+                        "ADD, FIX, REFACTOR, or DO anything to a codebase, that is ALWAYS "
+                        "a workflow task — even if phrased casually. Only classify as "
+                        "chat_reply if the user is asking a pure knowledge question.\n\n"
+                        "If it's a pure knowledge question, respond with:\n"
                         "ACTION: chat_reply\n"
                         "REPLY: <your helpful answer>\n\n"
-                        "If it requires a workflow, respond with:\n"
+                        "If it requires a workflow (any code change request), respond with:\n"
                         f"ACTION: start_workflow\nWORKFLOW: <one of: {workflow_types}>\n"
                         "REPLY: <brief acknowledgment of what you'll do>\n\n"
-                        "Examples of simple questions: 'what is a deadlock?', "
+                        "Examples of chat_reply: 'what is a deadlock?', "
                         "'how does git rebase work?', 'explain CQRS'\n"
-                        "Examples of workflow tasks: 'fix the login bug in auth.py', "
+                        "Examples of start_workflow: 'fix the login bug in auth.py', "
                         "'add a dark mode toggle to the settings page', "
-                        "'refactor the database module'"
+                        "'refactor the database module', "
+                        "'remove the need for workspaces', "
+                        "'lets simplify the auth flow'"
                     ),
                 },
                 {"role": "user", "content": message},
@@ -113,17 +135,45 @@ class ChatRouter:
         return self._parse_llm_response(result.get("content", ""))
 
     def _parse_llm_response(self, content: str) -> ChatRouterResult:
+        logger.info("classify_llm_raw_response", content=content[:500])
+
         action_match = re.search(r"ACTION:\s*(chat_reply|start_workflow)", content)
         workflow_match = re.search(r"WORKFLOW:\s*(\S+)", content)
         reply_match = re.search(r"REPLY:\s*(.+)", content, re.DOTALL)
 
-        action = action_match.group(1) if action_match else "chat_reply"
+        action = action_match.group(1) if action_match else ""
         workflow_type = workflow_match.group(1).strip() if workflow_match else ""
         reply = reply_match.group(1).strip() if reply_match else content.strip()
 
-        if action == "start_workflow" and workflow_type not in WORKFLOW_KEYWORDS:
-            workflow_type = "feature_to_pr"
+        # If LLM didn't follow the structured format, infer from content
+        if not action:
+            # If a WORKFLOW line was found, it's clearly a workflow
+            if workflow_type:
+                action = "start_workflow"
+            # Check for task-like language in the response
+            elif any(
+                phrase in content.lower()
+                for phrase in (
+                    "refactor", "implement", "i'll help you", "let's get started",
+                    "i will help", "let me", "i can help you",
+                    "start_workflow", "workflow",
+                )
+            ):
+                action = "start_workflow"
+            else:
+                action = "chat_reply"
 
+        if action == "start_workflow" and workflow_type not in WORKFLOW_KEYWORDS:
+            # Try to infer workflow type from the response content
+            lower = content.lower()
+            for wf_type, keywords in WORKFLOW_KEYWORDS.items():
+                if any(kw in lower for kw in keywords):
+                    workflow_type = wf_type
+                    break
+            else:
+                workflow_type = "feature_to_pr"
+
+        logger.info("classify_result", action=action, workflow_type=workflow_type)
         return ChatRouterResult(action=action, workflow_type=workflow_type, reply=reply)
 
     def _classify_with_keywords(self, message: str) -> ChatRouterResult:
@@ -373,6 +423,7 @@ class ChatRouter:
         message: str,
         model_policy: ModelPolicy | None = None,
         api_base: str | None = None,
+        project_context: str = "",
     ) -> str:
         """Generate a direct chat reply using the LLM, or return a fallback."""
         if self._model_router is None:
@@ -418,6 +469,17 @@ class ChatRouter:
             "ONLY list models from the models endpoint — do NOT infer models from agent "
             "configurations or other sources."
         )
+        if project_context:
+            system_prompt += "\n\n" + project_context
+        else:
+            system_prompt += (
+                "\n\nNo project is currently selected for this conversation. "
+                "If the user asks about a specific project or wants to do work, "
+                "ask them which project they're working on. Use the "
+                "projects_list_projects tool (if available) to show them the "
+                "available projects, then use projects_get_project to fetch "
+                "details once they select one."
+            )
         if mcp_context:
             system_prompt += (
                 "\n\nThe following is REAL data from connected MCP servers. "
@@ -476,6 +538,7 @@ class ChatRouter:
         message: str,
         model_policy: ModelPolicy | None = None,
         api_base: str | None = None,
+        project_context: str = "",
     ) -> AsyncIterator[str]:
         """Stream a direct chat reply token by token."""
         if self._model_router is None:
@@ -506,6 +569,17 @@ class ChatRouter:
             "models from the models endpoint — do NOT infer models from agent "
             "configurations or other sources."
         )
+        if project_context:
+            system_prompt += "\n\n" + project_context
+        else:
+            system_prompt += (
+                "\n\nNo project is currently selected for this conversation. "
+                "If the user asks about a specific project or wants to do work, "
+                "ask them which project they're working on. Use the "
+                "projects_list_projects tool (if available) to show them the "
+                "available projects, then use projects_get_project to fetch "
+                "details once they select one."
+            )
         if mcp_context:
             system_prompt += (
                 "\n\nThe following is REAL data from connected MCP servers. "

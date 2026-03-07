@@ -25,6 +25,13 @@ class StartWorkflow:
     workflow_type: str
     sanitized_messages: tuple[str, ...] = ()
     correlation_id: UUID = field(default_factory=uuid4)
+    project_id: str = ""
+    work_item_id: str = ""
+    run_id: str = ""
+    repo_url: str = ""
+    repo_urls: tuple[str, ...] = ()
+    repo_branch: str = "main"
+    credential_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

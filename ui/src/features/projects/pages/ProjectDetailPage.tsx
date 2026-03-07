@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router';
 import { useState } from 'react';
 import {
   Title, Stack, Paper, Text, Group, Button, Badge, Loader, Center,
-  TextInput, Select, Modal,
+  TextInput, MultiSelect, Select, Modal,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -18,7 +18,7 @@ import { useAiProvidersListAiProviders } from '@/generated/api/ai-providers/ai-p
 interface ProjectData {
   project_id: string;
   name: string;
-  repo_id: string;
+  repo_ids: string[];
   channel_id: string;
   workspace_id: string;
   workflow_definition_id: string;
@@ -50,7 +50,7 @@ export function Component() {
   const providerOptions = [{ value: '', label: '— None —' }, ...providers.map((p) => ({ value: p.provider_id, label: p.name }))];
 
   const form = useForm({
-    initialValues: { name: '', repo_id: '', default_branch: '', channel_id: '', workspace_id: '', ai_provider_id: '' },
+    initialValues: { name: '', repo_ids: [] as string[], default_branch: '', channel_id: '', workspace_id: '', ai_provider_id: '' },
   });
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
@@ -58,13 +58,15 @@ export function Component() {
   const project = resp?.data as ProjectData | undefined;
   if (!project) return <Text>Project not found</Text>;
 
-  const repoName = repos.find((r) => r.repo_id === project.repo_id)?.name ?? project.repo_id;
+  const repoNames = (project.repo_ids ?? []).map(
+    (id) => repos.find((r) => r.repo_id === id)?.name ?? id,
+  );
   const providerName = providers.find((p) => p.provider_id === project.ai_provider_id)?.name ?? project.ai_provider_id;
 
   const startEdit = () => {
     form.setValues({
       name: project.name,
-      repo_id: project.repo_id ?? '',
+      repo_ids: project.repo_ids ?? [],
       default_branch: project.default_branch ?? 'main',
       channel_id: project.channel_id ?? '',
       workspace_id: project.workspace_id ?? '',
@@ -109,7 +111,14 @@ export function Component() {
 
       <Paper withBorder p="lg" radius="md">
         <Stack gap="xs">
-          <Text><strong>Repository:</strong> {repoName || '—'}</Text>
+          <Group gap="xs">
+            <Text><strong>Repositories:</strong></Text>
+            {repoNames.length > 0
+              ? repoNames.map((name) => (
+                  <Badge key={name} size="sm" variant="light">{name}</Badge>
+                ))
+              : <Text c="dimmed">—</Text>}
+          </Group>
           <Text><strong>Default Branch:</strong> {project.default_branch}</Text>
           <Text><strong>Workflow:</strong> {project.workflow_definition_id || '—'}</Text>
           <Text><strong>AI Provider:</strong> {providerName || '—'}</Text>
@@ -127,7 +136,7 @@ export function Component() {
         <form onSubmit={handleSave}>
           <Stack gap="sm">
             <TextInput label="Name" {...form.getInputProps('name')} />
-            <Select label="Repository" data={repoOptions} searchable {...form.getInputProps('repo_id')} />
+            <MultiSelect label="Repositories" data={repoOptions} searchable {...form.getInputProps('repo_ids')} />
             <TextInput label="Default Branch" {...form.getInputProps('default_branch')} />
             <Select label="AI Provider" data={providerOptions} searchable {...form.getInputProps('ai_provider_id')} />
             <TextInput label="Channel ID" {...form.getInputProps('channel_id')} />

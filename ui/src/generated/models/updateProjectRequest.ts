@@ -8,7 +8,7 @@ import type { ProjectStatus } from './projectStatus';
 
 export interface UpdateProjectRequest {
   name?: string | null;
-  repo_id?: string | null;
+  repo_ids?: string[] | null;
   channel_id?: string | null;
   workspace_id?: string | null;
   workflow_definition_id?: string | null;

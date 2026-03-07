@@ -29,7 +29,7 @@ class TestRouteDecision:
             pr_url="",
             error=None,
         )
-        assert _route_decision(state) == "plan"
+        assert _route_decision(state) == "setup_workspace"
 
     def test_bug_intent_routes_to_plan(self) -> None:
         state = ThreadWorkflowState(
@@ -46,7 +46,7 @@ class TestRouteDecision:
             pr_url="",
             error=None,
         )
-        assert _route_decision(state) == "plan"
+        assert _route_decision(state) == "setup_workspace"
 
     def test_refactor_intent_routes_to_plan(self) -> None:
         state = ThreadWorkflowState(
@@ -63,7 +63,7 @@ class TestRouteDecision:
             pr_url="",
             error=None,
         )
-        assert _route_decision(state) == "plan"
+        assert _route_decision(state) == "setup_workspace"
 
     def test_unknown_intent_routes_to_close(self) -> None:
         state = ThreadWorkflowState(
@@ -95,6 +95,7 @@ class TestGraphStructure:
         expected_nodes = {
             "ingest",
             "route",
+            "setup_workspace",
             "plan",
             "approval_gate_spec",
             "implement",
@@ -220,7 +221,7 @@ class TestNodeFunctions:
         assert "plan" in result
         assert len(result["plan"]["tasks"]) > 0
 
-    async def test_implement_produces_sandbox_results(self) -> None:
+    async def test_implement_returns_error_without_sandbox(self) -> None:
         from lintel.workflows.nodes.implement import spawn_implementation
         from tests.unit.workflows.test_implement_node import DummySandboxManager
 
@@ -239,7 +240,7 @@ class TestNodeFunctions:
             error=None,
         )
         result = await spawn_implementation(state, sandbox_manager=DummySandboxManager())
-        assert len(result["sandbox_results"]) > 0
+        assert result["error"] is not None
 
     async def test_review_produces_agent_output(self) -> None:
         from lintel.workflows.nodes.review import review_output
@@ -253,10 +254,10 @@ class TestNodeFunctions:
             plan={},
             agent_outputs=[],
             pending_approvals=[],
-            sandbox_results=[{"status": "completed"}],
+            sandbox_results=[{"diff": "some diff content"}],
             pr_url="",
             error=None,
         )
         result = await review_output(state)
         assert len(result["agent_outputs"]) > 0
-        assert result["agent_outputs"][0]["role"] == "reviewer"
+        assert result["agent_outputs"][0]["node"] == "review"

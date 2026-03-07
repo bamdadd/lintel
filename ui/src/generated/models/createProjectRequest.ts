@@ -9,7 +9,7 @@ import type { ProjectStatus } from './projectStatus';
 export interface CreateProjectRequest {
   project_id?: string;
   name: string;
-  repo_id: string;
+  repo_ids?: string[];
   channel_id?: string;
   workspace_id?: string;
   workflow_definition_id?: string;

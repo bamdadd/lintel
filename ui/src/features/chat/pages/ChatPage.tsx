@@ -28,6 +28,7 @@ import {
   useChatDeleteConversation,
 } from '@/generated/api/chat/chat';
 import { useModelsListModels } from '@/generated/api/models/models';
+import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface Message {
@@ -43,6 +44,7 @@ interface Conversation {
   display_name: string | null;
   created_at: string;
   model_id: string | null;
+  project_id: string | null;
   messages: Message[];
 }
 
@@ -65,6 +67,7 @@ export function Component() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
@@ -74,6 +77,9 @@ export function Component() {
 
   const { data: modelsResp } = useModelsListModels();
   const models = (modelsResp?.data ?? []) as Array<{ model_id: string; name: string; model_name: string; provider_name: string; is_default: boolean }>;
+
+  const { data: projectsResp } = useProjectsListProjects();
+  const projects = (projectsResp?.data ?? []) as Array<{ project_id: string; name: string; repo_ids: string[] }>;
 
   // Auto-select default model
   useEffect(() => {
@@ -124,6 +130,7 @@ export function Component() {
       display_name: null,
       created_at: new Date().toISOString(),
       model_id: selectedModelId,
+      project_id: selectedProjectId,
       messages: [],
     };
     queryClient.setQueryData(['/api/v1/chat/conversations'], (old: { data?: Conversation[] } | undefined) => ({
@@ -140,6 +147,7 @@ export function Component() {
           user_id: 'ui-user',
           display_name: 'You',
           model_id: selectedModelId,
+          project_id: selectedProjectId,
         },
       },
       {
@@ -287,6 +295,22 @@ export function Component() {
             />
           )}
 
+          {/* Project selector */}
+          {projects.length > 0 && (
+            <Select
+              size="xs"
+              mb="xs"
+              placeholder="Select project (optional)"
+              value={selectedProjectId}
+              onChange={setSelectedProjectId}
+              clearable
+              data={projects.map((p) => ({
+                value: p.project_id,
+                label: p.name,
+              }))}
+            />
+          )}
+
           <ScrollArea style={{ flex: 1 }}>
             <Stack gap={4}>
               {conversations.length === 0 ? (
@@ -338,14 +362,24 @@ export function Component() {
             </Center>
           ) : (
             <>
-              {activeConversation?.model_id && (
-                <Group gap="xs" mb="xs">
-                  <Text size="xs" c="dimmed">Model:</Text>
-                  <Badge size="xs" variant="light">
-                    {models.find((m) => m.model_id === activeConversation.model_id)?.name ?? activeConversation.model_id}
-                  </Badge>
-                </Group>
-              )}
+              <Group gap="xs" mb="xs">
+                {activeConversation?.project_id && (
+                  <>
+                    <Text size="xs" c="dimmed">Project:</Text>
+                    <Badge size="xs" variant="light" color="teal">
+                      {projects.find((p) => p.project_id === activeConversation.project_id)?.name ?? activeConversation.project_id}
+                    </Badge>
+                  </>
+                )}
+                {activeConversation?.model_id && (
+                  <>
+                    <Text size="xs" c="dimmed">Model:</Text>
+                    <Badge size="xs" variant="light">
+                      {models.find((m) => m.model_id === activeConversation.model_id)?.name ?? activeConversation.model_id}
+                    </Badge>
+                  </>
+                )}
+              </Group>
               <ScrollArea style={{ flex: 1 }} viewportRef={scrollRef}>
                 <Stack gap="md" p="xs">
                   {messages.length === 0 && !isThinking && (

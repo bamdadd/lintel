@@ -171,6 +171,18 @@ class DockerSandboxManager:
         )
         return {"type": "diff", "content": result.stdout, "exit_code": result.exit_code}
 
+    async def disconnect_network(self, sandbox_id: str) -> None:
+        """Disconnect the sandbox container from all networks."""
+        container = self._get_container(sandbox_id)
+        client = self._get_client()
+        await asyncio.to_thread(container.reload)
+        networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
+        for net_name in networks:
+            if net_name == "none":
+                continue
+            network = await asyncio.to_thread(client.networks.get, net_name)
+            await asyncio.to_thread(network.disconnect, container)
+
     async def destroy(self, sandbox_id: str) -> None:
         container = self._containers.pop(sandbox_id, None)
         if container:

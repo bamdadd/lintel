@@ -21,3 +21,16 @@ class ThreadWorkflowState(TypedDict):
     sandbox_results: Annotated[list[dict[str, Any]], add]
     pr_url: str
     error: str | None
+
+    # Pipeline tracking
+    run_id: str
+
+    # Project & repo context (set by setup_workspace)
+    project_id: str
+    work_item_id: str
+    repo_url: str
+    repo_urls: tuple[str, ...]
+    repo_branch: str
+    feature_branch: str
+    credential_ids: tuple[str, ...]
+    environment_id: str

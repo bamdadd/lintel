@@ -133,7 +133,7 @@ async def list_stages(
     run = await store.get(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
-    return [asdict(s) for s in run.stages]
+    return [asdict(s) if hasattr(s, "__dataclass_fields__") else dict(s) for s in run.stages]
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}")
@@ -146,8 +146,9 @@ async def get_stage(
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     for stage in run.stages:
-        if stage.stage_id == stage_id:
-            return asdict(stage)
+        sid = stage.stage_id if hasattr(stage, "stage_id") else stage.get("stage_id", "")
+        if sid == stage_id:
+            return asdict(stage) if hasattr(stage, "__dataclass_fields__") else dict(stage)
     raise HTTPException(status_code=404, detail="Stage not found")
 
 

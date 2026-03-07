@@ -53,17 +53,17 @@ class DummySandboxManager:
         self._sandboxes.pop(sandbox_id, None)
 
 
-def _make_state() -> dict[str, Any]:
+def _make_state(sandbox_id: str = "sandbox-123") -> dict[str, Any]:
     return {
         "thread_ref": "thread:W1:C1:1.0",
         "correlation_id": str(uuid4()),
         "current_phase": "implementing",
-        "sanitized_messages": [],
-        "intent": "test",
-        "plan": {},
+        "sanitized_messages": ["add a button"],
+        "intent": "feature",
+        "plan": {"tasks": ["add button component"], "summary": "Add a button"},
         "agent_outputs": [],
         "pending_approvals": [],
-        "sandbox_id": None,
+        "sandbox_id": sandbox_id,
         "sandbox_results": [],
         "pr_url": "",
         "error": None,
@@ -71,41 +71,35 @@ def _make_state() -> dict[str, Any]:
 
 
 class TestSpawnImplementation:
-    async def test_creates_and_destroys_sandbox(self) -> None:
+    async def test_returns_error_when_no_sandbox(self) -> None:
         manager = DummySandboxManager()
-        state = _make_state()
-
-        await spawn_implementation(state, sandbox_manager=manager)
-
-        assert len(manager.created) == 1
-        assert len(manager.destroyed) == 1
-        assert manager.created[0] == manager.destroyed[0]
-
-    async def test_returns_artifacts(self) -> None:
-        manager = DummySandboxManager()
-        state = _make_state()
+        state = _make_state(sandbox_id=None)  # type: ignore[arg-type]
 
         result = await spawn_implementation(state, sandbox_manager=manager)
 
-        assert result["sandbox_id"] is None
+        assert result["error"] is not None
+        assert result["current_phase"] == "closed"
+
+    async def test_returns_artifacts_with_sandbox(self) -> None:
+        manager = DummySandboxManager()
+        # Pre-create a sandbox so it exists in the manager
+        sandbox_id = "test-sandbox-1"
+        manager._sandboxes[sandbox_id] = {}
+        state = _make_state(sandbox_id=sandbox_id)
+
+        result = await spawn_implementation(state, sandbox_manager=manager)
+
+        assert result["current_phase"] == "testing"
         assert len(result["sandbox_results"]) == 1
         assert result["sandbox_results"][0]["type"] == "diff"
+        assert len(result["agent_outputs"]) == 1
 
-    async def test_destroys_on_error(self) -> None:
+    async def test_collects_artifacts_without_agent_runtime(self) -> None:
         manager = DummySandboxManager()
+        sandbox_id = "test-sandbox-2"
+        manager._sandboxes[sandbox_id] = {}
+        state = _make_state(sandbox_id=sandbox_id)
 
-        # Make collect_artifacts fail
-        async def failing_collect(sandbox_id: str) -> dict[str, Any]:
-            msg = "boom"
-            raise RuntimeError(msg)
+        result = await spawn_implementation(state, sandbox_manager=manager, agent_runtime=None)
 
-        manager.collect_artifacts = failing_collect  # type: ignore[assignment]
-        state = _make_state()
-
-        import pytest
-
-        with pytest.raises(RuntimeError, match="boom"):
-            await spawn_implementation(state, sandbox_manager=manager)
-
-        # Sandbox should still be destroyed (finally block)
-        assert len(manager.destroyed) == 1
+        assert "No agent runtime" in result["agent_outputs"][0]["output"]

@@ -136,6 +136,18 @@ class PostgresCredentialStore(PostgresCrudStore):
             )
         return cred
 
+    async def get_secret(self, credential_id: str) -> str | None:
+        async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
+            row = await conn.fetchrow(
+                "SELECT data FROM entities"
+                " WHERE kind = 'credential_secret' AND entity_id = $1",
+                credential_id,
+            )
+        if row is None:
+            return None
+        data = json.loads(row["data"])
+        return data.get("secret")  # type: ignore[no-any-return]
+
     async def list_by_repo(self, repo_id: str) -> list[Credential]:
         all_creds = await self.list_all()
         return [c for c in all_creds if not c.repo_ids or repo_id in c.repo_ids]

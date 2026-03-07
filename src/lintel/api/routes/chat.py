@@ -17,7 +17,19 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 from lintel.contracts.commands import StartWorkflow
-from lintel.contracts.types import ModelPolicy, ThreadRef
+from lintel.contracts.types import (
+    ModelPolicy,
+    PipelineRun,
+    PipelineStatus,
+    Stage,
+    ThreadRef,
+    Trigger,
+    TriggerType,
+    WorkItem,
+    WorkItemStatus,
+    WorkItemType,
+)
+from lintel.workflows.nodes._event_helpers import emit_audit_entry
 
 logger = structlog.get_logger()
 
@@ -199,6 +211,387 @@ def _thread_ref_from_conversation(conversation_id: str) -> ThreadRef:
     )
 
 
+async def _resolve_project_context(
+    request: Request,
+    conversation_id: str,
+    store: ChatStore,
+) -> tuple[dict[str, Any] | None, str | None, str | None]:
+    """Resolve project, repo URL, and branch for a conversation.
+
+    Returns (project_dict, repo_url, default_branch) or (None, None, None).
+    """
+    conv = await store.get(conversation_id)
+    if conv is None:
+        return None, None, None
+
+    project_id = conv.get("project_id")
+    if not project_id:
+        return None, None, None
+
+    project_store = getattr(request.app.state, "project_store", None)
+    if project_store is None:
+        return None, None, None
+
+    project = await project_store.get(project_id)
+    if project is None:
+        return None, None, None
+
+    # Resolve first repo
+    repo_ids = project.get("repo_ids", ())
+    if isinstance(repo_ids, (list, tuple)) and repo_ids:
+        repo_store = getattr(request.app.state, "repository_store", None)
+        if repo_store is not None:
+            repo = await repo_store.get(repo_ids[0])
+            if repo is not None:
+                url = repo.url if hasattr(repo, "url") else repo.get("url", "")
+                branch = (
+                    repo.default_branch
+                    if hasattr(repo, "default_branch")
+                    else repo.get("default_branch", "main")
+                )
+                # Resolve all repo URLs for multi-repo support
+                all_urls: list[str] = [url]
+                for rid in repo_ids[1:]:
+                    extra = await repo_store.get(rid)
+                    if extra is not None:
+                        extra_url = (
+                            extra.url
+                            if hasattr(extra, "url")
+                            else extra.get("url", "")
+                        )
+                        if extra_url:
+                            all_urls.append(extra_url)
+                project["_repo_urls"] = tuple(all_urls)
+
+                return project, url, branch
+
+    return project, None, project.get("default_branch", "main")
+
+
+def _build_project_context(
+    project: dict[str, Any] | None,
+    repo_url: str | None = None,
+    default_branch: str | None = None,
+) -> str:
+    """Build a project context string for the AI system prompt."""
+    if project is None:
+        return ""
+    parts = [
+        "PROJECT CONTEXT — You are working on the following project:",
+        f"  Project name: {project.get('name', 'unknown')}",
+        f"  Project ID: {project.get('project_id', 'unknown')}",
+    ]
+    if repo_url:
+        parts.append(f"  Repository: {repo_url}")
+    repo_urls = project.get("_repo_urls")
+    if repo_urls and len(repo_urls) > 1:
+        parts.append(f"  All repositories: {', '.join(repo_urls)}")
+    if default_branch:
+        parts.append(f"  Default branch: {default_branch}")
+    status = project.get("status", "")
+    if status:
+        parts.append(f"  Status: {status}")
+    parts.append(
+        "\nUse this project context when answering questions. "
+        "You know which project the user is working on."
+    )
+    return "\n".join(parts)
+
+
+async def _prompt_project_selection(
+    request: Request,
+    store: ChatStore,
+    conversation_id: str,
+) -> str:
+    """Build a message prompting the user to select a project."""
+    project_store = getattr(request.app.state, "project_store", None)
+    if project_store is None:
+        return "No projects configured. Please create a project first."
+
+    projects = await project_store.list_all()
+    if not projects:
+        return "No projects found. Please create a project first at Settings > Projects."
+
+    lines = ["Which project is this for?\n"]
+    for i, p in enumerate(projects, 1):
+        name = p.get("name", p.get("project_id", "unknown"))
+        lines.append(f"  **{i}.** {name}")
+    lines.append("\nReply with the project name or number.")
+    return "\n".join(lines)
+
+
+async def _try_select_project(
+    request: Request,
+    store: ChatStore,
+    conversation_id: str,
+    message: str,
+) -> bool:
+    """Try to match user reply to a project. Returns True if matched."""
+    project_store = getattr(request.app.state, "project_store", None)
+    if project_store is None:
+        return False
+
+    projects = await project_store.list_all()
+    if not projects:
+        return False
+
+    lower = message.strip().lower()
+
+    # Try numeric selection
+    try:
+        idx = int(lower) - 1
+        if 0 <= idx < len(projects):
+            conv = await store.get(conversation_id)
+            if conv is not None:
+                conv["project_id"] = projects[idx].get("project_id", projects[idx].get("name"))
+            return True
+    except ValueError:
+        pass
+
+    # Try name match
+    for p in projects:
+        name = p.get("name", "")
+        if name.lower() == lower or p.get("project_id", "").lower() == lower:
+            conv = await store.get(conversation_id)
+            if conv is not None:
+                conv["project_id"] = p.get("project_id", p.get("name"))
+            return True
+
+    return False
+
+
+async def _dispatch_workflow(
+    request: Request,
+    store: ChatStore,
+    conversation_id: str,
+    workflow_type: str,
+    message: str,
+    reply_text: str,
+) -> None:
+    """Create a work item, resolve project context, and dispatch the workflow."""
+    thread_ref = _thread_ref_from_conversation(conversation_id)
+    dispatcher = request.app.state.command_dispatcher
+
+    # Resolve project and repo context
+    project, repo_url, repo_branch = await _resolve_project_context(
+        request, conversation_id, store,
+    )
+
+    # Create a work item
+    work_item_id = uuid4().hex
+    work_item_store = getattr(request.app.state, "work_item_store", None)
+    if work_item_store is not None and project is not None:
+        work_item = WorkItem(
+            work_item_id=work_item_id,
+            project_id=project.get("project_id", ""),
+            title=message[:100],
+            description=message,
+            work_type=_infer_work_type(workflow_type),
+            status=WorkItemStatus.IN_PROGRESS,
+            thread_ref_str=str(thread_ref),
+            branch_name=f"lintel/feat/{work_item_id[:8]}",
+        )
+        try:
+            await work_item_store.add(work_item)
+        except Exception:
+            logger.warning("work_item_creation_failed", work_item_id=work_item_id)
+
+    # Create Trigger and PipelineRun records
+    project_id = project.get("project_id", "") if project else ""
+    run_id = uuid4().hex
+    trigger_id = uuid4().hex
+
+    trigger_store = getattr(request.app.state, "trigger_store", None)
+    if trigger_store is not None and project_id:
+        trigger = Trigger(
+            trigger_id=trigger_id,
+            project_id=project_id,
+            trigger_type=TriggerType.MANUAL,
+            name=f"chat:{conversation_id}",
+        )
+        try:
+            await trigger_store.add(trigger)
+        except Exception:
+            logger.warning("trigger_creation_failed", trigger_id=trigger_id)
+
+    pipeline_store = getattr(request.app.state, "pipeline_store", None)
+    if pipeline_store is not None and project_id:
+        from lintel.api.routes.pipelines import _stage_names_for_workflow
+
+        stage_names = _stage_names_for_workflow(workflow_type)
+        stages = tuple(
+            Stage(
+                stage_id=uuid4().hex,
+                name=name,
+                stage_type=name,
+            )
+            for name in stage_names
+        )
+        pipeline_run = PipelineRun(
+            run_id=run_id,
+            project_id=project_id,
+            work_item_id=work_item_id,
+            workflow_definition_id=workflow_type,
+            status=PipelineStatus.RUNNING,
+            trigger_type="manual",
+            trigger_id=trigger_id,
+            stages=stages,
+        )
+        try:
+            await pipeline_store.add(pipeline_run)
+        except Exception:
+            logger.warning("pipeline_run_creation_failed", run_id=run_id)
+
+    # Store workflow tracking IDs on the conversation for status queries
+    conv = await store.get(conversation_id)
+    if conv is not None:
+        conv["work_item_id"] = work_item_id
+        conv["run_id"] = run_id
+
+    # Gather repo context for the command
+    cmd_repo_url = repo_url or ""
+    cmd_repo_urls = project.get("_repo_urls", ()) if project else ()
+    cmd_repo_branch = repo_branch or "main"
+    cmd_credential_ids = tuple(project.get("credential_ids", ())) if project else ()
+
+    command = StartWorkflow(
+        thread_ref=thread_ref,
+        workflow_type=workflow_type,
+        sanitized_messages=(message,),
+        project_id=project_id,
+        work_item_id=work_item_id,
+        run_id=run_id,
+        repo_url=cmd_repo_url,
+        repo_urls=cmd_repo_urls if isinstance(cmd_repo_urls, tuple) else tuple(cmd_repo_urls),
+        repo_branch=cmd_repo_branch,
+        credential_ids=cmd_credential_ids,
+    )
+
+    # Build a rich status message with project context and workflow stages
+    project_name = project.get("name", "unknown") if project else "unknown"
+    status_lines = [reply_text, ""]
+    status_lines.append(f"**Project:** {project_name}")
+    if cmd_repo_url:
+        status_lines.append(f"**Repository:** {cmd_repo_url}")
+    status_lines.append(f"**Branch:** {cmd_repo_branch}")
+    status_lines.append("")
+    status_lines.append("**Workflow stages:**")
+
+    from lintel.api.routes.pipelines import _stage_names_for_workflow
+
+    for stage_name in _stage_names_for_workflow(workflow_type):
+        status_lines.append(f"  ⏳ {stage_name}")
+
+    status_lines.append("")
+    status_lines.append("I'll update you as each stage completes.")
+
+    await store.add_message(
+        conversation_id,
+        user_id="system",
+        display_name="Lintel",
+        role="agent",
+        content="\n".join(status_lines),
+    )
+    asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+    logger.info(
+        "workflow_triggered_from_chat",
+        conversation_id=conversation_id,
+        workflow_type=workflow_type,
+        project_id=project_id,
+        work_item_id=work_item_id,
+        run_id=run_id,
+    )
+
+    # Emit audit entry for workflow start
+    audit_store = getattr(request.app.state, "audit_entry_store", None)
+    await emit_audit_entry(
+        audit_store,
+        actor_id="system",
+        actor_type="system",
+        action="workflow_started",
+        resource_type="work_item",
+        resource_id=work_item_id,
+        details={"workflow_type": workflow_type, "conversation_id": conversation_id},
+    )
+
+
+def _infer_work_type(workflow_type: str) -> WorkItemType:
+    """Map workflow type string to WorkItemType."""
+    mapping = {
+        "feature_to_pr": WorkItemType.FEATURE,
+        "bug_fix": WorkItemType.BUG,
+        "refactor": WorkItemType.REFACTOR,
+    }
+    return mapping.get(workflow_type, WorkItemType.TASK)
+
+
+async def _handle_classified_message(
+    request: Request,
+    store: ChatStore,
+    conversation_id: str,
+    message: str,
+    classify_result: object,
+    model_policy: object,
+    api_base: str | None,
+) -> str | None:
+    """Handle a classified message: dispatch workflow or generate reply.
+
+    Returns the reply text, or None if a workflow was dispatched
+    (in which case _dispatch_workflow already added the message).
+    """
+    from lintel.domain.chat_router import ChatRouterResult
+
+    result: ChatRouterResult = classify_result  # type: ignore[assignment]
+
+    if result.action == "start_workflow":
+        conv_data = await store.get(conversation_id)
+        if conv_data and not conv_data.get("project_id"):
+            prompt_msg = await _prompt_project_selection(request, store, conversation_id)
+            await store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=prompt_msg,
+            )
+            conv_data["_pending_workflow"] = {
+                "workflow_type": result.workflow_type,
+                "message": message,
+                "reply": result.reply,
+            }
+            return None
+        await _dispatch_workflow(
+            request, store, conversation_id,
+            result.workflow_type, message, result.reply,
+        )
+        return None
+
+    # Chat reply path — resolve project context for the LLM
+    project, repo_url, branch = await _resolve_project_context(
+        request, conversation_id, store,
+    )
+    proj_ctx = _build_project_context(project, repo_url, branch)
+    chat_router = request.app.state.chat_router
+    try:
+        reply = await chat_router.reply(
+            message,
+            model_policy=model_policy,
+            api_base=api_base,
+            project_context=proj_ctx,
+        )
+    except Exception:
+        logger.exception("chat_reply_failed")
+        reply = "Sorry, I couldn't generate a response right now."
+    await store.add_message(
+        conversation_id,
+        user_id="system",
+        display_name="Lintel",
+        role="agent",
+        content=reply,
+    )
+    return reply
+
+
 @router.post("/chat/conversations", status_code=201)
 async def create_conversation(
     body: StartConversationRequest,
@@ -245,44 +638,10 @@ async def create_conversation(
         api_base=api_base,
     )
 
-    if result.action == "start_workflow":
-        thread_ref = _thread_ref_from_conversation(conversation_id)
-        dispatcher = request.app.state.command_dispatcher
-        command = StartWorkflow(
-            thread_ref=thread_ref,
-            workflow_type=result.workflow_type,
-            sanitized_messages=(body.message,),
-        )
-        await store.add_message(
-            conversation_id,
-            user_id="system",
-            display_name="Lintel",
-            role="agent",
-            content=result.reply,
-        )
-        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
-        logger.info(
-            "workflow_triggered_from_chat",
-            conversation_id=conversation_id,
-            workflow_type=result.workflow_type,
-        )
-    else:
-        try:
-            reply = await chat_router.reply(
-                body.message,
-                model_policy=model_policy,
-                api_base=api_base,
-            )
-        except Exception:
-            logger.exception("chat_reply_failed")
-            reply = "Sorry, I couldn't generate a response right now."
-        await store.add_message(
-            conversation_id,
-            user_id="system",
-            display_name="Lintel",
-            role="agent",
-            content=reply,
-        )
+    await _handle_classified_message(
+        request, store, conversation_id, body.message,
+        result, model_policy, api_base,
+    )
 
     return conv
 
@@ -357,6 +716,44 @@ async def send_message(
         if conv is not None:
             effective_model_id = conv.get("model_id")
 
+    # Check if there's a pending workflow awaiting project selection
+    conv = await store.get(conversation_id)
+    pending = conv.get("_pending_workflow") if conv else None
+    if pending:
+        # User is replying to project selection prompt
+        matched = await _try_select_project(request, store, conversation_id, body.message)
+        if matched:
+            # Emit audit entry for project selection
+            updated_conv = await store.get(conversation_id)
+            selected_project_id = (
+                updated_conv.get("project_id", "") if updated_conv else ""
+            )
+            audit_store = getattr(request.app.state, "audit_entry_store", None)
+            await emit_audit_entry(
+                audit_store,
+                actor_id=body.user_id,
+                actor_type="user",
+                action="project_selected",
+                resource_type="conversation",
+                resource_id=conversation_id,
+                details={"project_id": selected_project_id},
+            )
+            conv.pop("_pending_workflow", None)
+            await _dispatch_workflow(
+                request, store, conversation_id,
+                pending["workflow_type"], pending["message"], pending["reply"],
+            )
+        else:
+            await store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content="I didn't recognise that project. "
+                "Please reply with the project name or number.",
+            )
+        return user_msg
+
     model_policy, api_base = await _resolve_model(request, effective_model_id)
     result = await chat_router.classify(
         body.message,
@@ -364,44 +761,10 @@ async def send_message(
         api_base=api_base,
     )
 
-    if result.action == "start_workflow":
-        thread_ref = _thread_ref_from_conversation(conversation_id)
-        dispatcher = request.app.state.command_dispatcher
-        command = StartWorkflow(
-            thread_ref=thread_ref,
-            workflow_type=result.workflow_type,
-            sanitized_messages=(body.message,),
-        )
-        await store.add_message(
-            conversation_id,
-            user_id="system",
-            display_name="Lintel",
-            role="agent",
-            content=result.reply,
-        )
-        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
-        logger.info(
-            "workflow_triggered_from_chat",
-            conversation_id=conversation_id,
-            workflow_type=result.workflow_type,
-        )
-    else:
-        try:
-            reply = await chat_router.reply(
-                body.message,
-                model_policy=model_policy,
-                api_base=api_base,
-            )
-        except Exception:
-            logger.exception("chat_reply_failed")
-            reply = "Sorry, I couldn't generate a response right now."
-        await store.add_message(
-            conversation_id,
-            user_id="system",
-            display_name="Lintel",
-            role="agent",
-            content=reply,
-        )
+    await _handle_classified_message(
+        request, store, conversation_id, body.message,
+        result, model_policy, api_base,
+    )
 
     return user_msg
 
@@ -442,6 +805,7 @@ async def send_message_stream(
 
     async def event_stream() -> AsyncIterator[str]:
         full_content = ""
+        workflow_dispatched = False
         if chat_router is None or model_policy is None:
             fallback = "AI responses aren't connected yet. Configure an AI provider."
             yield f"data: {json.dumps({'token': fallback})}\n\n"
@@ -454,21 +818,33 @@ async def send_message_stream(
                     api_base=api_base,
                 )
                 if result.action == "start_workflow":
-                    yield f"data: {json.dumps({'token': result.reply})}\n\n"
-                    full_content = result.reply
-                    thread_ref = _thread_ref_from_conversation(conversation_id)
-                    dispatcher = request.app.state.command_dispatcher
-                    command = StartWorkflow(
-                        thread_ref=thread_ref,
-                        workflow_type=result.workflow_type,
-                        sanitized_messages=(body.message,),
+                    workflow_dispatched = True
+                    # Use shared handler (creates work item, pipeline, messages)
+                    await _handle_classified_message(
+                        request, store, conversation_id, body.message,
+                        result, model_policy, api_base,
                     )
-                    asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+                    # Stream the last agent message back to the client
+                    conv_after = await store.get(conversation_id)
+                    if conv_after:
+                        agent_msgs = [
+                            m for m in conv_after.get("messages", [])
+                            if m.get("role") == "agent"
+                        ]
+                        if agent_msgs:
+                            full_content = agent_msgs[-1]["content"]
+                            yield f"data: {json.dumps({'token': full_content})}\n\n"
                 else:
+                    # Stream reply token-by-token for chat responses
+                    project, repo_url, branch = await _resolve_project_context(
+                        request, conversation_id, store,
+                    )
+                    proj_ctx = _build_project_context(project, repo_url, branch)
                     async for token in chat_router.reply_stream(
                         body.message,
                         model_policy=model_policy,
                         api_base=api_base,
+                        project_context=proj_ctx,
                     ):
                         full_content += token
                         yield f"data: {json.dumps({'token': token})}\n\n"
@@ -478,14 +854,15 @@ async def send_message_stream(
                 yield f"data: {json.dumps({'token': error_msg})}\n\n"
                 full_content = error_msg
 
-        # Save the complete response
-        await store.add_message(
-            conversation_id,
-            user_id="system",
-            display_name="Lintel",
-            role="agent",
-            content=full_content,
-        )
+        # Save the complete response (skip if workflow already saved it)
+        if full_content and not workflow_dispatched:
+            await store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=full_content,
+            )
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
@@ -493,6 +870,96 @@ async def send_message_stream(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/chat/conversations/{conversation_id}/status")
+async def get_conversation_status(
+    conversation_id: str,
+    store: ChatStoreDep,
+) -> dict[str, Any]:
+    """Return workflow status for a conversation (project, work item, run)."""
+    conv = await store.get(conversation_id)
+    if conv is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Conversation {conversation_id} not found",
+        )
+    return {
+        "conversation_id": conversation_id,
+        "project_id": conv.get("project_id"),
+        "work_item_id": conv.get("work_item_id"),
+        "run_id": conv.get("run_id"),
+    }
+
+
+@router.post("/chat/conversations/{conversation_id}/retry", status_code=200)
+async def retry_workflow(
+    conversation_id: str,
+    store: ChatStoreDep,
+    request: Request,
+) -> dict[str, Any]:
+    """Retry a failed workflow from the last checkpoint."""
+    conv = await store.get(conversation_id)
+    if conv is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Conversation {conversation_id} not found",
+        )
+
+    pending = conv.get("_pending_workflow")
+    run_id = conv.get("run_id")
+
+    if not pending and not run_id:
+        raise HTTPException(
+            status_code=409,
+            detail="No workflow associated with this conversation",
+        )
+
+    # If there's a run_id, verify the pipeline is in a failed state
+    if run_id and not pending:
+        pipeline_store = getattr(request.app.state, "pipeline_store", None)
+        if pipeline_store is not None:
+            pipeline_run = await pipeline_store.get(run_id)
+            if pipeline_run is not None:
+                status = (
+                    pipeline_run.status
+                    if hasattr(pipeline_run, "status")
+                    else pipeline_run.get("status", "")
+                )
+                status_str = str(status)
+                if status_str not in ("failed", PipelineStatus.FAILED):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Pipeline is {status_str}, not failed",
+                    )
+
+    # Determine workflow parameters
+    if pending:
+        workflow_type = pending["workflow_type"]
+        message = pending["message"]
+        reply_text = pending.get("reply", "Retrying workflow...")
+    else:
+        # Re-dispatch using stored conversation data
+        messages = conv.get("messages", [])
+        user_msgs = [m for m in messages if m.get("role") == "user"]
+        message = user_msgs[-1]["content"] if user_msgs else ""
+        workflow_type = "feature_to_pr"
+        reply_text = "Retrying workflow..."
+
+    await store.add_message(
+        conversation_id,
+        user_id="system",
+        display_name="Lintel",
+        role="agent",
+        content="Retrying workflow...",
+    )
+
+    await _dispatch_workflow(
+        request, store, conversation_id,
+        workflow_type, message, reply_text,
+    )
+
+    return await store.get(conversation_id)  # type: ignore[return-value]
 
 
 @router.delete(

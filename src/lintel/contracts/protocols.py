@@ -196,6 +196,11 @@ class SandboxManager(Protocol):
         sandbox_id: str,
     ) -> dict[str, Any]: ...
 
+    async def disconnect_network(
+        self,
+        sandbox_id: str,
+    ) -> None: ...
+
     async def destroy(
         self,
         sandbox_id: str,
@@ -219,6 +224,8 @@ class CredentialStore(Protocol):
     async def list_all(self) -> list[Credential]: ...
 
     async def list_by_repo(self, repo_id: str) -> list[Credential]: ...
+
+    async def get_secret(self, credential_id: str) -> str | None: ...
 
     async def revoke(self, credential_id: str) -> None: ...
 

@@ -43,6 +43,9 @@ class InMemoryCredentialStore:
     async def list_all(self) -> list[Credential]:
         return list(self._creds.values())
 
+    async def get_secret(self, credential_id: str) -> str | None:
+        return self._secrets.get(credential_id)
+
     async def list_by_repo(self, repo_id: str) -> list[Credential]:
         return [c for c in self._creds.values() if not c.repo_ids or repo_id in c.repo_ids]
 

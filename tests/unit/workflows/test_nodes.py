@@ -121,15 +121,15 @@ class TestPlanNode:
 
 class TestReviewNode:
     async def test_sets_merge_approval_phase(self) -> None:
-        state: dict[str, Any] = {}
+        state: dict[str, Any] = {"sandbox_results": [{"diff": "some changes"}]}
         result = await review_output(state)  # type: ignore[arg-type]
         assert result["current_phase"] == "awaiting_merge_approval"
 
     async def test_produces_agent_output(self) -> None:
-        state: dict[str, Any] = {}
+        state: dict[str, Any] = {"sandbox_results": [{"diff": "some changes"}]}
         result = await review_output(state)  # type: ignore[arg-type]
         assert len(result["agent_outputs"]) == 1
-        assert result["agent_outputs"][0]["role"] == "reviewer"
+        assert result["agent_outputs"][0]["node"] == "review"
 
 
 class TestAnalyseNode:
@@ -148,10 +148,10 @@ class TestTriageNode:
 
 
 class TestRunTestsNode:
-    async def test_returns_passed(self) -> None:
-        result = await run_tests({})
-        assert result["current_phase"] == "testing"
-        assert result["agent_outputs"][0]["verdict"] == "passed"
+    async def test_skips_without_sandbox(self) -> None:
+        result = await run_tests({})  # type: ignore[arg-type]
+        assert result["current_phase"] == "reviewing"
+        assert result["agent_outputs"][0]["verdict"] == "skipped"
 
 
 class TestStubFactory:

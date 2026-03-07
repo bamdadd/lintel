@@ -433,131 +433,6 @@
         }
       }
     },
-    "/api/v1/agents/policies": {
-      "get": {
-        "tags": [
-          "agents"
-        ],
-        "summary": "List Model Policies",
-        "description": "Get model policies for all agent roles.",
-        "operationId": "agents_list_model_policies",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "object",
-                  "title": "Response Agents List Model Policies"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/agents/policies/{role}": {
-      "get": {
-        "tags": [
-          "agents"
-        ],
-        "summary": "Get Model Policy",
-        "description": "Get model policy for a specific agent role.",
-        "operationId": "agents_get_model_policy",
-        "parameters": [
-          {
-            "name": "role",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Role"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Agents Get Model Policy"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "agents"
-        ],
-        "summary": "Update Model Policy",
-        "description": "Update model policy for a specific agent role.",
-        "operationId": "agents_update_model_policy",
-        "parameters": [
-          {
-            "name": "role",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Role"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelPolicyRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Agents Update Model Policy"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/agents/test-prompt": {
       "post": {
         "tags": [
@@ -927,6 +802,33 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/presets": {
+      "get": {
+        "tags": [
+          "sandboxes"
+        ],
+        "summary": "List Sandbox Presets",
+        "description": "List available sandbox presets.",
+        "operationId": "sandboxes_list_sandbox_presets",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "object",
+                  "title": "Response Sandboxes List Sandbox Presets"
                 }
               }
             }
@@ -1486,6 +1388,48 @@
                   "additionalProperties": true,
                   "title": "Response Skills Invoke Skill"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{run_id}/stream": {
+      "get": {
+        "tags": [
+          "streams",
+          "streams"
+        ],
+        "summary": "Stream Run Events",
+        "description": "Stream run events via SSE.",
+        "operationId": "streams_stream_run_events",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -2625,7 +2569,7 @@
           "ai-providers"
         ],
         "summary": "List Provider Types",
-        "description": "List supported AI provider types.",
+        "description": "List supported AI provider types with their field requirements.",
         "operationId": "ai-providers_list_provider_types",
         "responses": {
           "200": {
@@ -2634,7 +2578,8 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "type": "string"
+                    "additionalProperties": true,
+                    "type": "object"
                   },
                   "type": "array",
                   "title": "Response Ai-Providers List Provider Types"
@@ -2839,6 +2784,102 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Ai-Providers Update Api Key"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai-providers/{provider_id}/available-models": {
+      "get": {
+        "tags": [
+          "ai-providers"
+        ],
+        "summary": "List Available Models",
+        "description": "Query the provider for available models (e.g. Ollama /api/tags).",
+        "operationId": "ai-providers_list_available_models",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Ai-Providers List Available Models"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai-providers/{provider_id}/models": {
+      "get": {
+        "tags": [
+          "ai-providers"
+        ],
+        "summary": "List Provider Models",
+        "description": "List all models registered under a specific provider.",
+        "operationId": "ai-providers_list_provider_models",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Ai-Providers List Provider Models"
                 }
               }
             }
@@ -3593,6 +3634,30 @@
       }
     },
     "/api/v1/environments": {
+      "get": {
+        "tags": [
+          "environments"
+        ],
+        "summary": "List Environments",
+        "operationId": "environments_list_environments",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Environments List Environments"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "environments"
@@ -3600,14 +3665,14 @@
         "summary": "Create Environment",
         "operationId": "environments_create_environment",
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateEnvironmentRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -3615,61 +3680,9 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": true,
+                  "type": "object",
                   "title": "Response Environments Create Environment"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "environments"
-        ],
-        "summary": "List Environments",
-        "operationId": "environments_list_environments",
-        "parameters": [
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Project Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "additionalProperties": true
-                  },
-                  "title": "Response Environments List Environments"
                 }
               }
             }
@@ -4089,22 +4102,6 @@
         "summary": "List Variables",
         "operationId": "variables_list_variables",
         "parameters": [
-          {
-            "name": "project_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Project Id"
-            }
-          },
           {
             "name": "environment_id",
             "in": "query",
@@ -5880,7 +5877,7 @@
           "chat"
         ],
         "summary": "Create Conversation",
-        "description": "Start a new conversation.",
+        "description": "Start a new conversation, optionally with an initial message.",
         "operationId": "chat_create_conversation",
         "requestBody": {
           "required": true,
@@ -6072,7 +6069,7 @@
           "chat"
         ],
         "summary": "Send Message",
-        "description": "Send a message to an existing conversation.",
+        "description": "Send a message to an existing conversation. Routes user messages through the chat router.",
         "operationId": "chat_send_message",
         "parameters": [
           {
@@ -6114,6 +6111,857 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{conversation_id}/messages/stream": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Send Message Stream",
+        "description": "Send a message and stream the AI response as SSE.",
+        "operationId": "chat_send_message_stream",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{conversation_id}/status": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get Conversation Status",
+        "description": "Return workflow status for a conversation (project, work item, run).",
+        "operationId": "chat_get_conversation_status",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Chat Get Conversation Status"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/conversations/{conversation_id}/retry": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Retry Workflow",
+        "description": "Retry a failed workflow from the last checkpoint.",
+        "operationId": "chat_retry_workflow",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Chat Retry Workflow"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Create Model",
+        "description": "Register an AI model.",
+        "operationId": "models_create_model",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateModelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Models Create Model"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List Models",
+        "description": "List all models, optionally filtered by provider.",
+        "operationId": "models_list_models",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Models List Models"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Get Model",
+        "description": "Get a specific model.",
+        "operationId": "models_get_model",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Models Get Model"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Update Model",
+        "description": "Update a model's configuration.",
+        "operationId": "models_update_model",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateModelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Models Update Model"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Delete Model",
+        "description": "Remove a model and its assignments.",
+        "operationId": "models_delete_model",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}/assignments": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Create Model Assignment",
+        "description": "Create an assignment for a model.",
+        "operationId": "models_create_model_assignment",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateModelAssignmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Models Create Model Assignment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List Model Assignments",
+        "description": "List assignments for a model.",
+        "operationId": "models_list_model_assignments",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Models List Model Assignments"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/model-assignments": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List All Assignments",
+        "description": "List all assignments, optionally filtered by context.",
+        "operationId": "models_list_all_assignments",
+        "parameters": [
+          {
+            "name": "context",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ModelAssignmentContext"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Context"
+            }
+          },
+          {
+            "name": "context_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Context Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Models List All Assignments"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/model-assignments/{assignment_id}": {
+      "delete": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Delete Model Assignment",
+        "description": "Remove a model assignment.",
+        "operationId": "models_delete_model_assignment",
+        "parameters": [
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp-servers": {
+      "get": {
+        "tags": [
+          "mcp-servers"
+        ],
+        "summary": "List Mcp Servers",
+        "description": "List all configured MCP servers.",
+        "operationId": "mcp-servers_list_mcp_servers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Mcp-Servers List Mcp Servers"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "mcp-servers"
+        ],
+        "summary": "Create Mcp Server",
+        "description": "Register an MCP server.",
+        "operationId": "mcp-servers_create_mcp_server",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMCPServerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Mcp-Servers Create Mcp Server"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp-servers/{server_id}": {
+      "get": {
+        "tags": [
+          "mcp-servers"
+        ],
+        "summary": "Get Mcp Server",
+        "description": "Get a specific MCP server.",
+        "operationId": "mcp-servers_get_mcp_server",
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Mcp-Servers Get Mcp Server"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "mcp-servers"
+        ],
+        "summary": "Update Mcp Server",
+        "description": "Update an MCP server's configuration.",
+        "operationId": "mcp-servers_update_mcp_server",
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMCPServerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Mcp-Servers Update Mcp Server"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "mcp-servers"
+        ],
+        "summary": "Delete Mcp Server",
+        "description": "Remove an MCP server.",
+        "operationId": "mcp-servers_delete_mcp_server",
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mcp-servers/{server_id}/tools": {
+      "get": {
+        "tags": [
+          "mcp-servers"
+        ],
+        "summary": "List Mcp Server Tools",
+        "description": "Fetch the list of tools from a remote MCP server.",
+        "operationId": "mcp-servers_list_mcp_server_tools",
+        "parameters": [
+          {
+            "name": "server_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Server Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Mcp-Servers List Mcp Server Tools"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/onboarding/status": {
+      "get": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Get Onboarding Status",
+        "description": "Check which onboarding steps have been completed.",
+        "operationId": "onboarding_get_onboarding_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Onboarding Get Onboarding Status"
                 }
               }
             }
@@ -6169,7 +7017,14 @@
           "reviewer",
           "pm",
           "designer",
-          "summarizer"
+          "summarizer",
+          "architect",
+          "qa_engineer",
+          "devops",
+          "security",
+          "tech_lead",
+          "documentation",
+          "triage"
         ],
         "title": "AgentRole"
       },
@@ -6240,14 +7095,6 @@
             "title": "Is Default",
             "default": false
           },
-          "models": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Models",
-            "default": []
-          },
           "config": {
             "additionalProperties": true,
             "type": "object",
@@ -6280,8 +7127,15 @@
             "type": "string",
             "title": "System Prompt"
           },
-          "model_policy": {
-            "$ref": "#/components/schemas/ModelPolicyRequest"
+          "max_tokens": {
+            "type": "integer",
+            "title": "Max Tokens",
+            "default": 4096
+          },
+          "temperature": {
+            "type": "number",
+            "title": "Temperature",
+            "default": 0.0
           },
           "allowed_skills": {
             "items": {
@@ -6301,7 +7155,6 @@
           "name",
           "description",
           "system_prompt",
-          "model_policy",
           "role"
         ],
         "title": "CreateAgentDefinitionRequest"
@@ -6456,11 +7309,6 @@
             "$ref": "#/components/schemas/EnvironmentType",
             "default": "development"
           },
-          "project_id": {
-            "type": "string",
-            "title": "Project Id",
-            "default": ""
-          },
           "config": {
             "anyOf": [
               {
@@ -6479,6 +7327,126 @@
           "name"
         ],
         "title": "CreateEnvironmentRequest"
+      },
+      "CreateMCPServerRequest": {
+        "properties": {
+          "server_id": {
+            "type": "string",
+            "title": "Server Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "url"
+        ],
+        "title": "CreateMCPServerRequest"
+      },
+      "CreateModelAssignmentRequest": {
+        "properties": {
+          "assignment_id": {
+            "type": "string",
+            "title": "Assignment Id"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ModelAssignmentContext"
+          },
+          "context_id": {
+            "type": "string",
+            "title": "Context Id"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "context",
+          "context_id"
+        ],
+        "title": "CreateModelAssignmentRequest"
+      },
+      "CreateModelRequest": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "provider_id": {
+            "type": "string",
+            "title": "Provider Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "title": "Max Tokens",
+            "default": 4096
+          },
+          "temperature": {
+            "type": "number",
+            "title": "Temperature",
+            "default": 0.0
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities",
+            "default": []
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id",
+          "name",
+          "model_name"
+        ],
+        "title": "CreateModelRequest"
       },
       "CreateNotificationRuleRequest": {
         "properties": {
@@ -6609,24 +7577,13 @@
             "type": "string",
             "title": "Name"
           },
-          "repo_id": {
-            "type": "string",
-            "title": "Repo Id"
-          },
-          "channel_id": {
-            "type": "string",
-            "title": "Channel Id",
-            "default": ""
-          },
-          "workspace_id": {
-            "type": "string",
-            "title": "Workspace Id",
-            "default": ""
-          },
-          "workflow_definition_id": {
-            "type": "string",
-            "title": "Workflow Definition Id",
-            "default": "feature_to_pr"
+          "repo_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Repo Ids",
+            "default": []
           },
           "default_branch": {
             "type": "string",
@@ -6641,11 +7598,6 @@
             "title": "Credential Ids",
             "default": []
           },
-          "ai_provider_id": {
-            "type": "string",
-            "title": "Ai Provider Id",
-            "default": ""
-          },
           "status": {
             "$ref": "#/components/schemas/ProjectStatus",
             "default": "active"
@@ -6653,8 +7605,7 @@
         },
         "type": "object",
         "required": [
-          "name",
-          "repo_id"
+          "name"
         ],
         "title": "CreateProjectRequest"
       },
@@ -6898,11 +7849,6 @@
           "value": {
             "type": "string",
             "title": "Value"
-          },
-          "project_id": {
-            "type": "string",
-            "title": "Project Id",
-            "default": ""
           },
           "environment_id": {
             "type": "string",
@@ -7230,33 +8176,17 @@
         "type": "object",
         "title": "InvokeSkillRequest"
       },
-      "ModelPolicyRequest": {
-        "properties": {
-          "provider": {
-            "type": "string",
-            "title": "Provider"
-          },
-          "model_name": {
-            "type": "string",
-            "title": "Model Name"
-          },
-          "max_tokens": {
-            "type": "integer",
-            "title": "Max Tokens",
-            "default": 4096
-          },
-          "temperature": {
-            "type": "number",
-            "title": "Temperature",
-            "default": 0.0
-          }
-        },
-        "type": "object",
-        "required": [
-          "provider",
-          "model_name"
+      "ModelAssignmentContext": {
+        "type": "string",
+        "enum": [
+          "task",
+          "chat",
+          "workflow_step",
+          "pipeline_step",
+          "agent_role"
         ],
-        "title": "ModelPolicyRequest"
+        "title": "ModelAssignmentContext",
+        "description": "Where a model can be used."
       },
       "NotificationChannel": {
         "type": "string",
@@ -7384,6 +8314,10 @@
             "type": "string",
             "title": "Content",
             "default": ""
+          },
+          "category": {
+            "$ref": "#/components/schemas/SkillCategory",
+            "default": "custom"
           },
           "input_schema": {
             "additionalProperties": true,
@@ -7575,6 +8509,17 @@
             "type": "string",
             "title": "Role",
             "default": "user"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
           }
         },
         "type": "object",
@@ -7583,6 +8528,23 @@
           "message"
         ],
         "title": "SendMessageRequest"
+      },
+      "SkillCategory": {
+        "type": "string",
+        "enum": [
+          "code_generation",
+          "code_analysis",
+          "testing",
+          "documentation",
+          "devops",
+          "security",
+          "project_management",
+          "design",
+          "communication",
+          "data",
+          "custom"
+        ],
+        "title": "SkillCategory"
       },
       "SkillExecutionMode": {
         "type": "string",
@@ -7611,7 +8573,14 @@
             "title": "Display Name"
           },
           "message": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Message"
           },
           "project_id": {
@@ -7624,12 +8593,22 @@
               }
             ],
             "title": "Project Id"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
           }
         },
         "type": "object",
         "required": [
-          "user_id",
-          "message"
+          "user_id"
         ],
         "title": "StartConversationRequest"
       },
@@ -7774,20 +8753,6 @@
             ],
             "title": "Is Default"
           },
-          "models": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Models"
-          },
           "config": {
             "anyOf": [
               {
@@ -7852,15 +8817,27 @@
             ],
             "title": "System Prompt"
           },
-          "model_policy": {
+          "max_tokens": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ModelPolicyRequest"
+                "type": "integer"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Max Tokens"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
           },
           "allowed_skills": {
             "anyOf": [
@@ -7943,17 +8920,6 @@
               }
             ]
           },
-          "project_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Project Id"
-          },
           "config": {
             "anyOf": [
               {
@@ -7970,33 +8936,154 @@
         "type": "object",
         "title": "UpdateEnvironmentRequest"
       },
-      "UpdateModelPolicyRequest": {
+      "UpdateMCPServerRequest": {
         "properties": {
-          "provider": {
-            "type": "string",
-            "title": "Provider"
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           },
-          "model_name": {
-            "type": "string",
-            "title": "Model Name"
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
           },
-          "max_tokens": {
-            "type": "integer",
-            "title": "Max Tokens",
-            "default": 4096
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
           },
-          "temperature": {
-            "type": "number",
-            "title": "Temperature",
-            "default": 0.0
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
           }
         },
         "type": "object",
-        "required": [
-          "provider",
-          "model_name"
-        ],
-        "title": "UpdateModelPolicyRequest"
+        "title": "UpdateMCPServerRequest"
+      },
+      "UpdateModelRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          }
+        },
+        "type": "object",
+        "title": "UpdateModelRequest"
       },
       "UpdateNotificationRuleRequest": {
         "properties": {
@@ -8113,49 +9200,19 @@
             ],
             "title": "Name"
           },
-          "repo_id": {
+          "repo_ids": {
             "anyOf": [
               {
-                "type": "string"
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Repo Id"
-          },
-          "channel_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Channel Id"
-          },
-          "workspace_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workspace Id"
-          },
-          "workflow_definition_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Workflow Definition Id"
+            "title": "Repo Ids"
           },
           "default_branch": {
             "anyOf": [
@@ -8181,17 +9238,6 @@
               }
             ],
             "title": "Credential Ids"
-          },
-          "ai_provider_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ai Provider Id"
           },
           "status": {
             "anyOf": [
@@ -8351,6 +9397,16 @@
               }
             ],
             "title": "Content"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SkillCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "version": {
             "anyOf": [

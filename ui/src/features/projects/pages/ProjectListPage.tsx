@@ -10,7 +10,7 @@ import {
   ActionIcon,
   Loader,
   Center,
-  Select,
+  MultiSelect,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
@@ -29,7 +29,7 @@ import { EmptyState } from '@/shared/components/EmptyState';
 interface Project {
   project_id: string;
   name: string;
-  repo_id: string;
+  repo_ids: string[];
   status: string;
   default_branch: string;
 }
@@ -46,12 +46,12 @@ export function Component() {
   const form = useForm({
     initialValues: {
       name: '',
-      repo_id: '',
+      repo_ids: [] as string[],
       default_branch: 'main',
     },
     validate: {
       name: (v) => (v.trim() ? null : 'Required'),
-      repo_id: (v) => (v.trim() ? null : 'Required'),
+      repo_ids: (v) => (v.length > 0 ? null : 'Select at least one repository'),
     },
   });
 
@@ -109,7 +109,7 @@ export function Component() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Name</Table.Th>
-              <Table.Th>Repo</Table.Th>
+              <Table.Th>Repositories</Table.Th>
               <Table.Th>Branch</Table.Th>
               <Table.Th>Status</Table.Th>
               <Table.Th />
@@ -119,7 +119,16 @@ export function Component() {
             {projects.map((p) => (
               <Table.Tr key={p.project_id} style={{ cursor: 'pointer' }} onClick={() => void navigate(`/projects/${p.project_id}`)}>
                 <Table.Td>{p.name}</Table.Td>
-                <Table.Td>{p.repo_id}</Table.Td>
+                <Table.Td>
+                  <Group gap={4}>
+                    {(p.repo_ids ?? []).map((id) => (
+                      <Badge key={id} size="xs" variant="light">
+                        {repos.find((r) => r.repo_id === id)?.name ?? id}
+                      </Badge>
+                    ))}
+                    {(!p.repo_ids || p.repo_ids.length === 0) && '—'}
+                  </Group>
+                </Table.Td>
                 <Table.Td>{p.default_branch}</Table.Td>
                 <Table.Td><Badge>{p.status}</Badge></Table.Td>
                 <Table.Td>
@@ -141,12 +150,12 @@ export function Component() {
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
             <TextInput label="Name" placeholder="My Project" {...form.getInputProps('name')} />
-            <Select
-              label="Repository"
-              placeholder="Select a repository"
+            <MultiSelect
+              label="Repositories"
+              placeholder="Select repositories"
               data={repoOptions}
               searchable
-              {...form.getInputProps('repo_id')}
+              {...form.getInputProps('repo_ids')}
             />
             <TextInput label="Default Branch" {...form.getInputProps('default_branch')} />
             <Button type="submit" loading={createMutation.isPending}>Create</Button>
