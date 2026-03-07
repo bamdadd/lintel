@@ -59,9 +59,19 @@ class TestEnums:
 
     def test_agent_role_values(self) -> None:
         expected = {
-            "planner", "coder", "reviewer", "pm", "designer", "summarizer",
-            "architect", "qa_engineer", "devops", "security", "tech_lead",
-            "documentation", "triage",
+            "planner",
+            "coder",
+            "reviewer",
+            "pm",
+            "designer",
+            "summarizer",
+            "architect",
+            "qa_engineer",
+            "devops",
+            "security",
+            "tech_lead",
+            "documentation",
+            "triage",
         }
         assert {r.value for r in AgentRole} == expected
         assert len(AgentRole) == 13

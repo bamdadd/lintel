@@ -284,6 +284,19 @@ class PipelineRunFailed(EventEnvelope):
     event_type: str = "PipelineRunFailed"
 
 
+# --- Resource Version Events (Concourse-inspired) ---
+
+
+@dataclass(frozen=True)
+class ResourceVersionProduced(EventEnvelope):
+    event_type: str = "ResourceVersionProduced"
+
+
+@dataclass(frozen=True)
+class ResourceVersionConsumed(EventEnvelope):
+    event_type: str = "ResourceVersionConsumed"
+
+
 # --- Environment Events ---
 
 
@@ -404,6 +417,8 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         PipelineStageCompleted,
         PipelineRunCompleted,
         PipelineRunFailed,
+        ResourceVersionProduced,
+        ResourceVersionConsumed,
         EnvironmentCreated,
         TriggerFired,
         ArtifactStored,

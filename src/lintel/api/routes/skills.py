@@ -7,7 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.contracts.types import SkillDescriptor, SkillExecutionMode, SkillResult
+from lintel.contracts.types import SkillCategory, SkillDescriptor, SkillExecutionMode, SkillResult
 
 router = APIRouter()
 
@@ -94,6 +94,7 @@ class RegisterSkillRequest(BaseModel):
     name: str
     description: str = ""
     content: str = ""
+    category: SkillCategory = SkillCategory.CUSTOM
     input_schema: dict[str, Any] = {}
     output_schema: dict[str, Any] = {}
     execution_mode: SkillExecutionMode = SkillExecutionMode.INLINE
@@ -126,7 +127,11 @@ async def register_skill(
         execution_mode=body.execution_mode.value,
     )
     if hasattr(store, "_metadata"):
-        store._metadata[body.skill_id] = {"description": body.description, "content": body.content}
+        store._metadata[body.skill_id] = {
+            "description": body.description,
+            "content": body.content,
+            "category": body.category.value,
+        }
     return {"skill_id": body.skill_id, **asdict(descriptor), **_get_metadata(store, body.skill_id)}
 
 
@@ -156,6 +161,7 @@ class UpdateSkillRequest(BaseModel):
     name: str | None = None
     description: str | None = None
     content: str | None = None
+    category: SkillCategory | None = None
     version: str | None = None
     execution_mode: SkillExecutionMode | None = None
 
@@ -177,6 +183,8 @@ async def update_skill(
         meta["description"] = updates.pop("description")
     if "content" in updates:
         meta["content"] = updates.pop("content")
+    if "category" in updates:
+        meta["category"] = updates.pop("category").value
     if hasattr(store, "_metadata"):
         store._metadata[skill_id] = meta
     if "execution_mode" in updates:

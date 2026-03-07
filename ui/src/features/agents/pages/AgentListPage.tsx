@@ -82,8 +82,17 @@ export function Component() {
         const agents = grouped.get(category) ?? [];
         const color = CATEGORY_COLORS[category] ?? 'gray';
         return (
-          <Stack key={category} gap="sm">
-            <Group gap="xs">
+          <Paper
+            key={category}
+            withBorder
+            radius="md"
+            p="lg"
+            style={(theme) => ({
+              borderColor: theme.colors[color]?.[3],
+              borderWidth: 1,
+            })}
+          >
+            <Group gap="xs" mb="md">
               <Badge
                 size="lg"
                 variant="light"
@@ -148,7 +157,7 @@ export function Component() {
                 );
               })}
             </SimpleGrid>
-          </Stack>
+          </Paper>
         );
       })}
     </Stack>

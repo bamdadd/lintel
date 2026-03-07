@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 from lintel.contracts.commands import StartWorkflow
 from lintel.contracts.types import ThreadRef
@@ -20,7 +23,7 @@ def _make_command() -> StartWorkflow:
 async def test_execute_emits_start_and_complete_events() -> None:
     event_store = AsyncMock()
 
-    async def fake_astream(*_a: Any, **_kw: Any) -> Any:
+    async def fake_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
         yield {"node_a": {"output": "done"}}
 
     graph = AsyncMock()
@@ -50,7 +53,7 @@ async def test_execute_emits_start_and_complete_events() -> None:
 async def test_execute_emits_step_events_for_graph_chunks() -> None:
     event_store = AsyncMock()
 
-    async def fake_astream(*_a: Any, **_kw: Any) -> Any:
+    async def fake_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
         yield {"planner": {"plan": "step1"}}
         yield {"coder": {"code": "done"}}
 
@@ -67,7 +70,7 @@ async def test_execute_emits_step_events_for_graph_chunks() -> None:
 async def test_execute_emits_failed_on_error() -> None:
     event_store = AsyncMock()
 
-    async def failing_astream(*_a: Any, **_kw: Any) -> Any:
+    async def failing_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
         yield {"planner": {"plan": "step1"}}
         raise RuntimeError("graph exploded")
 
@@ -75,7 +78,7 @@ async def test_execute_emits_failed_on_error() -> None:
     graph.astream = failing_astream
 
     executor = WorkflowExecutor(event_store=event_store, graph=graph)
-    run_id = await executor.execute(_make_command())
+    await executor.execute(_make_command())
 
     # Last event should be PipelineRunFailed
     last_call = event_store.append.call_args_list[-1]

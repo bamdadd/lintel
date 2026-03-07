@@ -2,22 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
+from typing import Any
 
 
 class InMemoryCommandDispatcher:
     """In-memory command bus that dispatches commands to registered async handlers."""
 
     def __init__(self) -> None:
-        self._handlers: dict[type, Callable[..., object]] = {}
+        self._handlers: dict[type, Any] = {}
 
-    def register(self, command_type: type, handler: Callable[..., object]) -> None:
+    def register(self, command_type: type, handler: Any) -> None:  # noqa: ANN401
         self._handlers[command_type] = handler
 
-    async def dispatch(self, command: object) -> object:
+    async def dispatch(self, command: object) -> Any:  # noqa: ANN401
         handler = self._handlers.get(type(command))
         if handler is None:
             raise ValueError(f"No handler for {type(command).__name__}")

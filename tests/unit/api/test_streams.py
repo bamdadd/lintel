@@ -46,7 +46,7 @@ def test_stream_run_events_returns_sse(client: TestClient) -> None:
                 break
 
         # Should have at least PipelineRunStarted and PipelineRunCompleted events
-        event_lines = [l for l in lines if l.startswith("event:")]
+        event_lines = [line for line in lines if line.startswith("event:")]
         assert len(event_lines) >= 2
-        assert any("PipelineRunStarted" in l for l in event_lines)
-        assert any("PipelineRunCompleted" in l or "end" in l for l in event_lines)
+        assert any("PipelineRunStarted" in evt for evt in event_lines)
+        assert any("PipelineRunCompleted" in evt or "end" in evt for evt in event_lines)

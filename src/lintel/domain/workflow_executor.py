@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from lintel.contracts.events import (
@@ -24,7 +24,7 @@ class WorkflowExecutor:
     def __init__(
         self,
         event_store: EventStore,
-        graph: object,
+        graph: Any,  # noqa: ANN401
     ) -> None:
         self._event_store = event_store
         self._graph = graph
@@ -35,15 +35,17 @@ class WorkflowExecutor:
 
         await self._event_store.append(
             stream_id=stream_id,
-            events=[PipelineRunStarted(
-                event_type="PipelineRunStarted",
-                payload={
-                    "pipeline_id": command.workflow_type,
-                    "run_id": run_id,
-                    "trigger_type": "command",
-                    "thread_ref": str(command.thread_ref),
-                },
-            )],
+            events=[
+                PipelineRunStarted(
+                    event_type="PipelineRunStarted",
+                    payload={
+                        "pipeline_id": command.workflow_type,
+                        "run_id": run_id,
+                        "trigger_type": "command",
+                        "thread_ref": str(command.thread_ref),
+                    },
+                )
+            ],
         )
 
         try:
@@ -54,31 +56,37 @@ class WorkflowExecutor:
                 for node_name, output in chunk.items():
                     await self._event_store.append(
                         stream_id=stream_id,
-                        events=[PipelineStageCompleted(
-                            event_type="PipelineStageCompleted",
-                            payload={
-                                "run_id": run_id,
-                                "node_name": node_name,
-                                "output": output,
-                                "timestamp_ms": int(time.time() * 1000),
-                            },
-                        )],
+                        events=[
+                            PipelineStageCompleted(
+                                event_type="PipelineStageCompleted",
+                                payload={
+                                    "run_id": run_id,
+                                    "node_name": node_name,
+                                    "output": output,
+                                    "timestamp_ms": int(time.time() * 1000),
+                                },
+                            )
+                        ],
                     )
 
             await self._event_store.append(
                 stream_id=stream_id,
-                events=[PipelineRunCompleted(
-                    event_type="PipelineRunCompleted",
-                    payload={"run_id": run_id, "status": "succeeded"},
-                )],
+                events=[
+                    PipelineRunCompleted(
+                        event_type="PipelineRunCompleted",
+                        payload={"run_id": run_id, "status": "succeeded"},
+                    )
+                ],
             )
         except Exception as exc:
             await self._event_store.append(
                 stream_id=stream_id,
-                events=[PipelineRunFailed(
-                    event_type="PipelineRunFailed",
-                    payload={"run_id": run_id, "error": str(exc)},
-                )],
+                events=[
+                    PipelineRunFailed(
+                        event_type="PipelineRunFailed",
+                        payload={"run_id": run_id, "error": str(exc)},
+                    )
+                ],
             )
 
         return run_id

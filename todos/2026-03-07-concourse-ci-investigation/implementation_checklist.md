@@ -30,31 +30,28 @@ graph LR
 
 ## Phase 2: Graph Compiler, Timing Metrics, Pipeline DAG UI
 
-- [ ] Step 2.1: GraphCompiler — visual editor `{nodes, edges}` → executable StateGraph
-  - Blocked by: Phase 1
-- [ ] Step 2.2: Step modifiers — with_ensure(), with_on_failure(), with_try()
-- [ ] Step 2.3: Per-step OTel metrics — lintel_step_duration_seconds histogram
-- [ ] Step 2.4: run_metadata table migration
-- [ ] Step 2.5: UI — PipelineDAG component (React Flow read-only view) + PipelineDetailPage
-- [ ] Step 2.6: UI — StepTimingBar component (Gantt-style per-step duration)
-- [ ] Validation: `make test-unit && make test-integration && make lint && make typecheck`
+- [x] Step 2.1: GraphCompiler — visual editor `{nodes, edges}` → executable StateGraph
+- [x] Step 2.2: Step modifiers — with_ensure(), with_on_failure(), with_try()
+- [x] Step 2.3: Per-step OTel metrics — lintel_step_duration_seconds histogram
+- [x] Step 2.4: run_metadata table migration
+- [x] Step 2.5: UI — PipelineDAG component (React Flow read-only view) + PipelineDetailPage
+- [x] Step 2.6: UI — StepTimingBar component (Gantt-style per-step duration)
+- [x] Validation: `make test-unit && make test-integration && make lint && make typecheck`
 
 ## Phase 3: Version-Flow Model and Multi-Stage Pipelines
 
-- [ ] Step 3.1: ResourceVersion + PassedConstraint domain types + events
-  - Blocked by: Phase 2
-- [ ] Step 3.2: VersionResolver — individual/group resolution algorithm
-- [ ] Step 3.3: PipelineScheduler — trigger-on-new-version scheduler
-- [ ] Step 3.4: UI — Multi-stage pipeline visualization with version-flow edges
-- [ ] Validation: `make test-unit && make test-integration && make lint && make typecheck`
+- [x] Step 3.1: ResourceVersion + PassedConstraint domain types + events
+- [x] Step 3.2: VersionResolver — individual/group resolution algorithm
+- [x] Step 3.3: PipelineScheduler — trigger-on-new-version scheduler
+- [x] Step 3.4: UI — Multi-stage pipeline visualization with version-flow edges
+- [x] Validation: `make test-unit && make test-integration && make lint && make typecheck`
 
 ## Phase 4: Coordination and Metrics Dashboard
 
-- [ ] Step 4.1: PostgreSQL advisory lock coordinator
-  - Blocked by: Phase 3
-- [ ] Step 4.2: Scheduler loop with lock acquisition (10s tick interval)
-- [ ] Step 4.3: UI — Metrics dashboard (step duration charts, token usage, slowest steps)
-- [ ] Validation: `make all`
+- [x] Step 4.1: PostgreSQL advisory lock coordinator
+- [x] Step 4.2: Scheduler loop with lock acquisition (10s tick interval)
+- [x] Step 4.3: UI — Metrics dashboard (step duration charts, token usage, slowest steps)
+- [x] Validation: `make all`
 
 ---
 

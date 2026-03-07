@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   Title,
   Stack,
-  Table,
   Button,
   Group,
   Modal,
@@ -13,6 +12,10 @@ import {
   Center,
   ActionIcon,
   Text,
+  Card,
+  Badge,
+  SimpleGrid,
+  Box,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
@@ -32,9 +35,28 @@ interface Skill {
   name: string;
   description: string;
   content: string;
+  category: string;
   version: string;
   execution_mode: string;
 }
+
+const CATEGORY_OPTIONS = [
+  { value: 'code_generation', label: 'Code Generation' },
+  { value: 'code_analysis', label: 'Code Analysis' },
+  { value: 'testing', label: 'Testing' },
+  { value: 'documentation', label: 'Documentation' },
+  { value: 'devops', label: 'DevOps' },
+  { value: 'security', label: 'Security' },
+  { value: 'project_management', label: 'Project Management' },
+  { value: 'design', label: 'Design' },
+  { value: 'communication', label: 'Communication' },
+  { value: 'data', label: 'Data' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+  CATEGORY_OPTIONS.map((c) => [c.value, c.label]),
+);
 
 export function Component() {
   const { data: resp, isLoading } = useSkillsListSkills();
@@ -50,6 +72,7 @@ export function Component() {
       name: '',
       description: '',
       content: '',
+      category: 'custom',
       version: '1.0.0',
       execution_mode: 'inline',
     },
@@ -63,6 +86,7 @@ export function Component() {
       name: '',
       description: '',
       content: '',
+      category: 'custom',
       version: '',
       execution_mode: 'inline',
     },
@@ -95,6 +119,7 @@ export function Component() {
       name: skill.name,
       description: skill.description ?? '',
       content: skill.content ?? '',
+      category: skill.category ?? 'custom',
       version: skill.version,
       execution_mode: skill.execution_mode,
     });
@@ -144,39 +169,63 @@ export function Component() {
           onAction={openCreate}
         />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>ID</Table.Th>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Description</Table.Th>
-              <Table.Th>Version</Table.Th>
-              <Table.Th>Mode</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {skills.map((s) => (
-              <Table.Tr key={s.skill_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(s)}>
-                <Table.Td>{s.skill_id}</Table.Td>
-                <Table.Td>{s.name}</Table.Td>
-                <Table.Td><Text size="sm" lineClamp={1}>{s.description || '—'}</Text></Table.Td>
-                <Table.Td>{s.version}</Table.Td>
-                <Table.Td>{s.execution_mode}</Table.Td>
-                <Table.Td>
-                  <Group gap={4}>
-                    <ActionIcon variant="subtle" onClick={(e) => { e.stopPropagation(); openEdit(s); }}>
-                      <IconEdit size={16} />
-                    </ActionIcon>
-                    <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(s.skill_id); }}>
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <Stack gap="lg">
+          {Object.entries(
+            skills.reduce<Record<string, Skill[]>>((acc, s) => {
+              const cat = s.category || 'custom';
+              (acc[cat] ??= []).push(s);
+              return acc;
+            }, {}),
+          ).sort(([a], [b]) => (CATEGORY_LABELS[a] ?? a).localeCompare(CATEGORY_LABELS[b] ?? b))
+           .map(([category, categorySkills]) => (
+            <Box
+              key={category}
+              p="md"
+              style={(theme) => ({
+                border: `1px solid ${theme.colors.dark[4]}`,
+                borderRadius: theme.radius.md,
+              })}
+            >
+              <Text fw={600} size="sm" tt="uppercase" c="dimmed" mb="sm">
+                {CATEGORY_LABELS[category] ?? category}
+              </Text>
+              <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
+                {categorySkills.map((s) => (
+                  <Card
+                    key={s.skill_id}
+                    shadow="sm"
+                    padding="lg"
+                    radius="md"
+                    withBorder
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => openEdit(s)}
+                  >
+                    <Group justify="space-between" mb="xs">
+                      <Text fw={600} size="lg">{s.name}</Text>
+                      <Group gap={4}>
+                        <ActionIcon variant="subtle" onClick={(e) => { e.stopPropagation(); openEdit(s); }}>
+                          <IconEdit size={16} />
+                        </ActionIcon>
+                        <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(s.skill_id); }}>
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Group>
+                    </Group>
+                    <Text size="sm" c="dimmed" lineClamp={2} mb="md">
+                      {s.description || 'No description'}
+                    </Text>
+                    <Group gap="xs">
+                      <Badge variant="light" size="sm">v{s.version}</Badge>
+                      <Badge variant="light" size="sm" color={s.execution_mode === 'sandbox' ? 'orange' : 'blue'}>
+                        {s.execution_mode}
+                      </Badge>
+                    </Group>
+                  </Card>
+                ))}
+              </SimpleGrid>
+            </Box>
+          ))}
+        </Stack>
       )}
 
       {/* Create Modal */}
@@ -192,6 +241,11 @@ export function Component() {
               styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
               {...createForm.getInputProps('content')}
             />
+            <Select
+              label="Category"
+              data={CATEGORY_OPTIONS}
+              {...createForm.getInputProps('category')}
+            />
             <TextInput label="Version" {...createForm.getInputProps('version')} />
             <Select
               label="Execution Mode"
@@ -204,7 +258,7 @@ export function Component() {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal opened={!!editSkill} onClose={() => setEditSkill(null)} title={`Edit Skill: ${editSkill?.skill_id ?? ''}`} size="lg">
+      <Modal opened={!!editSkill} onClose={() => setEditSkill(null)} title={`Edit Skill: ${editSkill?.name ?? ''}`} size="lg">
         <form onSubmit={handleEdit}>
           <Stack gap="sm">
             <TextInput label="Name" {...editForm.getInputProps('name')} />
@@ -214,6 +268,11 @@ export function Component() {
               autosize minRows={8}
               styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
               {...editForm.getInputProps('content')}
+            />
+            <Select
+              label="Category"
+              data={CATEGORY_OPTIONS}
+              {...editForm.getInputProps('category')}
             />
             <TextInput label="Version" {...editForm.getInputProps('version')} />
             <Select

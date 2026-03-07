@@ -61,10 +61,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         name="Coder",
         role=AgentRole.CODER,
         category=AgentCategory.ENGINEERING,
-        description=(
-            "Implements code changes following the plan "
-            "and architecture decisions."
-        ),
+        description=("Implements code changes following the plan and architecture decisions."),
         system_prompt=(
             "You are a senior software engineer. Implement code "
             "changes following the provided plan. Write clean, "
@@ -78,10 +75,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         name="Code Reviewer",
         role=AgentRole.REVIEWER,
         category=AgentCategory.QUALITY,
-        description=(
-            "Reviews code changes for correctness, style, "
-            "security, and performance."
-        ),
+        description=("Reviews code changes for correctness, style, security, and performance."),
         system_prompt=(
             "You are a thorough code reviewer. Examine changes "
             "for bugs, security issues, performance problems, "
@@ -97,8 +91,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         role=AgentRole.QA_ENGINEER,
         category=AgentCategory.QUALITY,
         description=(
-            "Writes and runs tests, validates acceptance "
-            "criteria, and reports quality metrics."
+            "Writes and runs tests, validates acceptance criteria, and reports quality metrics."
         ),
         system_prompt=(
             "You are a QA engineer. Write comprehensive test "
@@ -115,8 +108,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         role=AgentRole.DEVOPS,
         category=AgentCategory.OPERATIONS,
         description=(
-            "Manages CI/CD pipelines, infrastructure changes, "
-            "and deployment configurations."
+            "Manages CI/CD pipelines, infrastructure changes, and deployment configurations."
         ),
         system_prompt=(
             "You are a DevOps engineer. Handle CI/CD config, "
@@ -133,8 +125,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         role=AgentRole.SECURITY,
         category=AgentCategory.QUALITY,
         description=(
-            "Performs security reviews, identifies "
-            "vulnerabilities, and suggests mitigations."
+            "Performs security reviews, identifies vulnerabilities, and suggests mitigations."
         ),
         system_prompt=(
             "You are a security analyst. Review code and configs "
@@ -169,8 +160,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         role=AgentRole.PM,
         category=AgentCategory.LEADERSHIP,
         description=(
-            "Clarifies requirements, prioritises work, "
-            "and communicates status to stakeholders."
+            "Clarifies requirements, prioritises work, and communicates status to stakeholders."
         ),
         system_prompt=(
             "You are a product manager. Clarify ambiguous "
@@ -187,8 +177,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         role=AgentRole.DOCUMENTATION,
         category=AgentCategory.COMMUNICATION,
         description=(
-            "Writes and updates technical documentation, "
-            "READMEs, API docs, and changelogs."
+            "Writes and updates technical documentation, READMEs, API docs, and changelogs."
         ),
         system_prompt=(
             "You are a technical writer. Produce clear, "
@@ -205,8 +194,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         role=AgentRole.TRIAGE,
         category=AgentCategory.OPERATIONS,
         description=(
-            "Classifies incoming issues, assigns priority "
-            "and labels, and routes to the right team."
+            "Classifies incoming issues, assigns priority and labels, and routes to the right team."
         ),
         system_prompt=(
             "You are a triage bot. Classify incoming issues "
@@ -222,10 +210,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         name="UI/UX Designer",
         role=AgentRole.DESIGNER,
         category=AgentCategory.DESIGN,
-        description=(
-            "Creates UI mockups, reviews UX flows, "
-            "and ensures design consistency."
-        ),
+        description=("Creates UI mockups, reviews UX flows, and ensures design consistency."),
         system_prompt=(
             "You are a UI/UX designer. Create wireframes and "
             "UI specifications, review user flows for usability, "
@@ -241,8 +226,7 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         role=AgentRole.SUMMARIZER,
         category=AgentCategory.COMMUNICATION,
         description=(
-            "Summarises long threads, meetings, and "
-            "discussions into concise actionable notes."
+            "Summarises long threads, meetings, and discussions into concise actionable notes."
         ),
         system_prompt=(
             "You are a summariser. Condense long conversations, "
@@ -265,15 +249,9 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_write_code",
         name="Write Code",
         version="1.0.0",
-        description=(
-            "Generate code in any language following "
-            "project conventions and the plan."
-        ),
+        description=("Generate code in any language following project conventions and the plan."),
         category=SkillCategory.CODE_GENERATION,
-        system_prompt=(
-            "Generate clean, well-structured code "
-            "following the project's conventions."
-        ),
+        system_prompt=("Generate clean, well-structured code following the project's conventions."),
         allowed_agent_roles=(
             AgentRole.CODER,
             AgentRole.ARCHITECT,
@@ -293,8 +271,7 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         ),
         category=SkillCategory.CODE_GENERATION,
         system_prompt=(
-            "Refactor the provided code preserving all "
-            "existing behavior while improving structure."
+            "Refactor the provided code preserving all existing behavior while improving structure."
         ),
         allowed_agent_roles=(
             AgentRole.CODER,
@@ -309,13 +286,11 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         name="Fix Bug",
         version="1.0.0",
         description=(
-            "Diagnose and fix a reported bug with "
-            "root cause analysis and regression test."
+            "Diagnose and fix a reported bug with root cause analysis and regression test."
         ),
         category=SkillCategory.CODE_GENERATION,
         system_prompt=(
-            "Diagnose the bug, identify root cause, "
-            "apply a minimal fix, and add a regression test."
+            "Diagnose the bug, identify root cause, apply a minimal fix, and add a regression test."
         ),
         allowed_agent_roles=(AgentRole.CODER, AgentRole.QA_ENGINEER),
         tags=("bugfix", "debugging"),
@@ -326,10 +301,7 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_code_review",
         name="Code Review",
         version="1.0.0",
-        description=(
-            "Review a diff or set of files for "
-            "correctness, style, and best practices."
-        ),
+        description=("Review a diff or set of files for correctness, style, and best practices."),
         category=SkillCategory.CODE_ANALYSIS,
         system_prompt=(
             "Review the code changes. Check for bugs, "
@@ -349,8 +321,7 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         name="Explain Code",
         version="1.0.0",
         description=(
-            "Explain what a piece of code does, its "
-            "design rationale, and potential issues."
+            "Explain what a piece of code does, its design rationale, and potential issues."
         ),
         category=SkillCategory.CODE_ANALYSIS,
         system_prompt=(
@@ -372,8 +343,7 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         name="Dependency Analysis",
         version="1.0.0",
         description=(
-            "Analyse project dependencies for "
-            "vulnerabilities, updates, and compatibility."
+            "Analyse project dependencies for vulnerabilities, updates, and compatibility."
         ),
         category=SkillCategory.CODE_ANALYSIS,
         system_prompt=(
@@ -393,14 +363,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_write_tests",
         name="Write Tests",
         version="1.0.0",
-        description=(
-            "Generate unit, integration, or e2e tests "
-            "for the specified code."
-        ),
+        description=("Generate unit, integration, or e2e tests for the specified code."),
         category=SkillCategory.TESTING,
         system_prompt=(
-            "Write comprehensive tests covering happy path, "
-            "edge cases, and error scenarios."
+            "Write comprehensive tests covering happy path, edge cases, and error scenarios."
         ),
         allowed_agent_roles=(AgentRole.QA_ENGINEER, AgentRole.CODER),
         tags=("testing", "unit-tests", "integration-tests"),
@@ -414,8 +380,7 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         category=SkillCategory.TESTING,
         execution_mode=SkillExecutionMode.SANDBOX,
         system_prompt=(
-            "Run the test suite and report pass/fail counts, "
-            "coverage, and failure details."
+            "Run the test suite and report pass/fail counts, coverage, and failure details."
         ),
         allowed_agent_roles=(
             AgentRole.QA_ENGINEER,
@@ -429,14 +394,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_generate_test_data",
         name="Generate Test Data",
         version="1.0.0",
-        description=(
-            "Generate realistic test fixtures and seed data "
-            "for development and testing."
-        ),
+        description=("Generate realistic test fixtures and seed data for development and testing."),
         category=SkillCategory.TESTING,
         system_prompt=(
-            "Generate realistic test data matching "
-            "the specified schema and constraints."
+            "Generate realistic test data matching the specified schema and constraints."
         ),
         allowed_agent_roles=(AgentRole.QA_ENGINEER, AgentRole.CODER),
         tags=("testing", "fixtures", "seed-data"),
@@ -447,14 +408,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_write_docs",
         name="Write Documentation",
         version="1.0.0",
-        description=(
-            "Write or update technical documentation, "
-            "READMEs, and API reference."
-        ),
+        description=("Write or update technical documentation, READMEs, and API reference."),
         category=SkillCategory.DOCUMENTATION,
         system_prompt=(
-            "Write clear, concise documentation following "
-            "the project's documentation standards."
+            "Write clear, concise documentation following the project's documentation standards."
         ),
         allowed_agent_roles=(
             AgentRole.DOCUMENTATION,
@@ -469,14 +426,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         name="Write ADR",
         version="1.0.0",
         description=(
-            "Write an Architecture Decision Record capturing "
-            "context, decision, and consequences."
+            "Write an Architecture Decision Record capturing context, decision, and consequences."
         ),
         category=SkillCategory.DOCUMENTATION,
-        system_prompt=(
-            "Write an ADR with status, context, decision, "
-            "and consequences sections."
-        ),
+        system_prompt=("Write an ADR with status, context, decision, and consequences sections."),
         allowed_agent_roles=(
             AgentRole.ARCHITECT,
             AgentRole.TECH_LEAD,
@@ -489,15 +442,9 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_write_changelog",
         name="Write Changelog",
         version="1.0.0",
-        description=(
-            "Generate a changelog entry from commits "
-            "and PR descriptions."
-        ),
+        description=("Generate a changelog entry from commits and PR descriptions."),
         category=SkillCategory.DOCUMENTATION,
-        system_prompt=(
-            "Generate a changelog entry following "
-            "Keep a Changelog format."
-        ),
+        system_prompt=("Generate a changelog entry following Keep a Changelog format."),
         allowed_agent_roles=(
             AgentRole.DOCUMENTATION,
             AgentRole.PM,
@@ -511,14 +458,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_write_dockerfile",
         name="Write Dockerfile",
         version="1.0.0",
-        description=(
-            "Create or update Dockerfiles and "
-            "docker-compose configurations."
-        ),
+        description=("Create or update Dockerfiles and docker-compose configurations."),
         category=SkillCategory.DEVOPS,
         system_prompt=(
-            "Write optimised, secure Dockerfiles following "
-            "multi-stage build best practices."
+            "Write optimised, secure Dockerfiles following multi-stage build best practices."
         ),
         allowed_agent_roles=(AgentRole.DEVOPS, AgentRole.CODER),
         tags=("docker", "containerisation"),
@@ -528,14 +471,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_write_ci_config",
         name="Write CI/CD Config",
         version="1.0.0",
-        description=(
-            "Create or update CI/CD pipeline configuration "
-            "(GitHub Actions, etc.)."
-        ),
+        description=("Create or update CI/CD pipeline configuration (GitHub Actions, etc.)."),
         category=SkillCategory.DEVOPS,
         system_prompt=(
-            "Write CI/CD configuration that is efficient, "
-            "secure, and follows best practices."
+            "Write CI/CD configuration that is efficient, secure, and follows best practices."
         ),
         allowed_agent_roles=(AgentRole.DEVOPS, AgentRole.TECH_LEAD),
         tags=("ci-cd", "github-actions", "pipeline"),
@@ -545,14 +484,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_write_iac",
         name="Write Infrastructure as Code",
         version="1.0.0",
-        description=(
-            "Create or update Terraform, CloudFormation, "
-            "or other IaC configurations."
-        ),
+        description=("Create or update Terraform, CloudFormation, or other IaC configurations."),
         category=SkillCategory.DEVOPS,
         system_prompt=(
-            "Write infrastructure-as-code following "
-            "least privilege and immutable infra patterns."
+            "Write infrastructure-as-code following least privilege and immutable infra patterns."
         ),
         allowed_agent_roles=(AgentRole.DEVOPS,),
         tags=("terraform", "infrastructure", "iac"),
@@ -564,8 +499,7 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         name="Security Scan",
         version="1.0.0",
         description=(
-            "Scan code for OWASP Top 10 vulnerabilities "
-            "and common security anti-patterns."
+            "Scan code for OWASP Top 10 vulnerabilities and common security anti-patterns."
         ),
         category=SkillCategory.SECURITY,
         system_prompt=(
@@ -580,14 +514,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_secret_detection",
         name="Secret Detection",
         version="1.0.0",
-        description=(
-            "Detect hardcoded secrets, API keys, "
-            "and credentials in code."
-        ),
+        description=("Detect hardcoded secrets, API keys, and credentials in code."),
         category=SkillCategory.SECURITY,
         system_prompt=(
-            "Scan for hardcoded secrets, API keys, "
-            "passwords, and tokens. Flag all findings."
+            "Scan for hardcoded secrets, API keys, passwords, and tokens. Flag all findings."
         ),
         allowed_agent_roles=(
             AgentRole.SECURITY,
@@ -602,14 +532,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_estimate",
         name="Estimate Work",
         version="1.0.0",
-        description=(
-            "Estimate complexity and effort "
-            "for a set of tasks."
-        ),
+        description=("Estimate complexity and effort for a set of tasks."),
         category=SkillCategory.PROJECT_MANAGEMENT,
         system_prompt=(
-            "Estimate the complexity and effort for each "
-            "task. Use t-shirt sizing (S/M/L/XL)."
+            "Estimate the complexity and effort for each task. Use t-shirt sizing (S/M/L/XL)."
         ),
         allowed_agent_roles=(
             AgentRole.PM,
@@ -623,14 +549,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_triage_issue",
         name="Triage Issue",
         version="1.0.0",
-        description=(
-            "Classify, prioritise, and label an "
-            "incoming issue or request."
-        ),
+        description=("Classify, prioritise, and label an incoming issue or request."),
         category=SkillCategory.PROJECT_MANAGEMENT,
         system_prompt=(
-            "Classify the issue type, assign priority "
-            "(P0-P3), add labels, suggest assignee role."
+            "Classify the issue type, assign priority (P0-P3), add labels, suggest assignee role."
         ),
         allowed_agent_roles=(AgentRole.TRIAGE, AgentRole.PM),
         tags=("triage", "classification", "prioritisation"),
@@ -641,13 +563,11 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         name="Summarise Thread",
         version="1.0.0",
         description=(
-            "Summarise a conversation thread into key "
-            "decisions, actions, and open questions."
+            "Summarise a conversation thread into key decisions, actions, and open questions."
         ),
         category=SkillCategory.COMMUNICATION,
         system_prompt=(
-            "Summarise the thread concisely: key decisions, "
-            "action items, and open questions."
+            "Summarise the thread concisely: key decisions, action items, and open questions."
         ),
         allowed_agent_roles=(
             AgentRole.SUMMARIZER,
@@ -661,15 +581,11 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_create_pr",
         name="Create Pull Request",
         version="1.0.0",
-        description=(
-            "Create a well-structured PR with title, "
-            "description, and linked issues."
-        ),
+        description=("Create a well-structured PR with title, description, and linked issues."),
         category=SkillCategory.CODE_GENERATION,
         execution_mode=SkillExecutionMode.SANDBOX,
         system_prompt=(
-            "Create a PR with a clear title, structured "
-            "description, and linked work items."
+            "Create a PR with a clear title, structured description, and linked work items."
         ),
         allowed_agent_roles=(AgentRole.CODER, AgentRole.TECH_LEAD),
         tags=("git", "pull-request"),
@@ -679,14 +595,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_database_migration",
         name="Write Database Migration",
         version="1.0.0",
-        description=(
-            "Generate database migration scripts "
-            "for schema changes."
-        ),
+        description=("Generate database migration scripts for schema changes."),
         category=SkillCategory.CODE_GENERATION,
         system_prompt=(
-            "Generate a safe, reversible database migration "
-            "script for the requested schema change."
+            "Generate a safe, reversible database migration script for the requested schema change."
         ),
         allowed_agent_roles=(
             AgentRole.CODER,
@@ -700,14 +612,10 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_performance_analysis",
         name="Performance Analysis",
         version="1.0.0",
-        description=(
-            "Analyse code for performance bottlenecks "
-            "and suggest optimisations."
-        ),
+        description=("Analyse code for performance bottlenecks and suggest optimisations."),
         category=SkillCategory.CODE_ANALYSIS,
         system_prompt=(
-            "Identify performance bottlenecks, suggest "
-            "optimisations, and estimate impact."
+            "Identify performance bottlenecks, suggest optimisations, and estimate impact."
         ),
         allowed_agent_roles=(
             AgentRole.REVIEWER,
@@ -721,10 +629,7 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         skill_id="skill_api_design",
         name="Design API",
         version="1.0.0",
-        description=(
-            "Design RESTful or GraphQL API endpoints "
-            "with schemas and error handling."
-        ),
+        description=("Design RESTful or GraphQL API endpoints with schemas and error handling."),
         category=SkillCategory.DESIGN,
         system_prompt=(
             "Design API endpoints following REST best "
@@ -748,20 +653,29 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="feature_to_pr",
         name="Feature to PR",
-        description=(
-            "End-to-end feature implementation: "
-            "plan, implement, test, review, merge."
-        ),
+        description=("End-to-end feature implementation: plan, implement, test, review, merge."),
         is_template=True,
         stage_names=(
-            "ingest", "route", "plan", "approve_spec",
-            "implement", "test", "review",
-            "approve_merge", "merge",
+            "ingest",
+            "route",
+            "plan",
+            "approve_spec",
+            "implement",
+            "test",
+            "review",
+            "approve_merge",
+            "merge",
         ),
         graph_nodes=(
-            "ingest", "route", "plan",
-            "approval_gate_spec", "implement", "test",
-            "review", "approval_gate_merge", "close",
+            "ingest",
+            "route",
+            "plan",
+            "approval_gate_spec",
+            "implement",
+            "test",
+            "review",
+            "approval_gate_merge",
+            "close",
         ),
         graph_edges=(
             ("ingest", "route"),
@@ -789,18 +703,25 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="bug_fix",
         name="Bug Fix",
-        description=(
-            "Triage, reproduce, fix, test, "
-            "and review a bug report."
-        ),
+        description=("Triage, reproduce, fix, test, and review a bug report."),
         is_template=True,
         stage_names=(
-            "triage", "reproduce", "fix", "test",
-            "review", "approve_merge", "merge",
+            "triage",
+            "reproduce",
+            "fix",
+            "test",
+            "review",
+            "approve_merge",
+            "merge",
         ),
         graph_nodes=(
-            "triage", "reproduce", "fix", "test",
-            "review", "approval_gate_merge", "close",
+            "triage",
+            "reproduce",
+            "fix",
+            "test",
+            "review",
+            "approval_gate_merge",
+            "close",
         ),
         graph_edges=(
             ("triage", "reproduce"),
@@ -818,16 +739,19 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="code_review",
         name="Code Review",
-        description=(
-            "Automated code review pipeline: "
-            "lint, security scan, review, feedback."
-        ),
+        description=("Automated code review pipeline: lint, security scan, review, feedback."),
         is_template=True,
         stage_names=(
-            "lint", "security_scan", "review", "feedback",
+            "lint",
+            "security_scan",
+            "review",
+            "feedback",
         ),
         graph_nodes=(
-            "lint", "security_scan", "review", "feedback",
+            "lint",
+            "security_scan",
+            "review",
+            "feedback",
         ),
         graph_edges=(
             ("lint", "security_scan"),
@@ -841,19 +765,27 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="refactor",
         name="Refactor",
-        description=(
-            "Safe refactoring: analyse, plan, implement, "
-            "test for regressions, review."
-        ),
+        description=("Safe refactoring: analyse, plan, implement, test for regressions, review."),
         is_template=True,
         stage_names=(
-            "analyse", "plan", "approve_spec", "refactor",
-            "test", "review", "approve_merge", "merge",
+            "analyse",
+            "plan",
+            "approve_spec",
+            "refactor",
+            "test",
+            "review",
+            "approve_merge",
+            "merge",
         ),
         graph_nodes=(
-            "analyse", "plan", "approval_gate_spec",
-            "refactor", "test", "review",
-            "approval_gate_merge", "close",
+            "analyse",
+            "plan",
+            "approval_gate_spec",
+            "refactor",
+            "test",
+            "review",
+            "approval_gate_merge",
+            "close",
         ),
         graph_edges=(
             ("analyse", "plan"),
@@ -875,18 +807,23 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="security_audit",
         name="Security Audit",
-        description=(
-            "Security-focused pipeline: dependency scan, "
-            "code scan, report, remediate."
-        ),
+        description=("Security-focused pipeline: dependency scan, code scan, report, remediate."),
         is_template=True,
         stage_names=(
-            "dependency_scan", "code_scan", "secret_scan",
-            "report", "approve_remediation", "remediate",
+            "dependency_scan",
+            "code_scan",
+            "secret_scan",
+            "report",
+            "approve_remediation",
+            "remediate",
         ),
         graph_nodes=(
-            "dependency_scan", "code_scan", "secret_scan",
-            "report", "approval_gate", "remediate",
+            "dependency_scan",
+            "code_scan",
+            "secret_scan",
+            "report",
+            "approval_gate",
+            "remediate",
         ),
         graph_edges=(
             ("dependency_scan", "code_scan"),
@@ -903,18 +840,25 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="incident_response",
         name="Incident Response",
-        description=(
-            "Incident workflow: triage, investigate, "
-            "hotfix, deploy, post-mortem."
-        ),
+        description=("Incident workflow: triage, investigate, hotfix, deploy, post-mortem."),
         is_template=True,
         stage_names=(
-            "triage", "investigate", "hotfix", "test",
-            "approve_deploy", "deploy", "post_mortem",
+            "triage",
+            "investigate",
+            "hotfix",
+            "test",
+            "approve_deploy",
+            "deploy",
+            "post_mortem",
         ),
         graph_nodes=(
-            "triage", "investigate", "hotfix", "test",
-            "approval_gate_deploy", "deploy", "post_mortem",
+            "triage",
+            "investigate",
+            "hotfix",
+            "test",
+            "approval_gate_deploy",
+            "deploy",
+            "post_mortem",
         ),
         graph_edges=(
             ("triage", "investigate"),
@@ -932,16 +876,19 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="documentation",
         name="Documentation",
-        description=(
-            "Documentation pipeline: analyse code, "
-            "draft docs, review, publish."
-        ),
+        description=("Documentation pipeline: analyse code, draft docs, review, publish."),
         is_template=True,
         stage_names=(
-            "analyse", "draft", "review", "publish",
+            "analyse",
+            "draft",
+            "review",
+            "publish",
         ),
         graph_nodes=(
-            "analyse", "draft", "review", "publish",
+            "analyse",
+            "draft",
+            "review",
+            "publish",
         ),
         graph_edges=(
             ("analyse", "draft"),
@@ -955,18 +902,25 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="release",
         name="Release",
-        description=(
-            "Release pipeline: changelog, version bump, "
-            "build, test, approve, deploy."
-        ),
+        description=("Release pipeline: changelog, version bump, build, test, approve, deploy."),
         is_template=True,
         stage_names=(
-            "changelog", "version_bump", "build", "test",
-            "approve_release", "deploy", "notify",
+            "changelog",
+            "version_bump",
+            "build",
+            "test",
+            "approve_release",
+            "deploy",
+            "notify",
         ),
         graph_nodes=(
-            "changelog", "version_bump", "build", "test",
-            "approval_gate_release", "deploy", "notify",
+            "changelog",
+            "version_bump",
+            "build",
+            "test",
+            "approval_gate_release",
+            "deploy",
+            "notify",
         ),
         graph_edges=(
             ("changelog", "version_bump"),
@@ -984,18 +938,21 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="onboarding",
         name="Developer Onboarding",
-        description=(
-            "Onboard a new developer: setup, "
-            "codebase tour, first task, review."
-        ),
+        description=("Onboard a new developer: setup, codebase tour, first task, review."),
         is_template=True,
         stage_names=(
-            "setup", "codebase_tour",
-            "first_task", "review", "complete",
+            "setup",
+            "codebase_tour",
+            "first_task",
+            "review",
+            "complete",
         ),
         graph_nodes=(
-            "setup", "codebase_tour",
-            "first_task", "review", "complete",
+            "setup",
+            "codebase_tour",
+            "first_task",
+            "review",
+            "complete",
         ),
         graph_edges=(
             ("setup", "codebase_tour"),
@@ -1010,18 +967,19 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="spike",
         name="Technical Spike",
-        description=(
-            "Time-boxed research spike: investigate, "
-            "prototype, report findings."
-        ),
+        description=("Time-boxed research spike: investigate, prototype, report findings."),
         is_template=True,
         stage_names=(
-            "define_scope", "research",
-            "prototype", "report",
+            "define_scope",
+            "research",
+            "prototype",
+            "report",
         ),
         graph_nodes=(
-            "define_scope", "research",
-            "prototype", "report",
+            "define_scope",
+            "research",
+            "prototype",
+            "report",
         ),
         graph_edges=(
             ("define_scope", "research"),

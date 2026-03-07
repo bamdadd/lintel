@@ -3,8 +3,11 @@ set -euo pipefail
 
 SESSION="lintel"
 
-# Kill existing session if any
-tmux kill-session -t "$SESSION" 2>/dev/null || true
+# If session already exists, attach to it
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  tmux attach-session -t "$SESSION"
+  exit 0
+fi
 
 # Create session with first window: "prompts" (3 claude code panes)
 tmux new-session -d -s "$SESSION" -n prompts -x 200 -y 50
@@ -28,6 +31,11 @@ tmux send-keys -t "$SESSION:services" "make serve-db" Enter
 # Right: UI dev server
 tmux split-window -h -t "$SESSION:services"
 tmux send-keys -t "$SESSION:services" "make ui-dev" Enter
+
+# Create third window: "editor" (nvim + terminal)
+tmux new-window -t "$SESSION" -n editor
+tmux send-keys -t "$SESSION:editor" "nvim" Enter
+tmux split-window -v -t "$SESSION:editor"
 
 # Start on the prompts window
 tmux select-window -t "$SESSION:prompts"

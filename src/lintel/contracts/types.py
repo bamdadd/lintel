@@ -650,5 +650,34 @@ class WorkflowDefinitionRecord:
     enabled: bool = True
 
 
+# --- Resource Versions (Concourse-inspired) ---
+
+
+@dataclass(frozen=True)
+class ResourceVersion:
+    """A versioned resource output from a pipeline job."""
+
+    resource_name: str
+    version: dict[str, str]
+    metadata: tuple[dict[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class PassedConstraint:
+    """Requires a resource version to have passed through specific upstream jobs."""
+
+    resource_name: str
+    jobs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class JobInput:
+    """Input specification for a pipeline job."""
+
+    resource_name: str
+    trigger: bool = True
+    passed_constraints: tuple[PassedConstraint, ...] = ()
+
+
 CorrelationId = NewType("CorrelationId", UUID)
 EventId = NewType("EventId", UUID)

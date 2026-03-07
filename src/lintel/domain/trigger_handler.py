@@ -33,7 +33,8 @@ class TriggerHandler:
             ),
             workflow_type=workflow_type,
         )
-        return await self._dispatcher.dispatch(command)
+        result = await self._dispatcher.dispatch(command)
+        return str(result)
 
     async def handle_webhook(
         self,
@@ -49,4 +50,5 @@ class TriggerHandler:
             ),
             workflow_type=pipeline_id,
         )
-        return await self._dispatcher.dispatch(command)
+        result = await self._dispatcher.dispatch(command)
+        return str(result)

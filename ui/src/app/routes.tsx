@@ -86,6 +86,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/pipelines/pages/PipelineDetailPage'),
       },
       {
+        path: 'pipelines/metrics',
+        lazy: () => import('@/features/pipelines/pages/MetricsDashboardPage'),
+      },
+      {
         path: 'users',
         lazy: () => import('@/features/users/pages/UserListPage'),
       },

@@ -8,6 +8,7 @@ from langgraph.graph import StateGraph
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Any
 
     from langgraph.checkpoint.base import BaseCheckpointSaver
     from langgraph.graph.state import CompiledStateGraph
@@ -30,8 +31,8 @@ class GraphCompiler:
     def compile(
         self,
         definition: object,
-        checkpointer: BaseCheckpointSaver | None,
-    ) -> CompiledStateGraph:
+        checkpointer: BaseCheckpointSaver[Any] | None,
+    ) -> CompiledStateGraph[Any]:
         graph_data = definition.graph  # type: ignore[attr-defined]
         builder = StateGraph(ThreadWorkflowState)
 
@@ -45,9 +46,7 @@ class GraphCompiler:
             else:
                 builder.add_edge(edge["source"], edge["target"])
 
-        approval_nodes = [
-            n["id"] for n in graph_data["nodes"] if n["type"] == "approvalGate"
-        ]
+        approval_nodes = [n["id"] for n in graph_data["nodes"] if n["type"] == "approvalGate"]
 
         return builder.compile(
             checkpointer=checkpointer,

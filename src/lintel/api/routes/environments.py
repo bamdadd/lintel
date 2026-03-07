@@ -2,10 +2,9 @@
 
 from dataclasses import asdict
 from typing import Annotated, Any
-
-from fastapi import APIRouter, Depends, HTTPException, Request
 from uuid import uuid4
 
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.contracts.types import Environment, EnvironmentType

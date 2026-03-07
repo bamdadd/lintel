@@ -18,6 +18,7 @@ from lintel.workflows.nodes.ingest import ingest_message
 from lintel.workflows.nodes.plan import plan_work
 from lintel.workflows.nodes.review import review_output
 from lintel.workflows.nodes.route import route_intent
+from lintel.workflows.nodes.test_code import run_tests
 from lintel.workflows.state import ThreadWorkflowState
 
 
@@ -30,6 +31,7 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_node("plan", plan_work)
     graph.add_node("approval_gate_spec", lambda s: s)
     graph.add_node("implement", spawn_implementation)
+    graph.add_node("test", run_tests)
     graph.add_node("review", review_output)
     graph.add_node("approval_gate_merge", lambda s: s)
     graph.add_node("close", lambda s: {**s, "current_phase": "closed"})
@@ -46,7 +48,8 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     )
     graph.add_edge("plan", "approval_gate_spec")
     graph.add_edge("approval_gate_spec", "implement")
-    graph.add_edge("implement", "review")
+    graph.add_edge("implement", "test")
+    graph.add_edge("test", "review")
     graph.add_edge("review", "approval_gate_merge")
     graph.add_edge("approval_gate_merge", "close")
     graph.add_edge("close", END)
