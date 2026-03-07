@@ -1,7 +1,17 @@
 # Concourse CI Investigation for Lintel Scheduling
 
 **Created:** 2026-03-07
-**Status:** todo
+**Status:** researched
+
+## Artifacts
+
+- `task.md` — Task definition
+- `research.md` — Research findings with synthesis, options, and recommendation
+- `research/` — Detailed appendices (4 files):
+  - `codebase-survey-api.md` — Lintel codebase survey
+  - `web-research-concourse-architecture.md` — Concourse internals
+  - `web-research-concourse-ui.md` — Concourse UI/streaming/metrics
+  - `web-research-langgraph-pipelines.md` — LangGraph pipeline model
 
 ## Objective
 
@@ -18,14 +28,30 @@ Investigate Concourse CI's architecture and scheduling model to inform Lintel's 
 - [ ] What's missing or doesn't translate well to AI agent orchestration
 - [ ] Design single-node equivalent architecture for Lintel
 
+## UI Requirements
+
+- Concourse-style task execution UI where you can click into a job and see each step — we want the same but showing the prompt/input for each tool executed (docker, bash, etc.)
+- Live streaming of task output in the UI — minimal latency, output should appear as fast as possible
+- Capture and display timing for every task run (start, end, duration per step)
+- Expose task timing as metrics for optimization (identify slow steps, track regressions)
+
+## Worktree
+
+Branch: `concourse-ci-investigation`
+Path: `../lintel-concourse-investigation`
+
+All work for this task should be done in the worktree above, not on main.
+
 ## Reference
 
 - https://concourse-ci.org/
 - https://concourse-ci.org/docs.html
+- https://concourse-ci.org/examples/
+- https://ci.concourse-ci.org/teams/main/pipelines/concourse (live pipeline dogfooding their own CI)
 
 ## Notes
 
 - Concourse is distributed multi-node by default; Lintel starts single-node
 - Different channels (Slack-based) vs Concourse's resource-based triggers
-- Different pipeline format needed for AI agent workflows vs CI/CD tasks
+- Prefer LangGraph pipeline model over Concourse's YAML-based pipeline format
 - Focus on scheduling primitives that can be adapted for agent orchestration
