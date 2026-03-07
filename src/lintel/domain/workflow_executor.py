@@ -75,6 +75,9 @@ class WorkflowExecutor:
             ],
         )
 
+        # Mark first stage as running
+        await self._mark_first_stage_running(run_id)
+
         try:
             async for chunk in self._graph.astream(
                 {
@@ -147,6 +150,7 @@ class WorkflowExecutor:
                 ],
             )
             await self._update_pipeline_status(run_id, "succeeded")
+            await self._complete_work_item(command)
             await self._notify_chat(
                 run_id,
                 f"🎉 **Workflow completed successfully**\n"
@@ -217,6 +221,7 @@ class WorkflowExecutor:
                 return
             finished = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).isoformat()
             updated_stages = []
+            found = False
             for stage in run.stages:
                 # Handle both Stage dataclass instances and plain dicts (Postgres)
                 if isinstance(stage, dict):
@@ -236,8 +241,19 @@ class WorkflowExecutor:
                         finished_at=finished,
                         duration_ms=duration,
                     ))
+                    found = True
                 else:
                     updated_stages.append(stage)
+            # Mark the next stage as running
+            if found:
+                for i, s in enumerate(updated_stages):
+                    if isinstance(s, dict):
+                        s = _dict_to_stage(s)
+                    if s.status == StageStatus.SUCCEEDED:
+                        continue
+                    if s.status == StageStatus.PENDING:
+                        updated_stages[i] = replace(s, status=StageStatus.RUNNING, started_at=finished)
+                        break
             updated = replace(run, stages=tuple(updated_stages))
             await pipeline_store.update(updated)
         except Exception as exc:
@@ -261,6 +277,51 @@ class WorkflowExecutor:
                 new_status = PipelineStatus(status)
                 updated = replace(run, status=new_status)
                 await pipeline_store.update(updated)
-        except Exception:
+        except Exception as exc:
             import structlog
             structlog.get_logger().warning("update_pipeline_status_failed", run_id=run_id, status=status, error=str(exc))
+
+    async def _mark_first_stage_running(self, run_id: str) -> None:
+        """Mark the first pipeline stage as running."""
+        if self._app_state is None:
+            return
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return
+        try:
+            from dataclasses import replace
+            from datetime import UTC, datetime
+
+            from lintel.contracts.types import StageStatus
+
+            run = await pipeline_store.get(run_id)
+            if run is None or not run.stages:
+                return
+            stages = list(run.stages)
+            first = stages[0]
+            if isinstance(first, dict):
+                first = _dict_to_stage(first)
+            now = datetime.now(UTC).isoformat()
+            stages[0] = replace(first, status=StageStatus.RUNNING, started_at=now)
+            updated = replace(run, stages=tuple(stages))
+            await pipeline_store.update(updated)
+        except Exception as exc:
+            import structlog
+            structlog.get_logger().warning("mark_first_stage_running_failed", run_id=run_id, error=str(exc))
+
+    async def _complete_work_item(self, command: StartWorkflow) -> None:
+        """Mark the work item as closed after workflow success."""
+        if self._app_state is None:
+            return
+        work_item_store = getattr(self._app_state, "work_item_store", None)
+        if work_item_store is None or not command.work_item_id:
+            return
+        try:
+            item = await work_item_store.get(command.work_item_id)
+            if item is None:
+                return
+            item["status"] = "closed"
+            await work_item_store.update(command.work_item_id, item)
+        except Exception as exc:
+            import structlog
+            structlog.get_logger().warning("complete_work_item_failed", work_item_id=command.work_item_id, error=str(exc))

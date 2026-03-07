@@ -67,7 +67,7 @@ export function Component() {
   const selectedStage = selectedStageId ? stages.find((s) => s.stage_id === selectedStageId) : null;
 
   const timingSteps = stages
-    .filter((s) => s.duration_ms)
+    .filter((s) => s.started_at && s.finished_at)
     .map((s) => ({
       name: s.name,
       stepType: s.stage_type ?? 'agent',

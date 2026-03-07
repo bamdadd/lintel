@@ -145,7 +145,6 @@ export function Component() {
               <Table.Th>Type</Table.Th>
               <Table.Th>Status</Table.Th>
               <Table.Th>Project</Table.Th>
-              <Table.Th>Agent</Table.Th>
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
@@ -156,7 +155,6 @@ export function Component() {
                 <Table.Td><Badge color={typeColor[w.work_type] ?? 'gray'} variant="light">{w.work_type}</Badge></Table.Td>
                 <Table.Td><Badge color={statusColor[w.status] ?? 'gray'}>{w.status}</Badge></Table.Td>
                 <Table.Td>{projectName(w.project_id)}</Table.Td>
-                <Table.Td>{w.assignee_agent_role || '—'}</Table.Td>
                 <Table.Td>
                   <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(w.work_item_id); }}>
                     <IconTrash size={16} />
