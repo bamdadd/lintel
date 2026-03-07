@@ -874,6 +874,40 @@ async def send_message_stream(
     )
 
 
+@router.get("/chat/conversations/{conversation_id}/events")
+async def stream_conversation_events(
+    conversation_id: str,
+    store: ChatStoreDep,
+) -> StreamingResponse:
+    """Stream new chat messages via SSE for real-time updates."""
+    conv = await store.get(conversation_id)
+    if conv is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Conversation {conversation_id} not found",
+        )
+
+    async def event_stream() -> AsyncIterator[str]:
+        last_count = 0
+        while True:
+            conv = await store.get(conversation_id)
+            if conv is None:
+                return
+            messages = conv.get("messages", [])
+            current_count = len(messages)
+            if current_count > last_count:
+                for msg in messages[last_count:]:
+                    yield f"data: {json.dumps(msg)}\n\n"
+                last_count = current_count
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.get("/chat/conversations/{conversation_id}/status")
 async def get_conversation_status(
     conversation_id: str,

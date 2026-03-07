@@ -75,7 +75,7 @@ class TestSpawnImplementation:
         manager = DummySandboxManager()
         state = _make_state(sandbox_id=None)  # type: ignore[arg-type]
 
-        result = await spawn_implementation(state, sandbox_manager=manager)
+        result = await spawn_implementation(state, {"configurable": {"sandbox_manager": manager}})
 
         assert result["error"] is not None
         assert result["current_phase"] == "closed"
@@ -87,7 +87,7 @@ class TestSpawnImplementation:
         manager._sandboxes[sandbox_id] = {}
         state = _make_state(sandbox_id=sandbox_id)
 
-        result = await spawn_implementation(state, sandbox_manager=manager)
+        result = await spawn_implementation(state, {"configurable": {"sandbox_manager": manager}})
 
         assert result["current_phase"] == "testing"
         assert len(result["sandbox_results"]) == 1
@@ -100,6 +100,6 @@ class TestSpawnImplementation:
         manager._sandboxes[sandbox_id] = {}
         state = _make_state(sandbox_id=sandbox_id)
 
-        result = await spawn_implementation(state, sandbox_manager=manager, agent_runtime=None)
+        result = await spawn_implementation(state, {"configurable": {"sandbox_manager": manager, "agent_runtime": None}})
 
         assert "No agent runtime" in result["agent_outputs"][0]["output"]

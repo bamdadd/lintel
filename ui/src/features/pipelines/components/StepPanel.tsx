@@ -7,13 +7,14 @@ import type { StreamEvent } from '../hooks/useSSEStream';
 
 interface StepPanelProps {
   stepName: string;
-  status: 'pending' | 'running' | 'succeeded' | 'failed' | 'errored';
+  status: 'pending' | 'running' | 'started' | 'succeeded' | 'failed' | 'errored';
   durationMs?: number;
   events: StreamEvent[];
 }
 
 const statusColor: Record<string, string> = {
   pending: 'gray',
+  started: 'teal',
   running: 'blue',
   succeeded: 'green',
   failed: 'red',
@@ -22,6 +23,16 @@ const statusColor: Record<string, string> = {
 
 export function StepPanel({ stepName, status, durationMs, events }: StepPanelProps) {
   const [opened, setOpened] = useState(status === 'failed' || status === 'errored');
+
+  // Extract token usage from stage output events
+  const tokenUsage = (() => {
+    for (const evt of events) {
+      const output = (evt.payload as Record<string, unknown>)?.output as Record<string, unknown> | undefined;
+      const usage = output?.token_usage as { input_tokens: number; output_tokens: number; total_tokens: number } | undefined;
+      if (usage?.total_tokens) return usage;
+    }
+    return null;
+  })();
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
@@ -42,9 +53,16 @@ export function StepPanel({ stepName, status, durationMs, events }: StepPanelPro
           <Text fw={500} size="sm">{stepName}</Text>
           <Badge color={statusColor[status] ?? 'gray'} size="sm">{status}</Badge>
         </Group>
-        {durationMs !== undefined && (
-          <Text size="xs" c="dimmed">{formatDuration(durationMs)}</Text>
-        )}
+        <Group gap="sm">
+          {tokenUsage && (
+            <Text size="xs" c="dimmed">
+              {tokenUsage.total_tokens.toLocaleString()} tokens
+            </Text>
+          )}
+          {durationMs !== undefined && (
+            <Text size="xs" c="dimmed">{formatDuration(durationMs)}</Text>
+          )}
+        </Group>
       </Group>
 
       <Collapse in={opened}>

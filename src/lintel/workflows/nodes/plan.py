@@ -65,9 +65,10 @@ def _build_thread_ref(raw: str) -> ThreadRef:
 
 async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[str, Any]:
     """Generate work plan using the Planner agent via AgentRuntime."""
-    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage, mark_completed, mark_running
 
     await mark_running(config, "plan", state)
+    await append_log(config, "plan", "Generating implementation plan...", state)
 
     agent_runtime: AgentRuntime | None = config.get("configurable", {}).get("agent_runtime")
 
@@ -101,17 +102,41 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     content = result.get("content", "")
     plan = _parse_plan(content)
     plan["intent"] = state.get("intent", "feature")
+    usage = extract_token_usage("plan", result)
+
+    # Log plan tasks for visibility
+    summary = plan.get("summary", "")
+    tasks = plan.get("tasks", [])
+    await append_log(config, "plan", f"Plan: {summary}", state)
+    for i, task in enumerate(tasks, 1):
+        title = task.get("title", task) if isinstance(task, dict) else str(task)
+        complexity = task.get("complexity", "") if isinstance(task, dict) else ""
+        suffix = f" [{complexity}]" if complexity else ""
+        await append_log(config, "plan", f"  {i}. {title}{suffix}", state)
+    await append_log(
+        config, "plan",
+        f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
+        state,
+    )
 
     logger.info(
         "plan_generated",
-        task_count=len(plan.get("tasks", [])),
-        summary=plan.get("summary", ""),
+        task_count=len(tasks),
+        summary=summary,
+        input_tokens=usage["input_tokens"],
+        output_tokens=usage["output_tokens"],
     )
 
-    await mark_completed(config, "plan", state)
+    # Store full plan in stage outputs for the detail view
+    stage_outputs: dict[str, object] = {
+        "token_usage": usage,
+        "plan": plan,
+    }
+    await mark_completed(config, "plan", state, outputs=stage_outputs)
     return {
         "plan": plan,
         "current_phase": "awaiting_spec_approval",
         "pending_approvals": ["spec_approval"],
         "agent_outputs": [{"node": "plan", "agent": "planner", "content": content}],
+        "token_usage": [usage],
     }

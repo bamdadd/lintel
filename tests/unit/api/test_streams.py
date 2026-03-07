@@ -27,7 +27,7 @@ def test_stream_run_events_returns_sse(client: TestClient) -> None:
             "workspace_id": "W1",
             "channel_id": "C1",
             "thread_ts": "ts1",
-            "workflow_type": "test_wf",
+            "workflow_type": "feature_to_pr",
         },
     )
     assert resp.status_code == 201

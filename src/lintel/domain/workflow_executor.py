@@ -45,16 +45,18 @@ class WorkflowExecutor:
     def __init__(
         self,
         event_store: EventStore,
-        graph: Any,  # noqa: ANN401
+        graph: Any = None,  # noqa: ANN401 — legacy single graph
         agent_runtime: Any = None,  # noqa: ANN401
         on_stage_complete: StageCallback | None = None,
         app_state: Any = None,  # noqa: ANN401
+        graph_factory: Callable[[str], Any] | None = None,
     ) -> None:
         self._event_store = event_store
         self._graph = graph
         self._agent_runtime = agent_runtime
         self._on_stage_complete = on_stage_complete
         self._app_state = app_state
+        self._graph_factory = graph_factory
 
     async def execute(self, command: StartWorkflow) -> str:
         run_id = command.run_id or str(uuid4())
@@ -78,8 +80,15 @@ class WorkflowExecutor:
         # Mark first stage as running
         await self._mark_first_stage_running(run_id)
 
+        # Resolve graph: prefer factory (per workflow type), fall back to static graph
+        graph = self._graph
+        if self._graph_factory is not None:
+            graph = self._graph_factory(command.workflow_type)
+
+        total_tokens: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+
         try:
-            async for chunk in self._graph.astream(
+            async for chunk in graph.astream(
                 {
                     "thread_ref": str(command.thread_ref),
                     "correlation_id": run_id,
@@ -98,6 +107,10 @@ class WorkflowExecutor:
                         "run_id": run_id,
                         "agent_runtime": self._agent_runtime,
                         "app_state": self._app_state,
+                        "sandbox_manager": getattr(self._app_state, "sandbox_manager", None),
+                        "credential_store": getattr(self._app_state, "credential_store", None),
+                        "code_artifact_store": getattr(self._app_state, "code_artifact_store", None),
+                        "test_result_store": getattr(self._app_state, "test_result_store", None),
                     }
                 },
             ):
@@ -120,7 +133,15 @@ class WorkflowExecutor:
                     )
                     await self._mark_stage_completed(run_id, node_name, timestamp_ms)
 
-                    # Check if this is an approval stage
+                    # Accumulate token usage from node output
+                    if isinstance(output, dict):
+                        for entry in output.get("token_usage", []):
+                            if isinstance(entry, dict):
+                                total_tokens["input_tokens"] += entry.get("input_tokens", 0)
+                                total_tokens["output_tokens"] += entry.get("output_tokens", 0)
+                                total_tokens["total_tokens"] += entry.get("total_tokens", 0)
+
+                    # Build stage completion message
                     is_approval = "approve" in node_name or "approval" in node_name
                     if is_approval:
                         await self._notify_chat(
@@ -128,6 +149,21 @@ class WorkflowExecutor:
                             f"⏸️ **{node_name}** — auto-approved (noop mode)\n"
                             f"[View pipeline →](/pipelines/{run_id})",
                         )
+                    elif node_name == "plan" and isinstance(output, dict):
+                        # Show plan details in chat
+                        plan = output.get("plan", {})
+                        if isinstance(plan, dict) and plan.get("tasks"):
+                            lines = [f"✅ **plan** completed\n"]
+                            summary = plan.get("summary", "")
+                            if summary:
+                                lines.append(f"**Summary:** {summary}\n")
+                            lines.append("**Tasks:**")
+                            for i, task in enumerate(plan.get("tasks", []), 1):
+                                title = task.get("title", task) if isinstance(task, dict) else str(task)
+                                lines.append(f"  {i}. {title}")
+                            await self._notify_chat(run_id, "\n".join(lines))
+                        else:
+                            await self._notify_chat(run_id, f"✅ **{node_name}** completed")
                     else:
                         await self._notify_chat(
                             run_id,
@@ -145,18 +181,26 @@ class WorkflowExecutor:
                 events=[
                     PipelineRunCompleted(
                         event_type="PipelineRunCompleted",
-                        payload={"run_id": run_id, "status": "succeeded"},
+                        payload={"run_id": run_id, "status": "succeeded", "token_usage": total_tokens},
                     )
                 ],
             )
             await self._update_pipeline_status(run_id, "succeeded")
             await self._complete_work_item(command)
+            token_summary = ""
+            if total_tokens["total_tokens"] > 0:
+                token_summary = (
+                    f"\n📊 Tokens: {total_tokens['total_tokens']:,} "
+                    f"({total_tokens['input_tokens']:,} in / "
+                    f"{total_tokens['output_tokens']:,} out)"
+                )
             await self._notify_chat(
                 run_id,
-                f"🎉 **Workflow completed successfully**\n"
+                f"🎉 **Workflow completed successfully**{token_summary}\n"
                 f"[View pipeline →](/pipelines/{run_id})",
             )
         except Exception as exc:
+            await self._mark_running_stages_failed(run_id, str(exc))
             await self._event_store.append(
                 stream_id=stream_id,
                 events=[
@@ -167,6 +211,7 @@ class WorkflowExecutor:
                 ],
             )
             await self._update_pipeline_status(run_id, "failed")
+            await self._fail_work_item(command)
             await self._notify_chat(
                 run_id,
                 f"❌ **Workflow failed**: {exc}\n"
@@ -308,6 +353,61 @@ class WorkflowExecutor:
         except Exception as exc:
             import structlog
             structlog.get_logger().warning("mark_first_stage_running_failed", run_id=run_id, error=str(exc))
+
+    async def _mark_running_stages_failed(self, run_id: str, error: str) -> None:
+        """Mark any stages still in 'running' status as failed when the workflow errors."""
+        if self._app_state is None:
+            return
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return
+        try:
+            from dataclasses import replace
+
+            from lintel.contracts.types import StageStatus
+
+            run = await pipeline_store.get(run_id)
+            if run is None:
+                return
+            updated_stages = []
+            changed = False
+            for stage in run.stages:
+                if isinstance(stage, dict):
+                    stage = _dict_to_stage(stage)
+                if stage.status == StageStatus.RUNNING:
+                    updated_stages.append(replace(stage, status=StageStatus.FAILED, error=error))
+                    changed = True
+                else:
+                    updated_stages.append(stage)
+            if changed:
+                updated = replace(run, stages=tuple(updated_stages))
+                await pipeline_store.update(updated)
+        except Exception as exc:
+            import structlog
+            structlog.get_logger().warning(
+                "mark_running_stages_failed_error", run_id=run_id, error=str(exc),
+            )
+
+    async def _fail_work_item(self, command: StartWorkflow) -> None:
+        """Mark the work item as failed after workflow failure."""
+        if self._app_state is None:
+            return
+        work_item_store = getattr(self._app_state, "work_item_store", None)
+        if work_item_store is None or not command.work_item_id:
+            return
+        try:
+            item = await work_item_store.get(command.work_item_id)
+            if item is None:
+                return
+            item["status"] = "failed"
+            await work_item_store.update(command.work_item_id, item)
+        except Exception as exc:
+            import structlog
+            structlog.get_logger().warning(
+                "fail_work_item_failed",
+                work_item_id=command.work_item_id,
+                error=str(exc),
+            )
 
     async def _complete_work_item(self, command: StartWorkflow) -> None:
         """Mark the work item as closed after workflow success."""

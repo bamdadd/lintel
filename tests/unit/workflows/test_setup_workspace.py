@@ -193,8 +193,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         assert result["sandbox_id"] is not None
@@ -211,8 +210,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         assert result["error"] is not None
@@ -233,8 +231,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         assert result["error"] is not None
@@ -247,8 +244,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         assert result["feature_branch"] == "custom/my-branch"
@@ -269,9 +265,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
-            variable_store=store,
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider(), "variable_store": store}},
         )
 
         assert result["sandbox_id"] is not None
@@ -291,9 +285,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
-            variable_store=store,
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider(), "variable_store": store}},
         )
 
         assert result["sandbox_id"] is not None
@@ -314,9 +306,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
-            credential_store=cred_store,  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider(), "credential_store": cred_store}},
         )
 
         assert result["sandbox_id"] is not None
@@ -331,8 +321,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         assert result["sandbox_id"] is not None
@@ -346,8 +335,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         branch = result["feature_branch"]
@@ -368,8 +356,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         assert result["sandbox_id"] is not None
@@ -385,8 +372,7 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            sandbox_manager=manager,
-            repo_provider=DummyRepoProvider(),  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "repo_provider": DummyRepoProvider()}},
         )
 
         assert result["sandbox_id"] is not None

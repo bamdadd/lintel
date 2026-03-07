@@ -26,16 +26,17 @@ DEFAULT_TEST_COMMANDS = (
 async def run_tests(
     state: ThreadWorkflowState,
     config: RunnableConfig | None = None,
-    *,
-    sandbox_manager: SandboxManager | None = None,
-    test_command: str | None = None,
 ) -> dict[str, Any]:
     """Run the project test suite in the sandbox and report results."""
     from lintel.contracts.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
 
     _config = config or {}
+    sandbox_manager: SandboxManager | None = _config.get("configurable", {}).get("sandbox_manager")
+
     await mark_running(_config, "test", state)
+
+    test_command: str | None = None
 
     sandbox_id = state.get("sandbox_id")
     if not sandbox_id or sandbox_manager is None:

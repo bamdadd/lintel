@@ -13,6 +13,13 @@ const statusColor: Record<string, string> = {
   error: 'red',
 };
 
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  PipelineRunStarted: 'Started',
+  PipelineRunCompleted: 'Completed',
+  PipelineRunFailed: 'Failed',
+  PipelineStageCompleted: 'Stage Completed',
+};
+
 export function Component() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
@@ -22,7 +29,7 @@ export function Component() {
   const stepMap = new Map<string, typeof events>();
   for (const evt of events) {
     const nodeName = (evt.payload as Record<string, unknown>)?.node_name as string
-      ?? evt.event_type;
+      ?? EVENT_TYPE_LABELS[evt.event_type] ?? evt.event_type;
     if (!stepMap.has(nodeName)) stepMap.set(nodeName, []);
     stepMap.get(nodeName)!.push(evt);
   }
@@ -32,6 +39,7 @@ export function Component() {
     if (last?.event_type === 'PipelineRunFailed') return 'failed' as const;
     if (last?.event_type === 'PipelineRunCompleted') return 'succeeded' as const;
     if (last?.event_type === 'PipelineStageCompleted') return 'succeeded' as const;
+    if (last?.event_type === 'PipelineRunStarted') return 'started' as const;
     return 'running' as const;
   };
 

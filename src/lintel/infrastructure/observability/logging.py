@@ -30,3 +30,9 @@ def configure_logging(log_level: str = "INFO", log_format: str = "json") -> None
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,
     )
+
+    # Route standard library loggers (used by LangGraph/LangChain) to stderr
+    level = getattr(logging, log_level.upper(), logging.INFO)
+    logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
+    for name in ("langchain", "langgraph"):
+        logging.getLogger(name).setLevel(level)

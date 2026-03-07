@@ -34,3 +34,6 @@ class ThreadWorkflowState(TypedDict):
     feature_branch: str
     credential_ids: tuple[str, ...]
     environment_id: str
+
+    # Token usage tracking (accumulated per node)
+    token_usage: Annotated[list[dict[str, Any]], add]

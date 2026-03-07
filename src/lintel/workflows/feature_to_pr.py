@@ -32,15 +32,15 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
 
     graph.add_node("ingest", ingest_message)
     graph.add_node("route", route_intent)
-    graph.add_node("setup_workspace", setup_workspace)  # type: ignore[arg-type]
+    graph.add_node("setup_workspace", setup_workspace)
     graph.add_node("plan", plan_work)
     graph.add_node(
         "approval_gate_spec",
         partial(approval_gate, gate_type="spec_approval"),
     )
-    graph.add_node("implement", spawn_implementation)  # type: ignore[arg-type]
-    graph.add_node("test", run_tests)  # type: ignore[arg-type]
-    graph.add_node("review", review_output)  # type: ignore[arg-type]
+    graph.add_node("implement", spawn_implementation)
+    graph.add_node("test", run_tests)
+    graph.add_node("review", review_output)
     graph.add_node(
         "approval_gate_merge",
         partial(approval_gate, gate_type="merge_approval"),

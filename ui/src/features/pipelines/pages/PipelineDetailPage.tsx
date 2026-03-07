@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs,
+  Code, ScrollArea,
 } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconRefresh } from '@tabler/icons-react';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
@@ -27,12 +28,68 @@ interface StageItem {
   finished_at?: string;
   duration_ms?: number;
   stage_type?: string;
+  outputs?: Record<string, unknown>;
+  error?: string;
+  logs?: string[];
+  retry_count?: number;
+}
+
+function useStageLogs(runId: string | undefined, stageId: string | null, stageStatus: string | undefined) {
+  const [lines, setLines] = useState<string[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!runId || !stageId) {
+      setLines([]);
+      return;
+    }
+
+    // Only use SSE for running stages
+    if (stageStatus !== 'running') {
+      setLines([]);
+      return;
+    }
+
+    const es = new EventSource(`/api/v1/pipelines/${runId}/stages/${stageId}/logs`);
+
+    es.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === 'log' && parsed.line) {
+          setLines((prev) => [...prev, parsed.line]);
+        } else if (parsed.type === 'error' && parsed.message) {
+          setLines((prev) => [...prev, `ERROR: ${parsed.message}`]);
+        } else if (parsed.type === 'end') {
+          es.close();
+        }
+      } catch {
+        // ignore parse errors
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+    };
+
+    return () => {
+      es.close();
+    };
+  }, [runId, stageId, stageStatus]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [lines]);
+
+  return { lines, scrollRef };
 }
 
 export function Component() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   const { data: pipelineResp, isLoading } = usePipelinesGetPipeline(runId ?? '', {
     query: { refetchInterval: 3000 },
@@ -41,10 +98,23 @@ export function Component() {
     query: { enabled: !!runId, refetchInterval: 3000 },
   });
 
-  if (isLoading) return <Center py="xl"><Loader /></Center>;
-
   const pipeline = (pipelineResp?.data ?? {}) as Record<string, unknown>;
   const stages = (stagesResp?.data ?? []) as StageItem[];
+  const selectedStage = selectedStageId ? stages.find((s) => s.stage_id === selectedStageId) : null;
+
+  const { lines: logLines, scrollRef: logScrollRef } = useStageLogs(runId, selectedStageId, selectedStage?.status);
+
+  const handleRetry = useCallback(async () => {
+    if (!runId || !selectedStageId) return;
+    setRetrying(true);
+    try {
+      await fetch(`/api/v1/pipelines/${runId}/stages/${selectedStageId}/retry`, { method: 'POST' });
+    } finally {
+      setRetrying(false);
+    }
+  }, [runId, selectedStageId]);
+
+  if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   const mapStageType = (stageType: string | undefined): string => {
     if (!stageType) return 'agentStep';
@@ -63,8 +133,6 @@ export function Component() {
     source: stages[i].stage_id,
     target: s.stage_id,
   }));
-
-  const selectedStage = selectedStageId ? stages.find((s) => s.stage_id === selectedStageId) : null;
 
   const timingSteps = stages
     .filter((s) => s.started_at && s.finished_at)
@@ -128,10 +196,25 @@ export function Component() {
               />
               {selectedStage && (
                 <Paper withBorder p="md" mt="md">
-                  <Stack gap="xs">
+                  <Stack gap="sm">
                     <Group justify="space-between">
-                      <Text fw={600}>{selectedStage.name}</Text>
-                      <Badge color={statusColor[selectedStage.status] ?? 'gray'}>{selectedStage.status}</Badge>
+                      <Group gap="xs">
+                        <Text fw={600}>{selectedStage.name}</Text>
+                        <Badge color={statusColor[selectedStage.status] ?? 'gray'}>{selectedStage.status}</Badge>
+                      </Group>
+                      {(selectedStage.status === 'failed' || selectedStage.status === 'running') && (
+                        <Button
+                          variant="light"
+                          size="compact-sm"
+                          leftSection={<IconRefresh size={14} />}
+                          loading={retrying}
+                          disabled={(selectedStage.retry_count ?? 0) >= 3}
+                          onClick={handleRetry}
+                        >
+                          {selectedStage.status === 'failed' ? 'Retry' : 'Restart'}
+                          {(selectedStage.retry_count ?? 0) > 0 && ` (${selectedStage.retry_count}/3)`}
+                        </Button>
+                      )}
                     </Group>
                     <Text size="sm" c="dimmed">Type: {selectedStage.stage_type ?? '—'}</Text>
                     <Text size="sm">Started: {selectedStage.started_at ? new Date(selectedStage.started_at).toLocaleString() : '—'}</Text>
@@ -139,6 +222,106 @@ export function Component() {
                     {selectedStage.duration_ms ? (
                       <Text size="sm">Duration: {(selectedStage.duration_ms / 1000).toFixed(1)}s</Text>
                     ) : null}
+
+                    {/* Error */}
+                    {selectedStage.error && (
+                      <Paper withBorder p="sm" style={{ borderColor: 'var(--mantine-color-red-6)' }}>
+                        <Text size="sm" fw={600} c="red" mb={4}>Error</Text>
+                        <Text size="sm" c="red" style={{ whiteSpace: 'pre-wrap' }}>{selectedStage.error}</Text>
+                      </Paper>
+                    )}
+
+                    {/* Live logs for running stages */}
+                    {selectedStage.status === 'running' && logLines.length > 0 && (
+                      <Stack gap={4}>
+                        <Text size="sm" fw={600}>Logs</Text>
+                        <ScrollArea
+                          h={200}
+                          viewportRef={logScrollRef}
+                          style={{ backgroundColor: 'var(--mantine-color-dark-8)', borderRadius: 4 }}
+                        >
+                          <Code
+                            block
+                            style={{
+                              backgroundColor: 'transparent',
+                              whiteSpace: 'pre',
+                              fontSize: 12,
+                            }}
+                          >
+                            {logLines.join('\n')}
+                          </Code>
+                        </ScrollArea>
+                      </Stack>
+                    )}
+
+                    {/* Completed stage logs from data */}
+                    {selectedStage.status !== 'running' && selectedStage.logs && selectedStage.logs.length > 0 && (
+                      <Stack gap={4}>
+                        <Text size="sm" fw={600}>Logs</Text>
+                        <ScrollArea
+                          h={200}
+                          style={{ backgroundColor: 'var(--mantine-color-dark-8)', borderRadius: 4 }}
+                        >
+                          <Code
+                            block
+                            style={{
+                              backgroundColor: 'transparent',
+                              whiteSpace: 'pre',
+                              fontSize: 12,
+                            }}
+                          >
+                            {selectedStage.logs.join('\n')}
+                          </Code>
+                        </ScrollArea>
+                      </Stack>
+                    )}
+
+                    {/* Plan output — rendered as task list */}
+                    {selectedStage.outputs?.plan && (
+                      <Stack gap={4}>
+                        <Text size="sm" fw={600}>Plan</Text>
+                        {(selectedStage.outputs.plan as { summary?: string })?.summary && (
+                          <Text size="sm" c="dimmed">
+                            {(selectedStage.outputs.plan as { summary: string }).summary}
+                          </Text>
+                        )}
+                        <Paper withBorder p="sm">
+                          <Stack gap={4}>
+                            {((selectedStage.outputs.plan as { tasks?: Array<{ title?: string; description?: string; complexity?: string }> })?.tasks ?? []).map(
+                              (task, i) => (
+                                <Group key={i} gap="xs" align="flex-start">
+                                  <Text size="sm" fw={500} style={{ minWidth: 20 }}>{i + 1}.</Text>
+                                  <Stack gap={2} style={{ flex: 1 }}>
+                                    <Group gap="xs">
+                                      <Text size="sm" fw={500}>{task.title ?? 'Task'}</Text>
+                                      {task.complexity && (
+                                        <Badge size="xs" variant="light">{task.complexity}</Badge>
+                                      )}
+                                    </Group>
+                                    {task.description && (
+                                      <Text size="xs" c="dimmed">{task.description}</Text>
+                                    )}
+                                  </Stack>
+                                </Group>
+                              ),
+                            )}
+                          </Stack>
+                        </Paper>
+                      </Stack>
+                    )}
+
+                    {/* Other outputs (non-plan) */}
+                    {selectedStage.outputs && Object.keys(selectedStage.outputs).filter(k => k !== 'plan').length > 0 && (
+                      <Stack gap={4}>
+                        <Text size="sm" fw={600}>Outputs</Text>
+                        <Code block style={{ fontSize: 12 }}>
+                          {JSON.stringify(
+                            Object.fromEntries(Object.entries(selectedStage.outputs).filter(([k]) => k !== 'plan')),
+                            null, 2,
+                          )}
+                        </Code>
+                      </Stack>
+                    )}
                   </Stack>
                 </Paper>
               )}

@@ -239,7 +239,7 @@ class TestNodeFunctions:
             pr_url="",
             error=None,
         )
-        result = await spawn_implementation(state, sandbox_manager=DummySandboxManager())
+        result = await spawn_implementation(state, {"configurable": {"sandbox_manager": DummySandboxManager()}})
         assert result["error"] is not None
 
     async def test_review_produces_agent_output(self) -> None:

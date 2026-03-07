@@ -70,11 +70,6 @@ async def _resolve_credentials(
 async def setup_workspace(
     state: ThreadWorkflowState,
     config: RunnableConfig | None = None,
-    *,
-    sandbox_manager: SandboxManager,
-    repo_provider: RepoProvider,
-    credential_store: CredentialStore | None = None,
-    variable_store: InMemoryVariableStore | None = None,
 ) -> dict[str, Any]:
     """Clone the project repo into a sandbox and create a feature branch.
 
@@ -82,10 +77,32 @@ async def setup_workspace(
     to be set in state (populated by the chat route before workflow dispatch).
     """
     from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
-    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import append_log, mark_completed, mark_running
 
     _config = config or {}
+    _configurable = _config.get("configurable", {})
+    app_state = _configurable.get("app_state")
+    sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
+    repo_provider: RepoProvider | None = _configurable.get("repo_provider") or (getattr(app_state, "repo_provider", None) if app_state else None)
+    credential_store: CredentialStore | None = _configurable.get("credential_store") or (getattr(app_state, "credential_store", None) if app_state else None)
+    variable_store = _configurable.get("variable_store") or (getattr(app_state, "variable_store", None) if app_state else None)
+
     await mark_running(_config, "setup_workspace", state)
+    await append_log(_config, "setup_workspace", "Setting up workspace...", state)
+
+    if sandbox_manager is None:
+        await mark_completed(_config, "setup_workspace", state, error="No sandbox manager available")
+        return {
+            "error": "No sandbox manager available",
+            "current_phase": "closed",
+        }
+
+    if repo_provider is None:
+        await mark_completed(_config, "setup_workspace", state, error="No repo provider available")
+        return {
+            "error": "No repo provider available",
+            "current_phase": "closed",
+        }
 
     repo_url = state.get("repo_url", "")
     repo_urls: tuple[str, ...] = state.get("repo_urls", ())
@@ -139,8 +156,10 @@ async def setup_workspace(
         env_vars = frozenset((var.key, var.value) for var in variables)
 
     # Create sandbox with network enabled for clone
+    await append_log(_config, "setup_workspace", "Creating sandbox...", state)
     config = SandboxConfig(network_enabled=True, environment=env_vars)
     sandbox_id = await sandbox_manager.create(config, thread_ref)
+    await append_log(_config, "setup_workspace", f"Sandbox created: {sandbox_id[:12]}", state)
 
     try:
         # Resolve credentials and inject into clone URL if needed
@@ -157,6 +176,7 @@ async def setup_workspace(
             )
 
         # Clone repo into sandbox workspace
+        await append_log(_config, "setup_workspace", f"Cloning {repo_url} (branch: {repo_branch})...", state)
         await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
@@ -170,6 +190,7 @@ async def setup_workspace(
         )
 
         # Create and checkout feature branch
+        await append_log(_config, "setup_workspace", f"Creating branch: {feature_branch}", state)
         await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(

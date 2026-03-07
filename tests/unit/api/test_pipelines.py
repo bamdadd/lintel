@@ -102,3 +102,71 @@ class TestPipelinesAPI:
         resp = client.delete("/api/v1/pipelines/run1")
         assert resp.status_code == 204
         assert client.get("/api/v1/pipelines/run1").status_code == 404
+
+    def test_retry_stage_resets_to_running(self, client: TestClient) -> None:
+        """REQ-1.7: Retry a failed stage."""
+        data = _create_pipeline(client, "retry-run")
+        stage_id = data["stages"][0]["stage_id"]
+        # Manually set stage to failed via cancel + re-create approach
+        # Instead, use the stage detail and mark it failed
+        # Simplest: get the store and update directly
+        store = client.app.state.pipeline_store  # type: ignore[union-attr]
+        import asyncio
+        from dataclasses import replace as dc_replace
+
+        from lintel.contracts.types import StageStatus
+
+        async def _fail_stage() -> None:
+            run = await store.get("retry-run")
+            stages = list(run.stages)
+            stages[0] = dc_replace(stages[0], status=StageStatus.FAILED, error="boom")
+            await store.update(dc_replace(run, stages=tuple(stages)))
+
+        asyncio.get_event_loop().run_until_complete(_fail_stage())
+
+        resp = client.post(f"/api/v1/pipelines/retry-run/stages/{stage_id}/retry")
+        assert resp.status_code == 200
+        result = resp.json()
+        assert result["status"] == "running"
+        assert result["retry_count"] == 1
+        assert result["error"] == ""
+
+    def test_retry_stage_rejects_pending(self, client: TestClient) -> None:
+        data = _create_pipeline(client, "retry-pending")
+        stage_id = data["stages"][0]["stage_id"]
+        resp = client.post(f"/api/v1/pipelines/retry-pending/stages/{stage_id}/retry")
+        assert resp.status_code == 409
+
+    def test_stage_logs_endpoint_returns_sse(self, client: TestClient) -> None:
+        """REQ-1.6: Stage logs SSE endpoint returns data."""
+        data = _create_pipeline(client, "logs-run")
+        stage_id = data["stages"][0]["stage_id"]
+        # Mark stage as succeeded so the SSE stream terminates
+        store = client.app.state.pipeline_store  # type: ignore[union-attr]
+        import asyncio
+        from dataclasses import replace as dc_replace
+
+        from lintel.contracts.types import StageStatus
+
+        async def _succeed_stage() -> None:
+            run = await store.get("logs-run")
+            stages = list(run.stages)
+            stages[0] = dc_replace(
+                stages[0],
+                status=StageStatus.SUCCEEDED,
+                logs=("line 1", "line 2"),
+                outputs={"result": "ok"},
+            )
+            await store.update(dc_replace(run, stages=tuple(stages)))
+
+        asyncio.get_event_loop().run_until_complete(_succeed_stage())
+
+        with client.stream(
+            "GET", f"/api/v1/pipelines/logs-run/stages/{stage_id}/logs",
+        ) as resp:
+            assert resp.status_code == 200
+            assert "text/event-stream" in resp.headers["content-type"]
+            lines = list(resp.iter_lines())
+            # Should have log lines, status, outputs, and end
+            data_lines = [l for l in lines if l.startswith("data:")]
+            assert len(data_lines) >= 3  # at least logs + status + end

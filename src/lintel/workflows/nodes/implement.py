@@ -30,16 +30,25 @@ Work methodically through each task. Write clean, production-quality code.
 async def spawn_implementation(
     state: ThreadWorkflowState,
     config: RunnableConfig | None = None,
-    *,
-    sandbox_manager: SandboxManager,
-    agent_runtime: AgentRuntime | None = None,
 ) -> dict[str, Any]:
     """Run the coder agent with sandbox tools to implement the plan."""
     from lintel.contracts.types import AgentRole, ThreadRef
-    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage, mark_completed, mark_running
 
     _config = config or {}
+    _configurable = _config.get("configurable", {})
+    sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
+    agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
+
     await mark_running(_config, "implement", state)
+    await append_log(_config, "implement", "Starting implementation node", state)
+
+    if sandbox_manager is None:
+        await mark_completed(_config, "implement", state, error="No sandbox manager available")
+        return {
+            "error": "No sandbox manager available",
+            "current_phase": "closed",
+        }
 
     logger.info(
         "implementation_started",
@@ -79,7 +88,9 @@ async def spawn_implementation(
         thread_ts=parts[2] if len(parts) > 2 else "",
     )
 
+    usage: dict[str, Any] | None = None
     if agent_runtime is not None:
+        await append_log(_config, "implement", "Invoking coder agent...", state)
         try:
             result = await agent_runtime.execute_step(
                 thread_ref=thread_ref,
@@ -91,8 +102,11 @@ async def spawn_implementation(
                 ],
             )
             agent_output = result.get("content", "Implementation complete.")
+            usage = extract_token_usage("implement", result)
+            await append_log(_config, "implement", "Agent completed", state)
         except Exception:
             logger.exception("agent_implementation_failed")
+            await append_log(_config, "implement", "Agent implementation failed", state)
             agent_output = "Agent implementation failed — collecting partial artifacts."
     else:
         # No agent runtime: execute plan tasks as shell commands if possible
@@ -111,6 +125,7 @@ async def spawn_implementation(
             rebase_warning = rebase_result["message"]
 
     # Collect git diff as artifacts
+    await append_log(_config, "implement", "Collecting artifacts...", state)
     try:
         artifacts = await sandbox_manager.collect_artifacts(sandbox_id)
     except Exception:
@@ -125,9 +140,16 @@ async def spawn_implementation(
     if rebase_warning:
         outputs.append({"node": "implement_rebase", "output": rebase_warning})
 
-    await mark_completed(_config, "implement", state)
-    return {
+    stage_outputs: dict[str, object] = {}
+    if usage:
+        stage_outputs["token_usage"] = usage
+    await mark_completed(_config, "implement", state, outputs=stage_outputs or None)
+
+    result_dict: dict[str, Any] = {
         "current_phase": "testing",
         "agent_outputs": outputs,
         "sandbox_results": [artifacts],
     }
+    if usage:
+        result_dict["token_usage"] = [usage]
+    return result_dict

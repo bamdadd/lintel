@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+import structlog
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     from lintel.workflows.state import ThreadWorkflowState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 async def approval_gate(

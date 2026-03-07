@@ -25,6 +25,20 @@
 - `PipelineRunStarted` event currently shows a "Running" status badge which is confusing.
 - Show event type label (e.g. "Started", "Stage Completed", "Failed") instead of pipeline status.
 
+### REQ-1.6: Stage log streaming and detail view
+- Clicking a stage node in the pipeline DAG should expand a panel showing real-time logs from that stage.
+- For running stages: stream stdout/stderr from the sandbox container via SSE.
+- For completed/failed stages: show stored `agent_outputs` and `sandbox_results` formatted as readable logs.
+- Backend: `GET /api/v1/pipelines/{runId}/stages/{stageId}/logs` SSE endpoint.
+- Stage outputs (agent text, sandbox stdout, errors) stored on the Stage record for post-mortem viewing.
+
+### REQ-1.7: Retry individual pipeline stages
+- When a stage is stuck (running too long) or has failed, allow re-running it from the pipeline detail page.
+- Backend: `POST /api/v1/pipelines/{runId}/stages/{stageId}/retry` endpoint.
+- Resets the stage status to `running`, re-invokes the corresponding workflow node with existing state.
+- Only allowed for stages in `running` or `failed` status.
+- Stage retry count tracked to prevent infinite loops.
+
 ---
 
 ## Phase 2 — Real Graph Execution

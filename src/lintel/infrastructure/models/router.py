@@ -27,19 +27,105 @@ class DefaultModelRouter:
         routing_table: dict[tuple[str, str], ModelPolicy] | None = None,
         fallback: ModelPolicy = FALLBACK_POLICY,
         ollama_api_base: str | None = None,
+        model_store: Any = None,  # noqa: ANN401
+        ai_provider_store: Any = None,  # noqa: ANN401
+        model_assignment_store: Any = None,  # noqa: ANN401
     ) -> None:
         self._default = default_policy
         self._routing = routing_table or {}
         self._fallback = fallback
         self._ollama_api_base = ollama_api_base
+        self._model_store = model_store
+        self._ai_provider_store = ai_provider_store
+        self._model_assignment_store = model_assignment_store
+        self._cached_default: ModelPolicy | None = None
+
+    async def _model_to_policy(self, model: Any) -> ModelPolicy | None:  # noqa: ANN401
+        """Convert a Model dataclass to a ModelPolicy via its provider."""
+        if self._ai_provider_store is None:
+            return None
+        provider = await self._ai_provider_store.get(model.provider_id)
+        if provider is None:
+            return None
+        return ModelPolicy(
+            provider=provider.provider_type.value,
+            model_name=model.model_name,
+            max_tokens=model.max_tokens,
+            temperature=model.temperature,
+        )
+
+    async def _resolve_from_assignment(self, agent_role: str) -> ModelPolicy | None:
+        """Look up a model assigned to a specific agent role."""
+        if self._model_assignment_store is None or self._model_store is None:
+            return None
+        try:
+            from lintel.contracts.types import ModelAssignmentContext
+
+            assignments = await self._model_assignment_store.list_by_context(
+                ModelAssignmentContext.AGENT_ROLE, agent_role,
+            )
+            if not assignments:
+                return None
+            # Pick highest priority assignment
+            best = max(assignments, key=lambda a: a.priority)
+            model = await self._model_store.get(best.model_id)
+            if model is None:
+                return None
+            policy = await self._model_to_policy(model)
+            if policy:
+                logger.info(
+                    "model_resolved_from_assignment",
+                    agent_role=agent_role,
+                    model=policy.model_name,
+                    provider=policy.provider,
+                )
+            return policy
+        except Exception:
+            logger.warning("assignment_resolution_failed", agent_role=agent_role, exc_info=True)
+            return None
+
+    async def _resolve_default_from_store(self) -> ModelPolicy | None:
+        """Look up the user-configured default model and build a ModelPolicy."""
+        if self._model_store is None:
+            return None
+        try:
+            models = await self._model_store.list_all()
+            default_model = next((m for m in models if m.is_default), None)
+            if default_model is None:
+                return None
+            policy = await self._model_to_policy(default_model)
+            if policy:
+                self._cached_default = policy
+                logger.info(
+                    "default_model_resolved",
+                    provider=policy.provider,
+                    model=policy.model_name,
+                )
+            return policy
+        except Exception:
+            logger.warning("default_model_resolution_failed", exc_info=True)
+            return None
 
     async def select_model(
         self,
         agent_role: AgentRole,
         workload_type: str,
     ) -> ModelPolicy:
+        # 1. Explicit routing table (code-level override)
         key = (agent_role.value, workload_type)
-        policy = self._routing.get(key, self._default or self._fallback)
+        policy = self._routing.get(key)
+        # 2. User-configured assignment for this agent role
+        if policy is None:
+            policy = await self._resolve_from_assignment(agent_role.value)
+        # 3. Explicit default_policy (constructor arg)
+        if policy is None:
+            policy = self._default
+        # 4. User-configured default model from store
+        if policy is None:
+            policy = self._cached_default or await self._resolve_default_from_store()
+        # 5. Hardcoded fallback
+        if policy is None:
+            policy = self._fallback
         logger.info(
             "model_selected",
             agent_role=agent_role.value,

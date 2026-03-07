@@ -211,52 +211,6 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     }
 
 
-async def _noop_astream(
-    initial_state: dict[str, object], **_kw: object,
-) -> AsyncGenerator[dict[str, object]]:
-    """Placeholder graph that simulates workflow stages. Replaced by real graph in Phase 2.
-
-    Reads the run_id from config to look up actual pipeline stages and simulate them.
-    Falls back to generic stages if lookup fails.
-    """
-    import asyncio
-
-    config = _kw.get("config", {})
-    configurable = config.get("configurable", {}) if isinstance(config, dict) else {}
-    app_state = configurable.get("app_state") if isinstance(configurable, dict) else None
-
-    # Try to get actual stage names from the pipeline store
-    import structlog
-    _log = structlog.get_logger()
-
-    stage_names: tuple[str, ...] = ()
-    run_id = configurable.get("run_id", "") if isinstance(configurable, dict) else ""
-    _log.info("noop_graph_start", run_id=run_id, has_app_state=app_state is not None)
-    if app_state and run_id:
-        pipeline_store = getattr(app_state, "pipeline_store", None)
-        _log.info("noop_graph_pipeline_store", has_store=pipeline_store is not None)
-        if pipeline_store:
-            try:
-                run = await pipeline_store.get(run_id)
-                _log.info("noop_graph_run", found=run is not None, stage_count=len(run.stages) if run else 0)
-                if run and run.stages:
-                    stage_names = tuple(
-                        s.name if hasattr(s, "name") else s.get("name", "unknown")
-                        for s in run.stages
-                    )
-                    _log.info("noop_graph_stages", stages=stage_names)
-            except Exception as exc:
-                _log.warning("noop_graph_lookup_failed", error=str(exc))
-
-    if not stage_names:
-        stage_names = ("ingest", "plan", "implement", "test", "review", "close")
-        _log.info("noop_graph_fallback_stages")
-
-    for stage in stage_names:
-        await asyncio.sleep(1)
-        yield {stage: {"current_phase": stage}}
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Configure structured logging so structlog output appears in console
@@ -299,24 +253,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     dispatcher = InMemoryCommandDispatcher()
     event_store = stores["event_store"]
 
-    # Create a no-op graph for now (will be replaced by GraphCompiler in Phase 2)
-    from unittest.mock import AsyncMock
-
-    noop_graph = AsyncMock()
-    noop_graph.astream = _noop_astream
-
     # Wire chat router with model router and MCP tool support
     ollama_base = os.environ.get("OLLAMA_API_BASE", "http://localhost:11434")
-    model_router = DefaultModelRouter(ollama_api_base=ollama_base)
+    model_router = DefaultModelRouter(
+        ollama_api_base=ollama_base,
+        model_store=stores["model_store"],
+        ai_provider_store=stores["ai_provider_store"],
+        model_assignment_store=stores["model_assignment_store"],
+    )
 
     from lintel.agents.runtime import AgentRuntime
 
     agent_runtime = AgentRuntime(event_store=event_store, model_router=model_router)
     app.state.agent_runtime = agent_runtime
 
+    def _graph_factory(workflow_type: str) -> Any:
+        """Build and compile a LangGraph for the given workflow type."""
+        from lintel.workflows.registry import get_workflow_builder
+
+        builder_fn = get_workflow_builder(workflow_type)
+        state_graph = builder_fn()
+        return state_graph.compile()
+
     executor = WorkflowExecutor(
         event_store=event_store,
-        graph=noop_graph,
+        graph_factory=_graph_factory,
         agent_runtime=agent_runtime,
         app_state=app.state,
     )

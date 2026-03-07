@@ -1,10 +1,14 @@
 """Pipeline run CRUD and stage endpoints."""
 
+import asyncio
+import json
 import uuid
-from dataclasses import asdict
+from dataclasses import asdict, replace
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
@@ -202,3 +206,125 @@ async def delete_pipeline(
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     await store.remove(run_id)
+
+
+def _find_stage(run: PipelineRun, stage_id: str) -> Stage | None:
+    for s in run.stages:
+        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
+        if sid == stage_id:
+            return s
+    return None
+
+
+@router.get("/pipelines/{run_id}/stages/{stage_id}/logs")
+async def stream_stage_logs(
+    run_id: str,
+    stage_id: str,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+) -> StreamingResponse:
+    """Stream stage logs via SSE. Shows stored logs and polls for new ones."""
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    stage = _find_stage(run, stage_id)
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    async def event_stream():  # type: ignore[no-untyped-def]
+        last_log_count = 0
+        last_status = ""
+        while True:
+            run = await store.get(run_id)
+            if run is None:
+                return
+            stage = _find_stage(run, stage_id)
+            if stage is None:
+                return
+
+            # Emit any new log lines
+            current_logs = list(stage.logs) if stage.logs else []
+            if len(current_logs) > last_log_count:
+                for line in current_logs[last_log_count:]:
+                    yield f"data: {json.dumps({'type': 'log', 'line': line})}\n\n"
+                last_log_count = len(current_logs)
+
+            # Emit status changes
+            status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
+            if status != last_status:
+                last_status = status
+                yield f"data: {json.dumps({'type': 'status', 'status': status})}\n\n"
+
+            # Emit outputs and error for completed/failed stages
+            if status in ("succeeded", "failed", "skipped"):
+                if stage.outputs:
+                    yield f"data: {json.dumps({'type': 'outputs', 'data': stage.outputs}, default=str)}\n\n"
+                if stage.error:
+                    yield f"data: {json.dumps({'type': 'error', 'message': stage.error})}\n\n"
+                yield f"data: {json.dumps({'type': 'end'})}\n\n"
+                return
+
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/pipelines/{run_id}/stages/{stage_id}/retry")
+async def retry_stage(
+    run_id: str,
+    stage_id: str,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
+) -> dict[str, Any]:
+    """Retry a failed or stuck stage. Resets it to running and re-invokes the node."""
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    stage = _find_stage(run, stage_id)
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
+    if status not in ("running", "failed"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot retry stage in '{status}' state (must be running or failed)",
+        )
+
+    if stage.retry_count >= 3:
+        raise HTTPException(
+            status_code=409,
+            detail="Maximum retry count (3) reached for this stage",
+        )
+
+    # Reset stage to running
+    now = datetime.now(UTC).isoformat()
+    new_stages = []
+    for s in run.stages:
+        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
+        if sid == stage_id:
+            new_stages.append(replace(
+                s,
+                status=StageStatus.RUNNING,
+                started_at=now,
+                finished_at="",
+                error="",
+                duration_ms=0,
+                logs=(),
+                retry_count=s.retry_count + 1,
+            ))
+        else:
+            new_stages.append(s)
+
+    updated = replace(run, stages=tuple(new_stages))
+    await store.update(updated)
+
+    # TODO: Re-invoke the workflow node via the executor (Phase 2 integration).
+    # For now, the stage is reset and the executor's stream loop will pick it up
+    # if the workflow is still running, or a manual re-dispatch is needed.
+
+    return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]

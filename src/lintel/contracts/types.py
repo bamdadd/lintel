@@ -327,6 +327,8 @@ class Stage:
     duration_ms: int = 0
     started_at: str = ""
     finished_at: str = ""
+    logs: tuple[str, ...] = ()
+    retry_count: int = 0
 
 
 @dataclass(frozen=True)

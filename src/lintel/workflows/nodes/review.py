@@ -31,15 +31,16 @@ Provide a concise review with:
 async def review_output(
     state: ThreadWorkflowState,
     config: RunnableConfig | None = None,
-    *,
-    sandbox_manager: SandboxManager | None = None,
-    agent_runtime: AgentRuntime | None = None,
 ) -> dict[str, Any]:
     """Review implementation artifacts using the reviewer agent."""
     from lintel.contracts.types import AgentRole, SandboxJob, ThreadRef
-    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import extract_token_usage, mark_completed, mark_running
 
     _config = config or {}
+    _configurable = _config.get("configurable", {})
+    sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
+    agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
+
     await mark_running(_config, "review", state)
 
     sandbox_id = state.get("sandbox_id")
@@ -78,6 +79,7 @@ async def review_output(
         diff_text = diff_text[:10000] + "\n... (diff truncated)"
 
     review_output_text = ""
+    usage: dict[str, Any] | None = None
     if agent_runtime is not None:
         thread_ref_str = state["thread_ref"]
         parts = thread_ref_str.replace("thread:", "").split(":")
@@ -97,6 +99,7 @@ async def review_output(
                 ],
             )
             review_output_text = result.get("content", "Review complete.")
+            usage = extract_token_usage("review", result)
         except Exception:
             logger.exception("agent_review_failed")
             review_output_text = "Agent review failed — defaulting to manual review."
@@ -109,11 +112,18 @@ async def review_output(
     if "APPROVE" in upper_text and "REQUEST_CHANGES" not in upper_text:
         verdict = "approve"
 
-    await mark_completed(_config, "review", state)
-    return {
+    stage_outputs: dict[str, object] = {}
+    if usage:
+        stage_outputs["token_usage"] = usage
+    await mark_completed(_config, "review", state, outputs=stage_outputs or None)
+
+    result_dict: dict[str, Any] = {
         "current_phase": "awaiting_merge_approval",
         "pending_approvals": ["merge_approval"],
         "agent_outputs": [
             {"node": "review", "verdict": verdict, "output": review_output_text}
         ],
     }
+    if usage:
+        result_dict["token_usage"] = [usage]
+    return result_dict
