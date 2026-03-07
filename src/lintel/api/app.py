@@ -226,26 +226,33 @@ async def _noop_astream(
     app_state = configurable.get("app_state") if isinstance(configurable, dict) else None
 
     # Try to get actual stage names from the pipeline store
+    import structlog
+    _log = structlog.get_logger()
+
     stage_names: tuple[str, ...] = ()
     run_id = configurable.get("run_id", "") if isinstance(configurable, dict) else ""
+    _log.info("noop_graph_start", run_id=run_id, has_app_state=app_state is not None)
     if app_state and run_id:
         pipeline_store = getattr(app_state, "pipeline_store", None)
+        _log.info("noop_graph_pipeline_store", has_store=pipeline_store is not None)
         if pipeline_store:
             try:
                 run = await pipeline_store.get(run_id)
+                _log.info("noop_graph_run", found=run is not None, stage_count=len(run.stages) if run else 0)
                 if run and run.stages:
-                    stage_names = tuple(s.name for s in run.stages)
-            except Exception:
-                pass
+                    stage_names = tuple(
+                        s.name if hasattr(s, "name") else s.get("name", "unknown")
+                        for s in run.stages
+                    )
+                    _log.info("noop_graph_stages", stages=stage_names)
+            except Exception as exc:
+                _log.warning("noop_graph_lookup_failed", error=str(exc))
 
     if not stage_names:
         stage_names = ("ingest", "plan", "implement", "test", "review", "close")
+        _log.info("noop_graph_fallback_stages")
 
     for stage in stage_names:
-        if "approve" in stage or "approval" in stage:
-            # Mark approval stages as auto-approved in noop mode
-            yield {stage: {"current_phase": stage, "auto_approved": True}}
-            continue
         await asyncio.sleep(1)
         yield {stage: {"current_phase": stage}}
 

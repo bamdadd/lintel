@@ -12,6 +12,34 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
+def _extract_tuple_item_type(hint: Any) -> type | None:
+    """Extract the item type from ``tuple[X, ...]`` annotations."""
+    import typing
+    args = typing.get_args(hint)
+    if args and len(args) == 2 and args[1] is Ellipsis:
+        return args[0] if isinstance(args[0], type) else None
+    return None
+
+
+def _reconstruct_nested(cls: type, data: dict[str, Any]) -> Any:  # noqa: ANN401
+    """Reconstruct a nested frozen dataclass from a dict, converting enums."""
+    import dataclasses as dc
+    import enum
+    import typing
+
+    hints = typing.get_type_hints(cls)
+    valid = {f.name for f in dc.fields(cls)}
+    filtered = {k: v for k, v in data.items() if k in valid}
+    for k, v in list(filtered.items()):
+        h = hints.get(k)
+        if isinstance(v, str) and h is not None and isinstance(h, type) and issubclass(h, enum.Enum):
+            try:
+                filtered[k] = h(v)
+            except ValueError:
+                pass
+    return cls(**filtered)
+
+
 def _serialize(obj: object) -> dict[str, Any]:
     """Serialize a frozen dataclass to a JSON-safe dict."""
     data = dataclasses.asdict(obj)  # type: ignore[call-overload]
@@ -59,7 +87,15 @@ class PostgresCrudStore:
                         tuple(item) if isinstance(item, list) else item for item in value
                     )
                 elif "tuple" in hint_str:
-                    data[key] = tuple(value)
+                    # Reconstruct nested dataclass items if the tuple holds them
+                    inner_type = _extract_tuple_item_type(hint)
+                    if inner_type is not None and dc.is_dataclass(inner_type):
+                        data[key] = tuple(
+                            _reconstruct_nested(inner_type, item) if isinstance(item, dict) else item
+                            for item in value
+                        )
+                    else:
+                        data[key] = tuple(value)
             elif (
                 isinstance(value, str)
                 and hint is not None

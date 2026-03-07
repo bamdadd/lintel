@@ -92,6 +92,24 @@ export function Component() {
             {pipeline.status as string ?? 'unknown'}
           </Badge>
         </Group>
+        <Group gap="sm">
+          {(pipeline.trigger_type as string)?.startsWith('chat:') && (
+            <Button
+              variant="light"
+              size="compact-sm"
+              onClick={() => navigate(`/chat/${(pipeline.trigger_type as string).slice(5)}`)}
+            >
+              View Chat
+            </Button>
+          )}
+          <Button
+            variant="light"
+            size="compact-sm"
+            onClick={() => navigate(`/pipelines/runs/${runId}`)}
+          >
+            Event Log
+          </Button>
+        </Group>
       </Group>
 
       <Tabs defaultValue="dag">

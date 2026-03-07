@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import {
   Title,
   Stack,
@@ -91,6 +91,7 @@ function CopyChatBtn({ messages }: { messages: Message[] }) {
 
 export function Component() {
   const { conversationId: urlConversationId } = useParams<{ conversationId?: string }>();
+  const navigate = useNavigate();
   const [activeConvId, setActiveConvId] = useState<string | null>(urlConversationId ?? null);
   const [newMessage, setNewMessage] = useState('');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
@@ -190,6 +191,7 @@ export function Component() {
           if (conv) {
             // Replace temp conversation with the real one
             setActiveConvId(conv.conversation_id);
+            void navigate(`/chat/${conv.conversation_id}`, { replace: true });
             queryClient.setQueryData(['/api/v1/chat/conversations'], (old: { data?: Conversation[] } | undefined) => ({
               ...old,
               data: (old?.data ?? []).map((c: Conversation) =>
@@ -288,7 +290,7 @@ export function Component() {
       { conversationId: convId },
       {
         onSuccess: () => {
-          if (activeConvId === convId) setActiveConvId(null);
+          if (activeConvId === convId) { setActiveConvId(null); void navigate('/chat', { replace: true }); }
           void queryClient.invalidateQueries({ queryKey: ['/api/v1/chat/conversations'] });
         },
       },
@@ -360,7 +362,7 @@ export function Component() {
                       cursor: 'pointer',
                       background: activeConvId === c.conversation_id ? 'var(--mantine-color-dark-5)' : undefined,
                     }}
-                    onClick={() => { setActiveConvId(c.conversation_id); setPendingMessages([]); setIsThinking(false); }}
+                    onClick={() => { setActiveConvId(c.conversation_id); setPendingMessages([]); setIsThinking(false); void navigate(`/chat/${c.conversation_id}`); }}
                   >
                     <Box style={{ flex: 1, minWidth: 0 }}>
                       <Text size="xs" truncate>

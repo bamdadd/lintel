@@ -18,6 +18,23 @@ if TYPE_CHECKING:
     from lintel.contracts.commands import StartWorkflow
     from lintel.contracts.protocols import EventStore
 
+def _dict_to_stage(d: dict[str, Any]) -> Any:
+    """Convert a plain dict to a Stage dataclass instance."""
+    from dataclasses import fields as dc_fields
+
+    from lintel.contracts.types import Stage, StageStatus
+
+    valid = {f.name for f in dc_fields(Stage)}
+    filtered = {k: v for k, v in d.items() if k in valid}
+    # Convert string status to enum
+    if "status" in filtered and isinstance(filtered["status"], str):
+        try:
+            filtered["status"] = StageStatus(filtered["status"])
+        except ValueError:
+            pass
+    return Stage(**filtered)
+
+
 # Callback signature: (node_name, phase_label) -> None
 StageCallback = Callable[[str, str], Awaitable[None]]
 
@@ -201,7 +218,12 @@ class WorkflowExecutor:
             finished = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).isoformat()
             updated_stages = []
             for stage in run.stages:
-                if stage.name == node_name or stage.stage_type == node_name:
+                # Handle both Stage dataclass instances and plain dicts (Postgres)
+                if isinstance(stage, dict):
+                    stage = _dict_to_stage(stage)
+                s_name = stage.name
+                s_type = stage.stage_type
+                if s_name == node_name or s_type == node_name:
                     started = stage.started_at or finished
                     duration = 0
                     if stage.started_at:
@@ -218,8 +240,9 @@ class WorkflowExecutor:
                     updated_stages.append(stage)
             updated = replace(run, stages=tuple(updated_stages))
             await pipeline_store.update(updated)
-        except Exception:
-            pass
+        except Exception as exc:
+            import structlog
+            structlog.get_logger().warning("mark_stage_completed_failed", run_id=run_id, node_name=node_name, error=str(exc))
 
     async def _update_pipeline_status(self, run_id: str, status: str) -> None:
         """Update the pipeline run status in the pipeline store."""
@@ -239,4 +262,5 @@ class WorkflowExecutor:
                 updated = replace(run, status=new_status)
                 await pipeline_store.update(updated)
         except Exception:
-            pass  # best-effort — don't break the workflow
+            import structlog
+            structlog.get_logger().warning("update_pipeline_status_failed", run_id=run_id, status=status, error=str(exc))
