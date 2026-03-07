@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import AsyncIterator, Sequence
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
@@ -142,6 +142,13 @@ class ModelRouter(Protocol):
         messages: list[dict[str, str]],
         tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]: ...
+
+    async def stream_model(
+        self,
+        policy: ModelPolicy,
+        messages: list[dict[str, str]],
+        api_base: str | None = None,
+    ) -> AsyncIterator[str]: ...
 
 
 class SandboxManager(Protocol):

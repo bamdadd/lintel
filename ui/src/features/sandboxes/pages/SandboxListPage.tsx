@@ -9,6 +9,7 @@ import {
   TextInput,
   Textarea,
   Switch,
+  Select,
   Loader,
   Center,
   ActionIcon,
@@ -22,7 +23,7 @@ import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconTrash } from '@tabler/icons-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useSandboxesListSandboxes,
   useSandboxesCreateSandbox,
@@ -30,23 +31,33 @@ import {
 } from '@/generated/api/sandboxes/sandboxes';
 import { EmptyState } from '@/shared/components/EmptyState';
 
+interface SandboxPreset {
+  label: string;
+  description: string;
+  devcontainer: Record<string, unknown>;
+  mounts?: Array<Record<string, string>>;
+}
+
+function usePresets() {
+  return useQuery<Record<string, SandboxPreset>>({
+    queryKey: ['/api/v1/sandboxes/presets'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/sandboxes/presets');
+      return res.json();
+    },
+  });
+}
+
 const DEFAULT_DEVCONTAINER = JSON.stringify(
   {
     name: 'sandbox',
     image: 'mcr.microsoft.com/devcontainers/base:ubuntu',
-    features: [
-      { id: 'ghcr.io/devcontainers/features/python:1', options: { version: '3.12' } },
-      { id: 'ghcr.io/devcontainers/features/node:1', options: {} },
-    ],
+    features: [],
     forwardPorts: [],
-    postCreateCommand: 'pip install -r requirements.txt',
+    postCreateCommand: '',
     postStartCommand: '',
     remoteEnv: {},
-    customizations: {
-      vscode: {
-        extensions: ['ms-python.python'],
-      },
-    },
+    customizations: {},
   },
   null,
   2,
@@ -63,14 +74,24 @@ interface SandboxEntry {
 
 export function Component() {
   const { data: resp, isLoading } = useSandboxesListSandboxes();
+  const { data: presets } = usePresets();
   const createMutation = useSandboxesCreateSandbox();
   const destroyMutation = useSandboxesDestroySandbox();
   const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
   const [selectedSandbox, setSelectedSandbox] = useState<SandboxEntry | null>(null);
 
+  const presetOptions = [
+    { value: '', label: 'Custom' },
+    ...Object.entries(presets ?? {}).map(([key, p]) => ({
+      value: key,
+      label: `${p.label}${p.description ? ` — ${p.description}` : ''}`,
+    })),
+  ];
+
   const form = useForm({
     initialValues: {
+      preset: '',
       workspace_id: 'default',
       channel_id: 'general',
       thread_ts: Date.now().toString(),
@@ -89,6 +110,18 @@ export function Component() {
       },
     },
   });
+
+  const handlePresetChange = (value: string | null) => {
+    form.setFieldValue('preset', value ?? '');
+    if (value && presets?.[value]) {
+      const preset = presets[value];
+      form.setFieldValue(
+        'devcontainer_json',
+        JSON.stringify(preset.devcontainer, null, 2),
+      );
+      form.setFieldValue('image', (preset.devcontainer.image as string) ?? 'python:3.12-slim');
+    }
+  };
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -169,6 +202,7 @@ export function Component() {
               <Table.Tr>
                 <Table.Th>ID</Table.Th>
                 <Table.Th>Image</Table.Th>
+                <Table.Th>Features</Table.Th>
                 <Table.Th>Network</Table.Th>
                 <Table.Th />
               </Table.Tr>
@@ -183,6 +217,15 @@ export function Component() {
                 >
                   <Table.Td><Code>{s.sandbox_id.slice(0, 12)}</Code></Table.Td>
                   <Table.Td>{s.devcontainer?.image as string ?? s.image}</Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="wrap">
+                      {((s.devcontainer?.features as Array<{ id: string }>) ?? []).map((f) => {
+                        const short = f.id.split('/').pop()?.replace(/:.*$/, '') ?? f.id;
+                        return <Badge key={f.id} size="xs" variant="light">{short}</Badge>;
+                      })}
+                      {((s.devcontainer?.features as Array<{ id: string }>) ?? []).length === 0 && <Text size="xs" c="dimmed">—</Text>}
+                    </Group>
+                  </Table.Td>
                   <Table.Td><Badge color={s.network_enabled ? 'green' : 'gray'}>{s.network_enabled ? 'on' : 'off'}</Badge></Table.Td>
                   <Table.Td>
                     <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDestroy(s.sandbox_id); }}>
@@ -208,6 +251,14 @@ export function Component() {
       <Modal opened={opened} onClose={close} title="Create Sandbox" size="lg">
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
+            <Select
+              label="Preset"
+              description="Choose a preset or customise the devcontainer config below"
+              data={presetOptions}
+              value={form.values.preset}
+              onChange={handlePresetChange}
+              searchable
+            />
             <Tabs defaultValue="devcontainer">
               <Tabs.List>
                 <Tabs.Tab value="devcontainer">devcontainer.json</Tabs.Tab>

@@ -8,7 +8,7 @@ import { Link } from 'react-router';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconPlug, IconAlertCircle } from '@tabler/icons-react';
+import { IconTrash, IconPlug, IconAlertCircle, IconPencil, IconCheck } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useModelsListModels,
@@ -59,6 +59,8 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<ModelItem | null>(null);
   const [assignModal, setAssignModal] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const providersList = (providersResp?.data ?? []) as Array<{
     provider_id: string; name: string; provider_type: string;
@@ -198,6 +200,24 @@ export function Component() {
     });
   };
 
+  const startRename = (m: ModelItem) => {
+    setRenamingId(m.model_id);
+    setRenameValue(m.name);
+  };
+
+  const submitRename = (modelId: string) => {
+    if (!renameValue.trim()) return;
+    updateMut.mutate(
+      { modelId, data: { name: renameValue.trim() } },
+      {
+        onSuccess: () => {
+          void qc.invalidateQueries({ queryKey: ['/api/v1/models'] });
+          setRenamingId(null);
+        },
+      },
+    );
+  };
+
   const handleAssign = assignForm.onSubmit((values) => {
     if (!assignModal) return;
     createAssignMut.mutate(
@@ -249,7 +269,33 @@ export function Component() {
           <Table.Tbody>
             {models.map((m) => (
               <Table.Tr key={m.model_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(m)}>
-                <Table.Td>{m.name}</Table.Td>
+                <Table.Td onClick={(e) => e.stopPropagation()}>
+                  {renamingId === m.model_id ? (
+                    <Group gap={4}>
+                      <TextInput
+                        size="xs"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.currentTarget.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') submitRename(m.model_id);
+                          if (e.key === 'Escape') setRenamingId(null);
+                        }}
+                        autoFocus
+                        style={{ flex: 1 }}
+                      />
+                      <ActionIcon size="xs" variant="filled" color="green" onClick={() => submitRename(m.model_id)}>
+                        <IconCheck size={12} />
+                      </ActionIcon>
+                    </Group>
+                  ) : (
+                    <Group gap={4}>
+                      <Text size="sm">{m.name}</Text>
+                      <ActionIcon size="xs" variant="subtle" onClick={() => startRename(m)}>
+                        <IconPencil size={12} />
+                      </ActionIcon>
+                    </Group>
+                  )}
+                </Table.Td>
                 <Table.Td><Text size="sm" c="dimmed" ff="monospace">{m.model_name}</Text></Table.Td>
                 <Table.Td>
                   <Badge color={providerTypeColor[m.provider_type] ?? 'gray'} variant="light">
@@ -324,7 +370,7 @@ export function Component() {
             ) : (
               <TextInput label="Model Name" placeholder="claude-sonnet-4-20250514" description="The litellm model identifier" {...form.getInputProps('model_name')} />
             )}
-            <TextInput label="Display Name" placeholder="Claude Sonnet 4" {...form.getInputProps('name')} />
+            <TextInput label="Display Name" placeholder="e.g. Qwen (think off), Fast Claude..." description="A friendly name to identify this model in the UI" {...form.getInputProps('name')} />
             <Group grow>
               <NumberInput label="Max Tokens" min={1} {...form.getInputProps('max_tokens')} />
               <NumberInput label="Temperature" min={0} max={2} step={0.1} decimalScale={1} {...form.getInputProps('temperature')} />

@@ -9,6 +9,8 @@ import structlog
 from lintel.contracts.types import ModelPolicy
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from lintel.contracts.types import AgentRole
 
 logger = structlog.get_logger()
@@ -90,11 +92,14 @@ class DefaultModelRouter:
         }
         if tools:
             kwargs["tools"] = tools
+        if policy.extra_params:
+            kwargs.update(policy.extra_params)
 
-        if api_base:
-            kwargs["api_base"] = api_base
-        elif policy.provider == "ollama" and self._ollama_api_base:
-            kwargs["api_base"] = self._ollama_api_base
+        effective_base = api_base or (
+            self._ollama_api_base if policy.provider == "ollama" else None
+        )
+        if effective_base:
+            kwargs["api_base"] = effective_base.rstrip("/")
 
         response = await litellm.acompletion(**kwargs)
         return {
@@ -105,3 +110,35 @@ class DefaultModelRouter:
             },
             "model": response.model,
         }
+
+    async def stream_model(
+        self,
+        policy: ModelPolicy,
+        messages: list[dict[str, str]],
+        api_base: str | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream model response token by token."""
+        import litellm
+
+        model_string = f"{policy.provider}/{policy.model_name}"
+        kwargs: dict[str, Any] = {
+            "model": model_string,
+            "messages": messages,
+            "max_tokens": policy.max_tokens,
+            "temperature": policy.temperature,
+            "stream": True,
+        }
+        if policy.extra_params:
+            kwargs.update(policy.extra_params)
+
+        effective_base = api_base or (
+            self._ollama_api_base if policy.provider == "ollama" else None
+        )
+        if effective_base:
+            kwargs["api_base"] = effective_base.rstrip("/")
+
+        response = await litellm.acompletion(**kwargs)
+        async for chunk in response:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                yield delta.content

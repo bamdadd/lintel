@@ -8,7 +8,7 @@
 export interface StartConversationRequest {
   user_id: string;
   display_name?: string | null;
-  message: string;
+  message?: string | null;
   project_id?: string | null;
   model_id?: string | null;
 }

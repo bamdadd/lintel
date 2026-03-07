@@ -148,6 +148,7 @@ class ModelPolicy:
     model_name: str
     max_tokens: int = 4096
     temperature: float = 0.0
+    extra_params: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)

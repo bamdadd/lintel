@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 import structlog
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from lintel.contracts.types import ModelPolicy
     from lintel.infrastructure.models.router import DefaultModelRouter
 
@@ -185,3 +187,41 @@ class ChatRouter:
             api_base=api_base,
         )
         return str(result.get("content", "Sorry, I couldn't generate a response."))
+
+    async def reply_stream(
+        self,
+        message: str,
+        model_policy: ModelPolicy | None = None,
+        api_base: str | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream a direct chat reply token by token."""
+        if self._model_router is None:
+            yield (
+                "AI responses aren't connected yet. "
+                "Configure an AI provider to enable chat replies."
+            )
+            return
+
+        from lintel.contracts.types import AgentRole
+
+        if model_policy is not None:
+            policy = model_policy
+        else:
+            policy = await self._model_router.select_model(AgentRole.SUMMARIZER, "chat")
+        async for token in self._model_router.stream_model(
+            policy,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful software engineering assistant for the Lintel "
+                        "platform. Give concise, accurate answers. If the user is asking "
+                        "you to do development work (write code, fix bugs, etc.), tell them "
+                        "to phrase it as a task so the workflow pipeline can handle it."
+                    ),
+                },
+                {"role": "user", "content": message},
+            ],
+            api_base=api_base,
+        ):
+            yield token

@@ -15,6 +15,131 @@ router = APIRouter()
 # In-memory store for sandbox metadata (devcontainer configs, etc.)
 _sandbox_registry: dict[str, dict[str, Any]] = {}
 
+# ---------------------------------------------------------------------------
+# Built-in sandbox presets
+# ---------------------------------------------------------------------------
+
+SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
+    "python": {
+        "label": "Python 3.12",
+        "description": "Minimal Python environment",
+        "devcontainer": {
+            "name": "python",
+            "image": "mcr.microsoft.com/devcontainers/python:3.12",
+            "features": [],
+            "forwardPorts": [],
+            "postCreateCommand": "",
+            "postStartCommand": "",
+            "remoteEnv": {},
+            "customizations": {},
+        },
+    },
+    "node": {
+        "label": "Node.js 22",
+        "description": "Node.js development environment",
+        "devcontainer": {
+            "name": "node",
+            "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+            "features": [],
+            "forwardPorts": [],
+            "postCreateCommand": "",
+            "postStartCommand": "",
+            "remoteEnv": {},
+            "customizations": {},
+        },
+    },
+    "claude-code": {
+        "label": "Claude Code",
+        "description": "Sandbox with Claude Code CLI for agentic coding tasks",
+        "devcontainer": {
+            "name": "claude-code",
+            "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+            "features": [
+                {
+                    "id": "ghcr.io/devcontainers/features/node:1",
+                    "options": {"version": "22"},
+                },
+                {
+                    "id": "ghcr.io/devcontainers/features/python:1",
+                    "options": {"version": "3.12"},
+                },
+                {
+                    "id": "ghcr.io/devcontainers/features/git:1",
+                    "options": {},
+                },
+            ],
+            "forwardPorts": [],
+            "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+            "postStartCommand": "",
+            "remoteEnv": {},
+            "customizations": {},
+        },
+        "mounts": [
+            {
+                "source": "${localEnv:HOME}/.claude",
+                "target": "/home/vscode/.claude",
+                "type": "bind",
+            },
+        ],
+    },
+    "claude-code-full": {
+        "label": "Claude Code (Full Stack)",
+        "description": "Claude Code with Python, Node, Go, and common dev tools",
+        "devcontainer": {
+            "name": "claude-code-full",
+            "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+            "features": [
+                {
+                    "id": "ghcr.io/devcontainers/features/node:1",
+                    "options": {"version": "22"},
+                },
+                {
+                    "id": "ghcr.io/devcontainers/features/python:1",
+                    "options": {"version": "3.12"},
+                },
+                {
+                    "id": "ghcr.io/devcontainers/features/go:1",
+                    "options": {"version": "latest"},
+                },
+                {
+                    "id": "ghcr.io/devcontainers/features/git:1",
+                    "options": {},
+                },
+                {
+                    "id": "ghcr.io/devcontainers/features/docker-in-docker:2",
+                    "options": {},
+                },
+            ],
+            "forwardPorts": [],
+            "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+            "postStartCommand": "",
+            "remoteEnv": {},
+            "customizations": {},
+        },
+        "mounts": [
+            {
+                "source": "${localEnv:HOME}/.claude",
+                "target": "/home/vscode/.claude",
+                "type": "bind",
+            },
+        ],
+    },
+    "base": {
+        "label": "Base (Ubuntu)",
+        "description": "Minimal Ubuntu devcontainer",
+        "devcontainer": {
+            "name": "base",
+            "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+            "features": [],
+            "forwardPorts": [],
+            "postCreateCommand": "",
+            "postStartCommand": "",
+            "remoteEnv": {},
+            "customizations": {},
+        },
+    },
+}
+
 
 class DevcontainerFeature(BaseModel):
     """A devcontainer feature reference."""
@@ -54,6 +179,12 @@ class ExecuteRequest(BaseModel):
 class WriteFileRequest(BaseModel):
     path: str
     content: str
+
+
+@router.get("/sandboxes/presets")
+async def list_sandbox_presets() -> dict[str, dict[str, Any]]:
+    """List available sandbox presets."""
+    return SANDBOX_PRESETS
 
 
 @router.get("/sandboxes")
