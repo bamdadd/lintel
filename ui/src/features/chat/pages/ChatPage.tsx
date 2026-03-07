@@ -381,11 +381,11 @@ export function Component() {
                           </Text>
                         </Group>
                         {m.role === 'user' ? (
-                          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }} c="white">
+                          <Text size="sm" style={{ whiteSpace: 'pre-wrap' }} c="white" dir="auto">
                             {m.content}
                           </Text>
                         ) : (
-                          <Box className="chat-markdown" fz="sm">
+                          <Box className="chat-markdown" fz="sm" dir="auto">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {m.content}
                             </ReactMarkdown>
@@ -406,7 +406,7 @@ export function Component() {
                         <Group gap="xs" mb={4}>
                           <Badge size="xs" variant="light">Lintel</Badge>
                         </Group>
-                        <Box className="chat-markdown" fz="sm">
+                        <Box className="chat-markdown" fz="sm" dir="auto">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {streamingContent}
                           </ReactMarkdown>
@@ -438,6 +438,7 @@ export function Component() {
               <Group gap="xs" mt="md">
                 <TextInput
                   placeholder="Type a message..."
+                  dir="auto"
                   style={{ flex: 1 }}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.currentTarget.value)}
