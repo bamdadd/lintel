@@ -13,7 +13,7 @@ router = APIRouter()
 
 def _wf_to_dict(wf: object) -> dict[str, Any]:
     """Convert a WorkflowDefinitionRecord to the API dict format."""
-    data = dataclasses.asdict(wf)  # type: ignore[arg-type]
+    data = dataclasses.asdict(wf)  # type: ignore[call-overload]
     now = datetime.now(UTC).isoformat()
     # Rebuild into the nested graph format the UI expects
     return {

@@ -30,8 +30,8 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_node("route", route_intent)
     graph.add_node("plan", plan_work)
     graph.add_node("approval_gate_spec", lambda s: s)
-    graph.add_node("implement", spawn_implementation)
-    graph.add_node("test", run_tests)
+    graph.add_node("implement", spawn_implementation)  # type: ignore[arg-type]
+    graph.add_node("test", run_tests)  # type: ignore[type-var]
     graph.add_node("review", review_output)
     graph.add_node("approval_gate_merge", lambda s: s)
     graph.add_node("close", lambda s: {**s, "current_phase": "closed"})

@@ -23,7 +23,7 @@ class PostgresEntityStore:
 
     async def put(self, entity_id: str, data: dict[str, Any]) -> None:
         """Insert or update an entity."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 """
                 INSERT INTO entities (kind, entity_id, data, updated_at)
@@ -38,7 +38,7 @@ class PostgresEntityStore:
 
     async def get(self, entity_id: str) -> dict[str, Any] | None:
         """Get a single entity by ID."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             row = await conn.fetchrow(
                 "SELECT data FROM entities WHERE kind = $1 AND entity_id = $2",
                 self._kind,
@@ -46,11 +46,11 @@ class PostgresEntityStore:
             )
             if row is None:
                 return None
-            return json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            return json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]  # type: ignore[no-any-return]
 
     async def list_all(self) -> list[dict[str, Any]]:
         """List all entities of this kind."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             rows = await conn.fetch(
                 "SELECT data FROM entities WHERE kind = $1 ORDER BY created_at",
                 self._kind,
@@ -61,13 +61,13 @@ class PostgresEntityStore:
 
     async def remove(self, entity_id: str) -> bool:
         """Delete an entity. Returns True if it existed."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             result = await conn.execute(
                 "DELETE FROM entities WHERE kind = $1 AND entity_id = $2",
                 self._kind,
                 entity_id,
             )
-            return result == "DELETE 1"
+            return result == "DELETE 1"  # type: ignore[no-any-return]
 
     async def find(self, **filters: Any) -> list[dict[str, Any]]:  # noqa: ANN401
         """Find entities matching JSONB field filters.
@@ -83,7 +83,7 @@ class PostgresEntityStore:
                 params.append(str(value))
 
         query = f"SELECT data FROM entities WHERE {' AND '.join(conditions)} ORDER BY created_at"
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             rows = await conn.fetch(query, *params)
             return [
                 json.loads(r["data"]) if isinstance(r["data"], str) else r["data"] for r in rows

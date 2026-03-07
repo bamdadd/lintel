@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    import asyncpg
     from fastapi.routing import APIRoute
 
 from lintel.api.middleware import CorrelationMiddleware
@@ -153,7 +154,7 @@ def _create_in_memory_stores() -> dict[str, Any]:
     }
 
 
-def _create_postgres_stores(pool: object) -> dict[str, Any]:
+def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     """Create all Postgres-backed stores."""
     from lintel.infrastructure.event_store.postgres import PostgresEventStore
     from lintel.infrastructure.persistence.stores import (
@@ -219,8 +220,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     if dsn:
         import asyncpg
 
-        db_pool = await asyncpg.create_pool(dsn)
-        stores = _create_postgres_stores(db_pool)
+        db_pool = await asyncpg.create_pool(dsn)  # type: ignore[no-untyped-call]
+        stores = _create_postgres_stores(cast("asyncpg.Pool", db_pool))
     else:
         stores = _create_in_memory_stores()
 

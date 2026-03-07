@@ -52,7 +52,7 @@ from lintel.workflows.state import ThreadWorkflowState
 _PASS = lambda s: s  # noqa: E731  — approval gate passthrough
 
 
-def _gate(name: str) -> Callable[[dict[str, Any]], dict[str, Any]]:
+def _gate(name: str) -> Any:  # noqa: ANN401
     """Named passthrough for approval gates."""
     fn = lambda s: s  # noqa: E731
     fn.__name__ = name
@@ -67,7 +67,7 @@ def _gate(name: str) -> Callable[[dict[str, Any]], dict[str, Any]]:
 
 def build_bug_fix_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(ThreadWorkflowState)
-    g.add_node("triage", triage_issue)
+    g.add_node("triage", triage_issue)  # type: ignore[type-var]
     g.add_node("reproduce", reproduce_bug)
     g.add_node("fix", fix_bug)
     g.add_node("test", run_tests)
@@ -252,4 +252,4 @@ def get_workflow_builder(definition_id: str) -> Callable[[], StateGraph[Any]]:
     if builder is None:
         msg = f"Unknown workflow definition: {definition_id}"
         raise KeyError(msg)
-    return builder
+    return builder  # type: ignore[no-any-return]

@@ -14,12 +14,12 @@ T = TypeVar("T")
 
 def _serialize(obj: object) -> dict[str, Any]:
     """Serialize a frozen dataclass to a JSON-safe dict."""
-    data = dataclasses.asdict(obj)  # type: ignore[arg-type]
+    data = dataclasses.asdict(obj)  # type: ignore[call-overload]
     # Convert frozensets and tuples for JSON compatibility
     for key, value in data.items():
         if isinstance(value, (frozenset, tuple)):
             data[key] = list(value)
-    return data
+    return data  # type: ignore[no-any-return]
 
 
 class PostgresCrudStore:
@@ -66,7 +66,7 @@ class PostgresCrudStore:
         """Insert a new entity. Raises ValueError if it already exists."""
         data = _serialize(entity)
         entity_id = data[self._id_field]
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             existing = await conn.fetchrow(
                 "SELECT 1 FROM entities WHERE kind = $1 AND entity_id = $2",
                 self._kind,
@@ -86,11 +86,14 @@ class PostgresCrudStore:
             )
 
     @overload
-    async def get(self, entity_id: str, *, raw: bool = ...) -> Any: ...  # noqa: ANN401
+    async def get(self, entity_id: str) -> Any: ...  # noqa: ANN401
+
+    @overload
+    async def get(self, entity_id: str, *, raw: bool) -> Any: ...  # noqa: ANN401
 
     async def get(self, entity_id: str, *, raw: bool = False) -> Any:
         """Get a single entity by ID. Returns None if not found."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             row = await conn.fetchrow(
                 "SELECT data FROM entities WHERE kind = $1 AND entity_id = $2",
                 self._kind,
@@ -115,7 +118,7 @@ class PostgresCrudStore:
                 idx += 1
 
         query = f"SELECT data FROM entities WHERE {' AND '.join(conditions)} ORDER BY created_at"
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             rows = await conn.fetch(query, *params)
             return [
                 self._to_instance(
@@ -128,7 +131,7 @@ class PostgresCrudStore:
         """Update an existing entity."""
         data = _serialize(entity)
         entity_id = data[self._id_field]
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             result = await conn.execute(
                 """
                 UPDATE entities SET data = $3::jsonb, updated_at = now()
@@ -144,7 +147,7 @@ class PostgresCrudStore:
 
     async def remove(self, entity_id: str) -> None:
         """Delete an entity."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             result = await conn.execute(
                 "DELETE FROM entities WHERE kind = $1 AND entity_id = $2",
                 self._kind,

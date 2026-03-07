@@ -17,13 +17,13 @@ async def spawn_implementation(
     state: ThreadWorkflowState,
     *,
     sandbox_manager: SandboxManager,
-    config: SandboxConfig | None = None,
+    sandbox_config: SandboxConfig | None = None,
 ) -> dict[str, Any]:
     """Create a sandbox, execute implementation, and collect artifacts."""
     from lintel.contracts.types import SandboxConfig, ThreadRef
 
-    if config is None:
-        config = SandboxConfig()
+    if sandbox_config is None:
+        sandbox_config = SandboxConfig()
 
     thread_ref_str = state["thread_ref"]
     parts = thread_ref_str.replace("thread:", "").split(":")
@@ -33,7 +33,7 @@ async def spawn_implementation(
         thread_ts=parts[2] if len(parts) > 2 else "",
     )
 
-    sandbox_id = await sandbox_manager.create(config, thread_ref)
+    sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
     try:
         # TODO: Wire agent tool loop here (ToolNode with sandbox tools)
         artifacts = await sandbox_manager.collect_artifacts(sandbox_id)

@@ -18,7 +18,7 @@ class PostgresDictStore:
 
     async def put(self, entity_id: str, data: dict[str, Any]) -> None:
         """Insert or update an entity."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 """
                 INSERT INTO entities (kind, entity_id, data, updated_at)
@@ -32,7 +32,7 @@ class PostgresDictStore:
             )
 
     async def get(self, entity_id: str) -> dict[str, Any] | None:
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             row = await conn.fetchrow(
                 "SELECT data FROM entities WHERE kind = $1 AND entity_id = $2",
                 self._kind,
@@ -40,7 +40,7 @@ class PostgresDictStore:
             )
             if row is None:
                 return None
-            return json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            return json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]  # type: ignore[no-any-return]
 
     async def list_all(self, **filters: Any) -> list[dict[str, Any]]:  # noqa: ANN401
         conditions = ["kind = $1"]
@@ -53,17 +53,17 @@ class PostgresDictStore:
                 idx += 1
 
         query = f"SELECT data FROM entities WHERE {' AND '.join(conditions)} ORDER BY created_at"
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             rows = await conn.fetch(query, *params)
             return [
                 json.loads(r["data"]) if isinstance(r["data"], str) else r["data"] for r in rows
             ]
 
     async def remove(self, entity_id: str) -> bool:
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             result = await conn.execute(
                 "DELETE FROM entities WHERE kind = $1 AND entity_id = $2",
                 self._kind,
                 entity_id,
             )
-            return result == "DELETE 1"
+            return result == "DELETE 1"  # type: ignore[no-any-return]

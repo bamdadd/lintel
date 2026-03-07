@@ -3,11 +3,19 @@ set -euo pipefail
 
 SESSION="lintel"
 
-# If session already exists, attach to it
+# If session already exists, switch to it
 if tmux has-session -t "$SESSION" 2>/dev/null; then
-  tmux attach-session -t "$SESSION"
+  if [ -n "${TMUX:-}" ]; then
+    tmux switch-client -t "$SESSION"
+  else
+    tmux attach-session -t "$SESSION"
+  fi
   exit 0
 fi
+
+# Detach from current session if inside tmux, so we can create a new one
+ORIG_TMUX="${TMUX:-}"
+unset TMUX
 
 # Create session with first window: "prompts" (3 claude code panes)
 tmux new-session -d -s "$SESSION" -n prompts -x 200 -y 50
@@ -36,9 +44,15 @@ tmux send-keys -t "$SESSION:services" "make ui-dev" Enter
 tmux new-window -t "$SESSION" -n editor
 tmux send-keys -t "$SESSION:editor" "nvim" Enter
 tmux split-window -v -t "$SESSION:editor"
+tmux split-window -h -t "$SESSION:editor"
 
 # Start on the prompts window
 tmux select-window -t "$SESSION:prompts"
 
-# Attach
-tmux attach-session -t "$SESSION"
+# Attach or switch
+if [ -n "$ORIG_TMUX" ]; then
+  export TMUX="$ORIG_TMUX"
+  tmux switch-client -t "$SESSION"
+else
+  tmux attach-session -t "$SESSION"
+fi

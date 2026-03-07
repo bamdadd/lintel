@@ -45,7 +45,7 @@ class PostgresAIProviderStore(PostgresCrudStore):
         self._pool_ref = pool
 
     async def update_api_key(self, provider_id: str, api_key: str) -> None:
-        async with self._pool_ref.acquire() as conn:
+        async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 """
                 INSERT INTO entities (kind, entity_id, data, updated_at)
@@ -58,7 +58,7 @@ class PostgresAIProviderStore(PostgresCrudStore):
             )
 
     async def has_api_key(self, provider_id: str) -> bool:
-        async with self._pool_ref.acquire() as conn:
+        async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             row = await conn.fetchrow(
                 "SELECT 1 FROM entities WHERE kind = 'ai_provider_key' AND entity_id = $1",
                 provider_id,
@@ -72,7 +72,7 @@ class PostgresAIProviderStore(PostgresCrudStore):
     async def remove(self, provider_id: str) -> None:
         await super().remove(provider_id)
         # Also remove the API key
-        async with self._pool_ref.acquire() as conn:
+        async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 "DELETE FROM entities WHERE kind = 'ai_provider_key' AND entity_id = $1",
                 provider_id,
@@ -106,7 +106,7 @@ class PostgresCredentialStore(PostgresCrudStore):
         )
         await self.add(cred)
         # Store secret separately
-        async with self._pool_ref.acquire() as conn:
+        async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 """
                 INSERT INTO entities (kind, entity_id, data, updated_at)
@@ -125,7 +125,7 @@ class PostgresCredentialStore(PostgresCrudStore):
 
     async def revoke(self, credential_id: str) -> None:
         await self.remove(credential_id)
-        async with self._pool_ref.acquire() as conn:
+        async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 "DELETE FROM entities WHERE kind = 'credential_secret' AND entity_id = $1",
                 credential_id,
@@ -408,7 +408,7 @@ class PostgresSkillStore(PostgresCrudStore):
 
         data = _serialize(descriptor)
         data["_skill_id"] = skill_id
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 """
                 INSERT INTO entities (kind, entity_id, data, updated_at)
@@ -440,7 +440,7 @@ class PostgresSkillStore(PostgresCrudStore):
         await self.remove(skill_id)
 
     async def list_skills(self) -> dict[str, Any]:
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             rows = await conn.fetch(
                 "SELECT entity_id, data FROM entities WHERE kind = $1 ORDER BY created_at",
                 self._kind,
