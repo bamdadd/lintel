@@ -82,10 +82,36 @@ export function Component() {
     if (loaded || !defResp?.data) return;
     const def = defResp.data as Record<string, unknown>;
     if (def.name) setWorkflowName(String(def.name));
-    const graph = def.graph as { nodes?: Node[]; edges?: { id: string; source: string; target: string }[] } | undefined;
-    if (graph?.nodes?.length) {
-      setNodes(graph.nodes);
-      setEdges(graph.edges ?? []);
+    const graph = def.graph as Record<string, unknown> | undefined;
+    if (graph?.nodes) {
+      const rawNodes = graph.nodes as unknown[];
+      // Check if nodes are ReactFlow format (objects with id/position) or backend format (strings)
+      if (rawNodes.length > 0 && typeof rawNodes[0] === 'object' && rawNodes[0] !== null && 'position' in (rawNodes[0] as Record<string, unknown>)) {
+        setNodes(rawNodes as Node[]);
+      } else {
+        // Convert string node IDs to ReactFlow nodes
+        const approvalKeywords = ['approval', 'gate', 'approve'];
+        const converted: Node[] = (rawNodes as string[]).map((nodeId, i) => ({
+          id: String(nodeId),
+          type: approvalKeywords.some((k) => String(nodeId).includes(k)) ? 'approvalGate' : 'agentStep',
+          position: { x: 250, y: i * 120 },
+          data: { label: String(nodeId).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), role: 'coder' },
+        }));
+        setNodes(converted);
+      }
+
+      const rawEdges = graph.edges as unknown[];
+      if (rawEdges?.length > 0) {
+        if (Array.isArray(rawEdges[0]) && typeof (rawEdges[0] as unknown[])[0] === 'string') {
+          // Backend format: [["a", "b"], ...]
+          setEdges((rawEdges as string[][]).map(([src, tgt]) => ({
+            id: `e-${src}-${tgt}`, source: src, target: tgt,
+          })));
+        } else {
+          // ReactFlow format: [{id, source, target}, ...]
+          setEdges(rawEdges as { id: string; source: string; target: string }[]);
+        }
+      }
     }
     setLoaded(true);
   }, [defResp, loaded, setNodes, setEdges]);
