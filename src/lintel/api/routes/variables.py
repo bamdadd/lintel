@@ -31,12 +31,9 @@ class InMemoryVariableStore:
 
     async def list_all(
         self,
-        project_id: str | None = None,
         environment_id: str | None = None,
     ) -> list[Variable]:
         items = list(self._variables.values())
-        if project_id is not None:
-            items = [v for v in items if v.project_id == project_id]
         if environment_id is not None:
             items = [v for v in items if v.environment_id == environment_id]
         return items
@@ -68,7 +65,6 @@ class CreateVariableRequest(BaseModel):
     variable_id: str = Field(default_factory=lambda: str(uuid4()))
     key: str
     value: str
-    project_id: str = ""
     environment_id: str = ""
     is_secret: bool = False
 
@@ -115,7 +111,6 @@ async def create_variable(
         variable_id=body.variable_id,
         key=body.key,
         value=body.value,
-        project_id=body.project_id,
         environment_id=body.environment_id,
         is_secret=body.is_secret,
     )
@@ -126,11 +121,9 @@ async def create_variable(
 @router.get("/variables")
 async def list_variables(
     store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
-    project_id: str | None = None,
     environment_id: str | None = None,
 ) -> list[dict[str, Any]]:
     variables = await store.list_all(
-        project_id=project_id,
         environment_id=environment_id,
     )
     return [_serialize(v) for v in variables]

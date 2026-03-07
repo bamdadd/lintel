@@ -42,33 +42,26 @@ def get_project_store(request: Request) -> ProjectStore:
 def _to_response(data: dict[str, Any]) -> dict[str, Any]:
     """Convert tuple fields to lists for JSON serialisation."""
     out = dict(data)
-    if isinstance(out.get("credential_ids"), tuple):
-        out["credential_ids"] = list(out["credential_ids"])
+    for key in ("repo_ids", "credential_ids"):
+        if isinstance(out.get(key), tuple):
+            out[key] = list(out[key])
     return out
 
 
 class CreateProjectRequest(BaseModel):
     project_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
-    repo_id: str
-    channel_id: str = ""
-    workspace_id: str = ""
-    workflow_definition_id: str = "feature_to_pr"
+    repo_ids: list[str] = []
     default_branch: str = "main"
     credential_ids: list[str] = []
-    ai_provider_id: str = ""
     status: ProjectStatus = ProjectStatus.ACTIVE
 
 
 class UpdateProjectRequest(BaseModel):
     name: str | None = None
-    repo_id: str | None = None
-    channel_id: str | None = None
-    workspace_id: str | None = None
-    workflow_definition_id: str | None = None
+    repo_ids: list[str] | None = None
     default_branch: str | None = None
     credential_ids: list[str] | None = None
-    ai_provider_id: str | None = None
     status: ProjectStatus | None = None
 
 
@@ -83,13 +76,9 @@ async def create_project(
     project = Project(
         project_id=body.project_id,
         name=body.name,
-        repo_id=body.repo_id,
-        channel_id=body.channel_id,
-        workspace_id=body.workspace_id,
-        workflow_definition_id=body.workflow_definition_id,
+        repo_ids=tuple(body.repo_ids),
         default_branch=body.default_branch,
         credential_ids=tuple(body.credential_ids),
-        ai_provider_id=body.ai_provider_id,
         status=body.status,
     )
     await store.add(project)
@@ -125,8 +114,9 @@ async def update_project(
     if item is None:
         raise HTTPException(status_code=404, detail="Project not found")
     updates = body.model_dump(exclude_none=True)
-    if "credential_ids" in updates:
-        updates["credential_ids"] = tuple(updates["credential_ids"])
+    for key in ("repo_ids", "credential_ids"):
+        if key in updates:
+            updates[key] = tuple(updates[key])
     merged = {**item, **updates}
     await store.update(project_id, merged)
     return _to_response(merged)

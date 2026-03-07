@@ -38,7 +38,6 @@ class TestEnvironmentsAPI:
                 "environment_id": "env1",
                 "name": "Production",
                 "env_type": "production",
-                "project_id": "proj-1",
             },
         )
         assert resp.status_code == 201
@@ -46,7 +45,6 @@ class TestEnvironmentsAPI:
         assert data["environment_id"] == "env1"
         assert data["name"] == "Production"
         assert data["env_type"] == "production"
-        assert data["project_id"] == "proj-1"
 
     def test_create_environment_duplicate_returns_409(
         self,

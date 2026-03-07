@@ -35,6 +35,7 @@ def _wf_to_dict(wf: object) -> dict[str, Any]:
             },
         },
         "stage_names": list(data.get("stage_names", [])),
+        "step_configs": [dict(sc) for sc in data.get("step_configs", [])],
         "created_at": now,
         "updated_at": now,
     }

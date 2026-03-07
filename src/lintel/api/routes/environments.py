@@ -24,15 +24,8 @@ class InMemoryEnvironmentStore:
     async def get(self, environment_id: str) -> Environment | None:
         return self._envs.get(environment_id)
 
-    async def list_all(
-        self,
-        *,
-        project_id: str | None = None,
-    ) -> list[Environment]:
-        envs = list(self._envs.values())
-        if project_id is not None:
-            envs = [e for e in envs if e.project_id == project_id]
-        return envs
+    async def list_all(self) -> list[Environment]:
+        return list(self._envs.values())
 
     async def update(self, env: Environment) -> None:
         self._envs[env.environment_id] = env
@@ -50,14 +43,12 @@ class CreateEnvironmentRequest(BaseModel):
     environment_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     env_type: EnvironmentType = EnvironmentType.DEVELOPMENT
-    project_id: str = ""
     config: dict[str, object] | None = None
 
 
 class UpdateEnvironmentRequest(BaseModel):
     name: str | None = None
     env_type: EnvironmentType | None = None
-    project_id: str | None = None
     config: dict[str, object] | None = None
 
 
@@ -73,7 +64,6 @@ async def create_environment(
         environment_id=body.environment_id,
         name=body.name,
         env_type=body.env_type,
-        project_id=body.project_id,
         config=body.config,
     )
     await store.add(env)
@@ -83,9 +73,8 @@ async def create_environment(
 @router.get("/environments")
 async def list_environments(
     store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
-    project_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    envs = await store.list_all(project_id=project_id)
+    envs = await store.list_all()
     return [asdict(e) for e in envs]
 
 

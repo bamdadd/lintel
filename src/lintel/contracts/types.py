@@ -250,17 +250,13 @@ class ProjectStatus(StrEnum):
 
 @dataclass(frozen=True)
 class Project:
-    """Links a repo, Slack channel, workflow config, and credentials together."""
+    """A project groups repositories, credentials, and work items."""
 
     project_id: str
     name: str
-    repo_id: str
-    channel_id: str = ""
-    workspace_id: str = ""
-    workflow_definition_id: str = "feature_to_pr"
+    repo_ids: tuple[str, ...] = ()
     default_branch: str = "main"
     credential_ids: tuple[str, ...] = ()
-    ai_provider_id: str = ""
     status: ProjectStatus = ProjectStatus.ACTIVE
 
 
@@ -343,6 +339,7 @@ class PipelineRun:
     stages: tuple[Stage, ...] = ()
     trigger_type: str = ""
     trigger_id: str = ""
+    environment_id: str = ""
 
 
 # --- Environment & Variables ---
@@ -357,23 +354,21 @@ class EnvironmentType(StrEnum):
 
 @dataclass(frozen=True)
 class Environment:
-    """Target deployment context."""
+    """Target deployment context with variables passed to workflow steps."""
 
     environment_id: str
     name: str
     env_type: EnvironmentType = EnvironmentType.DEVELOPMENT
-    project_id: str = ""
     config: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
 class Variable:
-    """Runtime variable scoped to project/environment."""
+    """Runtime variable scoped to an environment."""
 
     variable_id: str
     key: str
     value: str
-    project_id: str = ""
     environment_id: str = ""
     is_secret: bool = False
 
@@ -631,6 +626,19 @@ class AgentDefinitionRecord:
 
 
 @dataclass(frozen=True)
+class WorkflowStepConfig:
+    """Per-step configuration binding an agent, model, and provider to a workflow node."""
+
+    node_name: str
+    agent_id: str = ""
+    model_id: str = ""
+    provider_id: str = ""
+    requires_approval: bool = False
+    label: str = ""
+    description: str = ""
+
+
+@dataclass(frozen=True)
 class WorkflowDefinitionRecord:
     """A persisted workflow definition template."""
 
@@ -644,6 +652,7 @@ class WorkflowDefinitionRecord:
     conditional_edges: tuple[dict[str, object], ...] = ()
     entry_point: str = ""
     interrupt_before: tuple[str, ...] = ()
+    step_configs: tuple[WorkflowStepConfig, ...] = ()
     node_metadata: tuple[dict[str, str], ...] = ()
     tags: tuple[str, ...] = ()
     is_builtin: bool = False
@@ -689,6 +698,16 @@ class MCPServer:
     enabled: bool = True
     description: str = ""
     config: dict[str, object] | None = None
+
+
+@dataclass(frozen=True)
+class ChatSession:
+    """A chat session that can trigger workflows and access MCP servers."""
+
+    session_id: str
+    project_id: str
+    thread_ref_str: str = ""
+    mcp_server_ids: tuple[str, ...] = ()
 
 
 CorrelationId = NewType("CorrelationId", UUID)
