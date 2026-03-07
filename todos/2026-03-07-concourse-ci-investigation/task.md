@@ -12,6 +12,8 @@
   - `web-research-concourse-architecture.md` — Concourse internals
   - `web-research-concourse-ui.md` — Concourse UI/streaming/metrics
   - `web-research-langgraph-pipelines.md` — LangGraph pipeline model
+- `plan.md` — Implementation plan (Option D: Hybrid)
+- `implementation_checklist.md` — Progress tracking
 
 ## Objective
 
