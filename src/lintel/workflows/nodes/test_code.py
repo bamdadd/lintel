@@ -49,7 +49,7 @@ async def run_tests(
             ],
         }
 
-    workdir = "/workspace/repo"
+    workdir = state.get("workspace_path", "/workspace/repo")
 
     # Determine which test command to run
     if test_command is None:
@@ -98,7 +98,7 @@ async def run_tests(
     if len(output) > 5000:
         output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
 
-    logger.info("test_run_complete", verdict=verdict, exit_code=result.exit_code)
+    logger.info("test_run_complete verdict=%s exit_code=%d", verdict, result.exit_code)
 
     await mark_completed(
         _config,

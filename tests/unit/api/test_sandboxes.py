@@ -38,6 +38,13 @@ class DummySandboxManager:
     async def execute(self, sandbox_id: str, job: SandboxJob) -> SandboxResult:
         if sandbox_id not in self._sandboxes:
             raise SandboxNotFoundError(sandbox_id)
+        # Support cat commands for read_file via execute
+        if job.command.startswith("cat "):
+            path = job.command[4:].strip()
+            content = self._sandboxes[sandbox_id].get(path, "")
+            if not content:
+                return SandboxResult(exit_code=1, stdout="", stderr=f"cat: {path}: No such file")
+            return SandboxResult(exit_code=0, stdout=content)
         return SandboxResult(exit_code=0, stdout="ok\n")
 
     async def read_file(self, sandbox_id: str, path: str) -> str:

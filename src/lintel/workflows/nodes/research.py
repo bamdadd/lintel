@@ -43,11 +43,12 @@ RESEARCH_SYSTEM_PROMPT = (
 async def _gather_context(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
+    repo_path: str = "/workspace/repo",
 ) -> str:
     """Gather codebase context from the sandbox."""
     from lintel.workflows.nodes._codebase_context import gather_codebase_context
 
-    return await gather_codebase_context(sandbox_manager, sandbox_id)
+    return await gather_codebase_context(sandbox_manager, sandbox_id, repo_path=repo_path)
 
 
 async def research_codebase(
@@ -79,7 +80,8 @@ async def research_codebase(
     # Gather codebase context from sandbox
     await append_log(config, "research", "Reading codebase from sandbox...", state)
     try:
-        codebase_context = await _gather_context(sandbox_manager, sandbox_id)
+        workspace_path = state.get("workspace_path", "/workspace/repo")
+        codebase_context = await _gather_context(sandbox_manager, sandbox_id, workspace_path)
     except Exception:
         logger.warning("research_sandbox_context_failed", exc_info=True)
         await append_log(config, "research", "Failed to read codebase from sandbox", state)

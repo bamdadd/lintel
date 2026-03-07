@@ -39,7 +39,7 @@ async def _run(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
     command: str,
-    workdir: str = "/workspace/repo",
+    workdir: str = "/",
     timeout: int = 15,
 ) -> str:
     """Run a command in the sandbox and return stdout, or empty string on failure."""

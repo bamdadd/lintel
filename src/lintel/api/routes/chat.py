@@ -579,7 +579,7 @@ async def _handle_classified_message(
     proj_ctx = _build_project_context(project, repo_url, branch)
     chat_router = request.app.state.chat_router
     try:
-        reply = await chat_router.reply(
+        reply: str = await chat_router.reply(
             message,
             model_policy=model_policy,
             api_base=api_base,
@@ -747,7 +747,8 @@ async def send_message(
                 resource_id=conversation_id,
                 details={"project_id": selected_project_id},
             )
-            conv.pop("_pending_workflow", None)
+            if conv is not None:
+                conv.pop("_pending_workflow", None)
             await _dispatch_workflow(
                 request,
                 store,

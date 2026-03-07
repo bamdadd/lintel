@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 import structlog
 
@@ -38,7 +41,7 @@ NODE_TO_STAGE: dict[str, str] = {
 }
 
 
-def _get_pipeline_store(config: dict[str, Any]) -> Any:  # noqa: ANN401
+def _get_pipeline_store(config: Mapping[str, Any]) -> Any:  # noqa: ANN401
     """Extract pipeline_store from LangGraph configurable dict."""
     configurable = config.get("configurable", {})
     # Direct reference takes priority
@@ -52,18 +55,18 @@ def _get_pipeline_store(config: dict[str, Any]) -> Any:  # noqa: ANN401
     return getattr(app_state, "pipeline_store", None)
 
 
-def _get_run_id(config: dict[str, Any], state: dict[str, Any] | None = None) -> str:
+def _get_run_id(config: Mapping[str, Any], state: Mapping[str, Any] | None = None) -> str:
     """Extract run_id from config or state."""
     run_id = config.get("configurable", {}).get("run_id", "")
     if not run_id and state:
         run_id = state.get("run_id", "")
-    return run_id
+    return str(run_id)
 
 
 async def mark_running(
-    config: dict[str, Any],
+    config: Mapping[str, Any],
     node_name: str,
-    state: dict[str, Any] | None = None,
+    state: Mapping[str, Any] | None = None,
 ) -> None:
     """Mark a pipeline stage as running. Call at the start of a node."""
     stage_name = NODE_TO_STAGE.get(node_name)
@@ -76,10 +79,10 @@ async def mark_running(
 
 
 async def append_log(
-    config: dict[str, Any],
+    config: Mapping[str, Any],
     node_name: str,
     line: str,
-    state: dict[str, Any] | None = None,
+    state: Mapping[str, Any] | None = None,
 ) -> None:
     """Append a log line to a pipeline stage. Call during node execution."""
     stage_name = NODE_TO_STAGE.get(node_name)
@@ -143,9 +146,9 @@ async def append_log(
 
 
 async def mark_completed(
-    config: dict[str, Any],
+    config: Mapping[str, Any],
     node_name: str,
-    state: dict[str, Any] | None = None,
+    state: Mapping[str, Any] | None = None,
     outputs: dict[str, object] | None = None,
     error: str = "",
 ) -> None:
@@ -161,7 +164,7 @@ async def mark_completed(
 
 
 async def update_stage(
-    config: dict[str, Any],
+    config: Mapping[str, Any],
     run_id: str,
     stage_name: str,
     status: str,

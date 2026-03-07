@@ -55,7 +55,11 @@ async def review_output(
         try:
             result = await sandbox_manager.execute(
                 sandbox_id,
-                SandboxJob(command="git diff HEAD", workdir="/workspace/repo", timeout_seconds=30),
+                SandboxJob(
+                    command="git diff HEAD",
+                    workdir=state.get("workspace_path", "/workspace/repo"),
+                    timeout_seconds=30,
+                ),
             )
             diff_text = result.stdout
         except Exception:
@@ -93,7 +97,7 @@ async def review_output(
             thread_ts=parts[2] if len(parts) > 2 else "",
         )
         try:
-            result = await agent_runtime.execute_step(
+            agent_result = await agent_runtime.execute_step(
                 thread_ref=thread_ref,
                 agent_role=AgentRole.REVIEWER,
                 step_name="review",
@@ -102,8 +106,8 @@ async def review_output(
                     {"role": "user", "content": f"```diff\n{diff_text}\n```"},
                 ],
             )
-            review_output_text = result.get("content", "Review complete.")
-            usage = extract_token_usage("review", result)
+            review_output_text = agent_result.get("content", "Review complete.")
+            usage = extract_token_usage("review", agent_result)
         except Exception:
             logger.exception("agent_review_failed")
             review_output_text = "Agent review failed — defaulting to manual review."

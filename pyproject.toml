@@ -73,3 +73,8 @@ module = [
     "lintel.infrastructure.vault.postgres_vault",
 ]
 disallow_untyped_calls = false
+
+[dependency-groups]
+dev = [
+    "anthropic[bedrock]>=0.84.0",
+]

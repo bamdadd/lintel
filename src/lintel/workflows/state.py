@@ -35,6 +35,9 @@ class ThreadWorkflowState(TypedDict):
     credential_ids: tuple[str, ...]
     environment_id: str
 
+    # Workspace path inside sandbox (set by setup_workspace, e.g. /workspace/{run_id}/repo)
+    workspace_path: str
+
     # Research context (populated by the research node for plan/implement)
     research_context: str
 

@@ -281,7 +281,13 @@ export function Component() {
                     {selectedStage.outputs?.sandbox_id && (
                       <Group gap="xs">
                         <Text size="sm">Sandbox:</Text>
-                        <Badge variant="light" size="lg" radius="sm">
+                        <Badge
+                          variant="light"
+                          size="lg"
+                          radius="sm"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => navigate(`/sandboxes/${selectedStage.outputs!.sandbox_id}`)}
+                        >
                           {(selectedStage.outputs.sandbox_id as string).slice(0, 12)}
                         </Badge>
                       </Group>

@@ -211,7 +211,8 @@ async def list_sandbox_presets() -> dict[str, dict[str, Any]]:
 async def list_sandboxes(request: Request) -> list[dict[str, Any]]:
     """List all sandbox environments."""
     store = request.app.state.sandbox_store
-    return await store.list_all()
+    result: list[dict[str, Any]] = await store.list_all()
+    return result
 
 
 @router.post("/sandboxes", status_code=201)
@@ -321,8 +322,122 @@ async def read_file(
     """Read a file from the sandbox."""
     manager = request.app.state.sandbox_manager
     try:
-        content = await manager.read_file(sandbox_id, path)
-        return {"path": path, "content": content}
+        # Use cat via execute — more reliable than get_archive with cap_drop
+        result = await manager.execute(
+            sandbox_id,
+            SandboxJob(command=f"cat {path}", timeout_seconds=10),
+        )
+        if result.exit_code != 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot read file: {result.stderr.strip()}",
+            )
+        return {"path": path, "content": result.stdout}
+    except SandboxNotFoundError:
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None
+
+
+@router.get("/sandboxes/{sandbox_id}/tree")
+async def get_file_tree(
+    sandbox_id: str,
+    request: Request,
+    path: str = "/workspace",
+    depth: int = 3,
+) -> dict[str, Any]:
+    """Get a file tree from the sandbox, similar to Docker Desktop's file browser."""
+    manager = request.app.state.sandbox_manager
+    try:
+        # Use find to build a structured tree — fast and reliable
+        result = await manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    f"find {path} -maxdepth {depth}"
+                    f" -not -path '*/.git/*' -not -path '*/.git'"
+                    f" -not -path '*/node_modules/*'"
+                    f" -not -path '*/__pycache__/*'"
+                    f" -not -path '*/.venv/*'"
+                    " | head -2000"
+                ),
+                timeout_seconds=15,
+            ),
+        )
+        if result.exit_code != 0:
+            return {"path": path, "children": [], "error": result.stderr}
+
+        lines = [ln for ln in result.stdout.strip().split("\n") if ln and ln != path]
+
+        # Get file/dir info with stat
+        stat_result = await manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    f"find {path} -maxdepth {depth}"
+                    f" -not -path '*/.git/*' -not -path '*/.git'"
+                    f" -not -path '*/node_modules/*'"
+                    f" -not -path '*/__pycache__/*'"
+                    f" -not -path '*/.venv/*'"
+                    " -printf '%y %s %p\\n'"
+                    " | head -2000"
+                ),
+                timeout_seconds=15,
+            ),
+        )
+
+        # Build lookup: path -> {type, size}
+        info: dict[str, dict[str, Any]] = {}
+        if stat_result.exit_code == 0:
+            for ln in stat_result.stdout.strip().split("\n"):
+                parts = ln.split(" ", 2)
+                if len(parts) == 3:
+                    info[parts[2]] = {
+                        "type": "directory" if parts[0] == "d" else "file",
+                        "size": int(parts[1]) if parts[0] != "d" else 0,
+                    }
+
+        # Build tree structure
+        def build_tree(
+            root: str,
+            paths: list[str],
+        ) -> list[dict[str, Any]]:
+            children_map: dict[str, list[str]] = {}
+            direct: list[str] = []
+            root_depth = root.rstrip("/").count("/")
+
+            for p in paths:
+                p_depth = p.rstrip("/").count("/")
+                if p_depth == root_depth + 1:
+                    direct.append(p)
+                elif p_depth > root_depth + 1:
+                    # Find the direct parent at root_depth+1
+                    parts = p.split("/")
+                    parent = "/".join(parts[: root_depth + 2])
+                    children_map.setdefault(parent, []).append(p)
+
+            nodes: list[dict[str, Any]] = []
+            for d in sorted(direct):
+                meta = info.get(d, {"type": "file", "size": 0})
+                name = d.rsplit("/", 1)[-1]
+                node: dict[str, Any] = {
+                    "name": name,
+                    "path": d,
+                    "type": meta["type"],
+                }
+                if meta["type"] == "file":
+                    node["size"] = meta["size"]
+                else:
+                    sub_paths = children_map.get(d, [])
+                    node["children"] = build_tree(d, sub_paths)
+                nodes.append(node)
+
+            # Sort: directories first, then files, alphabetical
+            nodes.sort(key=lambda n: (0 if n["type"] == "directory" else 1, n["name"]))
+            return nodes
+
+        return {
+            "path": path,
+            "children": build_tree(path, lines),
+        }
     except SandboxNotFoundError:
         raise HTTPException(status_code=404, detail="Sandbox not found") from None
 

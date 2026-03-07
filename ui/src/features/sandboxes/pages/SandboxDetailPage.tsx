@@ -1,10 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center,
-  Code, TextInput, ScrollArea, ActionIcon, Tabs,
+  Code, TextInput, ScrollArea, ActionIcon, Tabs, UnstyledButton,
 } from '@mantine/core';
-import { IconArrowLeft, IconPlayerPlay, IconRefresh, IconTrash } from '@tabler/icons-react';
+import {
+  IconArrowLeft, IconRefresh, IconTrash,
+  IconFolder, IconFolderOpen, IconFile, IconChevronRight, IconChevronDown,
+} from '@tabler/icons-react';
 import {
   useSandboxesGetSandboxStatus,
   useSandboxesExecuteCommand,
@@ -48,6 +51,82 @@ function useSandboxLogs(sandboxId: string | undefined, enabled: boolean) {
   });
 }
 
+interface FileNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  size?: number;
+  children?: FileNode[];
+}
+
+function useFileTree(sandboxId: string | undefined, enabled: boolean) {
+  return useQuery<FileNode[]>({
+    queryKey: ['/api/v1/sandboxes', sandboxId, 'tree'],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/sandboxes/${sandboxId}/tree?path=/workspace&depth=4`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.children ?? [];
+    },
+    enabled: !!sandboxId && enabled,
+  });
+}
+
+function FileTreeNode({
+  node, depth, selectedPath, onSelect,
+}: {
+  node: FileNode; depth: number; selectedPath: string | null;
+  onSelect: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(depth < 1);
+  const isDir = node.type === 'directory';
+  const isSelected = node.path === selectedPath;
+
+  return (
+    <>
+      <UnstyledButton
+        onClick={() => { if (isDir) setOpen(!open); onSelect(node.path); }}
+        py={2}
+        px={4}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          paddingLeft: depth * 16 + 4,
+          borderRadius: 4,
+          backgroundColor: isSelected ? 'var(--mantine-color-dark-5)' : undefined,
+          width: '100%',
+        }}
+      >
+        {isDir ? (
+          open ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />
+        ) : (
+          <span style={{ width: 12 }} />
+        )}
+        {isDir ? (
+          open ? <IconFolderOpen size={14} color="var(--mantine-color-blue-4)" />
+            : <IconFolder size={14} color="var(--mantine-color-blue-4)" />
+        ) : (
+          <IconFile size={14} color="var(--mantine-color-gray-5)" />
+        )}
+        <Text size="xs" ff="monospace" truncate style={{ flex: 1 }}>{node.name}</Text>
+        {!isDir && node.size !== undefined && (
+          <Text size="xs" c="dimmed" ff="monospace">
+            {node.size > 1024 ? `${(node.size / 1024).toFixed(1)}K` : `${node.size}B`}
+          </Text>
+        )}
+      </UnstyledButton>
+      {isDir && open && node.children?.map((child) => (
+        <FileTreeNode
+          key={child.path}
+          node={child}
+          depth={depth + 1}
+          selectedPath={selectedPath}
+          onSelect={onSelect}
+        />
+      ))}
+    </>
+  );
+}
+
 interface TerminalLine {
   type: 'input' | 'output' | 'error';
   text: string;
@@ -65,9 +144,12 @@ export function Component() {
   const executeMutation = useSandboxesExecuteCommand();
   const destroyMutation = useSandboxesDestroySandbox();
 
-  const [activeTab, setActiveTab] = useState<string | null>('terminal');
+  const [activeTab, setActiveTab] = useState<string | null>('files');
   const [command, setCommand] = useState('');
   const [cwd, setCwd] = useState('/workspace');
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileLoading, setFileLoading] = useState(false);
   const [lines, setLines] = useState<TerminalLine[]>([]);
   const [running, setRunning] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
@@ -76,6 +158,27 @@ export function Component() {
   const logScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: containerLogs } = useSandboxLogs(sandboxId, activeTab === 'logs');
+  const { data: fileTree, isLoading: treeLoading } = useFileTree(sandboxId, activeTab === 'files');
+
+  const handleFileSelect = useCallback(async (path: string) => {
+    setSelectedFile(path);
+    // Try to read the file content
+    if (!sandboxId) return;
+    setFileLoading(true);
+    try {
+      const res = await fetch(`/api/v1/sandboxes/${sandboxId}/files?path=${encodeURIComponent(path)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFileContent(data.content ?? null);
+      } else {
+        setFileContent(null);
+      }
+    } catch {
+      setFileContent(null);
+    } finally {
+      setFileLoading(false);
+    }
+  }, [sandboxId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -206,10 +309,71 @@ export function Component() {
 
       <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List>
+          <Tabs.Tab value="files">Files</Tabs.Tab>
           <Tabs.Tab value="terminal">Terminal</Tabs.Tab>
           <Tabs.Tab value="logs">Container Logs</Tabs.Tab>
           <Tabs.Tab value="config">Configuration</Tabs.Tab>
         </Tabs.List>
+
+        <Tabs.Panel value="files" pt="md">
+          <Group align="flex-start" gap="md" wrap="nowrap">
+            <Paper withBorder p="xs" radius="md" style={{ minWidth: 280, maxWidth: 350, minHeight: 450 }}>
+              <Group justify="space-between" mb="xs">
+                <Text size="xs" fw={600} c="dimmed">/workspace</Text>
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes', sandboxId, 'tree'] })}
+                >
+                  <IconRefresh size={14} />
+                </ActionIcon>
+              </Group>
+              <ScrollArea h={420}>
+                {treeLoading ? (
+                  <Center py="xl"><Loader size="sm" /></Center>
+                ) : fileTree && fileTree.length > 0 ? (
+                  fileTree.map((node) => (
+                    <FileTreeNode
+                      key={node.path}
+                      node={node}
+                      depth={0}
+                      selectedPath={selectedFile}
+                      onSelect={handleFileSelect}
+                    />
+                  ))
+                ) : (
+                  <Text size="xs" c="dimmed" ta="center" py="xl">No files found</Text>
+                )}
+              </ScrollArea>
+            </Paper>
+            <Paper withBorder p="xs" radius="md" bg="dark.9" style={{ flex: 1, minHeight: 450 }}>
+              {selectedFile ? (
+                <>
+                  <Group justify="space-between" mb="xs">
+                    <Text size="xs" ff="monospace" c="dimmed" truncate>{selectedFile}</Text>
+                  </Group>
+                  <ScrollArea h={420}>
+                    {fileLoading ? (
+                      <Center py="xl"><Loader size="sm" /></Center>
+                    ) : fileContent !== null ? (
+                      <Code block style={{ fontSize: 12, background: 'transparent', whiteSpace: 'pre' }}>
+                        {fileContent}
+                      </Code>
+                    ) : (
+                      <Text size="xs" c="dimmed" ta="center" py="xl">
+                        Cannot preview this file (binary or directory)
+                      </Text>
+                    )}
+                  </ScrollArea>
+                </>
+              ) : (
+                <Center h={450}>
+                  <Text size="sm" c="dimmed">Select a file to view its contents</Text>
+                </Center>
+              )}
+            </Paper>
+          </Group>
+        </Tabs.Panel>
 
         <Tabs.Panel value="terminal" pt="md">
           <Paper withBorder p="xs" radius="md" bg="dark.9" style={{ minHeight: 400 }}>
