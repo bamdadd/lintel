@@ -35,5 +35,8 @@ class ThreadWorkflowState(TypedDict):
     credential_ids: tuple[str, ...]
     environment_id: str
 
+    # Research context (populated by the research node for plan/implement)
+    research_context: str
+
     # Token usage tracking (accumulated per node)
     token_usage: Annotated[list[dict[str, Any]], add]

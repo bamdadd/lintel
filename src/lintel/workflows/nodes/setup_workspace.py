@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
-    from lintel.api.routes.variables import InMemoryVariableStore
-    from lintel.contracts.protocols import CredentialStore, RepoProvider, SandboxManager
+    from lintel.contracts.protocols import CredentialStore, SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = logging.getLogger(__name__)
@@ -56,9 +55,7 @@ async def _resolve_credentials(
             from lintel.contracts.types import SandboxJob
 
             has_ssh_key = True
-            await sandbox_manager.write_file(
-                sandbox_id, "/tmp/ssh_key", secret
-            )
+            await sandbox_manager.write_file(sandbox_id, "/tmp/ssh_key", secret)
             await sandbox_manager.execute(
                 sandbox_id,
                 SandboxJob(command="chmod 600 /tmp/ssh_key", timeout_seconds=10),
@@ -69,7 +66,7 @@ async def _resolve_credentials(
 
 async def setup_workspace(
     state: ThreadWorkflowState,
-    config: RunnableConfig | None = None,
+    config: RunnableConfig,
 ) -> dict[str, Any]:
     """Clone the project repo into a sandbox and create a feature branch.
 
@@ -79,30 +76,23 @@ async def setup_workspace(
     from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
     from lintel.workflows.nodes._stage_tracking import append_log, mark_completed, mark_running
 
-    _config = config or {}
-    _configurable = _config.get("configurable", {})
+    _configurable = config.get("configurable", {})
     app_state = _configurable.get("app_state")
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
-    repo_provider: RepoProvider | None = _configurable.get("repo_provider") or (getattr(app_state, "repo_provider", None) if app_state else None)
-    credential_store: CredentialStore | None = _configurable.get("credential_store") or (getattr(app_state, "credential_store", None) if app_state else None)
-    variable_store = _configurable.get("variable_store") or (getattr(app_state, "variable_store", None) if app_state else None)
+    credential_store: CredentialStore | None = _configurable.get("credential_store") or (
+        getattr(app_state, "credential_store", None) if app_state else None
+    )
+    variable_store = _configurable.get("variable_store") or (
+        getattr(app_state, "variable_store", None) if app_state else None
+    )
 
-    await mark_running(_config, "setup_workspace", state)
-    await append_log(_config, "setup_workspace", "Setting up workspace...", state)
+    await mark_running(config, "setup_workspace", state)
+    await append_log(config, "setup_workspace", "Setting up workspace...", state)
 
     if sandbox_manager is None:
-        await mark_completed(_config, "setup_workspace", state, error="No sandbox manager available")
-        return {
-            "error": "No sandbox manager available",
-            "current_phase": "closed",
-        }
-
-    if repo_provider is None:
-        await mark_completed(_config, "setup_workspace", state, error="No repo provider available")
-        return {
-            "error": "No repo provider available",
-            "current_phase": "closed",
-        }
+        await mark_completed(config, "setup_workspace", state, error="No sandbox manager available")
+        msg = "No sandbox manager available — cannot set up workspace"
+        raise RuntimeError(msg)
 
     repo_url = state.get("repo_url", "")
     repo_urls: tuple[str, ...] = state.get("repo_urls", ())
@@ -111,11 +101,9 @@ async def setup_workspace(
     work_item_id = state.get("work_item_id", "")
 
     if not repo_url:
-        await mark_completed(_config, "setup_workspace", state, error="No repository URL")
-        return {
-            "error": "No repository URL configured for this project",
-            "current_phase": "closed",
-        }
+        await mark_completed(config, "setup_workspace", state, error="No repository URL")
+        msg = "No repository URL configured for this project"
+        raise RuntimeError(msg)
 
     if not feature_branch:
         from lintel.workflows.nodes._branch_naming import generate_branch_name
@@ -148,18 +136,51 @@ async def setup_workspace(
         for var in variables:
             if var.is_secret:
                 logger.warning(
-                    "injecting_secret_variable_into_sandbox"
-                    " key=%s environment_id=%s",
+                    "injecting_secret_variable_into_sandbox key=%s environment_id=%s",
                     var.key,
                     environment_id,
                 )
         env_vars = frozenset((var.key, var.value) for var in variables)
 
-    # Create sandbox with network enabled for clone
-    await append_log(_config, "setup_workspace", "Creating sandbox...", state)
-    config = SandboxConfig(network_enabled=True, environment=env_vars)
-    sandbox_id = await sandbox_manager.create(config, thread_ref)
-    await append_log(_config, "setup_workspace", f"Sandbox created: {sandbox_id[:12]}", state)
+    # Pick an available sandbox from the user-created pool, or create one as fallback
+    sandbox_store = getattr(app_state, "sandbox_store", None)
+    sandbox_id = ""
+    created_sandbox = False
+
+    if sandbox_store is not None:
+        existing = await sandbox_store.list_all()
+        await append_log(
+            config,
+            "setup_workspace",
+            f"Found {len(existing)} sandbox(es) in pool",
+            state,
+        )
+        if existing:
+            sandbox_id = existing[0].get("sandbox_id", "")
+
+    if sandbox_id:
+        await append_log(
+            config,
+            "setup_workspace",
+            f"Using existing sandbox `{sandbox_id[:12]}` from pool",
+            state,
+        )
+    else:
+        await append_log(
+            config,
+            "setup_workspace",
+            "No sandboxes in pool — creating a new one (fallback)",
+            state,
+        )
+        sandbox_config = SandboxConfig(network_enabled=True, environment=env_vars)
+        sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
+        created_sandbox = True
+        await append_log(
+            config,
+            "setup_workspace",
+            f"Sandbox created: `{sandbox_id[:12]}`",
+            state,
+        )
 
     try:
         # Resolve credentials and inject into clone URL if needed
@@ -170,36 +191,107 @@ async def setup_workspace(
         # Build clone command; set GIT_SSH_COMMAND if SSH key was written
         git_prefix = ""
         if has_ssh_key:
-            git_prefix = (
-                "GIT_SSH_COMMAND='ssh -i /tmp/ssh_key"
-                " -o StrictHostKeyChecking=no' "
-            )
+            git_prefix = "GIT_SSH_COMMAND='ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no' "
 
-        # Clone repo into sandbox workspace
-        await append_log(_config, "setup_workspace", f"Cloning {repo_url} (branch: {repo_branch})...", state)
-        await sandbox_manager.execute(
+        # Check if repo is already cloned in the sandbox
+        repo_check = await sandbox_manager.execute(
             sandbox_id,
-            SandboxJob(
-                command=(
-                    f"{git_prefix}git clone --depth=1"
-                    f" --branch {repo_branch}"
-                    f" {clone_url} /workspace/repo"
+            SandboxJob(command="test -d /workspace/repo/.git && echo EXISTS", timeout_seconds=10),
+        )
+        repo_already_cloned = "EXISTS" in repo_check.stdout
+
+        if repo_already_cloned:
+            # Repo exists — checkout base branch and pull latest
+            await append_log(
+                config,
+                "setup_workspace",
+                f"Repo already cloned, resetting to {repo_branch} and pulling...",
+                state,
+            )
+            reset_cmd = (
+                f"cd /workspace/repo"
+                f" && {git_prefix}git fetch origin {repo_branch}"
+                f" && git checkout {repo_branch}"
+                f" && git reset --hard origin/{repo_branch}"
+            )
+            reset_result = await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(command=reset_cmd, timeout_seconds=60),
+            )
+            if reset_result.exit_code != 0:
+                await append_log(
+                    config,
+                    "setup_workspace",
+                    f"Reset failed (exit {reset_result.exit_code}): {reset_result.stderr}",
+                    state,
+                )
+                # Fall through to re-clone below
+                await append_log(
+                    config, "setup_workspace", "Removing stale repo and re-cloning...", state
+                )
+                await sandbox_manager.execute(
+                    sandbox_id,
+                    SandboxJob(command="rm -rf /workspace/repo", timeout_seconds=30),
+                )
+                repo_already_cloned = False
+            else:
+                await append_log(config, "setup_workspace", "Repo updated to latest", state)
+
+        if not repo_already_cloned:
+            # Clone repo into sandbox workspace
+            await append_log(
+                config, "setup_workspace", f"Cloning {repo_url} (branch: {repo_branch})...", state
+            )
+            clone_result = await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=(
+                        f"{git_prefix}git clone --depth=1"
+                        f" --branch {repo_branch}"
+                        f" {clone_url} /workspace/repo"
+                    ),
+                    timeout_seconds=120,
                 ),
-                timeout_seconds=120,
-            ),
+            )
+            if clone_result.exit_code != 0:
+                error_msg = (
+                    f"Git clone failed (exit {clone_result.exit_code}): {clone_result.stderr}"
+                )
+                await append_log(config, "setup_workspace", error_msg, state)
+                await mark_completed(config, "setup_workspace", state, error=error_msg)
+                raise RuntimeError(error_msg)
+            await append_log(config, "setup_workspace", "Clone successful", state)
+
+        # Verify the repo exists in the sandbox
+        verify_result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command="ls /workspace/repo", timeout_seconds=10),
+        )
+        if verify_result.exit_code != 0:
+            error_msg = "Repo not found at /workspace/repo after clone/reset"
+            await append_log(config, "setup_workspace", error_msg, state)
+            await mark_completed(config, "setup_workspace", state, error=error_msg)
+            raise RuntimeError(error_msg)
+        await append_log(
+            config, "setup_workspace", f"Repo verified: {verify_result.stdout.strip()[:200]}", state
         )
 
         # Create and checkout feature branch
-        await append_log(_config, "setup_workspace", f"Creating branch: {feature_branch}", state)
-        await sandbox_manager.execute(
+        await append_log(config, "setup_workspace", f"Creating branch: {feature_branch}", state)
+        branch_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
-                command=(
-                    f"cd /workspace/repo && git checkout -b {feature_branch}"
-                ),
+                command=(f"cd /workspace/repo && git checkout -b {feature_branch}"),
                 timeout_seconds=30,
             ),
         )
+        if branch_result.exit_code != 0:
+            await append_log(
+                config,
+                "setup_workspace",
+                f"Branch creation failed (exit {branch_result.exit_code}): {branch_result.stderr}",
+                state,
+            )
 
         # Clone additional repos (if multi-repo project)
         additional_repos = [u for u in repo_urls[1:] if u] if len(repo_urls) > 1 else []
@@ -207,7 +299,11 @@ async def setup_workspace(
             extra_clone_url = extra_url
             if credential_store is not None:
                 extra_clone_url, _ = await _resolve_credentials(
-                    state, credential_store, sandbox_manager, sandbox_id, extra_url,
+                    state,
+                    credential_store,
+                    sandbox_manager,
+                    sandbox_id,
+                    extra_url,
                 )
             target = f"/workspace/repo-{idx}"
             await sandbox_manager.execute(
@@ -241,7 +337,16 @@ async def setup_workspace(
         )
         # TODO: emit AuditEntry when store injection is available
 
-        await mark_completed(_config, "setup_workspace", state)
+        await mark_completed(
+            config,
+            "setup_workspace",
+            state,
+            outputs={
+                "sandbox_id": sandbox_id,
+                "repo_url": repo_url,
+                "feature_branch": feature_branch,
+            },
+        )
         return {
             "sandbox_id": sandbox_id,
             "feature_branch": feature_branch,
@@ -249,10 +354,7 @@ async def setup_workspace(
         }
     except Exception:
         logger.exception("workspace_setup_failed")
-        await mark_completed(_config, "setup_workspace", state, error="Workspace setup failed")
-        await sandbox_manager.destroy(sandbox_id)
-        return {
-            "sandbox_id": None,
-            "error": "Failed to set up workspace",
-            "current_phase": "closed",
-        }
+        await mark_completed(config, "setup_workspace", state, error="Workspace setup failed")
+        if created_sandbox:
+            await sandbox_manager.destroy(sandbox_id)
+        raise

@@ -100,6 +100,8 @@ class TestSpawnImplementation:
         manager._sandboxes[sandbox_id] = {}
         state = _make_state(sandbox_id=sandbox_id)
 
-        result = await spawn_implementation(state, {"configurable": {"sandbox_manager": manager, "agent_runtime": None}})
+        result = await spawn_implementation(
+            state, {"configurable": {"sandbox_manager": manager, "agent_runtime": None}}
+        )
 
         assert "No agent runtime" in result["agent_outputs"][0]["output"]

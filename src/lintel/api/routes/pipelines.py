@@ -3,6 +3,7 @@
 import asyncio
 import json
 import uuid
+from collections.abc import AsyncGenerator
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from typing import Annotated, Any
@@ -26,6 +27,8 @@ def _stage_names_for_workflow(workflow_definition_id: str) -> tuple[str, ...]:
     # Fallback for custom workflows
     return (
         "ingest",
+        "research",
+        "approve_research",
         "plan",
         "approve_spec",
         "implement",
@@ -230,7 +233,7 @@ async def stream_stage_logs(
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
 
-    async def event_stream():  # type: ignore[no-untyped-def]
+    async def event_stream() -> AsyncGenerator[str, None]:
         last_log_count = 0
         last_status = ""
         while True:
@@ -257,7 +260,11 @@ async def stream_stage_logs(
             # Emit outputs and error for completed/failed stages
             if status in ("succeeded", "failed", "skipped"):
                 if stage.outputs:
-                    yield f"data: {json.dumps({'type': 'outputs', 'data': stage.outputs}, default=str)}\n\n"
+                    payload = json.dumps(
+                        {"type": "outputs", "data": stage.outputs},
+                        default=str,
+                    )
+                    yield f"data: {payload}\n\n"
                 if stage.error:
                     yield f"data: {json.dumps({'type': 'error', 'message': stage.error})}\n\n"
                 yield f"data: {json.dumps({'type': 'end'})}\n\n"
@@ -307,16 +314,18 @@ async def retry_stage(
     for s in run.stages:
         sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
         if sid == stage_id:
-            new_stages.append(replace(
-                s,
-                status=StageStatus.RUNNING,
-                started_at=now,
-                finished_at="",
-                error="",
-                duration_ms=0,
-                logs=(),
-                retry_count=s.retry_count + 1,
-            ))
+            new_stages.append(
+                replace(
+                    s,
+                    status=StageStatus.RUNNING,
+                    started_at=now,
+                    finished_at="",
+                    error="",
+                    duration_ms=0,
+                    logs=(),
+                    retry_count=s.retry_count + 1,
+                )
+            )
         else:
             new_stages.append(s)
 
@@ -326,5 +335,147 @@ async def retry_stage(
     # TODO: Re-invoke the workflow node via the executor (Phase 2 integration).
     # For now, the stage is reset and the executor's stream loop will pick it up
     # if the workflow is still running, or a manual re-dispatch is needed.
+
+    return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]
+
+
+@router.post("/pipelines/{run_id}/stages/{stage_id}/reject")
+async def reject_stage(
+    run_id: str,
+    stage_id: str,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
+) -> dict[str, Any]:
+    """Reject a stage that is waiting for human approval, failing the pipeline."""
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    stage = _find_stage(run, stage_id)
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
+    if status != "waiting_approval":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot reject stage in '{status}' state (must be waiting_approval)",
+        )
+
+    # Mark stage as rejected, remaining pending stages as skipped
+    new_stages = []
+    rejected = False
+    for s in run.stages:
+        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
+        if sid == stage_id:
+            new_stages.append(replace(s, status=StageStatus.REJECTED))
+            rejected = True
+        elif rejected:
+            s_status = s.status.value if hasattr(s.status, "value") else str(s.status)
+            if s_status == "pending":
+                new_stages.append(replace(s, status=StageStatus.SKIPPED))
+            else:
+                new_stages.append(s)
+        else:
+            new_stages.append(s)
+
+    from lintel.contracts.types import PipelineStatus
+
+    updated = replace(
+        run,
+        stages=tuple(new_stages),
+        status=PipelineStatus.FAILED,
+    )
+    await store.update(updated)
+
+    # Clean up suspended run in executor
+    executor = getattr(request.app.state, "workflow_executor", None)
+    if executor is not None:
+        executor._suspended_runs.pop(run_id, None)
+
+    # Fail the work item
+    if executor is not None and hasattr(executor, "_app_state") and executor._app_state:
+        work_item_store = getattr(executor._app_state, "work_item_store", None)
+        pipeline_store = getattr(executor._app_state, "pipeline_store", None)
+        if work_item_store and pipeline_store:
+            try:
+                full_run = await pipeline_store.get(run_id)
+                if full_run and hasattr(full_run, "trigger_type"):
+                    trigger = full_run.trigger_type
+                    if trigger.startswith("chat:"):
+                        conversation_id = trigger[5:]
+                        chat_store = getattr(executor._app_state, "chat_store", None)
+                        if chat_store:
+                            await chat_store.add_message(
+                                conversation_id,
+                                user_id="system",
+                                display_name="Lintel",
+                                role="agent",
+                                content=(
+                                    f"🚫 **{stage.name}** — rejected\n"
+                                    f"Pipeline has been stopped.\n"
+                                    f"[View pipeline →](/pipelines/{run_id})"
+                                ),
+                            )
+            except Exception:
+                pass
+
+    return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]
+
+
+@router.post("/pipelines/{run_id}/stages/{stage_id}/approve")
+async def approve_stage(
+    run_id: str,
+    stage_id: str,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
+) -> dict[str, Any]:
+    """Approve a stage that is waiting for human approval and resume the workflow."""
+    import asyncio
+
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    stage = _find_stage(run, stage_id)
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
+    if status != "waiting_approval":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot approve stage in '{status}' state (must be waiting_approval)",
+        )
+
+    # Mark stage as approved
+    new_stages = []
+    for s in run.stages:
+        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
+        if sid == stage_id:
+            new_stages.append(replace(s, status=StageStatus.APPROVED))
+        else:
+            new_stages.append(s)
+
+    from lintel.contracts.types import PipelineStatus
+
+    updated = replace(
+        run,
+        stages=tuple(new_stages),
+        status=PipelineStatus.RUNNING,
+    )
+    await store.update(updated)
+
+    # Resume the workflow in the background
+    executor = getattr(request.app.state, "workflow_executor", None)
+    if executor is not None:
+        task = asyncio.create_task(executor.resume(run_id))
+        request.app.state._background_tasks = getattr(
+            request.app.state,
+            "_background_tasks",
+            set(),
+        )
+        request.app.state._background_tasks.add(task)
+        task.add_done_callback(request.app.state._background_tasks.discard)
 
     return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]

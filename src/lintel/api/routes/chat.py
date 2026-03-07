@@ -16,6 +16,8 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from lintel.domain.chat_router import ChatRouterResult
+
 from lintel.contracts.commands import StartWorkflow
 from lintel.contracts.types import (
     ModelPolicy,
@@ -254,11 +256,7 @@ async def _resolve_project_context(
                 for rid in repo_ids[1:]:
                     extra = await repo_store.get(rid)
                     if extra is not None:
-                        extra_url = (
-                            extra.url
-                            if hasattr(extra, "url")
-                            else extra.get("url", "")
-                        )
+                        extra_url = extra.url if hasattr(extra, "url") else extra.get("url", "")
                         if extra_url:
                             all_urls.append(extra_url)
                 project["_repo_urls"] = tuple(all_urls)
@@ -374,7 +372,9 @@ async def _dispatch_workflow(
 
     # Resolve project and repo context
     project, repo_url, repo_branch = await _resolve_project_context(
-        request, conversation_id, store,
+        request,
+        conversation_id,
+        store,
     )
 
     # Create a work item
@@ -541,8 +541,6 @@ async def _handle_classified_message(
     Returns the reply text, or None if a workflow was dispatched
     (in which case _dispatch_workflow already added the message).
     """
-    from lintel.domain.chat_router import ChatRouterResult
-
     result: ChatRouterResult = classify_result  # type: ignore[assignment]
 
     if result.action == "start_workflow":
@@ -563,14 +561,20 @@ async def _handle_classified_message(
             }
             return None
         await _dispatch_workflow(
-            request, store, conversation_id,
-            result.workflow_type, message, result.reply,
+            request,
+            store,
+            conversation_id,
+            result.workflow_type,
+            message,
+            result.reply,
         )
         return None
 
     # Chat reply path — resolve project context for the LLM
     project, repo_url, branch = await _resolve_project_context(
-        request, conversation_id, store,
+        request,
+        conversation_id,
+        store,
     )
     proj_ctx = _build_project_context(project, repo_url, branch)
     chat_router = request.app.state.chat_router
@@ -641,8 +645,13 @@ async def create_conversation(
     )
 
     await _handle_classified_message(
-        request, store, conversation_id, body.message,
-        result, model_policy, api_base,
+        request,
+        store,
+        conversation_id,
+        body.message,
+        result,
+        model_policy,
+        api_base,
     )
 
     return conv
@@ -727,9 +736,7 @@ async def send_message(
         if matched:
             # Emit audit entry for project selection
             updated_conv = await store.get(conversation_id)
-            selected_project_id = (
-                updated_conv.get("project_id", "") if updated_conv else ""
-            )
+            selected_project_id = updated_conv.get("project_id", "") if updated_conv else ""
             audit_store = getattr(request.app.state, "audit_entry_store", None)
             await emit_audit_entry(
                 audit_store,
@@ -742,8 +749,12 @@ async def send_message(
             )
             conv.pop("_pending_workflow", None)
             await _dispatch_workflow(
-                request, store, conversation_id,
-                pending["workflow_type"], pending["message"], pending["reply"],
+                request,
+                store,
+                conversation_id,
+                pending["workflow_type"],
+                pending["message"],
+                pending["reply"],
             )
         else:
             await store.add_message(
@@ -764,8 +775,13 @@ async def send_message(
     )
 
     await _handle_classified_message(
-        request, store, conversation_id, body.message,
-        result, model_policy, api_base,
+        request,
+        store,
+        conversation_id,
+        body.message,
+        result,
+        model_policy,
+        api_base,
     )
 
     return user_msg
@@ -823,15 +839,19 @@ async def send_message_stream(
                     workflow_dispatched = True
                     # Use shared handler (creates work item, pipeline, messages)
                     await _handle_classified_message(
-                        request, store, conversation_id, body.message,
-                        result, model_policy, api_base,
+                        request,
+                        store,
+                        conversation_id,
+                        body.message,
+                        result,
+                        model_policy,
+                        api_base,
                     )
                     # Stream the last agent message back to the client
                     conv_after = await store.get(conversation_id)
                     if conv_after:
                         agent_msgs = [
-                            m for m in conv_after.get("messages", [])
-                            if m.get("role") == "agent"
+                            m for m in conv_after.get("messages", []) if m.get("role") == "agent"
                         ]
                         if agent_msgs:
                             full_content = agent_msgs[-1]["content"]
@@ -839,7 +859,9 @@ async def send_message_stream(
                 else:
                     # Stream reply token-by-token for chat responses
                     project, repo_url, branch = await _resolve_project_context(
-                        request, conversation_id, store,
+                        request,
+                        conversation_id,
+                        store,
                     )
                     proj_ctx = _build_project_context(project, repo_url, branch)
                     async for token in chat_router.reply_stream(
@@ -991,8 +1013,12 @@ async def retry_workflow(
     )
 
     await _dispatch_workflow(
-        request, store, conversation_id,
-        workflow_type, message, reply_text,
+        request,
+        store,
+        conversation_id,
+        workflow_type,
+        message,
+        reply_text,
     )
 
     return await store.get(conversation_id)  # type: ignore[return-value]

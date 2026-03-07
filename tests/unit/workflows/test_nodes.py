@@ -1,4 +1,4 @@
-"""Tests for workflow nodes: ingest, route, plan, review, analyse, triage, test_code, generic."""
+"""Tests for workflow nodes: ingest, route, plan, review, research, triage, test_code, generic."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ from typing import Any
 
 import pytest
 
-from lintel.workflows.nodes.analyse import analyse_code
 from lintel.workflows.nodes.generic import (
     _stub,
     build_release,
@@ -40,6 +39,7 @@ from lintel.workflows.nodes.generic import (
 )
 from lintel.workflows.nodes.ingest import ingest_message
 from lintel.workflows.nodes.plan import plan_work
+from lintel.workflows.nodes.research import research_codebase
 from lintel.workflows.nodes.review import review_output
 from lintel.workflows.nodes.route import route_intent
 from lintel.workflows.nodes.test_code import run_tests
@@ -132,11 +132,35 @@ class TestReviewNode:
         assert result["agent_outputs"][0]["node"] == "review"
 
 
-class TestAnalyseNode:
-    async def test_returns_analysis(self) -> None:
-        result = await analyse_code({})
-        assert result["current_phase"] == "analysing"
-        assert result["agent_outputs"][0]["node"] == "analyse"
+class TestResearchNode:
+    async def test_raises_without_sandbox(self) -> None:
+        """Research node raises RuntimeError when no sandbox is available."""
+        import unittest.mock
+
+        import pytest
+
+        state: dict[str, Any] = {
+            "sandbox_id": None,
+            "sanitized_messages": ["test request"],
+        }
+        config: dict[str, Any] = {"configurable": {}}
+
+        with (
+            unittest.mock.patch(
+                "lintel.workflows.nodes._stage_tracking.mark_running",
+                unittest.mock.AsyncMock(),
+            ),
+            unittest.mock.patch(
+                "lintel.workflows.nodes._stage_tracking.append_log",
+                unittest.mock.AsyncMock(),
+            ),
+            unittest.mock.patch(
+                "lintel.workflows.nodes._stage_tracking.mark_completed",
+                unittest.mock.AsyncMock(),
+            ),
+            pytest.raises(RuntimeError, match="sandbox"),
+        ):
+            await research_codebase(state, config)  # type: ignore[arg-type]
 
 
 class TestTriageNode:

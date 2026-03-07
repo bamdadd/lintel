@@ -35,7 +35,9 @@ class TestGenerateBranchName:
 
     def test_special_characters_in_description(self) -> None:
         result = generate_branch_name(
-            "id123456", work_type="feature", description="fix: crash @login (v2)!",
+            "id123456",
+            work_type="feature",
+            description="fix: crash @login (v2)!",
         )
         assert result == "lintel/feat/id123456-fix-crash-login-v2"
 
@@ -50,6 +52,8 @@ class TestGenerateBranchName:
 
     def test_trailing_hyphens_stripped(self) -> None:
         result = generate_branch_name(
-            "id123456", work_type="feature", description="hello---",
+            "id123456",
+            work_type="feature",
+            description="hello---",
         )
         assert result == "lintel/feat/id123456-hello"

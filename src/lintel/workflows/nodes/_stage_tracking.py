@@ -25,7 +25,9 @@ def extract_token_usage(node_name: str, result: dict[str, Any]) -> dict[str, Any
 NODE_TO_STAGE: dict[str, str] = {
     "ingest": "ingest",
     "route": "ingest",  # route is part of the ingest stage
-    "setup_workspace": "ingest",  # workspace setup is part of ingest
+    "setup_workspace": "setup_workspace",
+    "research": "research",
+    "approval_gate_research": "approve_research",
     "plan": "plan",
     "approval_gate_spec": "approve_spec",
     "implement": "implement",
@@ -38,7 +40,13 @@ NODE_TO_STAGE: dict[str, str] = {
 
 def _get_pipeline_store(config: dict[str, Any]) -> Any:  # noqa: ANN401
     """Extract pipeline_store from LangGraph configurable dict."""
-    app_state = config.get("configurable", {}).get("app_state")
+    configurable = config.get("configurable", {})
+    # Direct reference takes priority
+    store = configurable.get("pipeline_store")
+    if store is not None:
+        return store
+    # Fall back to app_state attribute
+    app_state = configurable.get("app_state")
     if app_state is None:
         return None
     return getattr(app_state, "pipeline_store", None)
@@ -98,20 +106,22 @@ async def append_log(
         if s.name == stage_name:
             existing_logs = list(s.logs) if s.logs else []
             existing_logs.append(line)
-            new_stages.append(Stage(
-                stage_id=s.stage_id,
-                name=s.name,
-                stage_type=s.stage_type,
-                status=s.status,
-                inputs=s.inputs,
-                outputs=s.outputs,
-                error=s.error,
-                duration_ms=s.duration_ms,
-                started_at=s.started_at,
-                finished_at=s.finished_at,
-                logs=tuple(existing_logs),
-                retry_count=s.retry_count,
-            ))
+            new_stages.append(
+                Stage(
+                    stage_id=s.stage_id,
+                    name=s.name,
+                    stage_type=s.stage_type,
+                    status=s.status,
+                    inputs=s.inputs,
+                    outputs=s.outputs,
+                    error=s.error,
+                    duration_ms=s.duration_ms,
+                    started_at=s.started_at,
+                    finished_at=s.finished_at,
+                    logs=tuple(existing_logs),
+                    retry_count=s.retry_count,
+                )
+            )
         else:
             new_stages.append(s)
 

@@ -50,6 +50,7 @@ class AgentRole(StrEnum):
     QA_ENGINEER = "qa_engineer"
     DEVOPS = "devops"
     SECURITY = "security"
+    RESEARCHER = "researcher"
     TECH_LEAD = "tech_lead"
     DOCUMENTATION = "documentation"
     TRIAGE = "triage"
@@ -300,6 +301,7 @@ class PipelineStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
+    WAITING_APPROVAL = "waiting_approval"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -311,6 +313,9 @@ class StageStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     SKIPPED = "skipped"
+    WAITING_APPROVAL = "waiting_approval"
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
 
 @dataclass(frozen=True)

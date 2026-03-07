@@ -54,6 +54,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/sandboxes/pages/SandboxListPage'),
       },
       {
+        path: 'sandboxes/:sandboxId',
+        lazy: () => import('@/features/sandboxes/pages/SandboxDetailPage'),
+      },
+      {
         path: 'events',
         lazy: () => import('@/features/events/pages/EventExplorerPage'),
       },

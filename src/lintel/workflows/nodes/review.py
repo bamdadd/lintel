@@ -34,7 +34,11 @@ async def review_output(
 ) -> dict[str, Any]:
     """Review implementation artifacts using the reviewer agent."""
     from lintel.contracts.types import AgentRole, SandboxJob, ThreadRef
-    from lintel.workflows.nodes._stage_tracking import extract_token_usage, mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import (
+        extract_token_usage,
+        mark_completed,
+        mark_running,
+    )
 
     _config = config or {}
     _configurable = _config.get("configurable", {})
@@ -120,9 +124,7 @@ async def review_output(
     result_dict: dict[str, Any] = {
         "current_phase": "awaiting_merge_approval",
         "pending_approvals": ["merge_approval"],
-        "agent_outputs": [
-            {"node": "review", "verdict": verdict, "output": review_output_text}
-        ],
+        "agent_outputs": [{"node": "review", "verdict": verdict, "output": review_output_text}],
     }
     if usage:
         result_dict["token_usage"] = [usage]

@@ -267,30 +267,46 @@ class TestCollectArtifacts:
         assert result["content"] == "diff output"
 
 
-class TestRecoverOrphans:
-    async def test_destroys_orphans(self) -> None:
+class TestRecoverContainers:
+    async def test_recovers_running_containers(self) -> None:
         manager = DockerSandboxManager()
-        orphan = MagicMock()
-        orphan.labels = {"lintel.sandbox_id": "orphan-1"}
+        container = MagicMock()
+        container.labels = {"lintel.sandbox_id": "orphan-1"}
+        container.status = "running"
         client = MagicMock()
-        client.containers.list.return_value = [orphan]
+        client.containers.list.return_value = [container]
         manager._client = client
 
-        destroyed = await manager.recover_orphans()
+        recovered = await manager.recover_containers()
 
-        assert destroyed == ["orphan-1"]
-        orphan.remove.assert_called_once_with(force=True)
+        assert recovered == ["orphan-1"]
+        assert manager._containers["orphan-1"] is container
+        container.remove.assert_not_called()
+
+    async def test_destroys_exited_containers(self) -> None:
+        manager = DockerSandboxManager()
+        container = MagicMock()
+        container.labels = {"lintel.sandbox_id": "dead-1"}
+        container.status = "exited"
+        client = MagicMock()
+        client.containers.list.return_value = [container]
+        manager._client = client
+
+        recovered = await manager.recover_containers()
+
+        assert recovered == []
+        container.remove.assert_called_once_with(force=True)
 
     async def test_skips_known_containers(self) -> None:
         manager = DockerSandboxManager()
         known = MagicMock()
         known.labels = {"lintel.sandbox_id": "known-1"}
+        known.status = "running"
         manager._containers["known-1"] = known
         client = MagicMock()
         client.containers.list.return_value = [known]
         manager._client = client
 
-        destroyed = await manager.recover_orphans()
+        recovered = await manager.recover_containers()
 
-        assert destroyed == []
-        known.remove.assert_not_called()
+        assert recovered == []

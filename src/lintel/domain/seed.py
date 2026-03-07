@@ -653,11 +653,16 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="feature_to_pr",
         name="Feature to PR",
-        description=("End-to-end feature implementation: plan, implement, test, review, merge."),
+        description=(
+            "End-to-end feature implementation: research, plan, implement, test, review, merge."
+        ),
         is_template=True,
         stage_names=(
             "ingest",
             "route",
+            "setup_workspace",
+            "research",
+            "approve_research",
             "plan",
             "approve_spec",
             "implement",
@@ -669,6 +674,9 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         graph_nodes=(
             "ingest",
             "route",
+            "setup_workspace",
+            "research",
+            "approval_gate_research",
             "plan",
             "approval_gate_spec",
             "implement",
@@ -679,6 +687,9 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         ),
         graph_edges=(
             ("ingest", "route"),
+            ("setup_workspace", "research"),
+            ("research", "approval_gate_research"),
+            ("approval_gate_research", "plan"),
             ("plan", "approval_gate_spec"),
             ("approval_gate_spec", "implement"),
             ("implement", "test"),
@@ -689,11 +700,12 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         conditional_edges=(
             {
                 "source": "route",
-                "targets": {"plan": "plan", "close": "close"},
+                "targets": {"setup_workspace": "setup_workspace", "close": "close"},
             },
         ),
         entry_point="ingest",
         interrupt_before=(
+            "approval_gate_research",
             "approval_gate_spec",
             "approval_gate_merge",
         ),
@@ -715,6 +727,24 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                 "description": (
                     "Classifies the request as feature, bug, or refactor and decides whether to"
                     " plan or close."
+                ),
+            },
+            {
+                "node": "setup_workspace",
+                "label": "Setup Workspace",
+                "agent": "system",
+                "description": (
+                    "Clones the project repository into a sandbox and creates a feature branch."
+                ),
+            },
+            {
+                "node": "research",
+                "label": "Research",
+                "agent": "researcher",
+                "agent_id": "agent_researcher",
+                "description": (
+                    "Surveys the codebase structure, key files, and patterns to build context"
+                    " for the planning stage."
                 ),
             },
             {
@@ -943,10 +973,10 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="refactor",
         name="Refactor",
-        description=("Safe refactoring: analyse, plan, implement, test for regressions, review."),
+        description=("Safe refactoring: research, plan, implement, test for regressions, review."),
         is_template=True,
         stage_names=(
-            "analyse",
+            "research",
             "plan",
             "approve_spec",
             "refactor",
@@ -956,7 +986,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "merge",
         ),
         graph_nodes=(
-            "analyse",
+            "research",
             "plan",
             "approval_gate_spec",
             "refactor",
@@ -966,7 +996,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "close",
         ),
         graph_edges=(
-            ("analyse", "plan"),
+            ("research", "plan"),
             ("plan", "approval_gate_spec"),
             ("approval_gate_spec", "refactor"),
             ("refactor", "test"),
@@ -974,19 +1004,19 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             ("review", "approval_gate_merge"),
             ("approval_gate_merge", "close"),
         ),
-        entry_point="analyse",
+        entry_point="research",
         interrupt_before=(
             "approval_gate_spec",
             "approval_gate_merge",
         ),
         node_metadata=(
             {
-                "node": "analyse",
-                "label": "Analyse",
-                "agent": "architect",
-                "agent_id": "agent_architect",
+                "node": "research",
+                "label": "Research",
+                "agent": "researcher",
+                "agent_id": "agent_researcher",
                 "description": (
-                    "Analyses the codebase to identify refactoring targets, code smells, and"
+                    "Researches the codebase to identify refactoring targets, code smells, and"
                     " improvement areas."
                 ),
             },
@@ -1217,34 +1247,34 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
         definition_id="documentation",
         name="Documentation",
-        description=("Documentation pipeline: analyse code, draft docs, review, publish."),
+        description=("Documentation pipeline: research code, draft docs, review, publish."),
         is_template=True,
         stage_names=(
-            "analyse",
+            "research",
             "draft",
             "review",
             "publish",
         ),
         graph_nodes=(
-            "analyse",
+            "research",
             "draft",
             "review",
             "publish",
         ),
         graph_edges=(
-            ("analyse", "draft"),
+            ("research", "draft"),
             ("draft", "review"),
             ("review", "publish"),
         ),
-        entry_point="analyse",
+        entry_point="research",
         node_metadata=(
             {
-                "node": "analyse",
-                "label": "Analyse",
-                "agent": "architect",
-                "agent_id": "agent_architect",
+                "node": "research",
+                "label": "Research",
+                "agent": "researcher",
+                "agent_id": "agent_researcher",
                 "description": (
-                    "Analyses code structure, public APIs, and existing documentation gaps."
+                    "Researches code structure, public APIs, and existing documentation gaps."
                 ),
             },
             {

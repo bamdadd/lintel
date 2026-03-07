@@ -1,0 +1,314 @@
+import { useState, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router';
+import {
+  Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center,
+  Code, TextInput, ScrollArea, ActionIcon, Tabs,
+} from '@mantine/core';
+import { IconArrowLeft, IconPlayerPlay, IconRefresh, IconTrash } from '@tabler/icons-react';
+import {
+  useSandboxesGetSandboxStatus,
+  useSandboxesExecuteCommand,
+  useSandboxesDestroySandbox,
+} from '@/generated/api/sandboxes/sandboxes';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { notifications } from '@mantine/notifications';
+
+interface SandboxMetadata {
+  sandbox_id: string;
+  image: string;
+  network_enabled: boolean;
+  workspace_id: string;
+  channel_id: string;
+  devcontainer?: Record<string, unknown>;
+}
+
+function useSandboxMetadata(sandboxId: string | undefined) {
+  return useQuery<SandboxMetadata | null>({
+    queryKey: ['/api/v1/sandboxes', sandboxId],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/sandboxes');
+      const list: SandboxMetadata[] = await res.json();
+      return list.find((s) => s.sandbox_id === sandboxId) ?? null;
+    },
+    enabled: !!sandboxId,
+  });
+}
+
+function useSandboxLogs(sandboxId: string | undefined, enabled: boolean) {
+  return useQuery<string>({
+    queryKey: ['/api/v1/sandboxes', sandboxId, 'logs'],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/sandboxes/${sandboxId}/logs?tail=500`);
+      if (!res.ok) return '';
+      const data = await res.json();
+      return data.logs ?? '';
+    },
+    enabled: !!sandboxId && enabled,
+    refetchInterval: 3000,
+  });
+}
+
+interface TerminalLine {
+  type: 'input' | 'output' | 'error';
+  text: string;
+}
+
+export function Component() {
+  const { sandboxId } = useParams<{ sandboxId: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { data: statusResp } = useSandboxesGetSandboxStatus(sandboxId ?? '', {
+    query: { enabled: !!sandboxId, refetchInterval: 5000 },
+  });
+  const { data: metadata, isLoading: metaLoading } = useSandboxMetadata(sandboxId);
+  const executeMutation = useSandboxesExecuteCommand();
+  const destroyMutation = useSandboxesDestroySandbox();
+
+  const [activeTab, setActiveTab] = useState<string | null>('terminal');
+  const [command, setCommand] = useState('');
+  const [cwd, setCwd] = useState('/workspace');
+  const [lines, setLines] = useState<TerminalLine[]>([]);
+  const [running, setRunning] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const logScrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { data: containerLogs } = useSandboxLogs(sandboxId, activeTab === 'logs');
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [lines]);
+
+  useEffect(() => {
+    if (!running) {
+      inputRef.current?.focus();
+    }
+  }, [running]);
+
+  const status = (statusResp?.data as { status?: string } | undefined)?.status ?? 'unknown';
+
+  const statusColor: Record<string, string> = {
+    running: 'green',
+    stopped: 'gray',
+    unknown: 'yellow',
+    error: 'red',
+  };
+
+  const prompt = `root ➜ ${cwd} $`;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (history.length === 0) return;
+      const newIndex = historyIndex < history.length - 1 ? historyIndex + 1 : historyIndex;
+      setHistoryIndex(newIndex);
+      setCommand(history[history.length - 1 - newIndex]);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex <= 0) {
+        setHistoryIndex(-1);
+        setCommand('');
+      } else {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setCommand(history[history.length - 1 - newIndex]);
+      }
+    } else if (e.key === 'Enter') {
+      handleExecute();
+    }
+  };
+
+  const handleExecute = () => {
+    if (!command.trim() || !sandboxId) return;
+    const cmd = command.trim();
+    setHistory((prev) => [...prev, cmd]);
+    setHistoryIndex(-1);
+    setCommand('');
+    setLines((prev) => [...prev, { type: 'input', text: `${prompt} ${cmd}` }]);
+    setRunning(true);
+
+    // Wrap cd commands so we can track the working directory
+    const isCd = /^cd\s+/.test(cmd) || cmd === 'cd';
+    const execCmd = isCd
+      ? `${cmd} && pwd`
+      : cmd;
+
+    executeMutation.mutate(
+      { sandboxId, data: { command: execCmd, timeout_seconds: 30, workdir: cwd } },
+      {
+        onSuccess: (resp) => {
+          const data = resp.data as { stdout?: string; stderr?: string; exit_code?: number };
+          if (isCd && data.exit_code === 0 && data.stdout?.trim()) {
+            setCwd(data.stdout.trim().split('\n').pop() ?? cwd);
+          }
+          const output = isCd ? '' : (data.stdout ?? '');
+          if (output) {
+            setLines((prev) => [...prev, { type: 'output', text: output }]);
+          }
+          if (data.stderr) {
+            setLines((prev) => [...prev, { type: 'error', text: data.stderr }]);
+          }
+          if (!output && !data.stderr && !isCd) {
+            setLines((prev) => [...prev, { type: 'output', text: '(no output)' }]);
+          }
+          if (data.exit_code !== undefined && data.exit_code !== 0) {
+            setLines((prev) => [...prev, { type: 'error', text: `exit code: ${data.exit_code}` }]);
+          }
+          setRunning(false);
+          inputRef.current?.focus();
+        },
+        onError: (err) => {
+          setLines((prev) => [...prev, { type: 'error', text: String(err) }]);
+          setRunning(false);
+          inputRef.current?.focus();
+        },
+      },
+    );
+  };
+
+  const handleDestroy = () => {
+    if (!sandboxId) return;
+    destroyMutation.mutate(
+      { sandboxId },
+      {
+        onSuccess: () => {
+          notifications.show({ title: 'Destroyed', message: 'Sandbox removed', color: 'orange' });
+          void queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes'] });
+          navigate('/sandboxes');
+        },
+      },
+    );
+  };
+
+  if (metaLoading) return <Center py="xl"><Loader /></Center>;
+
+  return (
+    <Stack gap="md">
+      <Group>
+        <ActionIcon variant="subtle" onClick={() => navigate('/sandboxes')}>
+          <IconArrowLeft size={20} />
+        </ActionIcon>
+        <Title order={2}>Sandbox {sandboxId?.slice(0, 12)}</Title>
+        <Badge color={statusColor[status] ?? 'gray'} size="lg">{status}</Badge>
+      </Group>
+
+      <Group gap="xl">
+        <Text size="sm"><Text span fw={600}>ID:</Text> <Code>{sandboxId}</Code></Text>
+        {metadata && (
+          <>
+            <Text size="sm"><Text span fw={600}>Image:</Text> {metadata.devcontainer?.image as string ?? metadata.image}</Text>
+            <Group gap={4} align="center"><Text size="sm" fw={600}>Network:</Text><Badge size="xs" color={metadata.network_enabled ? 'green' : 'gray'}>{metadata.network_enabled ? 'on' : 'off'}</Badge></Group>
+          </>
+        )}
+      </Group>
+
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List>
+          <Tabs.Tab value="terminal">Terminal</Tabs.Tab>
+          <Tabs.Tab value="logs">Container Logs</Tabs.Tab>
+          <Tabs.Tab value="config">Configuration</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="terminal" pt="md">
+          <Paper withBorder p="xs" radius="md" bg="dark.9" style={{ minHeight: 400 }}>
+            <ScrollArea h={350} viewportRef={scrollRef}>
+              <Code block style={{ fontSize: 12, background: 'transparent', whiteSpace: 'pre-wrap' }}>
+                {lines.length === 0 && (
+                  <Text size="xs" c="dimmed">Run commands in the sandbox. Try: ls /workspace</Text>
+                )}
+                {lines.map((line, i) => {
+                  if (line.type === 'input') {
+                    // Split prompt from command for coloring
+                    const dollarIdx = line.text.indexOf('$ ');
+                    const promptPart = dollarIdx >= 0 ? line.text.slice(0, dollarIdx + 1) : '';
+                    const cmdPart = dollarIdx >= 0 ? line.text.slice(dollarIdx + 2) : line.text;
+                    return (
+                      <Text key={i} size="xs" ff="monospace" style={{ whiteSpace: 'pre-wrap' }}>
+                        <Text span c="green.4">{promptPart}</Text>{' '}
+                        <Text span c="gray.1">{cmdPart}</Text>
+                      </Text>
+                    );
+                  }
+                  return (
+                    <Text
+                      key={i}
+                      size="xs"
+                      ff="monospace"
+                      c={line.type === 'error' ? 'red.4' : 'gray.3'}
+                      style={{ whiteSpace: 'pre-wrap' }}
+                    >
+                      {line.text}
+                    </Text>
+                  );
+                })}
+              </Code>
+            </ScrollArea>
+            <Group mt="xs" gap={4} align="center">
+              <Text size="xs" ff="monospace" c="green.4" style={{ whiteSpace: 'nowrap', userSelect: 'none' }}>
+                {prompt}
+              </Text>
+              <TextInput
+                ref={inputRef}
+                flex={1}
+                variant="unstyled"
+                value={command}
+                onChange={(e) => setCommand(e.currentTarget.value)}
+                onKeyDown={handleKeyDown}
+                disabled={running}
+                autoFocus
+                styles={{ input: { fontFamily: 'monospace', fontSize: 12, color: 'var(--mantine-color-gray-3)', padding: 0 } }}
+              />
+            </Group>
+          </Paper>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="logs" pt="md">
+          <Paper withBorder p="xs" radius="md" bg="dark.9" style={{ minHeight: 400 }}>
+            <Group justify="space-between" mb="xs">
+              <Text size="xs" c="dimmed">Docker container logs (last 500 lines, auto-refreshing)</Text>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes', sandboxId, 'logs'] })}
+              >
+                <IconRefresh size={14} />
+              </ActionIcon>
+            </Group>
+            <ScrollArea h={400} viewportRef={logScrollRef}>
+              <Code block style={{ fontSize: 11, background: 'transparent', whiteSpace: 'pre-wrap', color: 'var(--mantine-color-gray-3)' }}>
+                {containerLogs || 'No logs available.'}
+              </Code>
+            </ScrollArea>
+          </Paper>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="config" pt="md">
+          {metadata?.devcontainer ? (
+            <Paper withBorder p="md" radius="md" maw={600}>
+              <Title order={5} mb="sm">devcontainer.json</Title>
+              <Code block style={{ fontSize: 12, maxHeight: 400, overflow: 'auto' }}>
+                {JSON.stringify(metadata.devcontainer, null, 2)}
+              </Code>
+            </Paper>
+          ) : (
+            <Text c="dimmed">No devcontainer configuration available.</Text>
+          )}
+        </Tabs.Panel>
+      </Tabs>
+
+      <Group>
+        <Button
+          color="red"
+          variant="light"
+          leftSection={<IconTrash size={16} />}
+          onClick={handleDestroy}
+          loading={destroyMutation.isPending}
+        >
+          Destroy Sandbox
+        </Button>
+      </Group>
+    </Stack>
+  );
+}

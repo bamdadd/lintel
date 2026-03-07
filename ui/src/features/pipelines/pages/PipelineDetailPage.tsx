@@ -4,7 +4,10 @@ import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs,
   Code, ScrollArea,
 } from '@mantine/core';
-import { IconArrowLeft, IconRefresh } from '@tabler/icons-react';
+import { IconArrowLeft, IconCheck, IconRefresh, IconX } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '../../chat/chat-markdown.css';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
@@ -18,6 +21,9 @@ const statusColor: Record<string, string> = {
   succeeded: 'green',
   failed: 'red',
   cancelled: 'orange',
+  waiting_approval: 'yellow',
+  approved: 'teal',
+  rejected: 'red',
 };
 
 interface StageItem {
@@ -90,6 +96,8 @@ export function Component() {
   const navigate = useNavigate();
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
 
   const { data: pipelineResp, isLoading } = usePipelinesGetPipeline(runId ?? '', {
     query: { refetchInterval: 3000 },
@@ -111,6 +119,26 @@ export function Component() {
       await fetch(`/api/v1/pipelines/${runId}/stages/${selectedStageId}/retry`, { method: 'POST' });
     } finally {
       setRetrying(false);
+    }
+  }, [runId, selectedStageId]);
+
+  const handleApprove = useCallback(async () => {
+    if (!runId || !selectedStageId) return;
+    setApproving(true);
+    try {
+      await fetch(`/api/v1/pipelines/${runId}/stages/${selectedStageId}/approve`, { method: 'POST' });
+    } finally {
+      setApproving(false);
+    }
+  }, [runId, selectedStageId]);
+
+  const handleReject = useCallback(async () => {
+    if (!runId || !selectedStageId) return;
+    setRejecting(true);
+    try {
+      await fetch(`/api/v1/pipelines/${runId}/stages/${selectedStageId}/reject`, { method: 'POST' });
+    } finally {
+      setRejecting(false);
     }
   }, [runId, selectedStageId]);
 
@@ -202,19 +230,45 @@ export function Component() {
                         <Text fw={600}>{selectedStage.name}</Text>
                         <Badge color={statusColor[selectedStage.status] ?? 'gray'}>{selectedStage.status}</Badge>
                       </Group>
-                      {(selectedStage.status === 'failed' || selectedStage.status === 'running') && (
-                        <Button
-                          variant="light"
-                          size="compact-sm"
-                          leftSection={<IconRefresh size={14} />}
-                          loading={retrying}
-                          disabled={(selectedStage.retry_count ?? 0) >= 3}
-                          onClick={handleRetry}
-                        >
-                          {selectedStage.status === 'failed' ? 'Retry' : 'Restart'}
-                          {(selectedStage.retry_count ?? 0) > 0 && ` (${selectedStage.retry_count}/3)`}
-                        </Button>
-                      )}
+                      <Group gap="xs">
+                        {selectedStage.status === 'waiting_approval' && (
+                          <Button
+                            variant="filled"
+                            color="green"
+                            size="compact-sm"
+                            leftSection={<IconCheck size={14} />}
+                            loading={approving}
+                            onClick={handleApprove}
+                          >
+                            Approve
+                          </Button>
+                        )}
+                        {selectedStage.status === 'waiting_approval' && (
+                          <Button
+                            variant="light"
+                            color="red"
+                            size="compact-sm"
+                            leftSection={<IconX size={14} />}
+                            loading={rejecting}
+                            onClick={handleReject}
+                          >
+                            Reject
+                          </Button>
+                        )}
+                        {(selectedStage.status === 'failed' || selectedStage.status === 'running') && (
+                          <Button
+                            variant="light"
+                            size="compact-sm"
+                            leftSection={<IconRefresh size={14} />}
+                            loading={retrying}
+                            disabled={(selectedStage.retry_count ?? 0) >= 3}
+                            onClick={handleRetry}
+                          >
+                            {selectedStage.status === 'failed' ? 'Retry' : 'Restart'}
+                            {(selectedStage.retry_count ?? 0) > 0 && ` (${selectedStage.retry_count}/3)`}
+                          </Button>
+                        )}
+                      </Group>
                     </Group>
                     <Text size="sm" c="dimmed">Type: {selectedStage.stage_type ?? '—'}</Text>
                     <Text size="sm">Started: {selectedStage.started_at ? new Date(selectedStage.started_at).toLocaleString() : '—'}</Text>
@@ -222,6 +276,16 @@ export function Component() {
                     {selectedStage.duration_ms ? (
                       <Text size="sm">Duration: {(selectedStage.duration_ms / 1000).toFixed(1)}s</Text>
                     ) : null}
+
+                    {/* Sandbox info */}
+                    {selectedStage.outputs?.sandbox_id && (
+                      <Group gap="xs">
+                        <Text size="sm">Sandbox:</Text>
+                        <Badge variant="light" size="lg" radius="sm">
+                          {(selectedStage.outputs.sandbox_id as string).slice(0, 12)}
+                        </Badge>
+                      </Group>
+                    )}
 
                     {/* Error */}
                     {selectedStage.error && (
@@ -276,6 +340,22 @@ export function Component() {
                       </Stack>
                     )}
 
+                    {/* Research report — rendered as markdown */}
+                    {selectedStage.outputs?.research_report && (
+                      <Stack gap={4}>
+                        <Text size="sm" fw={600}>Research Report</Text>
+                        <Paper withBorder p="sm">
+                          <ScrollArea.Autosize mah={500}>
+                            <div className="chat-markdown" style={{ fontSize: 13 }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {selectedStage.outputs.research_report as string}
+                              </ReactMarkdown>
+                            </div>
+                          </ScrollArea.Autosize>
+                        </Paper>
+                      </Stack>
+                    )}
+
                     {/* Plan output — rendered as task list */}
                     {selectedStage.outputs?.plan && (
                       <Stack gap={4}>
@@ -311,12 +391,12 @@ export function Component() {
                     )}
 
                     {/* Other outputs (non-plan) */}
-                    {selectedStage.outputs && Object.keys(selectedStage.outputs).filter(k => k !== 'plan').length > 0 && (
+                    {selectedStage.outputs && Object.keys(selectedStage.outputs).filter(k => k !== 'plan' && k !== 'research_report').length > 0 && (
                       <Stack gap={4}>
                         <Text size="sm" fw={600}>Outputs</Text>
                         <Code block style={{ fontSize: 12 }}>
                           {JSON.stringify(
-                            Object.fromEntries(Object.entries(selectedStage.outputs).filter(([k]) => k !== 'plan')),
+                            Object.fromEntries(Object.entries(selectedStage.outputs).filter(([k]) => k !== 'plan' && k !== 'research_report')),
                             null, 2,
                           )}
                         </Code>

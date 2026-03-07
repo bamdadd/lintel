@@ -20,11 +20,16 @@ logger = structlog.get_logger()
 
 PLAN_SYSTEM_PROMPT = (
     "You are a senior software planner. Given a feature request or bug report, "
+    "analyse the codebase context provided and "
     "produce a detailed implementation plan as JSON with the following structure:\n"
-    '{"tasks": [{"title": "...", "description": "...", "complexity": "S|M|L|XL"}], '
+    '{"tasks": [{"title": "...", "description": "...", '
+    '"file_paths": ["..."], "complexity": "S|M|L|XL"}], '
     '"summary": "one-line summary of what will be done"}\n\n'
     "Be specific about which files to change, what to add/remove, and "
-    "any cascading effects (tests, APIs, types, UI)."
+    "any cascading effects (tests, APIs, types, UI).\n\n"
+    "If codebase context is provided, reference actual file paths and existing "
+    "patterns in your plan. Identify the right places to make changes based on "
+    "the project structure and conventions you observe."
 )
 
 
@@ -65,7 +70,12 @@ def _build_thread_ref(raw: str) -> ThreadRef:
 
 async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[str, Any]:
     """Generate work plan using the Planner agent via AgentRuntime."""
-    from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage, mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import (
+        append_log,
+        extract_token_usage,
+        mark_completed,
+        mark_running,
+    )
 
     await mark_running(config, "plan", state)
     await append_log(config, "plan", "Generating implementation plan...", state)
@@ -87,6 +97,22 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     messages = state.get("sanitized_messages", [])
     user_request = "\n".join(messages) if messages else "No description provided."
 
+    # Use research context from the research node (upstream in the graph)
+    research_context = state.get("research_context", "")
+    if research_context:
+        logger.info("plan_using_research_context", chars=len(research_context))
+        await append_log(
+            config,
+            "plan",
+            f"Using research context ({len(research_context):,} chars)",
+            state,
+        )
+
+    # Build the user prompt with research context
+    user_prompt = user_request
+    if research_context:
+        user_prompt = f"{research_context}\n\n---\n\n## Request\n{user_request}"
+
     thread_ref = _build_thread_ref(state.get("thread_ref", ""))
 
     result = await agent_runtime.execute_step(
@@ -95,7 +121,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         step_name="plan_work",
         messages=[
             {"role": "system", "content": PLAN_SYSTEM_PROMPT},
-            {"role": "user", "content": user_request},
+            {"role": "user", "content": user_prompt},
         ],
     )
 
@@ -114,7 +140,8 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         suffix = f" [{complexity}]" if complexity else ""
         await append_log(config, "plan", f"  {i}. {title}{suffix}", state)
     await append_log(
-        config, "plan",
+        config,
+        "plan",
         f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
         state,
     )

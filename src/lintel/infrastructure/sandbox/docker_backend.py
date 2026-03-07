@@ -60,29 +60,50 @@ class DockerSandboxManager:
         except Exception:
             await asyncio.to_thread(client.images.pull, config.image)
 
-        container = await asyncio.to_thread(
-            client.containers.create,
-            image=config.image,
-            command="sleep infinity",
-            detach=True,
-            cap_drop=["ALL"],
-            security_opt=["no-new-privileges:true"],
-            read_only=False,
-            network_mode="bridge" if config.network_enabled else "none",
-            mem_limit=config.memory_limit,
-            cpu_period=100000,
-            cpu_quota=config.cpu_quota,
-            pids_limit=256,
-            user="1000:1000",
-            tmpfs={"/tmp": "size=100m,noexec"},
-            environment=environment,
-            labels={
+        create_kwargs: dict[str, Any] = {
+            "image": config.image,
+            "command": "sleep infinity",
+            "detach": True,
+            "cap_drop": ["ALL"],
+            "security_opt": ["no-new-privileges:true"],
+            "read_only": False,
+            "network_mode": "bridge" if config.network_enabled else "none",
+            "mem_limit": config.memory_limit,
+            "cpu_period": 100000,
+            "cpu_quota": config.cpu_quota,
+            "pids_limit": 256,
+            "tmpfs": {"/tmp": "size=100m", "/workspace": "size=500m"},
+            "environment": environment,
+            "labels": {
                 "lintel.sandbox_id": sandbox_id,
                 "lintel.thread_ref": thread_ref.stream_id,
             },
+        }
+
+        # Ensure DNS works in bridge mode (Docker Desktop may not propagate host DNS)
+        if config.network_enabled:
+            create_kwargs["dns"] = ["8.8.8.8", "8.8.4.4"]
+
+        container = await asyncio.to_thread(
+            client.containers.create,
+            **create_kwargs,
         )
         await asyncio.to_thread(container.start)
         self._containers[sandbox_id] = container
+
+        # Install git if not present (python:3.12-slim doesn't include it)
+        check = await asyncio.to_thread(
+            container.exec_run,
+            cmd="which git",
+            demux=True,
+        )
+        if check.exit_code != 0:
+            await asyncio.to_thread(
+                container.exec_run,
+                cmd="sh -c 'apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1'",
+                demux=True,
+            )
+
         return sandbox_id
 
     async def execute(
@@ -97,7 +118,7 @@ class DockerSandboxManager:
         async def _run() -> SandboxResult:
             exec_result = await asyncio.to_thread(
                 container.exec_run,
-                cmd=job.command,
+                cmd=["/bin/sh", "-c", job.command],
                 workdir=job.workdir or "/workspace",
                 demux=True,
             )
@@ -163,6 +184,16 @@ class DockerSandboxManager:
         }
         return status_map.get(state, SandboxStatus.FAILED)
 
+    async def get_logs(self, sandbox_id: str, tail: int = 200) -> str:
+        container = self._get_container(sandbox_id)
+        raw: bytes = await asyncio.to_thread(
+            container.logs,
+            stdout=True,
+            stderr=True,
+            tail=tail,
+        )
+        return raw.decode("utf-8", errors="replace")
+
     async def collect_artifacts(self, sandbox_id: str) -> dict[str, Any]:
         from lintel.contracts.types import SandboxJob
 
@@ -185,21 +216,36 @@ class DockerSandboxManager:
 
     async def destroy(self, sandbox_id: str) -> None:
         container = self._containers.pop(sandbox_id, None)
+        if container is None:
+            # Try to find by label (e.g. after server restart)
+            client = self._get_client()
+            matches = await asyncio.to_thread(
+                client.containers.list,
+                filters={"label": f"lintel.sandbox_id={sandbox_id}"},
+                all=True,
+            )
+            if matches:
+                container = matches[0]
         if container:
             await asyncio.to_thread(container.remove, force=True)
 
-    async def recover_orphans(self) -> list[str]:
-        """Discover and destroy orphaned containers from previous runs."""
+    async def recover_containers(self) -> list[str]:
+        """Re-attach to containers from previous runs using Docker labels."""
         client = self._get_client()
         containers = await asyncio.to_thread(
             client.containers.list,
             filters={"label": "lintel.sandbox_id"},
             all=True,
         )
-        destroyed: list[str] = []
+        recovered: list[str] = []
         for container in containers:
             sandbox_id = container.labels.get("lintel.sandbox_id", "")
             if sandbox_id and sandbox_id not in self._containers:
-                await asyncio.to_thread(container.remove, force=True)
-                destroyed.append(sandbox_id)
-        return destroyed
+                status: str = container.status
+                if status in ("running", "paused", "restarting", "created"):
+                    self._containers[sandbox_id] = container
+                    recovered.append(sandbox_id)
+                else:
+                    # Dead/exited containers — clean up
+                    await asyncio.to_thread(container.remove, force=True)
+        return recovered

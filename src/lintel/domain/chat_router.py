@@ -21,7 +21,16 @@ logger = structlog.get_logger()
 WORKFLOW_KEYWORDS: dict[str, list[str]] = {
     "feature_to_pr": ["build", "implement", "create", "add feature", "new feature", "develop"],
     "bug_fix": ["fix", "bug", "broken", "error", "crash", "regression"],
-    "refactor": ["refactor", "clean up", "modernize", "restructure", "simplify", "remove the need", "get rid of", "eliminate"],
+    "refactor": [
+        "refactor",
+        "clean up",
+        "modernize",
+        "restructure",
+        "simplify",
+        "remove the need",
+        "get rid of",
+        "eliminate",
+    ],
     "code_review": ["review", "check code", "audit code", "look at the code"],
     "security_audit": ["security", "vulnerability", "cve", "penetration"],
     "documentation": ["document", "write docs", "update readme", "api docs"],
@@ -67,10 +76,7 @@ class ChatRouter:
                 )
                 # If keywords say it's a workflow but LLM says chat, trust keywords —
                 # LLMs often misclassify actionable requests as chat replies
-                if (
-                    keyword_result.action == "start_workflow"
-                    and llm_result.action == "chat_reply"
-                ):
+                if keyword_result.action == "start_workflow" and llm_result.action == "chat_reply":
                     logger.info(
                         "classify_override_llm_with_keywords",
                         llm_action=llm_result.action,
@@ -148,15 +154,18 @@ class ChatRouter:
         # If LLM didn't follow the structured format, infer from content
         if not action:
             # If a WORKFLOW line was found, it's clearly a workflow
-            if workflow_type:
-                action = "start_workflow"
-            # Check for task-like language in the response
-            elif any(
+            if workflow_type or any(
                 phrase in content.lower()
                 for phrase in (
-                    "refactor", "implement", "i'll help you", "let's get started",
-                    "i will help", "let me", "i can help you",
-                    "start_workflow", "workflow",
+                    "refactor",
+                    "implement",
+                    "i'll help you",
+                    "let's get started",
+                    "i will help",
+                    "let me",
+                    "i can help you",
+                    "start_workflow",
+                    "workflow",
                 )
             ):
                 action = "start_workflow"

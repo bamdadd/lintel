@@ -101,7 +101,9 @@ async def run_tests(
     logger.info("test_run_complete", verdict=verdict, exit_code=result.exit_code)
 
     await mark_completed(
-        _config, "test", state,
+        _config,
+        "test",
+        state,
         error="" if passed else f"Tests failed (exit {result.exit_code})",
     )
     return {

@@ -78,12 +78,13 @@ class TestEnums:
             "qa_engineer",
             "devops",
             "security",
+            "researcher",
             "tech_lead",
             "documentation",
             "triage",
         }
         assert {r.value for r in AgentRole} == expected
-        assert len(AgentRole) == 13
+        assert len(AgentRole) == 14
 
     def test_workflow_phase_values(self) -> None:
         assert WorkflowPhase.INGESTING == "ingesting"

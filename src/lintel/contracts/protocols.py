@@ -191,6 +191,12 @@ class SandboxManager(Protocol):
         sandbox_id: str,
     ) -> SandboxStatus: ...
 
+    async def get_logs(
+        self,
+        sandbox_id: str,
+        tail: int = 200,
+    ) -> str: ...
+
     async def collect_artifacts(
         self,
         sandbox_id: str,

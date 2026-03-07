@@ -12,8 +12,28 @@ from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
 
 router = APIRouter()
 
-# In-memory store for sandbox metadata (devcontainer configs, etc.)
-_sandbox_registry: dict[str, dict[str, Any]] = {}
+
+class SandboxStore:
+    """In-memory sandbox metadata store."""
+
+    def __init__(self) -> None:
+        self._sandboxes: dict[str, dict[str, Any]] = {}
+
+    async def add(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
+        self._sandboxes[sandbox_id] = metadata
+
+    async def get(self, sandbox_id: str) -> dict[str, Any] | None:
+        return self._sandboxes.get(sandbox_id)
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return list(self._sandboxes.values())
+
+    async def update(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
+        self._sandboxes[sandbox_id] = metadata
+
+    async def remove(self, sandbox_id: str) -> None:
+        self._sandboxes.pop(sandbox_id, None)
+
 
 # ---------------------------------------------------------------------------
 # Built-in sandbox presets
@@ -188,9 +208,10 @@ async def list_sandbox_presets() -> dict[str, dict[str, Any]]:
 
 
 @router.get("/sandboxes")
-async def list_sandboxes() -> list[dict[str, Any]]:
+async def list_sandboxes(request: Request) -> list[dict[str, Any]]:
     """List all sandbox environments."""
-    return list(_sandbox_registry.values())
+    store = request.app.state.sandbox_store
+    return await store.list_all()
 
 
 @router.post("/sandboxes", status_code=201)
@@ -216,7 +237,8 @@ async def create_sandbox(
     }
     if body.devcontainer:
         entry["devcontainer"] = body.devcontainer.model_dump()
-    _sandbox_registry[sandbox_id] = entry
+    store = request.app.state.sandbox_store
+    await store.add(sandbox_id, entry)
     return {"sandbox_id": sandbox_id}
 
 
@@ -230,6 +252,21 @@ async def get_sandbox_status(
     try:
         status = await manager.get_status(sandbox_id)
         return {"sandbox_id": sandbox_id, "status": status.value}
+    except SandboxNotFoundError:
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None
+
+
+@router.get("/sandboxes/{sandbox_id}/logs")
+async def get_sandbox_logs(
+    sandbox_id: str,
+    request: Request,
+    tail: int = 200,
+) -> dict[str, Any]:
+    """Get container logs for a sandbox."""
+    manager = request.app.state.sandbox_manager
+    try:
+        logs = await manager.get_logs(sandbox_id, tail=tail)
+        return {"sandbox_id": sandbox_id, "logs": logs}
     except SandboxNotFoundError:
         raise HTTPException(status_code=404, detail="Sandbox not found") from None
 
@@ -296,6 +333,7 @@ async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
     manager = request.app.state.sandbox_manager
     try:
         await manager.destroy(sandbox_id)
-        _sandbox_registry.pop(sandbox_id, None)
+        store = request.app.state.sandbox_store
+        await store.remove(sandbox_id)
     except SandboxNotFoundError:
         raise HTTPException(status_code=404, detail="Sandbox not found") from None

@@ -27,7 +27,7 @@ class TestDockerSandboxManager:
         assert create_kwargs[1]["read_only"] is False  # writable for workspace
         assert create_kwargs[1]["network_mode"] == "none"
         assert create_kwargs[1]["security_opt"] == ["no-new-privileges:true"]
-        assert create_kwargs[1]["user"] == "1000:1000"
+        assert "user" not in create_kwargs[1]  # runs as root for git/apt access
         mock_container.start.assert_called_once()
 
     async def test_execute_returns_sandbox_result(self) -> None:

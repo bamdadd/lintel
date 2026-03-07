@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
     import asyncpg
     from fastapi.routing import APIRoute
+    from langgraph.graph.state import CompiledStateGraph
 
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routes import (
@@ -151,6 +152,7 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "model_store": InMemoryModelStore(),
         "model_assignment_store": InMemoryModelAssignmentStore(),
         "mcp_server_store": InMemoryMCPServerStore(),
+        "sandbox_store": sandboxes.SandboxStore(),
     }
 
 
@@ -174,6 +176,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         PostgresPolicyStore,
         PostgresProjectStore,
         PostgresRepositoryStore,
+        PostgresSandboxStore,
         PostgresSkillStore,
         PostgresTeamStore,
         PostgresTestResultStore,
@@ -208,6 +211,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "model_store": PostgresModelStore(pool),
         "model_assignment_store": PostgresModelAssignmentStore(pool),
         "mcp_server_store": PostgresMCPServerStore(pool),
+        "sandbox_store": PostgresSandboxStore(pool),
     }
 
 
@@ -267,13 +271,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     agent_runtime = AgentRuntime(event_store=event_store, model_router=model_router)
     app.state.agent_runtime = agent_runtime
 
-    def _graph_factory(workflow_type: str) -> Any:
-        """Build and compile a LangGraph for the given workflow type."""
+    from langgraph.checkpoint.memory import MemorySaver
+
+    _checkpointer = MemorySaver()
+
+    def _graph_factory(workflow_type: str) -> CompiledStateGraph:  # type: ignore[type-arg]
+        """Build and compile a LangGraph with interrupt support."""
         from lintel.workflows.registry import get_workflow_builder
 
         builder_fn = get_workflow_builder(workflow_type)
         state_graph = builder_fn()
-        return state_graph.compile()
+
+        # Collect approval gate nodes for interrupt_before
+        approval_nodes = [name for name in state_graph.nodes if "approval_gate" in name]
+
+        return state_graph.compile(
+            checkpointer=_checkpointer,
+            interrupt_before=approval_nodes or None,
+        )
 
     executor = WorkflowExecutor(
         event_store=event_store,
@@ -281,6 +296,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         agent_runtime=agent_runtime,
         app_state=app.state,
     )
+
+    app.state.workflow_executor = executor
 
     from lintel.contracts.commands import StartWorkflow
 
@@ -311,7 +328,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.thread_status_projection = thread_status
     app.state.task_backlog_projection = task_backlog
     app.state.projection_engine = engine
-    app.state.sandbox_manager = DockerSandboxManager()
+    sandbox_manager = DockerSandboxManager()
+    app.state.sandbox_manager = sandbox_manager
+
+    # Re-attach to any surviving Docker containers from previous runs
+    try:
+        recovered = await sandbox_manager.recover_containers()
+        if recovered:
+            import logging
+
+            logging.getLogger("lintel").info(
+                "Recovered %d sandbox containers",
+                len(recovered),
+            )
+    except Exception:
+        pass  # Docker may not be available
 
     yield
     # Cleanup

@@ -16,7 +16,8 @@ class TestRetryEndpoint:
         assert resp.status_code == 404
 
     def test_retry_conversation_without_workflow_returns_409(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         # Create a plain conversation with no workflow
         resp = client.post(

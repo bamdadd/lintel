@@ -139,8 +139,7 @@ class PostgresCredentialStore(PostgresCrudStore):
     async def get_secret(self, credential_id: str) -> str | None:
         async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             row = await conn.fetchrow(
-                "SELECT data FROM entities"
-                " WHERE kind = 'credential_secret' AND entity_id = $1",
+                "SELECT data FROM entities WHERE kind = 'credential_secret' AND entity_id = $1",
                 credential_id,
             )
         if row is None:
@@ -369,6 +368,28 @@ class PostgresChatStore:
         conv["messages"].append(message)
         await self._store.put(conversation_id, conv)
         return message
+
+
+class PostgresSandboxStore:
+    """Postgres-backed sandbox metadata store."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        self._store = PostgresDictStore(pool, "sandbox")
+
+    async def add(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
+        await self._store.put(sandbox_id, metadata)
+
+    async def get(self, sandbox_id: str) -> dict[str, Any] | None:
+        return await self._store.get(sandbox_id)
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return await self._store.list_all()
+
+    async def update(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
+        await self._store.put(sandbox_id, metadata)
+
+    async def remove(self, sandbox_id: str) -> None:
+        await self._store.remove(sandbox_id)
 
 
 class PostgresAgentDefinitionStore:

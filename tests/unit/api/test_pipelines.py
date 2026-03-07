@@ -46,7 +46,7 @@ class TestPipelinesAPI:
         assert data["run_id"] == "run1"
         assert data["project_id"] == "proj-1"
         assert data["status"] == "pending"
-        assert len(data["stages"]) == 9  # feature_to_pr has 9 stages
+        assert len(data["stages"]) == 12  # feature_to_pr has 12 stages
 
     def test_create_pipeline_duplicate_returns_409(
         self,
@@ -95,7 +95,7 @@ class TestPipelinesAPI:
         data = resp.json()
         assert data["status"] == "cancelled"
         skipped = [s for s in data["stages"] if s["status"] == "skipped"]
-        assert len(skipped) == 9  # all pending stages get skipped
+        assert len(skipped) == 12  # all pending stages get skipped
 
     def test_delete_pipeline(self, client: TestClient) -> None:
         _create_pipeline(client, "run1")
@@ -162,11 +162,54 @@ class TestPipelinesAPI:
         asyncio.get_event_loop().run_until_complete(_succeed_stage())
 
         with client.stream(
-            "GET", f"/api/v1/pipelines/logs-run/stages/{stage_id}/logs",
+            "GET",
+            f"/api/v1/pipelines/logs-run/stages/{stage_id}/logs",
         ) as resp:
             assert resp.status_code == 200
             assert "text/event-stream" in resp.headers["content-type"]
             lines = list(resp.iter_lines())
             # Should have log lines, status, outputs, and end
-            data_lines = [l for l in lines if l.startswith("data:")]
+            data_lines = [line for line in lines if line.startswith("data:")]
             assert len(data_lines) >= 3  # at least logs + status + end
+
+    def test_reject_stage_sets_failed(self, client: TestClient) -> None:
+        """Rejecting a waiting_approval stage fails the pipeline."""
+        data = _create_pipeline(client, "reject-run")
+        stage_id = data["stages"][3]["stage_id"]  # approval_gate_research
+        # Set stage to waiting_approval
+        store = client.app.state.pipeline_store  # type: ignore[union-attr]
+        import asyncio
+        from dataclasses import replace as dc_replace
+
+        from lintel.contracts.types import PipelineStatus, StageStatus
+
+        async def _wait_stage() -> None:
+            run = await store.get("reject-run")
+            stages = list(run.stages)
+            stages[3] = dc_replace(stages[3], status=StageStatus.WAITING_APPROVAL)
+            await store.update(
+                dc_replace(run, stages=tuple(stages), status=PipelineStatus.WAITING_APPROVAL),
+            )
+
+        asyncio.get_event_loop().run_until_complete(_wait_stage())
+
+        resp = client.post(f"/api/v1/pipelines/reject-run/stages/{stage_id}/reject")
+        assert resp.status_code == 200
+        result = resp.json()
+        assert result["status"] == "rejected"
+
+        # Pipeline should be failed
+        run_resp = client.get("/api/v1/pipelines/reject-run")
+        run_data = run_resp.json()
+        assert run_data["status"] == "failed"
+
+        # Remaining pending stages should be skipped
+        skipped = [s for s in run_data["stages"] if s["status"] == "skipped"]
+        assert len(skipped) > 0
+
+    def test_reject_stage_rejects_non_waiting(self, client: TestClient) -> None:
+        """Cannot reject a stage that is not waiting_approval."""
+        data = _create_pipeline(client, "reject-bad")
+        stage_id = data["stages"][0]["stage_id"]
+        resp = client.post(f"/api/v1/pipelines/reject-bad/stages/{stage_id}/reject")
+        assert resp.status_code == 409

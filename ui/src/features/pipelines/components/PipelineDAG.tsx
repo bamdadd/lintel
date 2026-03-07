@@ -26,6 +26,9 @@ const statusColors: Record<string, string> = {
   failed: '#ef4444',
   running: '#3b82f6',
   pending: '#9ca3af',
+  waiting_approval: '#eab308',
+  approved: '#14b8a6',
+  rejected: '#ef4444',
 };
 
 const typeColors: Record<string, string> = {
@@ -45,7 +48,7 @@ export function PipelineDAG({ nodes: inputNodes, edges: inputEdges, onNodeClick 
     style: {
       background: statusColors[n.status ?? ''] ?? typeColors[n.type] ?? '#e5e7eb',
       color: '#fff',
-      border: n.status === 'running' ? '2px solid #facc15' : '1px solid #d1d5db',
+      border: n.status === 'running' ? '2px solid #facc15' : n.status === 'waiting_approval' ? '2px solid #eab308' : '1px solid #d1d5db',
       borderRadius: n.type === 'approvalGate' ? '50%' : n.type === 'resource' ? '16px' : '8px',
       padding: '10px 16px',
       fontSize: '12px',

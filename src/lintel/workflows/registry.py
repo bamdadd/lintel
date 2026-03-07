@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 from langgraph.graph import END, StateGraph
 
-from lintel.workflows.nodes.analyse import analyse_code
 from lintel.workflows.nodes.generic import (
     build_release,
     code_scan,
@@ -44,6 +43,7 @@ from lintel.workflows.nodes.generic import (
 )
 from lintel.workflows.nodes.generic import generate_report as report_node
 from lintel.workflows.nodes.plan import plan_work
+from lintel.workflows.nodes.research import research_codebase
 from lintel.workflows.nodes.review import review_output
 from lintel.workflows.nodes.test_code import run_tests
 from lintel.workflows.nodes.triage import triage_issue
@@ -101,7 +101,7 @@ def build_code_review_graph() -> StateGraph[Any]:
 
 def build_refactor_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(ThreadWorkflowState)
-    g.add_node("analyse", analyse_code)
+    g.add_node("research", research_codebase)
     g.add_node("plan", plan_work)
     g.add_node("approval_gate_spec", _gate("approval_gate_spec"))
     g.add_node("refactor", refactor_code)
@@ -109,8 +109,8 @@ def build_refactor_graph() -> StateGraph[Any]:
     g.add_node("review", review_output)
     g.add_node("approval_gate_merge", _gate("approval_gate_merge"))
     g.add_node("close", lambda s: {**s, "current_phase": "closed"})
-    g.set_entry_point("analyse")
-    g.add_edge("analyse", "plan")
+    g.set_entry_point("research")
+    g.add_edge("research", "plan")
     g.add_edge("plan", "approval_gate_spec")
     g.add_edge("approval_gate_spec", "refactor")
     g.add_edge("refactor", "test")
@@ -161,12 +161,12 @@ def build_incident_response_graph() -> StateGraph[Any]:
 
 def build_documentation_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(ThreadWorkflowState)
-    g.add_node("analyse", analyse_code)
+    g.add_node("research", research_codebase)
     g.add_node("draft", draft_docs)
     g.add_node("review", review_output)
     g.add_node("publish", publish_docs)
-    g.set_entry_point("analyse")
-    g.add_edge("analyse", "draft")
+    g.set_entry_point("research")
+    g.add_edge("research", "draft")
     g.add_edge("draft", "review")
     g.add_edge("review", "publish")
     g.add_edge("publish", END)

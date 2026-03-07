@@ -62,7 +62,8 @@ class DefaultModelRouter:
             from lintel.contracts.types import ModelAssignmentContext
 
             assignments = await self._model_assignment_store.list_by_context(
-                ModelAssignmentContext.AGENT_ROLE, agent_role,
+                ModelAssignmentContext.AGENT_ROLE,
+                agent_role,
             )
             if not assignments:
                 return None

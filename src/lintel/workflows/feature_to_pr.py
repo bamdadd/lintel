@@ -19,6 +19,7 @@ from lintel.workflows.nodes.approval_gate import approval_gate
 from lintel.workflows.nodes.implement import spawn_implementation
 from lintel.workflows.nodes.ingest import ingest_message
 from lintel.workflows.nodes.plan import plan_work
+from lintel.workflows.nodes.research import research_codebase
 from lintel.workflows.nodes.review import review_output
 from lintel.workflows.nodes.route import route_intent
 from lintel.workflows.nodes.setup_workspace import setup_workspace
@@ -33,7 +34,12 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_node("ingest", ingest_message)
     graph.add_node("route", route_intent)
     graph.add_node("setup_workspace", setup_workspace)
+    graph.add_node("research", research_codebase)
     graph.add_node("plan", plan_work)
+    graph.add_node(
+        "approval_gate_research",
+        partial(approval_gate, gate_type="research_approval"),
+    )
     graph.add_node(
         "approval_gate_spec",
         partial(approval_gate, gate_type="spec_approval"),
@@ -57,7 +63,9 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
             "close": "close",
         },
     )
-    graph.add_edge("setup_workspace", "plan")
+    graph.add_edge("setup_workspace", "research")
+    graph.add_edge("research", "approval_gate_research")
+    graph.add_edge("approval_gate_research", "plan")
     graph.add_edge("plan", "approval_gate_spec")
     graph.add_edge("approval_gate_spec", "implement")
     graph.add_edge("implement", "test")
@@ -86,5 +94,9 @@ async def compile_workflow(db_url: str) -> CompiledStateGraph[Any]:
         graph = build_feature_to_pr_graph()
         return graph.compile(
             checkpointer=checkpointer,
-            interrupt_before=["approval_gate_spec", "approval_gate_merge"],
+            interrupt_before=[
+                "approval_gate_research",
+                "approval_gate_spec",
+                "approval_gate_merge",
+            ],
         )

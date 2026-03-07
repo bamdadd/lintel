@@ -33,7 +33,12 @@ async def spawn_implementation(
 ) -> dict[str, Any]:
     """Run the coder agent with sandbox tools to implement the plan."""
     from lintel.contracts.types import AgentRole, ThreadRef
-    from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage, mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import (
+        append_log,
+        extract_token_usage,
+        mark_completed,
+        mark_running,
+    )
 
     _config = config or {}
     _configurable = _config.get("configurable", {})
@@ -119,7 +124,9 @@ async def spawn_implementation(
         from lintel.workflows.nodes._git_helpers import rebase_on_upstream
 
         rebase_result = await rebase_on_upstream(
-            sandbox_manager, sandbox_id, base_branch,
+            sandbox_manager,
+            sandbox_id,
+            base_branch,
         )
         if not rebase_result["success"]:
             rebase_warning = rebase_result["message"]
@@ -133,7 +140,9 @@ async def spawn_implementation(
 
         await mark_completed(_config, "implement", state, error="Failed to collect artifacts")
         return await handle_node_error(
-            state, "implement", Exception("Failed to collect artifacts"),
+            state,
+            "implement",
+            Exception("Failed to collect artifacts"),
         )
 
     outputs: list[dict[str, Any]] = [{"node": "implement", "output": agent_output}]

@@ -23,13 +23,33 @@ import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconTrash } from '@tabler/icons-react';
+import { useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useSandboxesListSandboxes,
   useSandboxesCreateSandbox,
   useSandboxesDestroySandbox,
 } from '@/generated/api/sandboxes/sandboxes';
+import {
+  useSandboxesGetSandboxStatus,
+} from '@/generated/api/sandboxes/sandboxes';
 import { EmptyState } from '@/shared/components/EmptyState';
+
+const statusColor: Record<string, string> = {
+  running: 'green',
+  creating: 'blue',
+  completed: 'gray',
+  failed: 'red',
+  destroyed: 'orange',
+};
+
+function SandboxStatusBadge({ sandboxId }: { sandboxId: string }) {
+  const { data } = useSandboxesGetSandboxStatus(sandboxId, {
+    query: { refetchInterval: 5000 },
+  });
+  const status = (data?.data as { status?: string } | undefined)?.status ?? 'unknown';
+  return <Badge size="sm" color={statusColor[status] ?? 'yellow'}>{status}</Badge>;
+}
 
 interface SandboxPreset {
   label: string;
@@ -79,6 +99,7 @@ export function Component() {
   const destroyMutation = useSandboxesDestroySandbox();
   const queryClient = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
+  const navigate = useNavigate();
   const [selectedSandbox, setSelectedSandbox] = useState<SandboxEntry | null>(null);
 
   const presetOptions = [
@@ -201,6 +222,7 @@ export function Component() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>ID</Table.Th>
+                <Table.Th>Status</Table.Th>
                 <Table.Th>Image</Table.Th>
                 <Table.Th>Features</Table.Th>
                 <Table.Th>Network</Table.Th>
@@ -212,10 +234,11 @@ export function Component() {
                 <Table.Tr
                   key={s.sandbox_id}
                   style={{ cursor: 'pointer' }}
-                  onClick={() => setSelectedSandbox(s)}
+                  onClick={() => navigate(`/sandboxes/${s.sandbox_id}`)}
                   bg={selectedSandbox?.sandbox_id === s.sandbox_id ? 'var(--mantine-color-dark-5)' : undefined}
                 >
                   <Table.Td><Code>{s.sandbox_id.slice(0, 12)}</Code></Table.Td>
+                  <Table.Td><SandboxStatusBadge sandboxId={s.sandbox_id} /></Table.Td>
                   <Table.Td>{s.devcontainer?.image as string ?? s.image}</Table.Td>
                   <Table.Td>
                     <Group gap={4} wrap="wrap">

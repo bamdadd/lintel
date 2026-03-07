@@ -247,10 +247,12 @@ class TestPipelineAndTriggerCreation:
         )
 
         runs = client.get(
-            "/api/v1/pipelines", params={"project_id": "proj-link"},
+            "/api/v1/pipelines",
+            params={"project_id": "proj-link"},
         ).json()
         triggers = client.get(
-            "/api/v1/triggers", params={"project_id": "proj-link"},
+            "/api/v1/triggers",
+            params={"project_id": "proj-link"},
         ).json()
 
         assert len(runs) >= 1
@@ -286,7 +288,8 @@ class TestAuditEntryEmission:
     def test_project_selection_creates_audit_entry(self, client: TestClient) -> None:
         """Selecting a project after being prompted should record an audit entry."""
         client.post(
-            "/api/v1/projects", json={"name": "SelProj", "project_id": "proj-sel"},
+            "/api/v1/projects",
+            json={"name": "SelProj", "project_id": "proj-sel"},
         )
 
         resp = client.post(
@@ -305,7 +308,8 @@ class TestAuditEntryEmission:
         )
 
         resp = client.get(
-            "/api/v1/audit", params={"resource_type": "conversation"},
+            "/api/v1/audit",
+            params={"resource_type": "conversation"},
         )
         assert resp.status_code == 200
         entries = resp.json()

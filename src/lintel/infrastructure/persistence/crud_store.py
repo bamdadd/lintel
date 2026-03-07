@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import json
 from typing import TYPE_CHECKING, Any, TypeVar, overload
@@ -12,9 +13,10 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-def _extract_tuple_item_type(hint: Any) -> type | None:
+def _extract_tuple_item_type(hint: object) -> type | None:
     """Extract the item type from ``tuple[X, ...]`` annotations."""
     import typing
+
     args = typing.get_args(hint)
     if args and len(args) == 2 and args[1] is Ellipsis:
         return args[0] if isinstance(args[0], type) else None
@@ -32,11 +34,14 @@ def _reconstruct_nested(cls: type, data: dict[str, Any]) -> Any:  # noqa: ANN401
     filtered = {k: v for k, v in data.items() if k in valid}
     for k, v in list(filtered.items()):
         h = hints.get(k)
-        if isinstance(v, str) and h is not None and isinstance(h, type) and issubclass(h, enum.Enum):
-            try:
+        if (
+            isinstance(v, str)
+            and h is not None
+            and isinstance(h, type)
+            and issubclass(h, enum.Enum)
+        ):
+            with contextlib.suppress(ValueError):
                 filtered[k] = h(v)
-            except ValueError:
-                pass
     return cls(**filtered)
 
 
@@ -91,7 +96,9 @@ class PostgresCrudStore:
                     inner_type = _extract_tuple_item_type(hint)
                     if inner_type is not None and dc.is_dataclass(inner_type):
                         data[key] = tuple(
-                            _reconstruct_nested(inner_type, item) if isinstance(item, dict) else item
+                            _reconstruct_nested(inner_type, item)
+                            if isinstance(item, dict)
+                            else item
                             for item in value
                         )
                     else:

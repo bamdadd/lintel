@@ -5,9 +5,9 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from lintel.contracts.types import (
+    AgentRole,
     AIProvider,
     AIProviderType,
-    AgentRole,
     Model,
     ModelAssignment,
     ModelAssignmentContext,
@@ -169,16 +169,26 @@ class TestDefaultModelRouter:
         provider_store = InMemoryAIProviderStore()
         model_store = InMemoryModelStore()
 
-        await provider_store.add(AIProvider(
-            provider_id="p1", provider_type=AIProviderType.OLLAMA, name="Ollama",
-        ))
-        await model_store.add(Model(
-            model_id="m1", provider_id="p1", name="Qwen",
-            model_name="qwen2.5-coder:7b", is_default=True,
-        ))
+        await provider_store.add(
+            AIProvider(
+                provider_id="p1",
+                provider_type=AIProviderType.OLLAMA,
+                name="Ollama",
+            )
+        )
+        await model_store.add(
+            Model(
+                model_id="m1",
+                provider_id="p1",
+                name="Qwen",
+                model_name="qwen2.5-coder:7b",
+                is_default=True,
+            )
+        )
 
         router = DefaultModelRouter(
-            model_store=model_store, ai_provider_store=provider_store,
+            model_store=model_store,
+            ai_provider_store=provider_store,
         )
         # First call resolves from store
         p1 = await router.select_model(AgentRole.PLANNER, "planning")
@@ -196,23 +206,42 @@ class TestDefaultModelRouter:
         model_store = InMemoryModelStore()
         assignment_store = InMemoryModelAssignmentStore()
 
-        await provider_store.add(AIProvider(
-            provider_id="p1", provider_type=AIProviderType.OLLAMA, name="Ollama",
-        ))
+        await provider_store.add(
+            AIProvider(
+                provider_id="p1",
+                provider_type=AIProviderType.OLLAMA,
+                name="Ollama",
+            )
+        )
         # Default model
-        await model_store.add(Model(
-            model_id="m-default", provider_id="p1", name="Default",
-            model_name="llama3.1:8b", is_default=True,
-        ))
+        await model_store.add(
+            Model(
+                model_id="m-default",
+                provider_id="p1",
+                name="Default",
+                model_name="llama3.1:8b",
+                is_default=True,
+            )
+        )
         # Coder-specific model
-        await model_store.add(Model(
-            model_id="m-coder", provider_id="p1", name="Qwen Coder",
-            model_name="qwen2.5-coder:7b", max_tokens=8192, temperature=0.2,
-        ))
-        await assignment_store.add(ModelAssignment(
-            assignment_id="a1", model_id="m-coder",
-            context=ModelAssignmentContext.AGENT_ROLE, context_id="coder",
-        ))
+        await model_store.add(
+            Model(
+                model_id="m-coder",
+                provider_id="p1",
+                name="Qwen Coder",
+                model_name="qwen2.5-coder:7b",
+                max_tokens=8192,
+                temperature=0.2,
+            )
+        )
+        await assignment_store.add(
+            ModelAssignment(
+                assignment_id="a1",
+                model_id="m-coder",
+                context=ModelAssignmentContext.AGENT_ROLE,
+                context_id="coder",
+            )
+        )
 
         router = DefaultModelRouter(
             model_store=model_store,
@@ -238,25 +267,47 @@ class TestDefaultModelRouter:
         model_store = InMemoryModelStore()
         assignment_store = InMemoryModelAssignmentStore()
 
-        await provider_store.add(AIProvider(
-            provider_id="p1", provider_type=AIProviderType.OLLAMA, name="Ollama",
-        ))
-        await model_store.add(Model(
-            model_id="m1", provider_id="p1", name="Low Priority",
-            model_name="llama3:8b",
-        ))
-        await model_store.add(Model(
-            model_id="m2", provider_id="p1", name="High Priority",
-            model_name="qwen2.5-coder:7b",
-        ))
-        await assignment_store.add(ModelAssignment(
-            assignment_id="a1", model_id="m1",
-            context=ModelAssignmentContext.AGENT_ROLE, context_id="coder", priority=0,
-        ))
-        await assignment_store.add(ModelAssignment(
-            assignment_id="a2", model_id="m2",
-            context=ModelAssignmentContext.AGENT_ROLE, context_id="coder", priority=10,
-        ))
+        await provider_store.add(
+            AIProvider(
+                provider_id="p1",
+                provider_type=AIProviderType.OLLAMA,
+                name="Ollama",
+            )
+        )
+        await model_store.add(
+            Model(
+                model_id="m1",
+                provider_id="p1",
+                name="Low Priority",
+                model_name="llama3:8b",
+            )
+        )
+        await model_store.add(
+            Model(
+                model_id="m2",
+                provider_id="p1",
+                name="High Priority",
+                model_name="qwen2.5-coder:7b",
+            )
+        )
+        await assignment_store.add(
+            ModelAssignment(
+                assignment_id="a1",
+                model_id="m1",
+                context=ModelAssignmentContext.AGENT_ROLE,
+                context_id="coder",
+                priority=0,
+            )
+        )
+        await assignment_store.add(
+            ModelAssignment(
+                assignment_id="a2",
+                model_id="m2",
+                context=ModelAssignmentContext.AGENT_ROLE,
+                context_id="coder",
+                priority=10,
+            )
+        )
 
         router = DefaultModelRouter(
             model_store=model_store,

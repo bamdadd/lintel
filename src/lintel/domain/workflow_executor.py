@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
+
+import structlog
 
 from lintel.contracts.events import (
     PipelineRunCompleted,
@@ -17,8 +20,12 @@ from lintel.contracts.events import (
 if TYPE_CHECKING:
     from lintel.contracts.commands import StartWorkflow
     from lintel.contracts.protocols import EventStore
+    from lintel.contracts.types import Stage
 
-def _dict_to_stage(d: dict[str, Any]) -> Any:
+logger = structlog.get_logger()
+
+
+def _dict_to_stage(d: dict[str, Any]) -> Stage:
     """Convert a plain dict to a Stage dataclass instance."""
     from dataclasses import fields as dc_fields
 
@@ -28,10 +35,8 @@ def _dict_to_stage(d: dict[str, Any]) -> Any:
     filtered = {k: v for k, v in d.items() if k in valid}
     # Convert string status to enum
     if "status" in filtered and isinstance(filtered["status"], str):
-        try:
+        with contextlib.suppress(ValueError):
             filtered["status"] = StageStatus(filtered["status"])
-        except ValueError:
-            pass
     return Stage(**filtered)
 
 
@@ -40,7 +45,13 @@ StageCallback = Callable[[str, str], Awaitable[None]]
 
 
 class WorkflowExecutor:
-    """Executes a workflow by streaming a LangGraph and emitting events."""
+    """Executes a workflow by streaming a LangGraph and emitting events.
+
+    Supports LangGraph interrupt_before for human-in-the-loop approval gates.
+    When the graph pauses at an interrupt, the executor marks the next stage as
+    waiting_approval and stores the graph reference. Call ``resume(run_id)`` after
+    the stage is approved to continue execution.
+    """
 
     def __init__(
         self,
@@ -57,6 +68,23 @@ class WorkflowExecutor:
         self._on_stage_complete = on_stage_complete
         self._app_state = app_state
         self._graph_factory = graph_factory
+        # Store compiled graphs and configs per run_id for resumption
+        self._suspended_runs: dict[str, dict[str, Any]] = {}
+
+    def _build_config(self, run_id: str) -> dict[str, Any]:
+        return {
+            "configurable": {
+                "thread_id": run_id,
+                "run_id": run_id,
+                "agent_runtime": self._agent_runtime,
+                "app_state": self._app_state,
+                "pipeline_store": getattr(self._app_state, "pipeline_store", None),
+                "sandbox_manager": getattr(self._app_state, "sandbox_manager", None),
+                "credential_store": getattr(self._app_state, "credential_store", None),
+                "code_artifact_store": getattr(self._app_state, "code_artifact_store", None),
+                "test_result_store": getattr(self._app_state, "test_result_store", None),
+            }
+        }
 
     async def execute(self, command: StartWorkflow) -> str:
         run_id = command.run_id or str(uuid4())
@@ -85,37 +113,71 @@ class WorkflowExecutor:
         if self._graph_factory is not None:
             graph = self._graph_factory(command.workflow_type)
 
-        total_tokens: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        config = self._build_config(run_id)
+        initial_input = {
+            "thread_ref": str(command.thread_ref),
+            "correlation_id": run_id,
+            "sanitized_messages": list(command.sanitized_messages),
+            "project_id": command.project_id,
+            "work_item_id": command.work_item_id,
+            "run_id": run_id,
+            "repo_url": command.repo_url,
+            "repo_urls": command.repo_urls,
+            "repo_branch": command.repo_branch,
+            "credential_ids": command.credential_ids,
+        }
+
+        # Store graph and command for potential resumption
+        self._suspended_runs[run_id] = {
+            "graph": graph,
+            "command": command,
+            "stream_id": stream_id,
+            "total_tokens": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+        }
+
+        await self._stream_graph(run_id, graph, initial_input, config)
+        return run_id
+
+    async def resume(self, run_id: str) -> None:
+        """Resume a workflow that was paused at an approval gate."""
+        suspended = self._suspended_runs.get(run_id)
+        if suspended is None:
+            logger.warning("resume_no_suspended_run", run_id=run_id)
+            return
+
+        graph = suspended["graph"]
+        config = self._build_config(run_id)
+
+        logger.info("workflow_resuming", run_id=run_id)
+
+        # Pass None as input to resume from the interrupt point
+        await self._stream_graph(run_id, graph, None, config)
+
+    async def _stream_graph(
+        self,
+        run_id: str,
+        graph: Any,  # noqa: ANN401
+        input_data: dict[str, Any] | None,
+        config: dict[str, Any],
+    ) -> None:
+        """Stream the graph and handle chunks. Detects interrupts."""
+        stream_id = f"run:{run_id}"
+        suspended = self._suspended_runs.get(run_id, {})
+        total_tokens = suspended.get(
+            "total_tokens",
+            {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+        )
 
         try:
-            async for chunk in graph.astream(
-                {
-                    "thread_ref": str(command.thread_ref),
-                    "correlation_id": run_id,
-                    "sanitized_messages": list(command.sanitized_messages),
-                    "project_id": command.project_id,
-                    "work_item_id": command.work_item_id,
-                    "run_id": run_id,
-                    "repo_url": command.repo_url,
-                    "repo_urls": command.repo_urls,
-                    "repo_branch": command.repo_branch,
-                    "credential_ids": command.credential_ids,
-                },
-                config={
-                    "configurable": {
-                        "thread_id": run_id,
-                        "run_id": run_id,
-                        "agent_runtime": self._agent_runtime,
-                        "app_state": self._app_state,
-                        "sandbox_manager": getattr(self._app_state, "sandbox_manager", None),
-                        "credential_store": getattr(self._app_state, "credential_store", None),
-                        "code_artifact_store": getattr(self._app_state, "code_artifact_store", None),
-                        "test_result_store": getattr(self._app_state, "test_result_store", None),
-                    }
-                },
-            ):
+            async for chunk in graph.astream(input_data, config=config):
                 for node_name, output in chunk.items():
-                    phase = output.get("current_phase", node_name) if isinstance(output, dict) else node_name
+                    if node_name == "__end__":
+                        continue
+                    phase = (
+                        output.get("current_phase", node_name)
+                        if isinstance(output, dict)
+                        else node_name
+                    )
                     timestamp_ms = int(time.time() * 1000)
                     await self._event_store.append(
                         stream_id=stream_id,
@@ -141,52 +203,52 @@ class WorkflowExecutor:
                                 total_tokens["output_tokens"] += entry.get("output_tokens", 0)
                                 total_tokens["total_tokens"] += entry.get("total_tokens", 0)
 
-                    # Build stage completion message
-                    is_approval = "approve" in node_name or "approval" in node_name
-                    if is_approval:
-                        await self._notify_chat(
-                            run_id,
-                            f"⏸️ **{node_name}** — auto-approved (noop mode)\n"
-                            f"[View pipeline →](/pipelines/{run_id})",
-                        )
-                    elif node_name == "plan" and isinstance(output, dict):
-                        # Show plan details in chat
-                        plan = output.get("plan", {})
-                        if isinstance(plan, dict) and plan.get("tasks"):
-                            lines = [f"✅ **plan** completed\n"]
-                            summary = plan.get("summary", "")
-                            if summary:
-                                lines.append(f"**Summary:** {summary}\n")
-                            lines.append("**Tasks:**")
-                            for i, task in enumerate(plan.get("tasks", []), 1):
-                                title = task.get("title", task) if isinstance(task, dict) else str(task)
-                                lines.append(f"  {i}. {title}")
-                            await self._notify_chat(run_id, "\n".join(lines))
-                        else:
-                            await self._notify_chat(run_id, f"✅ **{node_name}** completed")
-                    else:
-                        await self._notify_chat(
-                            run_id,
-                            f"✅ **{node_name}** completed",
-                        )
+                    # Chat notifications
+                    await self._send_stage_notification(run_id, node_name, output)
 
                     if self._on_stage_complete is not None:
-                        try:
+                        with contextlib.suppress(Exception):
                             await self._on_stage_complete(node_name, phase)
-                        except Exception:
-                            pass  # don't let notification failures break the workflow
+
+            # Check if graph is interrupted (has pending next nodes)
+            graph_state = graph.get_state(config)
+            if graph_state.next:
+                # Graph paused at an interrupt_before node
+                next_node = graph_state.next[0]
+                logger.info(
+                    "workflow_interrupted",
+                    run_id=run_id,
+                    next_node=next_node,
+                )
+                await self._mark_stage_waiting_approval(run_id, next_node)
+                await self._update_pipeline_status(run_id, "waiting_approval")
+                await self._notify_chat(
+                    run_id,
+                    f"⏸️ **{next_node}** — waiting for approval\n"
+                    f"[View pipeline →](/pipelines/{run_id})",
+                )
+                return
+
+            # Graph completed normally
+            self._suspended_runs.pop(run_id, None)
 
             await self._event_store.append(
                 stream_id=stream_id,
                 events=[
                     PipelineRunCompleted(
                         event_type="PipelineRunCompleted",
-                        payload={"run_id": run_id, "status": "succeeded", "token_usage": total_tokens},
+                        payload={
+                            "run_id": run_id,
+                            "status": "succeeded",
+                            "token_usage": total_tokens,
+                        },
                     )
                 ],
             )
             await self._update_pipeline_status(run_id, "succeeded")
-            await self._complete_work_item(command)
+            command = suspended.get("command")
+            if command:
+                await self._complete_work_item(command)
             token_summary = ""
             if total_tokens["total_tokens"] > 0:
                 token_summary = (
@@ -200,6 +262,7 @@ class WorkflowExecutor:
                 f"[View pipeline →](/pipelines/{run_id})",
             )
         except Exception as exc:
+            self._suspended_runs.pop(run_id, None)
             await self._mark_running_stages_failed(run_id, str(exc))
             await self._event_store.append(
                 stream_id=stream_id,
@@ -211,14 +274,62 @@ class WorkflowExecutor:
                 ],
             )
             await self._update_pipeline_status(run_id, "failed")
-            await self._fail_work_item(command)
+            command = suspended.get("command")
+            if command:
+                await self._fail_work_item(command)
             await self._notify_chat(
                 run_id,
-                f"❌ **Workflow failed**: {exc}\n"
-                f"[View pipeline →](/pipelines/{run_id})",
+                f"❌ **Workflow failed**: {exc}\n[View pipeline →](/pipelines/{run_id})",
             )
 
-        return run_id
+    async def _send_stage_notification(
+        self,
+        run_id: str,
+        node_name: str,
+        output: Any,  # noqa: ANN401
+    ) -> None:
+        """Send a chat notification for a completed stage."""
+        is_approval = "approve" in node_name or "approval" in node_name
+        if is_approval:
+            await self._notify_chat(
+                run_id,
+                f"✅ **{node_name}** — approved\n[View pipeline →](/pipelines/{run_id})",
+            )
+        elif node_name == "setup_workspace" and isinstance(output, dict):
+            sandbox_id = output.get("sandbox_id", "")
+            feature_branch = output.get("feature_branch", "")
+            lines = ["✅ **setup_workspace** completed\n"]
+            if sandbox_id:
+                lines.append(f"**Sandbox:** [{sandbox_id[:12]}](/sandboxes/{sandbox_id})")
+            if feature_branch:
+                lines.append(f"**Branch:** `{feature_branch}`")
+            await self._notify_chat(run_id, "\n".join(lines))
+        elif node_name == "research" and isinstance(output, dict):
+            ctx = output.get("research_context", "")
+            if ctx:
+                chars = len(ctx)
+                await self._notify_chat(
+                    run_id,
+                    f"✅ **research** completed ({chars:,} chars of codebase context gathered)",
+                )
+            else:
+                await self._notify_chat(run_id, f"✅ **{node_name}** completed")
+        elif node_name == "plan" and isinstance(output, dict):
+            plan = output.get("plan", {})
+            if isinstance(plan, dict) and plan.get("tasks"):
+                lines = ["✅ **plan** completed\n"]
+                summary = plan.get("summary", "")
+                if summary:
+                    lines.append(f"**Summary:** {summary}\n")
+                lines.append("**Tasks:**")
+                for i, task in enumerate(plan.get("tasks", []), 1):
+                    title = task.get("title", task) if isinstance(task, dict) else str(task)
+                    lines.append(f"  {i}. {title}")
+                await self._notify_chat(run_id, "\n".join(lines))
+            else:
+                await self._notify_chat(run_id, f"✅ **{node_name}** completed")
+        else:
+            await self._notify_chat(run_id, f"✅ **{node_name}** completed")
 
     async def _notify_chat(self, run_id: str, message: str) -> None:
         """Post a status message to the chat conversation linked to this pipeline."""
@@ -246,8 +357,55 @@ class WorkflowExecutor:
         except Exception:
             pass
 
+    async def _mark_stage_waiting_approval(self, run_id: str, node_name: str) -> None:
+        """Mark an approval gate stage as waiting_approval."""
+        if self._app_state is None:
+            return
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return
+        try:
+            from dataclasses import replace
+            from datetime import UTC, datetime
+
+            from lintel.contracts.types import StageStatus
+            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+
+            stage_name = NODE_TO_STAGE.get(node_name, node_name)
+            run = await pipeline_store.get(run_id)
+            if run is None:
+                return
+
+            now = datetime.now(UTC).isoformat()
+            updated_stages = []
+            for stage in run.stages:
+                if isinstance(stage, dict):
+                    stage = _dict_to_stage(stage)
+                if stage.name == stage_name:
+                    updated_stages.append(
+                        replace(
+                            stage,
+                            status=StageStatus.WAITING_APPROVAL,
+                            started_at=now,
+                        )
+                    )
+                else:
+                    updated_stages.append(stage)
+            updated = replace(run, stages=tuple(updated_stages))
+            await pipeline_store.update(updated)
+        except Exception as exc:
+            logger.warning(
+                "mark_stage_waiting_approval_failed",
+                run_id=run_id,
+                node_name=node_name,
+                error=str(exc),
+            )
+
     async def _mark_stage_completed(
-        self, run_id: str, node_name: str, timestamp_ms: int,
+        self,
+        run_id: str,
+        node_name: str,
+        timestamp_ms: int,
     ) -> None:
         """Mark a pipeline stage as completed in the store."""
         if self._app_state is None:
@@ -279,13 +437,15 @@ class WorkflowExecutor:
                     if stage.started_at:
                         start_ts = datetime.fromisoformat(stage.started_at).timestamp()
                         duration = timestamp_ms - int(start_ts * 1000)
-                    updated_stages.append(replace(
-                        stage,
-                        status=StageStatus.SUCCEEDED,
-                        started_at=started,
-                        finished_at=finished,
-                        duration_ms=duration,
-                    ))
+                    updated_stages.append(
+                        replace(
+                            stage,
+                            status=StageStatus.SUCCEEDED,
+                            started_at=started,
+                            finished_at=finished,
+                            duration_ms=duration,
+                        )
+                    )
                     found = True
                 else:
                     updated_stages.append(stage)
@@ -297,13 +457,16 @@ class WorkflowExecutor:
                     if s.status == StageStatus.SUCCEEDED:
                         continue
                     if s.status == StageStatus.PENDING:
-                        updated_stages[i] = replace(s, status=StageStatus.RUNNING, started_at=finished)
+                        updated_stages[i] = replace(
+                            s, status=StageStatus.RUNNING, started_at=finished
+                        )
                         break
             updated = replace(run, stages=tuple(updated_stages))
             await pipeline_store.update(updated)
         except Exception as exc:
-            import structlog
-            structlog.get_logger().warning("mark_stage_completed_failed", run_id=run_id, node_name=node_name, error=str(exc))
+            logger.warning(
+                "mark_stage_completed_failed", run_id=run_id, node_name=node_name, error=str(exc)
+            )
 
     async def _update_pipeline_status(self, run_id: str, status: str) -> None:
         """Update the pipeline run status in the pipeline store."""
@@ -323,8 +486,9 @@ class WorkflowExecutor:
                 updated = replace(run, status=new_status)
                 await pipeline_store.update(updated)
         except Exception as exc:
-            import structlog
-            structlog.get_logger().warning("update_pipeline_status_failed", run_id=run_id, status=status, error=str(exc))
+            logger.warning(
+                "update_pipeline_status_failed", run_id=run_id, status=status, error=str(exc)
+            )
 
     async def _mark_first_stage_running(self, run_id: str) -> None:
         """Mark the first pipeline stage as running."""
@@ -351,8 +515,7 @@ class WorkflowExecutor:
             updated = replace(run, stages=tuple(stages))
             await pipeline_store.update(updated)
         except Exception as exc:
-            import structlog
-            structlog.get_logger().warning("mark_first_stage_running_failed", run_id=run_id, error=str(exc))
+            logger.warning("mark_first_stage_running_failed", run_id=run_id, error=str(exc))
 
     async def _mark_running_stages_failed(self, run_id: str, error: str) -> None:
         """Mark any stages still in 'running' status as failed when the workflow errors."""
@@ -383,9 +546,10 @@ class WorkflowExecutor:
                 updated = replace(run, stages=tuple(updated_stages))
                 await pipeline_store.update(updated)
         except Exception as exc:
-            import structlog
-            structlog.get_logger().warning(
-                "mark_running_stages_failed_error", run_id=run_id, error=str(exc),
+            logger.warning(
+                "mark_running_stages_failed_error",
+                run_id=run_id,
+                error=str(exc),
             )
 
     async def _fail_work_item(self, command: StartWorkflow) -> None:
@@ -402,8 +566,7 @@ class WorkflowExecutor:
             item["status"] = "failed"
             await work_item_store.update(command.work_item_id, item)
         except Exception as exc:
-            import structlog
-            structlog.get_logger().warning(
+            logger.warning(
                 "fail_work_item_failed",
                 work_item_id=command.work_item_id,
                 error=str(exc),
@@ -423,5 +586,6 @@ class WorkflowExecutor:
             item["status"] = "closed"
             await work_item_store.update(command.work_item_id, item)
         except Exception as exc:
-            import structlog
-            structlog.get_logger().warning("complete_work_item_failed", work_item_id=command.work_item_id, error=str(exc))
+            logger.warning(
+                "complete_work_item_failed", work_item_id=command.work_item_id, error=str(exc)
+            )
