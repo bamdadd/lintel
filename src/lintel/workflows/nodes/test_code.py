@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
+
     from lintel.contracts.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
@@ -23,16 +25,22 @@ DEFAULT_TEST_COMMANDS = (
 
 async def run_tests(
     state: ThreadWorkflowState,
+    config: RunnableConfig | None = None,
     *,
     sandbox_manager: SandboxManager | None = None,
     test_command: str | None = None,
 ) -> dict[str, Any]:
     """Run the project test suite in the sandbox and report results."""
     from lintel.contracts.types import SandboxJob
+    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+
+    _config = config or {}
+    await mark_running(_config, "test", state)
 
     sandbox_id = state.get("sandbox_id")
     if not sandbox_id or sandbox_manager is None:
         logger.warning("test_skipped_no_sandbox")
+        await mark_completed(_config, "test", state, error="No sandbox available")
         return {
             "current_phase": "reviewing",
             "agent_outputs": [
@@ -78,6 +86,7 @@ async def run_tests(
         from lintel.workflows.nodes._error_handling import handle_node_error
 
         logger.exception("test_sandbox_execute_failed")
+        await mark_completed(_config, "test", state, error="Sandbox execution failed")
         return await handle_node_error(state, "test", Exception("Sandbox execution failed"))
 
     passed = result.exit_code == 0
@@ -90,6 +99,10 @@ async def run_tests(
 
     logger.info("test_run_complete", verdict=verdict, exit_code=result.exit_code)
 
+    await mark_completed(
+        _config, "test", state,
+        error="" if passed else f"Tests failed (exit {result.exit_code})",
+    )
     return {
         "current_phase": "reviewing",
         "agent_outputs": [

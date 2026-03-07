@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs,
@@ -31,10 +32,13 @@ interface StageItem {
 export function Component() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
+  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
 
-  const { data: pipelineResp, isLoading } = usePipelinesGetPipeline(runId ?? '');
+  const { data: pipelineResp, isLoading } = usePipelinesGetPipeline(runId ?? '', {
+    query: { refetchInterval: 3000 },
+  });
   const { data: stagesResp } = usePipelinesListStages(runId ?? '', {
-    query: { enabled: !!runId },
+    query: { enabled: !!runId, refetchInterval: 3000 },
   });
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
@@ -42,9 +46,15 @@ export function Component() {
   const pipeline = (pipelineResp?.data ?? {}) as Record<string, unknown>;
   const stages = (stagesResp?.data ?? []) as StageItem[];
 
+  const mapStageType = (stageType: string | undefined): string => {
+    if (!stageType) return 'agentStep';
+    if (stageType.includes('approve') || stageType.includes('approval')) return 'approvalGate';
+    return 'agentStep';
+  };
+
   const dagNodes = stages.map((s) => ({
     id: s.stage_id,
-    type: s.stage_type ?? 'agentStep',
+    type: mapStageType(s.stage_type),
     label: s.name,
     status: s.status,
   }));
@@ -53,6 +63,8 @@ export function Component() {
     source: stages[i].stage_id,
     target: s.stage_id,
   }));
+
+  const selectedStage = selectedStageId ? stages.find((s) => s.stage_id === selectedStageId) : null;
 
   const timingSteps = stages
     .filter((s) => s.duration_ms)
@@ -90,11 +102,29 @@ export function Component() {
 
         <Tabs.Panel value="dag" pt="md">
           {dagNodes.length > 0 ? (
-            <PipelineDAG
-              nodes={dagNodes}
-              edges={dagEdges}
-              onNodeClick={(nodeId) => navigate(`/pipelines/runs/${runId}?step=${nodeId}`)}
-            />
+            <>
+              <PipelineDAG
+                nodes={dagNodes}
+                edges={dagEdges}
+                onNodeClick={(nodeId) => setSelectedStageId(nodeId === selectedStageId ? null : nodeId)}
+              />
+              {selectedStage && (
+                <Paper withBorder p="md" mt="md">
+                  <Stack gap="xs">
+                    <Group justify="space-between">
+                      <Text fw={600}>{selectedStage.name}</Text>
+                      <Badge color={statusColor[selectedStage.status] ?? 'gray'}>{selectedStage.status}</Badge>
+                    </Group>
+                    <Text size="sm" c="dimmed">Type: {selectedStage.stage_type ?? '—'}</Text>
+                    <Text size="sm">Started: {selectedStage.started_at ? new Date(selectedStage.started_at).toLocaleString() : '—'}</Text>
+                    <Text size="sm">Finished: {selectedStage.finished_at ? new Date(selectedStage.finished_at).toLocaleString() : '—'}</Text>
+                    {selectedStage.duration_ms ? (
+                      <Text size="sm">Duration: {(selectedStage.duration_ms / 1000).toFixed(1)}s</Text>
+                    ) : null}
+                  </Stack>
+                </Paper>
+              )}
+            </>
           ) : (
             <Paper withBorder p="md">
               <Text c="dimmed">No stages to visualize</Text>

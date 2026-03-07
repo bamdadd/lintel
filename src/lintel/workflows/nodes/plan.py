@@ -65,10 +65,15 @@ def _build_thread_ref(raw: str) -> ThreadRef:
 
 async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[str, Any]:
     """Generate work plan using the Planner agent via AgentRuntime."""
+    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+
+    await mark_running(config, "plan", state)
+
     agent_runtime: AgentRuntime | None = config.get("configurable", {}).get("agent_runtime")
 
     if agent_runtime is None:
         logger.warning("plan_node_no_runtime", msg="AgentRuntime not available, using stub plan")
+        await mark_completed(config, "plan", state)
         return {
             "plan": {
                 "tasks": [{"title": t} for t in ["Implement feature", "Write tests", "Create PR"]],
@@ -103,6 +108,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         summary=plan.get("summary", ""),
     )
 
+    await mark_completed(config, "plan", state)
     return {
         "plan": plan,
         "current_phase": "awaiting_spec_approval",

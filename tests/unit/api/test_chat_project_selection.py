@@ -204,7 +204,7 @@ class TestPipelineAndTriggerCreation:
         run = runs[0]
         assert run["project_id"] == "proj-pipe"
         assert run["status"] == "running"
-        assert run["trigger_type"] == "manual"
+        assert run["trigger_type"].startswith("chat:")
         assert run["workflow_definition_id"] == "feature_to_pr"
         # Should have stages
         assert len(run["stages"]) > 0

@@ -1,8 +1,4 @@
-"""Helper for updating stage status in pipeline runs.
-
-TODO: Wire this into workflow nodes once pipeline_store is accessible
-via LangGraph config (requires injecting app_state into the configurable dict).
-"""
+"""Helper for updating stage status in pipeline runs."""
 
 from __future__ import annotations
 
@@ -12,9 +8,72 @@ import structlog
 
 logger = structlog.get_logger()
 
+# Map LangGraph node names to pipeline stage names.
+NODE_TO_STAGE: dict[str, str] = {
+    "ingest": "ingest",
+    "route": "ingest",  # route is part of the ingest stage
+    "setup_workspace": "ingest",  # workspace setup is part of ingest
+    "plan": "plan",
+    "approval_gate_spec": "approve_spec",
+    "implement": "implement",
+    "test": "test",
+    "review": "review",
+    "approval_gate_merge": "approve_merge",
+    "close": "merge",
+}
+
+
+def _get_pipeline_store(config: dict[str, Any]) -> Any:  # noqa: ANN401
+    """Extract pipeline_store from LangGraph configurable dict."""
+    app_state = config.get("configurable", {}).get("app_state")
+    if app_state is None:
+        return None
+    return getattr(app_state, "pipeline_store", None)
+
+
+def _get_run_id(config: dict[str, Any], state: dict[str, Any] | None = None) -> str:
+    """Extract run_id from config or state."""
+    run_id = config.get("configurable", {}).get("run_id", "")
+    if not run_id and state:
+        run_id = state.get("run_id", "")
+    return run_id
+
+
+async def mark_running(
+    config: dict[str, Any],
+    node_name: str,
+    state: dict[str, Any] | None = None,
+) -> None:
+    """Mark a pipeline stage as running. Call at the start of a node."""
+    stage_name = NODE_TO_STAGE.get(node_name)
+    if not stage_name:
+        return
+    run_id = _get_run_id(config, state)
+    if not run_id:
+        return
+    await update_stage(config, run_id, stage_name, "running")
+
+
+async def mark_completed(
+    config: dict[str, Any],
+    node_name: str,
+    state: dict[str, Any] | None = None,
+    outputs: dict[str, object] | None = None,
+    error: str = "",
+) -> None:
+    """Mark a pipeline stage as succeeded or failed. Call at the end of a node."""
+    stage_name = NODE_TO_STAGE.get(node_name)
+    if not stage_name:
+        return
+    run_id = _get_run_id(config, state)
+    if not run_id:
+        return
+    status = "failed" if error else "succeeded"
+    await update_stage(config, run_id, stage_name, status, outputs=outputs, error=error)
+
 
 async def update_stage(
-    app_state: Any,  # noqa: ANN401
+    config: dict[str, Any],
     run_id: str,
     stage_name: str,
     status: str,
@@ -32,7 +91,7 @@ async def update_stage(
     """
     from lintel.contracts.types import Stage, StageStatus
 
-    pipeline_store = getattr(app_state, "pipeline_store", None)
+    pipeline_store = _get_pipeline_store(config)
     if pipeline_store is None:
         return
 

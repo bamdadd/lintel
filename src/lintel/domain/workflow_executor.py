@@ -31,11 +31,13 @@ class WorkflowExecutor:
         graph: Any,  # noqa: ANN401
         agent_runtime: Any = None,  # noqa: ANN401
         on_stage_complete: StageCallback | None = None,
+        app_state: Any = None,  # noqa: ANN401
     ) -> None:
         self._event_store = event_store
         self._graph = graph
         self._agent_runtime = agent_runtime
         self._on_stage_complete = on_stage_complete
+        self._app_state = app_state
 
     async def execute(self, command: StartWorkflow) -> str:
         run_id = command.run_id or str(uuid4())
@@ -73,12 +75,15 @@ class WorkflowExecutor:
                 config={
                     "configurable": {
                         "thread_id": run_id,
+                        "run_id": run_id,
                         "agent_runtime": self._agent_runtime,
+                        "app_state": self._app_state,
                     }
                 },
             ):
                 for node_name, output in chunk.items():
                     phase = output.get("current_phase", node_name) if isinstance(output, dict) else node_name
+                    timestamp_ms = int(time.time() * 1000)
                     await self._event_store.append(
                         stream_id=stream_id,
                         events=[
@@ -88,11 +93,27 @@ class WorkflowExecutor:
                                     "run_id": run_id,
                                     "node_name": node_name,
                                     "output": output,
-                                    "timestamp_ms": int(time.time() * 1000),
+                                    "timestamp_ms": timestamp_ms,
                                 },
                             )
                         ],
                     )
+                    await self._mark_stage_completed(run_id, node_name, timestamp_ms)
+
+                    # Check if this is an approval stage
+                    is_approval = "approve" in node_name or "approval" in node_name
+                    if is_approval:
+                        await self._notify_chat(
+                            run_id,
+                            f"⏸️ **{node_name}** — auto-approved (noop mode)\n"
+                            f"[View pipeline →](/pipelines/{run_id})",
+                        )
+                    else:
+                        await self._notify_chat(
+                            run_id,
+                            f"✅ **{node_name}** completed",
+                        )
+
                     if self._on_stage_complete is not None:
                         try:
                             await self._on_stage_complete(node_name, phase)
@@ -108,6 +129,12 @@ class WorkflowExecutor:
                     )
                 ],
             )
+            await self._update_pipeline_status(run_id, "succeeded")
+            await self._notify_chat(
+                run_id,
+                f"🎉 **Workflow completed successfully**\n"
+                f"[View pipeline →](/pipelines/{run_id})",
+            )
         except Exception as exc:
             await self._event_store.append(
                 stream_id=stream_id,
@@ -118,5 +145,98 @@ class WorkflowExecutor:
                     )
                 ],
             )
+            await self._update_pipeline_status(run_id, "failed")
+            await self._notify_chat(
+                run_id,
+                f"❌ **Workflow failed**: {exc}\n"
+                f"[View pipeline →](/pipelines/{run_id})",
+            )
 
         return run_id
+
+    async def _notify_chat(self, run_id: str, message: str) -> None:
+        """Post a status message to the chat conversation linked to this pipeline."""
+        if self._app_state is None:
+            return
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        chat_store = getattr(self._app_state, "chat_store", None)
+        if pipeline_store is None or chat_store is None:
+            return
+        try:
+            run = await pipeline_store.get(run_id)
+            if run is None:
+                return
+            trigger = run.trigger_type
+            if not trigger.startswith("chat:"):
+                return
+            conversation_id = trigger[5:]  # strip "chat:" prefix
+            await chat_store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=message,
+            )
+        except Exception:
+            pass
+
+    async def _mark_stage_completed(
+        self, run_id: str, node_name: str, timestamp_ms: int,
+    ) -> None:
+        """Mark a pipeline stage as completed in the store."""
+        if self._app_state is None:
+            return
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return
+        try:
+            from dataclasses import replace
+            from datetime import UTC, datetime
+
+            from lintel.contracts.types import StageStatus
+
+            run = await pipeline_store.get(run_id)
+            if run is None:
+                return
+            finished = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).isoformat()
+            updated_stages = []
+            for stage in run.stages:
+                if stage.name == node_name or stage.stage_type == node_name:
+                    started = stage.started_at or finished
+                    duration = 0
+                    if stage.started_at:
+                        start_ts = datetime.fromisoformat(stage.started_at).timestamp()
+                        duration = timestamp_ms - int(start_ts * 1000)
+                    updated_stages.append(replace(
+                        stage,
+                        status=StageStatus.SUCCEEDED,
+                        started_at=started,
+                        finished_at=finished,
+                        duration_ms=duration,
+                    ))
+                else:
+                    updated_stages.append(stage)
+            updated = replace(run, stages=tuple(updated_stages))
+            await pipeline_store.update(updated)
+        except Exception:
+            pass
+
+    async def _update_pipeline_status(self, run_id: str, status: str) -> None:
+        """Update the pipeline run status in the pipeline store."""
+        if self._app_state is None:
+            return
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return
+        try:
+            from dataclasses import replace
+
+            run = await pipeline_store.get(run_id)
+            if run is not None:
+                from lintel.contracts.types import PipelineStatus
+
+                new_status = PipelineStatus(status)
+                updated = replace(run, status=new_status)
+                await pipeline_store.update(updated)
+        except Exception:
+            pass  # best-effort — don't break the workflow

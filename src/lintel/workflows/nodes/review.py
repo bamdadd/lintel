@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
+
     from lintel.agents.runtime import AgentRuntime
     from lintel.contracts.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
@@ -28,12 +30,17 @@ Provide a concise review with:
 
 async def review_output(
     state: ThreadWorkflowState,
+    config: RunnableConfig | None = None,
     *,
     sandbox_manager: SandboxManager | None = None,
     agent_runtime: AgentRuntime | None = None,
 ) -> dict[str, Any]:
     """Review implementation artifacts using the reviewer agent."""
     from lintel.contracts.types import AgentRole, SandboxJob, ThreadRef
+    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+
+    _config = config or {}
+    await mark_running(_config, "review", state)
 
     sandbox_id = state.get("sandbox_id")
     diff_text = ""
@@ -57,6 +64,7 @@ async def review_output(
                 break
 
     if not diff_text:
+        await mark_completed(_config, "review", state)
         return {
             "current_phase": "awaiting_merge_approval",
             "pending_approvals": ["merge_approval"],
@@ -101,6 +109,7 @@ async def review_output(
     if "APPROVE" in upper_text and "REQUEST_CHANGES" not in upper_text:
         verdict = "approve"
 
+    await mark_completed(_config, "review", state)
     return {
         "current_phase": "awaiting_merge_approval",
         "pending_approvals": ["merge_approval"],

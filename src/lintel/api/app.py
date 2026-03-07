@@ -211,10 +211,43 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     }
 
 
-async def _noop_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
-    """Placeholder graph stream that yields nothing. Replaced by GraphCompiler."""
-    return
-    yield  # Make this an async generator
+async def _noop_astream(
+    initial_state: dict[str, object], **_kw: object,
+) -> AsyncGenerator[dict[str, object]]:
+    """Placeholder graph that simulates workflow stages. Replaced by real graph in Phase 2.
+
+    Reads the run_id from config to look up actual pipeline stages and simulate them.
+    Falls back to generic stages if lookup fails.
+    """
+    import asyncio
+
+    config = _kw.get("config", {})
+    configurable = config.get("configurable", {}) if isinstance(config, dict) else {}
+    app_state = configurable.get("app_state") if isinstance(configurable, dict) else None
+
+    # Try to get actual stage names from the pipeline store
+    stage_names: tuple[str, ...] = ()
+    run_id = configurable.get("run_id", "") if isinstance(configurable, dict) else ""
+    if app_state and run_id:
+        pipeline_store = getattr(app_state, "pipeline_store", None)
+        if pipeline_store:
+            try:
+                run = await pipeline_store.get(run_id)
+                if run and run.stages:
+                    stage_names = tuple(s.name for s in run.stages)
+            except Exception:
+                pass
+
+    if not stage_names:
+        stage_names = ("ingest", "plan", "implement", "test", "review", "close")
+
+    for stage in stage_names:
+        if "approve" in stage or "approval" in stage:
+            # Mark approval stages as auto-approved in noop mode
+            yield {stage: {"current_phase": stage, "auto_approved": True}}
+            continue
+        await asyncio.sleep(1)
+        yield {stage: {"current_phase": stage}}
 
 
 @asynccontextmanager
@@ -278,6 +311,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         event_store=event_store,
         graph=noop_graph,
         agent_runtime=agent_runtime,
+        app_state=app.state,
     )
 
     from lintel.contracts.commands import StartWorkflow

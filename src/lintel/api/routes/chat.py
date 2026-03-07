@@ -433,7 +433,7 @@ async def _dispatch_workflow(
             work_item_id=work_item_id,
             workflow_definition_id=workflow_type,
             status=PipelineStatus.RUNNING,
-            trigger_type="manual",
+            trigger_type=f"chat:{conversation_id}",
             trigger_id=trigger_id,
             stages=stages,
         )
@@ -482,6 +482,8 @@ async def _dispatch_workflow(
     for stage_name in _stage_names_for_workflow(workflow_type):
         status_lines.append(f"  ⏳ {stage_name}")
 
+    status_lines.append("")
+    status_lines.append(f"[View pipeline →](/pipelines/{run_id})")
     status_lines.append("")
     status_lines.append("I'll update you as each stage completes.")
 

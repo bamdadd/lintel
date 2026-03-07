@@ -7,6 +7,8 @@ import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
+
     from lintel.api.routes.variables import InMemoryVariableStore
     from lintel.contracts.protocols import CredentialStore, RepoProvider, SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
@@ -67,6 +69,7 @@ async def _resolve_credentials(
 
 async def setup_workspace(
     state: ThreadWorkflowState,
+    config: RunnableConfig | None = None,
     *,
     sandbox_manager: SandboxManager,
     repo_provider: RepoProvider,
@@ -79,6 +82,10 @@ async def setup_workspace(
     to be set in state (populated by the chat route before workflow dispatch).
     """
     from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
+    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+
+    _config = config or {}
+    await mark_running(_config, "setup_workspace", state)
 
     repo_url = state.get("repo_url", "")
     repo_urls: tuple[str, ...] = state.get("repo_urls", ())
@@ -87,6 +94,7 @@ async def setup_workspace(
     work_item_id = state.get("work_item_id", "")
 
     if not repo_url:
+        await mark_completed(_config, "setup_workspace", state, error="No repository URL")
         return {
             "error": "No repository URL configured for this project",
             "current_phase": "closed",
@@ -212,6 +220,7 @@ async def setup_workspace(
         )
         # TODO: emit AuditEntry when store injection is available
 
+        await mark_completed(_config, "setup_workspace", state)
         return {
             "sandbox_id": sandbox_id,
             "feature_branch": feature_branch,
@@ -219,6 +228,7 @@ async def setup_workspace(
         }
     except Exception:
         logger.exception("workspace_setup_failed")
+        await mark_completed(_config, "setup_workspace", state, error="Workspace setup failed")
         await sandbox_manager.destroy(sandbox_id)
         return {
             "sandbox_id": None,

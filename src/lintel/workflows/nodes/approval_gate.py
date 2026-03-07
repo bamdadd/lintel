@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
+
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = logging.getLogger(__name__)
@@ -13,10 +15,20 @@ logger = logging.getLogger(__name__)
 
 async def approval_gate(
     state: ThreadWorkflowState,
+    config: RunnableConfig | None = None,
     *,
     gate_type: str,
 ) -> dict[str, Any]:
     """Gate node that sets pending approvals for human review."""
+    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+
+    _config = config or {}
+    # Map gate_type to node name for stage tracking
+    node_name = (
+        "approval_gate_spec" if gate_type == "spec_approval" else "approval_gate_merge"
+    )
+    await mark_running(_config, node_name, state)
+
     project_id = state.get("project_id", "")
     existing = list(state.get("pending_approvals", []))
 
@@ -29,4 +41,5 @@ async def approval_gate(
         project_id=project_id,
     )
 
+    await mark_completed(_config, node_name, state)
     return {"pending_approvals": existing}

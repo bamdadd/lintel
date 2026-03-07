@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
+
     from lintel.agents.runtime import AgentRuntime
     from lintel.contracts.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
@@ -27,12 +29,17 @@ Work methodically through each task. Write clean, production-quality code.
 
 async def spawn_implementation(
     state: ThreadWorkflowState,
+    config: RunnableConfig | None = None,
     *,
     sandbox_manager: SandboxManager,
     agent_runtime: AgentRuntime | None = None,
 ) -> dict[str, Any]:
     """Run the coder agent with sandbox tools to implement the plan."""
     from lintel.contracts.types import AgentRole, ThreadRef
+    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+
+    _config = config or {}
+    await mark_running(_config, "implement", state)
 
     logger.info(
         "implementation_started",
@@ -42,6 +49,7 @@ async def spawn_implementation(
 
     sandbox_id = state.get("sandbox_id")
     if not sandbox_id:
+        await mark_completed(_config, "implement", state, error="No sandbox available")
         return {
             "error": "No sandbox available — setup_workspace must run first",
             "current_phase": "closed",
@@ -108,6 +116,7 @@ async def spawn_implementation(
     except Exception:
         from lintel.workflows.nodes._error_handling import handle_node_error
 
+        await mark_completed(_config, "implement", state, error="Failed to collect artifacts")
         return await handle_node_error(
             state, "implement", Exception("Failed to collect artifacts"),
         )
@@ -116,6 +125,7 @@ async def spawn_implementation(
     if rebase_warning:
         outputs.append({"node": "implement_rebase", "output": rebase_warning})
 
+    await mark_completed(_config, "implement", state)
     return {
         "current_phase": "testing",
         "agent_outputs": outputs,

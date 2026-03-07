@@ -325,6 +325,8 @@ class Stage:
     outputs: dict[str, object] | None = None
     error: str = ""
     duration_ms: int = 0
+    started_at: str = ""
+    finished_at: str = ""
 
 
 @dataclass(frozen=True)

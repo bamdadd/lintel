@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useParams } from 'react-router';
 import {
   Title,
   Stack,
@@ -15,7 +16,7 @@ import {
   Badge,
   Select,
 } from '@mantine/core';
-import { IconSend, IconPlus, IconTrash, IconCopy, IconCheck } from '@tabler/icons-react';
+import { IconSend, IconPlus, IconTrash, IconCopy, IconCheck, IconClipboardCopy } from '@tabler/icons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '../chat-markdown.css';
@@ -63,8 +64,34 @@ function CopyBtn({ content }: { content: string }) {
   );
 }
 
+function CopyChatBtn({ messages }: { messages: Message[] }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    const text = messages
+      .map((m) => `${m.display_name ?? m.role}:\n${m.content}`)
+      .join('\n\n---\n\n');
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <ActionIcon
+      size="sm"
+      variant="subtle"
+      color={copied ? 'teal' : 'gray'}
+      onClick={handleCopy}
+      title="Copy entire chat"
+      disabled={messages.length === 0}
+    >
+      {copied ? <IconCheck size={14} /> : <IconClipboardCopy size={14} />}
+    </ActionIcon>
+  );
+}
+
 export function Component() {
-  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const { conversationId: urlConversationId } = useParams<{ conversationId?: string }>();
+  const [activeConvId, setActiveConvId] = useState<string | null>(urlConversationId ?? null);
   const [newMessage, setNewMessage] = useState('');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -74,6 +101,13 @@ export function Component() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const queryClient = useQueryClient();
+
+  // Sync URL param to active conversation
+  useEffect(() => {
+    if (urlConversationId && urlConversationId !== activeConvId) {
+      setActiveConvId(urlConversationId);
+    }
+  }, [urlConversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: modelsResp } = useModelsListModels();
   const models = (modelsResp?.data ?? []) as Array<{ model_id: string; name: string; model_name: string; provider_name: string; is_default: boolean }>;
@@ -362,23 +396,26 @@ export function Component() {
             </Center>
           ) : (
             <>
-              <Group gap="xs" mb="xs">
-                {activeConversation?.project_id && (
-                  <>
-                    <Text size="xs" c="dimmed">Project:</Text>
-                    <Badge size="xs" variant="light" color="teal">
-                      {projects.find((p) => p.project_id === activeConversation.project_id)?.name ?? activeConversation.project_id}
-                    </Badge>
-                  </>
-                )}
-                {activeConversation?.model_id && (
-                  <>
-                    <Text size="xs" c="dimmed">Model:</Text>
-                    <Badge size="xs" variant="light">
-                      {models.find((m) => m.model_id === activeConversation.model_id)?.name ?? activeConversation.model_id}
-                    </Badge>
-                  </>
-                )}
+              <Group gap="xs" mb="xs" justify="space-between">
+                <Group gap="xs">
+                  {activeConversation?.project_id && (
+                    <>
+                      <Text size="xs" c="dimmed">Project:</Text>
+                      <Badge size="xs" variant="light" color="teal">
+                        {projects.find((p) => p.project_id === activeConversation.project_id)?.name ?? activeConversation.project_id}
+                      </Badge>
+                    </>
+                  )}
+                  {activeConversation?.model_id && (
+                    <>
+                      <Text size="xs" c="dimmed">Model:</Text>
+                      <Badge size="xs" variant="light">
+                        {models.find((m) => m.model_id === activeConversation.model_id)?.name ?? activeConversation.model_id}
+                      </Badge>
+                    </>
+                  )}
+                </Group>
+                <CopyChatBtn messages={messages} />
               </Group>
               <ScrollArea style={{ flex: 1 }} viewportRef={scrollRef}>
                 <Stack gap="md" p="xs">
