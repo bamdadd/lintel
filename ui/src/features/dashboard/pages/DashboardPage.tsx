@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import {
+  ActionIcon,
   SimpleGrid,
   Title,
   Stack,
@@ -16,6 +18,7 @@ import {
   IconRocket,
   IconCheck,
   IconCircleDashed,
+  IconX,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -53,8 +56,9 @@ function useOnboardingStatus() {
 function OnboardingBanner() {
   const navigate = useNavigate();
   const { data: status, isLoading } = useOnboardingStatus();
+  const [dismissed, setDismissed] = useState(false);
 
-  if (isLoading || !status || status.is_complete) return null;
+  if (isLoading || !status || dismissed) return null;
 
   const steps = [
     { label: 'AI provider configured', done: status.has_ai_provider },
@@ -66,13 +70,22 @@ function OnboardingBanner() {
     <Paper withBorder p="lg" radius="md">
       <Group justify="space-between" align="flex-start">
         <Group align="flex-start" gap="md">
-          <ThemeIcon size={48} radius="xl" color="blue" variant="light">
-            <IconRocket size={24} />
+          <ThemeIcon
+            size={48}
+            radius="xl"
+            color={status.is_complete ? 'green' : 'blue'}
+            variant="light"
+          >
+            {status.is_complete ? <IconCheck size={24} /> : <IconRocket size={24} />}
           </ThemeIcon>
           <Stack gap="xs">
-            <Title order={4}>Get started with Lintel</Title>
+            <Title order={4}>
+              {status.is_complete ? 'Workspace ready' : 'Get started with Lintel'}
+            </Title>
             <Text c="dimmed" size="sm">
-              Complete setup to start running AI workflows on your codebase.
+              {status.is_complete
+                ? 'Your workspace is fully configured.'
+                : 'Complete setup to start running AI workflows on your codebase.'}
             </Text>
             <List spacing={4} size="sm" mt={4}>
               {steps.map((s) => (
@@ -98,9 +111,21 @@ function OnboardingBanner() {
             </List>
           </Stack>
         </Group>
-        <Button onClick={() => void navigate('/setup')}>
-          Set up workspace
-        </Button>
+        <Group gap="sm">
+          {!status.is_complete && (
+            <Button onClick={() => void navigate('/setup')}>
+              Set up workspace
+            </Button>
+          )}
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            onClick={() => setDismissed(true)}
+            aria-label="Dismiss onboarding banner"
+          >
+            <IconX size={16} />
+          </ActionIcon>
+        </Group>
       </Group>
     </Paper>
   );

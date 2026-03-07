@@ -66,7 +66,28 @@ export interface CreateModelAssignmentRequest {
   priority?: number;
 }
 
+export interface AvailableModel {
+  model_name: string;
+  display_name: string;
+  family: string;
+  parameter_size: string;
+  quantization_level: string;
+  format: string;
+  size_bytes: number;
+  max_tokens: number;
+  temperature: number;
+}
+
 // --- Fetchers ---
+
+const listAvailableModels = async (
+  providerId: string,
+  options?: RequestInit,
+): Promise<Wrapped<AvailableModel[]>> =>
+  customInstance<Wrapped<AvailableModel[]>>(
+    `/api/v1/ai-providers/${providerId}/available-models`,
+    { ...options, method: 'GET' },
+  );
 
 type Wrapped<T> = { data: T; status: number; headers: Headers };
 
@@ -233,6 +254,23 @@ export const useModelsListAllAssignments = <TData = Awaited<ReturnType<typeof li
       queryFn: ({ signal }) => listAllAssignments(context, contextId, { signal }),
       ...options?.query,
     } as UseQueryOptions<Awaited<ReturnType<typeof listAllAssignments>>, unknown, TData>,
+    queryClient,
+  );
+};
+
+export const useAvailableModels = <TData = Awaited<ReturnType<typeof listAvailableModels>>>(
+  providerId: string,
+  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAvailableModels>>, unknown, TData>> },
+  queryClient?: QueryClient,
+): UseQueryResult<TData> => {
+  const queryKey = [`/api/v1/ai-providers/${providerId}/available-models`] as const;
+  return useQuery(
+    {
+      queryKey,
+      queryFn: ({ signal }) => listAvailableModels(providerId, { signal }),
+      enabled: !!providerId,
+      ...options?.query,
+    } as UseQueryOptions<Awaited<ReturnType<typeof listAvailableModels>>, unknown, TData>,
     queryClient,
   );
 };

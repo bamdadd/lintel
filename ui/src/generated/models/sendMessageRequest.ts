@@ -10,4 +10,5 @@ export interface SendMessageRequest {
   display_name?: string | null;
   message: string;
   role?: string;
+  model_id?: string | null;
 }

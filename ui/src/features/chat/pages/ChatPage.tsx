@@ -13,6 +13,7 @@ import {
   ScrollArea,
   Box,
   Badge,
+  Select,
 } from '@mantine/core';
 import { IconSend, IconPlus, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -24,6 +25,7 @@ import {
   useChatSendMessage,
   useChatDeleteConversation,
 } from '@/generated/api/chat/chat';
+import { useModelsListModels } from '@/generated/api/models/models';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface Message {
@@ -38,6 +40,7 @@ interface Conversation {
   conversation_id: string;
   display_name: string | null;
   created_at: string;
+  model_id: string | null;
   messages: Message[];
 }
 
@@ -45,8 +48,20 @@ export function Component() {
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [newConvMessage, setNewConvMessage] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  const { data: modelsResp } = useModelsListModels();
+  const models = (modelsResp?.data ?? []) as Array<{ model_id: string; name: string; model_name: string; provider_name: string; is_default: boolean }>;
+
+  // Auto-select default model
+  useEffect(() => {
+    if (!selectedModelId && models.length > 0) {
+      const defaultModel = models.find((m) => m.is_default);
+      setSelectedModelId(defaultModel?.model_id ?? models[0].model_id);
+    }
+  }, [models, selectedModelId]);
 
   const { data: convsResp, isLoading } = useChatListConversations();
   const { data: convResp } = useChatGetConversation(activeConvId ?? '', {
@@ -77,6 +92,7 @@ export function Component() {
           user_id: 'ui-user',
           display_name: 'You',
           message: newConvMessage,
+          model_id: selectedModelId,
         },
       },
       {
@@ -141,6 +157,21 @@ export function Component() {
           <Group justify="space-between" mb="sm">
             <Text fw={600} size="sm">Conversations</Text>
           </Group>
+
+          {/* Model selector */}
+          {models.length > 0 && (
+            <Select
+              size="xs"
+              mb="xs"
+              placeholder="Select model"
+              value={selectedModelId}
+              onChange={setSelectedModelId}
+              data={models.map((m) => ({
+                value: m.model_id,
+                label: `${m.name} (${m.provider_name})`,
+              }))}
+            />
+          )}
 
           {/* New conversation input */}
           <Group gap="xs" mb="sm">
@@ -213,6 +244,14 @@ export function Component() {
             </Center>
           ) : (
             <>
+              {activeConversation?.model_id && (
+                <Group gap="xs" mb="xs">
+                  <Text size="xs" c="dimmed">Model:</Text>
+                  <Badge size="xs" variant="light">
+                    {models.find((m) => m.model_id === activeConversation.model_id)?.name ?? activeConversation.model_id}
+                  </Badge>
+                </Group>
+              )}
               <ScrollArea style={{ flex: 1 }} viewportRef={scrollRef}>
                 <Stack gap="md" p="xs">
                   {messages.map((m) => (

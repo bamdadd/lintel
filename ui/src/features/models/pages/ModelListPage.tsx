@@ -18,8 +18,9 @@ import {
   useModelsCreateAssignment,
   useModelsDeleteAssignment,
   useModelsListModelAssignments,
+  useAvailableModels,
 } from '@/generated/api/models/models';
-import type { ModelItem, ModelAssignmentItem } from '@/generated/api/models/models';
+import type { ModelItem, ModelAssignmentItem, AvailableModel } from '@/generated/api/models/models';
 import { useAiProvidersListAiProviders } from '@/generated/api/ai-providers/ai-providers';
 import { EmptyState } from '@/shared/components/EmptyState';
 
@@ -59,9 +60,10 @@ export function Component() {
   const [editItem, setEditItem] = useState<ModelItem | null>(null);
   const [assignModal, setAssignModal] = useState<string | null>(null);
 
-  const providers: ProviderOption[] = ((providersResp?.data ?? []) as Array<{
+  const providersList = (providersResp?.data ?? []) as Array<{
     provider_id: string; name: string; provider_type: string;
-  }>).map((p) => ({
+  }>;
+  const providers: ProviderOption[] = providersList.map((p) => ({
     value: p.provider_id,
     label: `${p.name} (${p.provider_type})`,
     type: p.provider_type,
@@ -101,6 +103,30 @@ export function Component() {
     initialValues: { context: 'task', context_id: '', priority: 0 },
     validate: { context_id: (v) => (v.trim() ? null : 'Required') },
   });
+
+  const selectedProvider = providersList.find((p) => p.provider_id === form.values.provider_id);
+  const isOllamaProvider = selectedProvider?.provider_type === 'ollama';
+
+  const { data: availableModelsResp, isLoading: loadingAvailable } = useAvailableModels(
+    form.values.provider_id,
+    { query: { enabled: isOllamaProvider && !!form.values.provider_id } },
+  );
+  const availableModels = (availableModelsResp as { data?: AvailableModel[] } | undefined)?.data ?? [];
+  const availableModelOptions = availableModels.map((m) => ({
+    value: m.model_name,
+    label: `${m.display_name} (${m.parameter_size || m.model_name})`,
+  }));
+
+  const handleAvailableModelSelect = (modelName: string | null) => {
+    if (!modelName) return;
+    form.setFieldValue('model_name', modelName);
+    const selected = availableModels.find((m) => m.model_name === modelName);
+    if (selected) {
+      form.setFieldValue('name', selected.display_name);
+      form.setFieldValue('max_tokens', selected.max_tokens);
+      form.setFieldValue('temperature', selected.temperature);
+    }
+  };
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -192,7 +218,7 @@ export function Component() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Models</Title>
-        <Button onClick={open} disabled={!hasProviders}>Add Model</Button>
+        <Button onClick={() => { if (models.length === 0) form.setFieldValue('is_default', true); open(); }} disabled={!hasProviders}>Add Model</Button>
       </Group>
 
       {!hasProviders && (
@@ -206,7 +232,7 @@ export function Component() {
           title="No models configured"
           description="Add AI models from your providers and assign them to tasks, chats, workflow steps, or agent roles"
           actionLabel="Add Model"
-          onAction={open}
+          onAction={() => { form.setFieldValue('is_default', true); open(); }}
         />
       ) : models.length === 0 ? null : (
         <Table striped highlightOnHover>
@@ -258,12 +284,47 @@ export function Component() {
       )}
 
       {/* Create Modal */}
-      <Modal opened={opened} onClose={close} title="Add Model" size="lg">
+      <Modal opened={opened} onClose={() => { close(); form.reset(); }} title="Add Model" size="lg">
         <form onSubmit={handleCreate}>
           <Stack gap="sm">
-            <Select label="Provider" data={providers} searchable {...form.getInputProps('provider_id')} />
+            <Select
+              label="Provider"
+              data={providers}
+              searchable
+              {...form.getInputProps('provider_id')}
+              onChange={(val) => {
+                form.setFieldValue('provider_id', val ?? '');
+                form.setFieldValue('model_name', '');
+                form.setFieldValue('name', '');
+                form.setFieldValue('max_tokens', 4096);
+                form.setFieldValue('temperature', 0.0);
+                // Auto-set default if this is the first model
+                if (models.length === 0) {
+                  form.setFieldValue('is_default', true);
+                }
+              }}
+            />
+            {isOllamaProvider ? (
+              <Select
+                label="Model"
+                placeholder={loadingAvailable ? 'Loading models from Ollama...' : 'Select a model'}
+                data={availableModelOptions}
+                searchable
+                nothingFoundMessage={loadingAvailable ? 'Loading...' : 'No models found — pull models in Ollama first'}
+                value={form.values.model_name}
+                onChange={handleAvailableModelSelect}
+                error={form.errors.model_name}
+                disabled={loadingAvailable}
+                description={
+                  availableModels.find((m) => m.model_name === form.values.model_name)
+                    ? `${availableModels.find((m) => m.model_name === form.values.model_name)!.family} · ${availableModels.find((m) => m.model_name === form.values.model_name)!.parameter_size} · ${availableModels.find((m) => m.model_name === form.values.model_name)!.quantization_level}`
+                    : undefined
+                }
+              />
+            ) : (
+              <TextInput label="Model Name" placeholder="claude-sonnet-4-20250514" description="The litellm model identifier" {...form.getInputProps('model_name')} />
+            )}
             <TextInput label="Display Name" placeholder="Claude Sonnet 4" {...form.getInputProps('name')} />
-            <TextInput label="Model Name" placeholder="claude-sonnet-4-20250514" description="The litellm model identifier" {...form.getInputProps('model_name')} />
             <Group grow>
               <NumberInput label="Max Tokens" min={1} {...form.getInputProps('max_tokens')} />
               <NumberInput label="Temperature" min={0} max={2} step={0.1} decimalScale={1} {...form.getInputProps('temperature')} />

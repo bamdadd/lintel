@@ -77,6 +77,7 @@ class DefaultModelRouter:
         policy: ModelPolicy,
         messages: list[dict[str, str]],
         tools: list[dict[str, Any]] | None = None,
+        api_base: str | None = None,
     ) -> dict[str, Any]:
         import litellm
 
@@ -90,7 +91,9 @@ class DefaultModelRouter:
         if tools:
             kwargs["tools"] = tools
 
-        if policy.provider == "ollama" and self._ollama_api_base:
+        if api_base:
+            kwargs["api_base"] = api_base
+        elif policy.provider == "ollama" and self._ollama_api_base:
             kwargs["api_base"] = self._ollama_api_base
 
         response = await litellm.acompletion(**kwargs)

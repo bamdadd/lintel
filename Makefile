@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve
+.PHONY: help install test test-unit test-postgres test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -9,8 +9,11 @@ install: ## Install all dependencies
 test: ## Run all tests (pass ARGS= for extra pytest flags)
 	uv run pytest $(ARGS)
 
-test-unit: ## Run unit tests
+test-unit: ## Run unit tests (in-memory only)
 	uv run pytest tests/unit -v
+
+test-postgres: ## Run unit tests against both memory and postgres backends
+	uv run pytest tests/unit -v --run-postgres
 
 test-integration: ## Run integration tests
 	uv run pytest tests/integration -v
@@ -29,8 +32,8 @@ format: ## Auto-fix formatting and lint
 	uv run ruff format src/ tests/
 	uv run ruff check --fix src/ tests/
 
-serve: ## Start dev server on :8000
-	uv run uvicorn lintel.api.app:app --reload --port 8000
+serve: ## Start dev server on :8000 (in-memory storage)
+	LINTEL_STORAGE_BACKEND=memory uv run uvicorn lintel.api.app:app --reload --port 8000
 
 db-up: ## Start PostgreSQL via docker-compose
 	docker compose up -d postgres
@@ -41,14 +44,14 @@ db-up: ## Start PostgreSQL via docker-compose
 db-down: ## Stop PostgreSQL
 	docker compose down
 
-serve-db: db-up migrate ## Start dev server with PostgreSQL
-	LINTEL_DB_DSN=postgresql://lintel:lintel@localhost:5432/lintel uv run uvicorn lintel.api.app:app --reload --port 8000
+serve-db: db-up migrate ## Start dev server with PostgreSQL storage
+	LINTEL_STORAGE_BACKEND=postgres LINTEL_DB_DSN=postgresql://lintel:lintel@localhost:5432/lintel uv run uvicorn lintel.api.app:app --reload --port 8000
 
 migrate: ## Run event store migrations
 	LINTEL_DB_DSN=$${LINTEL_DB_DSN:-postgresql://lintel:lintel@localhost:5432/lintel} \
 		uv run python -m lintel.infrastructure.event_store.migrate
 
-all: lint typecheck test ## Run lint, typecheck, and tests
+all: lint typecheck test-unit test-postgres ## Run lint, typecheck, and tests (both backends)
 
 ui-install: ## Install UI dependencies
 	cd ui && bun install

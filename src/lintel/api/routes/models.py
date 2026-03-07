@@ -156,7 +156,8 @@ async def create_model(
     if not all_providers:
         raise HTTPException(
             status_code=409,
-            detail="No AI providers configured. Please add a provider first at /ai-providers before adding models.",
+            detail="No AI providers configured. Please add a provider first"
+            " at /ai-providers before adding models.",
         )
     provider = await provider_store.get(body.provider_id)
     if provider is None:

@@ -45,11 +45,14 @@ class PostgresCrudStore:
         """Reconstruct a dataclass from stored data."""
         # Convert lists back to frozensets/tuples where the factory expects them
         import dataclasses as dc
+        import enum
+        import typing
 
-        hints = {f.name: f.type for f in dc.fields(self._factory)}
+        fields = dc.fields(self._factory)
+        hints = typing.get_type_hints(self._factory)
         for key, value in list(data.items()):
-            hint = hints.get(key, "")
-            hint_str = str(hint)
+            hint = hints.get(key)
+            hint_str = str(hint) if hint else ""
             if isinstance(value, list):
                 if "frozenset" in hint_str:
                     data[key] = frozenset(
@@ -57,8 +60,16 @@ class PostgresCrudStore:
                     )
                 elif "tuple" in hint_str:
                     data[key] = tuple(value)
+            elif (
+                isinstance(value, str)
+                and hint is not None
+                and isinstance(hint, type)
+                and issubclass(hint, enum.Enum)
+            ):
+                # Convert plain strings back to StrEnum types
+                data[key] = hint(value)
         # Filter out keys not in the dataclass to handle schema evolution
-        valid_keys = {f.name for f in dc.fields(self._factory)}
+        valid_keys = {f.name for f in fields}
         filtered = {k: v for k, v in data.items() if k in valid_keys}
         return self._factory(**filtered)
 

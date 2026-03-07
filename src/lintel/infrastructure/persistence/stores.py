@@ -71,7 +71,7 @@ class PostgresAIProviderStore(PostgresCrudStore):
             return row is not None
 
     async def get_default(self) -> AIProvider | None:
-        results = await self.list_all(is_default="True")
+        results = await self.list_all(is_default="true")
         return results[0] if results else None
 
     async def remove(self, provider_id: str) -> None:
@@ -287,6 +287,7 @@ class PostgresChatStore:
         user_id: str,
         display_name: str | None,
         project_id: str | None,
+        model_id: str | None = None,
     ) -> dict[str, Any]:
         now = datetime.now(UTC).isoformat()
         conv: dict[str, Any] = {
@@ -294,6 +295,7 @@ class PostgresChatStore:
             "user_id": user_id,
             "display_name": display_name,
             "project_id": project_id,
+            "model_id": model_id,
             "created_at": now,
             "messages": [],
         }
@@ -379,6 +381,46 @@ class PostgresAgentDefinitionStore:
         if existing is None:
             raise KeyError(agent_id)
         await self._store.remove(agent_id)
+
+
+class PostgresModelStore(PostgresCrudStore):
+    """Postgres-backed model store."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        from lintel.contracts.types import Model
+
+        super().__init__(pool, "model", "model_id", Model)
+
+    async def list_by_provider(self, provider_id: str) -> list[Any]:
+        return await self.list_all(provider_id=provider_id)
+
+
+class PostgresModelAssignmentStore(PostgresCrudStore):
+    """Postgres-backed model assignment store."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        from lintel.contracts.types import ModelAssignment
+
+        super().__init__(pool, "model_assignment", "assignment_id", ModelAssignment)
+
+    async def list_by_model(self, model_id: str) -> list[Any]:
+        return await self.list_all(model_id=model_id)
+
+    async def list_by_context(
+        self,
+        context: Any,  # noqa: ANN401
+        context_id: str | None = None,
+    ) -> list[Any]:
+        filters: dict[str, Any] = {"context": str(context)}
+        if context_id is not None:
+            filters["context_id"] = context_id
+        return await self.list_all(**filters)
+
+    async def remove_by_model(self, model_id: str) -> None:
+        """Remove all assignments for a given model."""
+        assignments = await self.list_by_model(model_id)
+        for a in assignments:
+            await self.remove(a.assignment_id)
 
 
 class PostgresSkillStore(PostgresCrudStore):

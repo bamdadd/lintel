@@ -4,6 +4,7 @@ from dataclasses import asdict
 from typing import Annotated, Any
 from uuid import uuid4
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -195,12 +196,14 @@ async def list_provider_types() -> list[dict[str, Any]]:
     results = []
     for t in AIProviderType:
         reqs = PROVIDER_FIELD_REQUIREMENTS.get(t, {})
-        results.append({
-            "provider_type": t.value,
-            "required_fields": reqs.get("required", []),
-            "optional_fields": reqs.get("optional", []),
-            "hidden_fields": reqs.get("hidden", []),
-        })
+        results.append(
+            {
+                "provider_type": t.value,
+                "required_fields": reqs.get("required", []),
+                "optional_fields": reqs.get("optional", []),
+                "hidden_fields": reqs.get("hidden", []),
+            }
+        )
     return results
 
 
@@ -282,6 +285,83 @@ async def delete_ai_provider(
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
     await store.remove(provider_id)
+
+
+OLLAMA_MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
+    "llama3.2": {"max_tokens": 2048, "temperature": 0.7},
+    "llama3.1": {"max_tokens": 4096, "temperature": 0.7},
+    "llama3": {"max_tokens": 4096, "temperature": 0.7},
+    "mistral": {"max_tokens": 4096, "temperature": 0.7},
+    "mixtral": {"max_tokens": 4096, "temperature": 0.7},
+    "codellama": {"max_tokens": 4096, "temperature": 0.2},
+    "deepseek-coder": {"max_tokens": 4096, "temperature": 0.2},
+    "phi3": {"max_tokens": 4096, "temperature": 0.7},
+    "gemma2": {"max_tokens": 8192, "temperature": 0.7},
+    "qwen2.5-coder": {"max_tokens": 8192, "temperature": 0.2},
+}
+
+
+def _ollama_model_defaults(model_name: str) -> dict[str, Any]:
+    """Get sensible defaults for an Ollama model based on its name."""
+    base = model_name.split(":")[0].lower()
+    if base in OLLAMA_MODEL_DEFAULTS:
+        return OLLAMA_MODEL_DEFAULTS[base]
+    if "code" in base or "coder" in base:
+        return {"max_tokens": 4096, "temperature": 0.2}
+    return {"max_tokens": 4096, "temperature": 0.7}
+
+
+@router.get("/ai-providers/{provider_id}/available-models")
+async def list_available_models(
+    provider_id: str,
+    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+) -> list[dict[str, Any]]:
+    """Query the provider for available models (e.g. Ollama /api/tags)."""
+    provider = await store.get(provider_id)
+    if provider is None:
+        raise HTTPException(status_code=404, detail="Provider not found")
+
+    if provider.provider_type != AIProviderType.OLLAMA:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model discovery is only supported for ollama providers,"
+            f" got {provider.provider_type.value}",
+        )
+
+    api_base = provider.api_base.rstrip("/")
+    if not api_base:
+        raise HTTPException(status_code=400, detail="Provider has no api_base configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{api_base}/api/tags")
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to connect to Ollama at {api_base}: {exc}",
+        ) from exc
+
+    results = []
+    for model in data.get("models", []):
+        name = model.get("name", "")
+        details = model.get("details", {})
+        defaults = _ollama_model_defaults(name)
+        results.append(
+            {
+                "model_name": name,
+                "display_name": name.split(":")[0].replace("-", " ").title(),
+                "family": details.get("family", ""),
+                "parameter_size": details.get("parameter_size", ""),
+                "quantization_level": details.get("quantization_level", ""),
+                "format": details.get("format", ""),
+                "size_bytes": model.get("size", 0),
+                "max_tokens": defaults["max_tokens"],
+                "temperature": defaults["temperature"],
+            }
+        )
+    return results
 
 
 @router.get("/ai-providers/{provider_id}/models")

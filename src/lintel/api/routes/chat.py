@@ -1,11 +1,20 @@
 """Chat API routes for direct conversation via API."""
 
+from __future__ import annotations
+
+import asyncio
 from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import uuid4
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+
+from lintel.contracts.commands import StartWorkflow
+from lintel.contracts.types import ModelPolicy, ThreadRef
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -20,6 +29,7 @@ class StartConversationRequest(BaseModel):
     display_name: str | None = None
     message: str
     project_id: str | None = None
+    model_id: str | None = None
 
 
 class SendMessageRequest(BaseModel):
@@ -27,6 +37,7 @@ class SendMessageRequest(BaseModel):
     display_name: str | None = None
     message: str
     role: str = "user"
+    model_id: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +58,7 @@ class ChatStore:
         user_id: str,
         display_name: str | None,
         project_id: str | None,
+        model_id: str | None = None,
     ) -> dict[str, Any]:
         now = datetime.now(UTC).isoformat()
         conv: dict[str, Any] = {
@@ -54,6 +66,7 @@ class ChatStore:
             "user_id": user_id,
             "display_name": display_name,
             "project_id": project_id,
+            "model_id": model_id,
             "created_at": now,
             "messages": [],
         }
@@ -117,22 +130,83 @@ ChatStoreDep = Annotated[ChatStore, Depends(get_chat_store)]
 
 
 # ---------------------------------------------------------------------------
+# Model resolution
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_model(
+    request: Request,
+    model_id: str | None,
+) -> tuple[ModelPolicy | None, str | None]:
+    """Resolve a model_id to a ModelPolicy and api_base.
+
+    Falls back to the default model if no model_id is given.
+    Returns (None, None) if no model can be resolved.
+    """
+    if model_id is None:
+        # Try to find a default model
+        model_store = getattr(request.app.state, "model_store", None)
+        if model_store is None:
+            return None, None
+        models = await model_store.list_all()
+        default_models = [m for m in models if m.is_default]
+        if not default_models:
+            return None, None
+        model = default_models[0]
+        model_id = model.model_id
+    else:
+        model_store = getattr(request.app.state, "model_store", None)
+        if model_store is None:
+            return None, None
+        model = await model_store.get(model_id)
+        if model is None:
+            return None, None
+
+    provider_store = getattr(request.app.state, "ai_provider_store", None)
+    if provider_store is None:
+        return None, None
+    provider = await provider_store.get(model.provider_id)
+    if provider is None:
+        return None, None
+
+    policy = ModelPolicy(
+        provider=provider.provider_type.value,
+        model_name=model.model_name,
+        max_tokens=model.max_tokens,
+        temperature=model.temperature,
+    )
+    api_base = provider.api_base or None
+    return policy, api_base
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+
+def _thread_ref_from_conversation(conversation_id: str) -> ThreadRef:
+    """Map a chat conversation to a ThreadRef for workflow dispatch."""
+    return ThreadRef(
+        workspace_id="lintel-chat",
+        channel_id="chat",
+        thread_ts=conversation_id,
+    )
 
 
 @router.post("/chat/conversations", status_code=201)
 async def create_conversation(
     body: StartConversationRequest,
     store: ChatStoreDep,
+    request: Request,
 ) -> dict[str, Any]:
-    """Start a new conversation."""
+    """Start a new conversation. Classifies the message and either replies or starts a workflow."""
     conversation_id = uuid4().hex
     conv = await store.create(
         conversation_id=conversation_id,
         user_id=body.user_id,
         display_name=body.display_name,
         project_id=body.project_id,
+        model_id=body.model_id,
     )
     await store.add_message(
         conversation_id,
@@ -141,14 +215,65 @@ async def create_conversation(
         role="user",
         content=body.message,
     )
-    stub = "[stub] Message received. AI processing not yet connected."
-    await store.add_message(
-        conversation_id,
-        user_id="system",
-        display_name="Lintel",
-        role="agent",
-        content=stub,
+
+    chat_router = getattr(request.app.state, "chat_router", None)
+    if chat_router is None:
+        await store.add_message(
+            conversation_id,
+            user_id="system",
+            display_name="Lintel",
+            role="agent",
+            content="[stub] Message received. AI processing not yet connected.",
+        )
+        return conv
+
+    model_policy, api_base = await _resolve_model(request, body.model_id)
+    result = await chat_router.classify(
+        body.message,
+        model_policy=model_policy,
+        api_base=api_base,
     )
+
+    if result.action == "start_workflow":
+        thread_ref = _thread_ref_from_conversation(conversation_id)
+        dispatcher = request.app.state.command_dispatcher
+        command = StartWorkflow(
+            thread_ref=thread_ref,
+            workflow_type=result.workflow_type,
+        )
+        await store.add_message(
+            conversation_id,
+            user_id="system",
+            display_name="Lintel",
+            role="agent",
+            content=result.reply,
+        )
+        # Dispatch workflow in background so we don't block the response
+        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+        logger.info(
+            "workflow_triggered_from_chat",
+            conversation_id=conversation_id,
+            workflow_type=result.workflow_type,
+        )
+    else:
+        # Direct chat reply
+        try:
+            reply = await chat_router.reply(
+                body.message,
+                model_policy=model_policy,
+                api_base=api_base,
+            )
+        except Exception:
+            logger.exception("chat_reply_failed")
+            reply = "Sorry, I couldn't generate a response right now."
+        await store.add_message(
+            conversation_id,
+            user_id="system",
+            display_name="Lintel",
+            role="agent",
+            content=reply,
+        )
+
     return conv
 
 
@@ -185,15 +310,16 @@ async def send_message(
     conversation_id: str,
     body: SendMessageRequest,
     store: ChatStoreDep,
+    request: Request,
 ) -> dict[str, Any]:
-    """Send a message to an existing conversation."""
+    """Send a message to an existing conversation. Routes user messages through the chat router."""
     if body.role not in ("user", "agent", "system"):
         raise HTTPException(
             status_code=422,
             detail="role must be one of: user, agent, system",
         )
     try:
-        return await store.add_message(
+        user_msg = await store.add_message(
             conversation_id,
             user_id=body.user_id,
             display_name=body.display_name,
@@ -205,6 +331,68 @@ async def send_message(
             status_code=404,
             detail=f"Conversation {conversation_id} not found",
         )
+
+    # Only route user messages through the chat router
+    if body.role != "user":
+        return user_msg
+
+    chat_router = getattr(request.app.state, "chat_router", None)
+    if chat_router is None:
+        return user_msg
+
+    # Use explicit model_id from request, or fall back to conversation's model_id
+    effective_model_id = body.model_id
+    if effective_model_id is None:
+        conv = await store.get(conversation_id)
+        if conv is not None:
+            effective_model_id = conv.get("model_id")
+
+    model_policy, api_base = await _resolve_model(request, effective_model_id)
+    result = await chat_router.classify(
+        body.message,
+        model_policy=model_policy,
+        api_base=api_base,
+    )
+
+    if result.action == "start_workflow":
+        thread_ref = _thread_ref_from_conversation(conversation_id)
+        dispatcher = request.app.state.command_dispatcher
+        command = StartWorkflow(
+            thread_ref=thread_ref,
+            workflow_type=result.workflow_type,
+        )
+        await store.add_message(
+            conversation_id,
+            user_id="system",
+            display_name="Lintel",
+            role="agent",
+            content=result.reply,
+        )
+        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+        logger.info(
+            "workflow_triggered_from_chat",
+            conversation_id=conversation_id,
+            workflow_type=result.workflow_type,
+        )
+    else:
+        try:
+            reply = await chat_router.reply(
+                body.message,
+                model_policy=model_policy,
+                api_base=api_base,
+            )
+        except Exception:
+            logger.exception("chat_reply_failed")
+            reply = "Sorry, I couldn't generate a response right now."
+        await store.add_message(
+            conversation_id,
+            user_id="system",
+            display_name="Lintel",
+            role="agent",
+            content=reply,
+        )
+
+    return user_msg
 
 
 @router.delete(

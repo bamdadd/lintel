@@ -3,20 +3,12 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, patch
 
-import pytest
-from fastapi.testclient import TestClient
-
-from lintel.api.app import create_app
+import httpx
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
-
-@pytest.fixture()
-def client() -> Generator[TestClient]:
-    with TestClient(create_app()) as c:
-        yield c
+    from fastapi.testclient import TestClient
 
 
 class TestAIProvidersAPI:
@@ -269,6 +261,82 @@ class TestAIProvidersAPI:
     def test_list_provider_models_not_found(self, client: TestClient) -> None:
         resp = client.get("/api/v1/ai-providers/nonexistent/models")
         assert resp.status_code == 404
+
+    def test_available_models_non_ollama_returns_400(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/ai-providers",
+            json={
+                "provider_id": "p1",
+                "provider_type": "anthropic",
+                "name": "Anthropic",
+                "api_key": "sk-ant-test-12345678",
+            },
+        )
+        resp = client.get("/api/v1/ai-providers/p1/available-models")
+        assert resp.status_code == 400
+        assert "only supported for ollama" in resp.json()["detail"]
+
+    def test_available_models_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/ai-providers/nope/available-models")
+        assert resp.status_code == 404
+
+    def test_available_models_ollama(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/ai-providers",
+            json={
+                "provider_id": "ollama-1",
+                "provider_type": "ollama",
+                "name": "Local Ollama",
+                "api_base": "http://localhost:11434",
+            },
+        )
+        mock_response = httpx.Response(
+            200,
+            request=httpx.Request("GET", "http://localhost:11434/api/tags"),
+            json={
+                "models": [
+                    {
+                        "name": "llama3:latest",
+                        "size": 4_000_000_000,
+                        "details": {
+                            "family": "llama",
+                            "parameter_size": "8B",
+                            "quantization_level": "Q4_0",
+                            "format": "gguf",
+                        },
+                    },
+                    {
+                        "name": "codellama:7b",
+                        "size": 3_800_000_000,
+                        "details": {
+                            "family": "llama",
+                            "parameter_size": "7B",
+                            "quantization_level": "Q4_0",
+                            "format": "gguf",
+                        },
+                    },
+                ],
+            },
+        )
+        with patch("lintel.api.routes.ai_providers.httpx.AsyncClient") as mock_cls:
+            mock_client = AsyncMock()
+            mock_client.get.return_value = mock_response
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_cls.return_value = mock_client
+
+            resp = client.get("/api/v1/ai-providers/ollama-1/available-models")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert len(data) == 2
+            assert data[0]["model_name"] == "llama3:latest"
+            assert data[0]["display_name"] == "Llama3"
+            assert data[0]["max_tokens"] == 4096
+            assert data[0]["temperature"] == 0.7
+            assert data[0]["parameter_size"] == "8B"
+            # codellama should get coding defaults
+            assert data[1]["model_name"] == "codellama:7b"
+            assert data[1]["temperature"] == 0.2
 
     def test_api_key_not_exposed_in_list(self, client: TestClient) -> None:
         client.post(

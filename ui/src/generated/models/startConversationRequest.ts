@@ -10,4 +10,5 @@ export interface StartConversationRequest {
   display_name?: string | null;
   message: string;
   project_id?: string | null;
+  model_id?: string | null;
 }

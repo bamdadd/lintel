@@ -167,6 +167,8 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         PostgresCodeArtifactStore,
         PostgresCredentialStore,
         PostgresEnvironmentStore,
+        PostgresModelAssignmentStore,
+        PostgresModelStore,
         PostgresNotificationRuleStore,
         PostgresPipelineStore,
         PostgresPolicyStore,
@@ -203,6 +205,8 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "approval_request_store": PostgresApprovalRequestStore(pool),
         "chat_store": PostgresChatStore(pool),
         "agent_definition_store": PostgresAgentDefinitionStore(pool),
+        "model_store": PostgresModelStore(pool),
+        "model_assignment_store": PostgresModelAssignmentStore(pool),
     }
 
 
@@ -214,11 +218,20 @@ async def _noop_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    # Determine storage backend
+    # Determine storage backend from LINTEL_STORAGE_BACKEND setting.
+    # Values: "postgres" (requires LINTEL_DB_DSN), "memory" (default).
+    storage_backend = os.environ.get("LINTEL_STORAGE_BACKEND", "").lower()
     dsn = os.environ.get("LINTEL_DB_DSN")
     db_pool = None
 
-    if dsn:
+    # Auto-detect: if backend not set explicitly, infer from DSN presence
+    if not storage_backend:
+        storage_backend = "postgres" if dsn else "memory"
+
+    if storage_backend == "postgres":
+        if not dsn:
+            msg = "LINTEL_STORAGE_BACKEND=postgres requires LINTEL_DB_DSN to be set"
+            raise RuntimeError(msg)
         import asyncpg
 
         db_pool = await asyncpg.create_pool(dsn)  # type: ignore[no-untyped-call]
@@ -231,8 +244,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         setattr(app.state, name, store)
 
     # Wire command dispatcher
+    from lintel.domain.chat_router import ChatRouter
     from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
     from lintel.domain.workflow_executor import WorkflowExecutor
+    from lintel.infrastructure.models.router import DefaultModelRouter
 
     dispatcher = InMemoryCommandDispatcher()
     event_store = stores["event_store"]
@@ -249,6 +264,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     dispatcher.register(StartWorkflow, executor.execute)
     app.state.command_dispatcher = dispatcher
+
+    # Wire chat router with model router (if providers are configured)
+    ollama_base = os.environ.get("OLLAMA_API_BASE", "http://localhost:11434")
+    model_router = DefaultModelRouter(ollama_api_base=ollama_base)
+    chat_router = ChatRouter(model_router=model_router)
+    app.state.chat_router = chat_router
 
     # Seed built-in agents and skills
     await _seed_defaults(stores)
