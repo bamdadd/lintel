@@ -251,6 +251,7 @@ async def create_conversation(
         command = StartWorkflow(
             thread_ref=thread_ref,
             workflow_type=result.workflow_type,
+            sanitized_messages=(body.message,),
         )
         await store.add_message(
             conversation_id,
@@ -369,6 +370,7 @@ async def send_message(
         command = StartWorkflow(
             thread_ref=thread_ref,
             workflow_type=result.workflow_type,
+            sanitized_messages=(body.message,),
         )
         await store.add_message(
             conversation_id,
@@ -459,6 +461,7 @@ async def send_message_stream(
                     command = StartWorkflow(
                         thread_ref=thread_ref,
                         workflow_type=result.workflow_type,
+                        sanitized_messages=(body.message,),
                     )
                     asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
                 else:

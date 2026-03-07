@@ -17,10 +17,10 @@ export function AgentStepNode({ data, selected }: NodeProps & { data: AgentStepD
         minWidth: 150,
       }}
     >
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Left} />
       <strong>{data.label}</strong>
       <div style={{ fontSize: 12, opacity: 0.7 }}>{data.role}</div>
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

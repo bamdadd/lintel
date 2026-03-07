@@ -646,6 +646,7 @@ class WorkflowDefinitionRecord:
     conditional_edges: tuple[dict[str, object], ...] = ()
     entry_point: str = ""
     interrupt_before: tuple[str, ...] = ()
+    node_metadata: tuple[dict[str, str], ...] = ()
     tags: tuple[str, ...] = ()
     is_builtin: bool = False
     enabled: bool = True

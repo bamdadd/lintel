@@ -23,6 +23,7 @@ class ProcessIncomingMessage:
 class StartWorkflow:
     thread_ref: ThreadRef
     workflow_type: str
+    sanitized_messages: tuple[str, ...] = ()
     correlation_id: UUID = field(default_factory=uuid4)
 
 

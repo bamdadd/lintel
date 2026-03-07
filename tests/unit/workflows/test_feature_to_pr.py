@@ -216,7 +216,7 @@ class TestNodeFunctions:
             pr_url="",
             error=None,
         )
-        result = await plan_work(state)
+        result = await plan_work(state, {"configurable": {}})
         assert "plan" in result
         assert len(result["plan"]["tasks"]) > 0
 

@@ -25,9 +25,11 @@ class WorkflowExecutor:
         self,
         event_store: EventStore,
         graph: Any,  # noqa: ANN401
+        agent_runtime: Any = None,  # noqa: ANN401
     ) -> None:
         self._event_store = event_store
         self._graph = graph
+        self._agent_runtime = agent_runtime
 
     async def execute(self, command: StartWorkflow) -> str:
         run_id = str(uuid4())
@@ -50,8 +52,17 @@ class WorkflowExecutor:
 
         try:
             async for chunk in self._graph.astream(
-                {"thread_ref": str(command.thread_ref), "correlation_id": run_id},
-                config={"configurable": {"thread_id": run_id}},
+                {
+                    "thread_ref": str(command.thread_ref),
+                    "correlation_id": run_id,
+                    "sanitized_messages": list(command.sanitized_messages),
+                },
+                config={
+                    "configurable": {
+                        "thread_id": run_id,
+                        "agent_runtime": self._agent_runtime,
+                    }
+                },
             ):
                 for node_name, output in chunk.items():
                     await self._event_store.append(

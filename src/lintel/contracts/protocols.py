@@ -148,7 +148,8 @@ class ModelRouter(Protocol):
         policy: ModelPolicy,
         messages: list[dict[str, str]],
         api_base: str | None = None,
-    ) -> AsyncIterator[str]: ...
+    ) -> AsyncIterator[str]:
+        yield ""  # pragma: no cover
 
 
 class SandboxManager(Protocol):

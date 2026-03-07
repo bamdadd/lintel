@@ -26,7 +26,7 @@ import {
 } from '@mantine/core';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { useParams } from 'react-router';
+import { useParams, Link } from 'react-router';
 import {
   useWorkflowDefinitionsGetWorkflowDefinition,
   useWorkflowDefinitionsCreateWorkflowDefinition,
@@ -40,17 +40,17 @@ const nodeTypes = {
   approvalGate: ApprovalGateNode,
 } as const;
 
-const roles = ['pm', 'planner', 'coder', 'reviewer', 'designer', 'summarizer'];
+const roles = ['system', 'human', 'planner', 'coder', 'reviewer', 'architect', 'qa', 'security', 'devops', 'tech_lead', 'documentation', 'triage', 'pm', 'designer', 'summarizer'];
 
 const initialNodes: Node[] = [
-  { id: 'ingest', type: 'agentStep', position: { x: 250, y: 0 }, data: { label: 'Ingest', role: 'pm' } },
-  { id: 'route', type: 'agentStep', position: { x: 250, y: 100 }, data: { label: 'Route', role: 'planner' } },
-  { id: 'plan', type: 'agentStep', position: { x: 250, y: 200 }, data: { label: 'Plan', role: 'planner' } },
-  { id: 'approve_spec', type: 'approvalGate', position: { x: 250, y: 300 }, data: { label: 'Approve Spec' } },
-  { id: 'implement', type: 'agentStep', position: { x: 250, y: 400 }, data: { label: 'Implement', role: 'coder' } },
-  { id: 'review', type: 'agentStep', position: { x: 250, y: 500 }, data: { label: 'Review', role: 'reviewer' } },
-  { id: 'approve_merge', type: 'approvalGate', position: { x: 250, y: 600 }, data: { label: 'Approve Merge' } },
-  { id: 'close', type: 'agentStep', position: { x: 250, y: 700 }, data: { label: 'Close', role: 'pm' } },
+  { id: 'ingest', type: 'agentStep', position: { x: 0, y: 150 }, data: { label: 'Ingest', role: 'pm' } },
+  { id: 'route', type: 'agentStep', position: { x: 220, y: 150 }, data: { label: 'Route', role: 'planner' } },
+  { id: 'plan', type: 'agentStep', position: { x: 440, y: 150 }, data: { label: 'Plan', role: 'planner' } },
+  { id: 'approve_spec', type: 'approvalGate', position: { x: 660, y: 150 }, data: { label: 'Approve Spec' } },
+  { id: 'implement', type: 'agentStep', position: { x: 880, y: 150 }, data: { label: 'Implement', role: 'coder' } },
+  { id: 'review', type: 'agentStep', position: { x: 1100, y: 150 }, data: { label: 'Review', role: 'reviewer' } },
+  { id: 'approve_merge', type: 'approvalGate', position: { x: 1320, y: 150 }, data: { label: 'Approve Merge' } },
+  { id: 'close', type: 'agentStep', position: { x: 1540, y: 150 }, data: { label: 'Close', role: 'pm' } },
 ];
 
 const initialEdges = [
@@ -91,12 +91,22 @@ export function Component() {
       } else {
         // Convert string node IDs to ReactFlow nodes
         const approvalKeywords = ['approval', 'gate', 'approve'];
-        const converted: Node[] = (rawNodes as string[]).map((nodeId, i) => ({
-          id: String(nodeId),
-          type: approvalKeywords.some((k) => String(nodeId).includes(k)) ? 'approvalGate' : 'agentStep',
-          position: { x: 250, y: i * 120 },
-          data: { label: String(nodeId).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), role: 'coder' },
-        }));
+        const meta = (graph.node_metadata ?? {}) as Record<string, { label?: string; agent?: string; agent_id?: string; description?: string }>;
+        const converted: Node[] = (rawNodes as string[]).map((nodeId, i) => {
+          const id = String(nodeId);
+          const nm = meta[id];
+          return {
+            id,
+            type: approvalKeywords.some((k) => id.includes(k)) ? 'approvalGate' : 'agentStep',
+            position: { x: i * 220, y: 150 },
+            data: {
+              label: nm?.label ?? id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+              role: nm?.agent ?? 'coder',
+              agent_id: nm?.agent_id ?? '',
+              description: nm?.description ?? '',
+            },
+          };
+        });
         setNodes(converted);
       }
 
@@ -131,11 +141,11 @@ export function Component() {
 
   const addNode = (type: 'agentStep' | 'approvalGate') => {
     const id = `node_${Date.now()}`;
-    const maxY = nodes.reduce((max, n) => Math.max(max, n.position.y), 0);
+    const maxX = nodes.reduce((max, n) => Math.max(max, n.position.x), 0);
     const newNode: Node = {
       id,
       type,
-      position: { x: 250, y: maxY + 120 },
+      position: { x: maxX + 220, y: 150 },
       data: type === 'agentStep'
         ? { label: 'New Step', role: 'coder' }
         : { label: 'New Gate' },
@@ -255,11 +265,25 @@ export function Component() {
             />
             {selectedNode.type === 'agentStep' && (
               <Select
-                label="Role"
+                label="Agent"
                 data={roles}
                 value={String(selectedNode.data.role ?? '')}
                 onChange={(v) => v && updateNodeData('role', v)}
               />
+            )}
+            {selectedNode.data.agent_id && (
+              <Text size="xs">
+                Agent:{' '}
+                <Text component={Link} to={`/agents/${selectedNode.data.agent_id}`} size="xs" c="blue" td="underline" span>
+                  {String(selectedNode.data.role)}
+                </Text>
+              </Text>
+            )}
+            {selectedNode.data.description && (
+              <Paper p="xs" bg="var(--mantine-color-dark-6)" radius="sm">
+                <Text size="xs" fw={500} mb={4}>Description</Text>
+                <Text size="xs" c="dimmed">{String(selectedNode.data.description)}</Text>
+              </Paper>
             )}
           </Stack>
         </Paper>

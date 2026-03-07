@@ -103,18 +103,18 @@ class TestRouteNode:
 class TestPlanNode:
     async def test_produces_plan_with_tasks(self) -> None:
         state: dict[str, Any] = {"intent": "feature"}
-        result = await plan_work(state)  # type: ignore[arg-type]
+        result = await plan_work(state, {"configurable": {}})  # type: ignore[arg-type]
         assert "tasks" in result["plan"]
         assert len(result["plan"]["tasks"]) > 0
 
     async def test_includes_intent_in_plan(self) -> None:
         state: dict[str, Any] = {"intent": "bug"}
-        result = await plan_work(state)  # type: ignore[arg-type]
+        result = await plan_work(state, {"configurable": {}})  # type: ignore[arg-type]
         assert result["plan"]["intent"] == "bug"
 
     async def test_sets_approval_phase(self) -> None:
         state: dict[str, Any] = {"intent": "feature"}
-        result = await plan_work(state)  # type: ignore[arg-type]
+        result = await plan_work(state, {"configurable": {}})  # type: ignore[arg-type]
         assert result["current_phase"] == "awaiting_spec_approval"
         assert "spec_approval" in result["pending_approvals"]
 

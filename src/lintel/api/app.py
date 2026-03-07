@@ -269,16 +269,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     noop_graph = AsyncMock()
     noop_graph.astream = _noop_astream
 
-    executor = WorkflowExecutor(event_store=event_store, graph=noop_graph)
+    # Wire chat router with model router and MCP tool support
+    ollama_base = os.environ.get("OLLAMA_API_BASE", "http://localhost:11434")
+    model_router = DefaultModelRouter(ollama_api_base=ollama_base)
+
+    from lintel.agents.runtime import AgentRuntime
+
+    agent_runtime = AgentRuntime(event_store=event_store, model_router=model_router)
+    app.state.agent_runtime = agent_runtime
+
+    executor = WorkflowExecutor(
+        event_store=event_store,
+        graph=noop_graph,
+        agent_runtime=agent_runtime,
+    )
 
     from lintel.contracts.commands import StartWorkflow
 
     dispatcher.register(StartWorkflow, executor.execute)
     app.state.command_dispatcher = dispatcher
-
-    # Wire chat router with model router and MCP tool support
-    ollama_base = os.environ.get("OLLAMA_API_BASE", "http://localhost:11434")
-    model_router = DefaultModelRouter(ollama_api_base=ollama_base)
 
     from lintel.infrastructure.mcp.tool_client import MCPToolClient
 

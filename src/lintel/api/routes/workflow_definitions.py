@@ -29,6 +29,10 @@ def _wf_to_dict(wf: object) -> dict[str, Any]:
             "conditional_edges": [dict(e) for e in data.get("conditional_edges", [])],
             "entry_point": data.get("entry_point", ""),
             "interrupt_before": list(data.get("interrupt_before", [])),
+            "node_metadata": {
+                m["node"]: {k: v for k, v in m.items() if k != "node"}
+                for m in data.get("node_metadata", [])
+            },
         },
         "stage_names": list(data.get("stage_names", [])),
         "created_at": now,

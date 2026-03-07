@@ -67,7 +67,7 @@ def _gate(name: str) -> Any:  # noqa: ANN401
 
 def build_bug_fix_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(ThreadWorkflowState)
-    g.add_node("triage", triage_issue)  # type: ignore[type-var]
+    g.add_node("triage", triage_issue)
     g.add_node("reproduce", reproduce_bug)
     g.add_node("fix", fix_bug)
     g.add_node("test", run_tests)
