@@ -4,13 +4,13 @@
  * Lintel
  * OpenAPI spec version: 0.1.0
  */
-import type { ModelPolicyRequest } from './modelPolicyRequest';
 
 export interface UpdateAgentDefinitionRequest {
   name?: string | null;
   description?: string | null;
   system_prompt?: string | null;
-  model_policy?: ModelPolicyRequest | null;
+  max_tokens?: number | null;
+  temperature?: number | null;
   allowed_skills?: string[] | null;
   role?: string | null;
 }

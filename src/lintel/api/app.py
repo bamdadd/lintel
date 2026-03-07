@@ -94,12 +94,8 @@ async def _seed_defaults(stores: dict[str, Any]) -> None:
         for key, value in data.items():
             if isinstance(value, (frozenset, tuple)):
                 data[key] = list(value)
-        data["model_policy"] = {
-            "provider": data.pop("model_provider"),
-            "model_name": data.pop("model_name"),
-            "max_tokens": data.pop("max_tokens"),
-            "temperature": data.pop("temperature"),
-        }
+        # max_tokens and temperature are agent-level tuning params
+        # model selection comes from the user's configured AI providers
         existing = await agent_store.get(agent.agent_id)
         if existing is None:
             await agent_store.create(data)

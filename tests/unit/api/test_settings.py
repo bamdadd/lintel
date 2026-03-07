@@ -119,7 +119,7 @@ class TestGeneralSettingsAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert data["workspace_name"] == "default"
-        assert data["default_model_provider"] == "anthropic"
+        assert data["default_model_provider"] == ""
         assert data["pii_detection_enabled"] is True
         assert data["sandbox_enabled"] is True
         assert data["max_concurrent_workflows"] == 10
@@ -129,7 +129,7 @@ class TestGeneralSettingsAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert data["workspace_name"] == "acme"
-        assert data["default_model_provider"] == "anthropic"
+        assert data["default_model_provider"] == ""
         assert data["pii_detection_enabled"] is True
         assert data["sandbox_enabled"] is True
         assert data["max_concurrent_workflows"] == 10

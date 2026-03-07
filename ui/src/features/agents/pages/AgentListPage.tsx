@@ -18,9 +18,6 @@ interface AgentDef {
   role: string;
   category?: string;
   description?: string;
-  model_policy?: { provider?: string; model_name?: string };
-  model_provider?: string;
-  model_name?: string;
   is_builtin?: boolean;
   tags?: string[];
 }
@@ -105,16 +102,7 @@ export function Component() {
               </Text>
             </Group>
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
-              {agents.map((def) => {
-                const provider =
-                  def.model_policy?.provider ??
-                  def.model_provider ??
-                  'default';
-                const model =
-                  def.model_policy?.model_name ??
-                  def.model_name ??
-                  'default';
-                return (
+              {agents.map((def) => (
                   <Paper
                     key={def.agent_id}
                     withBorder
@@ -145,17 +133,12 @@ export function Component() {
                         size="sm"
                         c="dimmed"
                         lineClamp={2}
-                        mb="xs"
                       >
                         {def.description}
                       </Text>
                     )}
-                    <Text size="xs" c="dimmed">
-                      {provider} / {model}
-                    </Text>
                   </Paper>
-                );
-              })}
+                ))}
             </SimpleGrid>
           </Paper>
         );

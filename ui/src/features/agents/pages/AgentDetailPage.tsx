@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   Title,
@@ -13,6 +14,7 @@ import {
   NumberInput,
   MultiSelect,
   Tabs,
+  Text,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
@@ -32,14 +34,6 @@ interface AgentDef {
   allowed_skill_ids?: string[];
   role: string;
   is_builtin?: boolean;
-  model_policy?: {
-    provider: string;
-    model_name: string;
-    max_tokens: number;
-    temperature: number;
-  };
-  model_provider?: string;
-  model_name?: string;
   max_tokens?: number;
   temperature?: number;
 }
@@ -68,38 +62,33 @@ export function Component() {
       description: definition?.description ?? '',
       system_prompt: definition?.system_prompt ?? '',
       allowed_skills: definition?.allowed_skills ?? definition?.allowed_skill_ids ?? [],
-      provider: definition?.model_policy?.provider ?? definition?.model_provider ?? 'anthropic',
-      model_name: definition?.model_policy?.model_name ?? definition?.model_name ?? '',
-      max_tokens: definition?.model_policy?.max_tokens ?? definition?.max_tokens ?? 4096,
-      temperature: definition?.model_policy?.temperature ?? definition?.temperature ?? 0,
+      max_tokens: definition?.max_tokens ?? 4096,
+      temperature: definition?.temperature ?? 0,
     },
   });
 
   // Sync form values when data loads
-  if (definition && !defForm.isDirty()) {
-    defForm.setValues({
-      name: definition.name,
-      description: definition.description ?? '',
-      system_prompt: definition.system_prompt ?? '',
-      allowed_skills: definition.allowed_skills ?? definition.allowed_skill_ids ?? [],
-      provider: definition.model_policy?.provider ?? definition.model_provider ?? 'anthropic',
-      model_name: definition.model_policy?.model_name ?? definition.model_name ?? '',
-      max_tokens: definition.model_policy?.max_tokens ?? definition.max_tokens ?? 4096,
-      temperature: definition.model_policy?.temperature ?? definition.temperature ?? 0,
-    });
-  }
+  useEffect(() => {
+    if (definition && !defForm.isDirty()) {
+      defForm.setValues({
+        name: definition.name,
+        description: definition.description ?? '',
+        system_prompt: definition.system_prompt ?? '',
+        allowed_skills: definition.allowed_skills ?? definition.allowed_skill_ids ?? [],
+        max_tokens: definition.max_tokens ?? 4096,
+        temperature: definition.temperature ?? 0,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [definition]);
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   const handleSubmit = defForm.onSubmit((values) => {
-    const { provider, model_name, max_tokens, temperature, ...rest } = values;
     updateDefMutation.mutate(
       {
         agentId: agentId ?? '',
-        data: {
-          ...rest,
-          model_policy: { provider, model_name, max_tokens, temperature },
-        },
+        data: values,
       },
       {
         onSuccess: () => {
@@ -139,7 +128,7 @@ export function Component() {
       <Tabs defaultValue="definition">
         <Tabs.List>
           <Tabs.Tab value="definition">Definition</Tabs.Tab>
-          <Tabs.Tab value="model">Model Policy</Tabs.Tab>
+          <Tabs.Tab value="tuning">Tuning</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="definition" pt="md">
@@ -186,18 +175,13 @@ export function Component() {
           </Paper>
         </Tabs.Panel>
 
-        <Tabs.Panel value="model" pt="md">
+        <Tabs.Panel value="tuning" pt="md">
           <Paper withBorder p="lg" radius="md">
+            <Text size="sm" c="dimmed" mb="md">
+              Model selection is configured via AI Providers. These are agent-specific generation parameters.
+            </Text>
             <form onSubmit={handleSubmit}>
               <Stack gap="sm">
-                <TextInput
-                  label="Provider"
-                  {...defForm.getInputProps('provider')}
-                />
-                <TextInput
-                  label="Model Name"
-                  {...defForm.getInputProps('model_name')}
-                />
                 <NumberInput
                   label="Max Tokens"
                   min={1}

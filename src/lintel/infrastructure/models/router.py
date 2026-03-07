@@ -15,33 +15,6 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-DEFAULT_ROUTING: dict[tuple[str, str], ModelPolicy] = {
-    ("planner", "planning"): ModelPolicy(
-        "anthropic",
-        "claude-sonnet-4-20250514",
-        8192,
-        0.1,
-    ),
-    ("coder", "coding"): ModelPolicy(
-        "anthropic",
-        "claude-sonnet-4-20250514",
-        16384,
-        0.0,
-    ),
-    ("reviewer", "review"): ModelPolicy(
-        "anthropic",
-        "claude-sonnet-4-20250514",
-        8192,
-        0.0,
-    ),
-    ("summarizer", "summarize"): ModelPolicy(
-        "anthropic",
-        "claude-haiku-35-20241022",
-        4096,
-        0.0,
-    ),
-}
-
 FALLBACK_POLICY = ModelPolicy("ollama", "llama3.1:8b", 4096, 0.0)
 
 
@@ -50,11 +23,13 @@ class DefaultModelRouter:
 
     def __init__(
         self,
+        default_policy: ModelPolicy | None = None,
         routing_table: dict[tuple[str, str], ModelPolicy] | None = None,
         fallback: ModelPolicy = FALLBACK_POLICY,
         ollama_api_base: str | None = None,
     ) -> None:
-        self._routing = DEFAULT_ROUTING if routing_table is None else routing_table
+        self._default = default_policy
+        self._routing = routing_table or {}
         self._fallback = fallback
         self._ollama_api_base = ollama_api_base
 
@@ -64,7 +39,7 @@ class DefaultModelRouter:
         workload_type: str,
     ) -> ModelPolicy:
         key = (agent_role.value, workload_type)
-        policy = self._routing.get(key, self._fallback)
+        policy = self._routing.get(key, self._default or self._fallback)
         logger.info(
             "model_selected",
             agent_role=agent_role.value,

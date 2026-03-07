@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.contracts.commands import ScheduleAgentStep
-from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
+from lintel.contracts.types import AgentRole, ThreadRef
 
 _VALID_ROLES = frozenset(role.value for role in AgentRole)
 
@@ -57,16 +57,6 @@ def get_agent_definition_store(
 router = APIRouter()
 
 
-def get_model_policies(request: Request) -> dict[str, dict[str, Any]]:
-    """Get mutable model policies from app state."""
-    if not hasattr(request.app.state, "model_policies"):
-        request.app.state.model_policies = {
-            role.value: asdict(ModelPolicy("anthropic", "claude-sonnet-4-20250514"))
-            for role in AgentRole
-        }
-    return request.app.state.model_policies  # type: ignore[no-any-return]
-
-
 class ScheduleAgentStepRequest(BaseModel):
     workspace_id: str
     channel_id: str
@@ -74,13 +64,6 @@ class ScheduleAgentStepRequest(BaseModel):
     agent_role: AgentRole
     step_name: str
     context: dict[str, Any] = {}
-
-
-class UpdateModelPolicyRequest(BaseModel):
-    provider: str
-    model_name: str
-    max_tokens: int = 4096
-    temperature: float = 0.0
 
 
 class TestPromptRequest(BaseModel):
@@ -91,40 +74,6 @@ class TestPromptRequest(BaseModel):
 @router.get("/agents/roles")
 async def list_agent_roles() -> list[str]:
     return [role.value for role in AgentRole]
-
-
-@router.get("/agents/policies")
-async def list_model_policies(request: Request) -> dict[str, dict[str, Any]]:
-    """Get model policies for all agent roles."""
-    return get_model_policies(request)
-
-
-@router.get("/agents/policies/{role}")
-async def get_model_policy(role: str, request: Request) -> dict[str, Any]:
-    """Get model policy for a specific agent role."""
-    policies = get_model_policies(request)
-    if role not in policies:
-        raise HTTPException(status_code=404, detail="Role not found")
-    return {"role": role, **policies[role]}
-
-
-@router.put("/agents/policies/{role}")
-async def update_model_policy(
-    role: str, body: UpdateModelPolicyRequest, request: Request
-) -> dict[str, Any]:
-    """Update model policy for a specific agent role."""
-    try:
-        AgentRole(role)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Role not found")  # noqa: B904
-    policies = get_model_policies(request)
-    policies[role] = {
-        "provider": body.provider,
-        "model_name": body.model_name,
-        "max_tokens": body.max_tokens,
-        "temperature": body.temperature,
-    }
-    return {"role": role, **policies[role]}
 
 
 @router.post("/agents/test-prompt")
@@ -163,19 +112,13 @@ async def schedule_agent_step(
 # --- Custom Agent Definition models and endpoints ---
 
 
-class ModelPolicyRequest(BaseModel):
-    provider: str
-    model_name: str
-    max_tokens: int = 4096
-    temperature: float = 0.0
-
-
 class CreateAgentDefinitionRequest(BaseModel):
     agent_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     description: str
     system_prompt: str
-    model_policy: ModelPolicyRequest
+    max_tokens: int = 4096
+    temperature: float = 0.0
     allowed_skills: list[str] = []
     role: str
 
@@ -184,7 +127,8 @@ class UpdateAgentDefinitionRequest(BaseModel):
     name: str | None = None
     description: str | None = None
     system_prompt: str | None = None
-    model_policy: ModelPolicyRequest | None = None
+    max_tokens: int | None = None
+    temperature: float | None = None
     allowed_skills: list[str] | None = None
     role: str | None = None
 
@@ -199,7 +143,6 @@ async def create_agent_definition(
 ) -> dict[str, Any]:
     """Create a custom agent definition."""
     definition = body.model_dump()
-    definition["model_policy"] = body.model_policy.model_dump()
     try:
         return await store.create(definition)
     except ValueError:
@@ -240,8 +183,6 @@ async def update_agent_definition(
 ) -> dict[str, Any]:
     """Update a custom agent definition (partial)."""
     updates = body.model_dump(exclude_none=True)
-    if "model_policy" in updates:
-        updates["model_policy"] = body.model_policy.model_dump()  # type: ignore[union-attr]
     try:
         return await store.update(agent_id, updates)
     except KeyError:

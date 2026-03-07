@@ -20,7 +20,7 @@ def get_general_settings(request: Request) -> dict[str, Any]:
     if not hasattr(request.app.state, "general_settings"):
         request.app.state.general_settings = {
             "workspace_name": "default",
-            "default_model_provider": "anthropic",
+            "default_model_provider": "",
             "pii_detection_enabled": True,
             "sandbox_enabled": True,
             "max_concurrent_workflows": 10,

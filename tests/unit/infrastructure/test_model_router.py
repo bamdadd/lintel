@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from lintel.contracts.types import AgentRole, ModelPolicy
 from lintel.infrastructure.models.router import (
-    DEFAULT_ROUTING,
     FALLBACK_POLICY,
     DefaultModelRouter,
 )
@@ -15,39 +14,40 @@ from lintel.infrastructure.models.router import (
 class TestDefaultModelRouter:
     """Tests for model selection logic."""
 
-    async def test_select_known_role_and_workload(self) -> None:
+    async def test_select_uses_default_policy_when_set(self) -> None:
+        default = ModelPolicy("ollama", "mistral:7b", 4096, 0.0)
+        router = DefaultModelRouter(default_policy=default)
+        policy = await router.select_model(AgentRole.PLANNER, "planning")
+        assert policy == default
+
+    async def test_select_falls_back_when_no_default(self) -> None:
         router = DefaultModelRouter()
         policy = await router.select_model(AgentRole.PLANNER, "planning")
-        assert policy.provider == "anthropic"
-        assert "claude" in policy.model_name
-
-    async def test_select_unknown_workload_returns_fallback(self) -> None:
-        router = DefaultModelRouter()
-        policy = await router.select_model(AgentRole.PLANNER, "unknown_workload")
         assert policy == FALLBACK_POLICY
 
-    async def test_custom_routing_table(self) -> None:
+    async def test_custom_routing_table_takes_precedence(self) -> None:
         custom = {
             ("planner", "planning"): ModelPolicy("openai", "gpt-4o", 4096, 0.0),
         }
-        router = DefaultModelRouter(routing_table=custom)
+        default = ModelPolicy("ollama", "mistral:7b", 4096, 0.0)
+        router = DefaultModelRouter(default_policy=default, routing_table=custom)
         policy = await router.select_model(AgentRole.PLANNER, "planning")
         assert policy.provider == "openai"
 
+    async def test_routing_miss_uses_default_not_fallback(self) -> None:
+        custom = {
+            ("planner", "planning"): ModelPolicy("openai", "gpt-4o", 4096, 0.0),
+        }
+        default = ModelPolicy("ollama", "mistral:7b", 4096, 0.0)
+        router = DefaultModelRouter(default_policy=default, routing_table=custom)
+        policy = await router.select_model(AgentRole.CODER, "coding")
+        assert policy == default
+
     async def test_custom_fallback(self) -> None:
         fallback = ModelPolicy("test", "test-model", 1024, 0.5)
-        router = DefaultModelRouter(routing_table={}, fallback=fallback)
+        router = DefaultModelRouter(fallback=fallback)
         policy = await router.select_model(AgentRole.CODER, "coding")
         assert policy == fallback
-
-    async def test_default_routing_covers_key_roles(self) -> None:
-        expected_keys = {
-            ("planner", "planning"),
-            ("coder", "coding"),
-            ("reviewer", "review"),
-            ("summarizer", "summarize"),
-        }
-        assert expected_keys == set(DEFAULT_ROUTING.keys())
 
     async def test_ollama_api_base_passed_to_litellm(self) -> None:
         mock_response = MagicMock()
@@ -74,10 +74,10 @@ class TestDefaultModelRouter:
         mock_response.choices[0].message.content = "test"
         mock_response.usage.prompt_tokens = 10
         mock_response.usage.completion_tokens = 5
-        mock_response.model = "anthropic/claude-sonnet-4-20250514"
+        mock_response.model = "openai/gpt-4o"
 
         router = DefaultModelRouter(ollama_api_base="http://localhost:11434")
-        policy = ModelPolicy("anthropic", "claude-sonnet-4-20250514", 8192, 0.1)
+        policy = ModelPolicy("openai", "gpt-4o", 8192, 0.1)
 
         with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_response):
             import litellm

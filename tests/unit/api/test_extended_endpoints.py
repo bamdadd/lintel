@@ -47,46 +47,7 @@ def client() -> Generator[TestClient]:
         yield c
 
 
-class TestAgentPolicies:
-    def test_list_policies(self, client: TestClient) -> None:
-        resp = client.get("/api/v1/agents/policies")
-        assert resp.status_code == 200
-        data = resp.json()
-        for role in ("planner", "coder", "reviewer", "pm", "designer", "summarizer"):
-            assert role in data
-
-    def test_get_policy(self, client: TestClient) -> None:
-        resp = client.get("/api/v1/agents/policies/planner")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "role" in data
-        assert "provider" in data
-
-    def test_update_policy(self, client: TestClient) -> None:
-        resp = client.put(
-            "/api/v1/agents/policies/planner",
-            json={
-                "provider": "openai",
-                "model_name": "gpt-4o",
-                "max_tokens": 8192,
-                "temperature": 0.5,
-            },
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["provider"] == "openai"
-        assert data["model_name"] == "gpt-4o"
-
-    def test_update_invalid_role(self, client: TestClient) -> None:
-        resp = client.put(
-            "/api/v1/agents/policies/invalid",
-            json={
-                "provider": "openai",
-                "model_name": "gpt-4o",
-            },
-        )
-        assert resp.status_code == 404
-
+class TestAgentEndpoints:
     def test_test_prompt(self, client: TestClient) -> None:
         resp = client.post(
             "/api/v1/agents/test-prompt",

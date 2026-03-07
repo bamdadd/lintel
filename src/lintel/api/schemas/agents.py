@@ -5,14 +5,6 @@ from typing import Any
 from pydantic import BaseModel
 
 
-class ModelPolicyResponse(BaseModel):
-    role: str = ""
-    provider: str = ""
-    model_name: str = ""
-    max_tokens: int = 4096
-    temperature: float = 0.0
-
-
 class TestPromptResponse(BaseModel):
     agent_role: str
     messages: list[dict[str, str]]
@@ -32,6 +24,7 @@ class AgentDefinitionResponse(BaseModel):
     name: str
     description: str = ""
     system_prompt: str = ""
-    model_policy: dict[str, Any] = {}
+    max_tokens: int = 4096
+    temperature: float = 0.0
     allowed_skills: list[str] = []
     role: str = ""

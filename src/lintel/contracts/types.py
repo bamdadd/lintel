@@ -622,8 +622,6 @@ class AgentDefinitionRecord:
     category: str = AgentCategory.ENGINEERING
     description: str = ""
     system_prompt: str = ""
-    model_provider: str = "anthropic"
-    model_name: str = "claude-sonnet-4-20250514"
     max_tokens: int = 4096
     temperature: float = 0.0
     allowed_skill_ids: tuple[str, ...] = ()

@@ -26,10 +26,6 @@ def _agent_payload(
         "name": name,
         "description": "A test agent",
         "system_prompt": "You are helpful.",
-        "model_policy": {
-            "provider": "anthropic",
-            "model_name": "claude-sonnet-4-20250514",
-        },
         "allowed_skills": [],
         "role": "coder",
     }
