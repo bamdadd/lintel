@@ -11,16 +11,25 @@ from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStat
 
 router = APIRouter()
 
-_DEFAULT_STAGE_NAMES = (
-    "ingest",
-    "plan",
-    "approve_spec",
-    "implement",
-    "test",
-    "review",
-    "approve_merge",
-    "merge",
-)
+
+def _stage_names_for_workflow(workflow_definition_id: str) -> tuple[str, ...]:
+    """Look up stage names from the seed data for a given workflow."""
+    from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
+
+    for wf in DEFAULT_WORKFLOW_DEFINITIONS:
+        if wf.definition_id == workflow_definition_id:
+            return wf.stage_names
+    # Fallback for custom workflows
+    return (
+        "ingest",
+        "plan",
+        "approve_spec",
+        "implement",
+        "test",
+        "review",
+        "approve_merge",
+        "merge",
+    )
 
 
 class InMemoryPipelineStore:
@@ -74,13 +83,14 @@ async def create_pipeline(
     existing = await store.get(body.run_id)
     if existing is not None:
         raise HTTPException(status_code=409, detail="Pipeline run already exists")
+    stage_names = _stage_names_for_workflow(body.workflow_definition_id)
     stages = tuple(
         Stage(
             stage_id=str(uuid.uuid4()),
             name=name,
             stage_type=name,
         )
-        for name in _DEFAULT_STAGE_NAMES
+        for name in stage_names
     )
     run = PipelineRun(
         run_id=body.run_id,

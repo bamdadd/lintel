@@ -1,5 +1,6 @@
 """Workflow template and graph definition CRUD endpoints."""
 
+import dataclasses
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -10,49 +11,38 @@ from pydantic import BaseModel, Field
 router = APIRouter()
 
 
+def _wf_to_dict(wf: object) -> dict[str, Any]:
+    """Convert a WorkflowDefinitionRecord to the API dict format."""
+    data = dataclasses.asdict(wf)  # type: ignore[arg-type]
+    now = datetime.now(UTC).isoformat()
+    # Rebuild into the nested graph format the UI expects
+    return {
+        "definition_id": data["definition_id"],
+        "name": data["name"],
+        "description": data["description"],
+        "is_template": data["is_template"],
+        "is_builtin": data.get("is_builtin", False),
+        "tags": list(data.get("tags", [])),
+        "graph": {
+            "nodes": list(data.get("graph_nodes", [])),
+            "edges": [list(e) for e in data.get("graph_edges", [])],
+            "conditional_edges": [dict(e) for e in data.get("conditional_edges", [])],
+            "entry_point": data.get("entry_point", ""),
+            "interrupt_before": list(data.get("interrupt_before", [])),
+        },
+        "stage_names": list(data.get("stage_names", [])),
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
 def get_workflow_defs(request: Request) -> dict[str, dict[str, Any]]:
     """Get workflow definitions store from app state."""
     if not hasattr(request.app.state, "workflow_definitions"):
+        from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
+
         request.app.state.workflow_definitions = {
-            "feature_to_pr": {
-                "definition_id": "feature_to_pr",
-                "name": "Feature to PR",
-                "description": "End-to-end feature implementation workflow",
-                "is_template": True,
-                "graph": {
-                    "nodes": [
-                        "ingest",
-                        "route",
-                        "plan",
-                        "approval_gate_spec",
-                        "implement",
-                        "review",
-                        "approval_gate_merge",
-                        "close",
-                    ],
-                    "edges": [
-                        ["ingest", "route"],
-                        ["plan", "approval_gate_spec"],
-                        ["approval_gate_spec", "implement"],
-                        ["implement", "review"],
-                        ["review", "approval_gate_merge"],
-                        ["approval_gate_merge", "close"],
-                    ],
-                    "conditional_edges": [
-                        {
-                            "source": "route",
-                            "targets": {"plan": "plan", "close": "close"},
-                        }
-                    ],
-                    "entry_point": "ingest",
-                    "interrupt_before": [
-                        "approval_gate_spec",
-                        "approval_gate_merge",
-                    ],
-                },
-                "created_at": datetime.now(UTC).isoformat(),
-                "updated_at": datetime.now(UTC).isoformat(),
-            }
+            wf.definition_id: _wf_to_dict(wf) for wf in DEFAULT_WORKFLOW_DEFINITIONS
         }
     return request.app.state.workflow_definitions  # type: ignore[no-any-return]
 

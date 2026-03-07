@@ -78,6 +78,14 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/pipelines/pages/PipelineListPage'),
       },
       {
+        path: 'pipelines/runs/:runId',
+        lazy: () => import('@/features/pipelines/pages/RunDetailPage'),
+      },
+      {
+        path: 'pipelines/:runId',
+        lazy: () => import('@/features/pipelines/pages/PipelineDetailPage'),
+      },
+      {
         path: 'users',
         lazy: () => import('@/features/users/pages/UserListPage'),
       },
@@ -112,6 +120,10 @@ export const router = createBrowserRouter([
       {
         path: 'ai-providers',
         lazy: () => import('@/features/ai-providers/pages/AIProviderListPage'),
+      },
+      {
+        path: 'models',
+        lazy: () => import('@/features/models/pages/ModelListPage'),
       },
       {
         path: 'artifacts',

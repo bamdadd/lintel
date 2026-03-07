@@ -57,6 +57,24 @@ make test-integration  # Needs Docker (uses testcontainers)
 make test              # All tests
 ```
 
+## Local Ollama models
+
+To use a local Ollama instance as a model provider:
+
+1. Install and start [Ollama](https://ollama.ai)
+2. Pull a model: `ollama pull llama3.1:8b`
+3. Set environment variables (or add to `.env`):
+
+```bash
+export LINTEL_MODEL_FALLBACK_PROVIDER=ollama
+export LINTEL_MODEL_FALLBACK_MODEL=llama3.1:8b
+export LINTEL_MODEL_OLLAMA_API_BASE=http://localhost:11434
+```
+
+Ollama is configured as the default fallback provider. When the primary provider
+(Anthropic) is unavailable or a role has no explicit routing entry, the router
+falls back to the local Ollama model.
+
 ## Database migrations
 
 ```bash

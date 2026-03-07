@@ -46,7 +46,7 @@ class TestPipelinesAPI:
         assert data["run_id"] == "run1"
         assert data["project_id"] == "proj-1"
         assert data["status"] == "pending"
-        assert len(data["stages"]) == 8
+        assert len(data["stages"]) == 9  # feature_to_pr has 9 stages
 
     def test_create_pipeline_duplicate_returns_409(
         self,
@@ -95,7 +95,7 @@ class TestPipelinesAPI:
         data = resp.json()
         assert data["status"] == "cancelled"
         skipped = [s for s in data["stages"] if s["status"] == "skipped"]
-        assert len(skipped) == 8
+        assert len(skipped) == 9  # all pending stages get skipped
 
     def test_delete_pipeline(self, client: TestClient) -> None:
         _create_pipeline(client, "run1")

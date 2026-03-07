@@ -30,6 +30,15 @@ class ActorType(StrEnum):
     SYSTEM = "system"
 
 
+class AgentCategory(StrEnum):
+    ENGINEERING = "engineering"
+    QUALITY = "quality"
+    OPERATIONS = "operations"
+    LEADERSHIP = "leadership"
+    COMMUNICATION = "communication"
+    DESIGN = "design"
+
+
 class AgentRole(StrEnum):
     PLANNER = "planner"
     CODER = "coder"
@@ -37,6 +46,13 @@ class AgentRole(StrEnum):
     PM = "pm"
     DESIGNER = "designer"
     SUMMARIZER = "summarizer"
+    ARCHITECT = "architect"
+    QA_ENGINEER = "qa_engineer"
+    DEVOPS = "devops"
+    SECURITY = "security"
+    TECH_LEAD = "tech_lead"
+    DOCUMENTATION = "documentation"
+    TRIAGE = "triage"
 
 
 class WorkflowPhase(StrEnum):
@@ -132,6 +148,42 @@ class ModelPolicy:
     model_name: str
     max_tokens: int = 4096
     temperature: float = 0.0
+
+
+@dataclass(frozen=True)
+class Model:
+    """A specific AI model available through a provider."""
+
+    model_id: str
+    provider_id: str
+    name: str
+    model_name: str
+    max_tokens: int = 4096
+    temperature: float = 0.0
+    is_default: bool = False
+    capabilities: tuple[str, ...] = ()
+    config: dict[str, object] | None = None
+
+
+class ModelAssignmentContext(StrEnum):
+    """Where a model can be used."""
+
+    TASK = "task"
+    CHAT = "chat"
+    WORKFLOW_STEP = "workflow_step"
+    PIPELINE_STEP = "pipeline_step"
+    AGENT_ROLE = "agent_role"
+
+
+@dataclass(frozen=True)
+class ModelAssignment:
+    """Binds a model to a usage context."""
+
+    assignment_id: str
+    model_id: str
+    context: ModelAssignmentContext
+    context_id: str
+    priority: int = 0
 
 
 @dataclass(frozen=True)
@@ -520,6 +572,82 @@ class AuditEntry:
     resource_id: str
     details: dict[str, object] | None = None
     timestamp: str = ""
+
+
+# --- Agent & Skill Definitions ---
+
+
+class SkillCategory(StrEnum):
+    CODE_GENERATION = "code_generation"
+    CODE_ANALYSIS = "code_analysis"
+    TESTING = "testing"
+    DOCUMENTATION = "documentation"
+    DEVOPS = "devops"
+    SECURITY = "security"
+    PROJECT_MANAGEMENT = "project_management"
+    DESIGN = "design"
+    COMMUNICATION = "communication"
+    DATA = "data"
+    CUSTOM = "custom"
+
+
+@dataclass(frozen=True)
+class SkillDefinition:
+    """A user-editable skill definition that agents can use."""
+
+    skill_id: str
+    name: str
+    version: str
+    description: str = ""
+    category: SkillCategory = SkillCategory.CUSTOM
+    system_prompt: str = ""
+    user_prompt_template: str = ""
+    input_schema: dict[str, object] | None = None
+    output_schema: dict[str, object] | None = None
+    execution_mode: SkillExecutionMode = SkillExecutionMode.INLINE
+    allowed_agent_roles: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
+    is_builtin: bool = False
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
+class AgentDefinitionRecord:
+    """A user-editable agent definition persisted to the database."""
+
+    agent_id: str
+    name: str
+    role: str
+    category: str = AgentCategory.ENGINEERING
+    description: str = ""
+    system_prompt: str = ""
+    model_provider: str = "anthropic"
+    model_name: str = "claude-sonnet-4-20250514"
+    max_tokens: int = 4096
+    temperature: float = 0.0
+    allowed_skill_ids: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
+    is_builtin: bool = False
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
+class WorkflowDefinitionRecord:
+    """A persisted workflow definition template."""
+
+    definition_id: str
+    name: str
+    description: str = ""
+    is_template: bool = False
+    stage_names: tuple[str, ...] = ()
+    graph_nodes: tuple[str, ...] = ()
+    graph_edges: tuple[tuple[str, str], ...] = ()
+    conditional_edges: tuple[dict[str, object], ...] = ()
+    entry_point: str = ""
+    interrupt_before: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
+    is_builtin: bool = False
+    enabled: bool = True
 
 
 CorrelationId = NewType("CorrelationId", UUID)

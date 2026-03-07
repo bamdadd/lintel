@@ -57,7 +57,10 @@ class PostgresCrudStore:
                     )
                 elif "tuple" in hint_str:
                     data[key] = tuple(value)
-        return self._factory(**data)
+        # Filter out keys not in the dataclass to handle schema evolution
+        valid_keys = {f.name for f in dc.fields(self._factory)}
+        filtered = {k: v for k, v in data.items() if k in valid_keys}
+        return self._factory(**filtered)
 
     async def add(self, entity: Any) -> None:  # noqa: ANN401
         """Insert a new entity. Raises ValueError if it already exists."""

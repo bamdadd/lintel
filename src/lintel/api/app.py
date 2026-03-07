@@ -30,6 +30,7 @@ from lintel.api.routes import (
     events,
     health,
     metrics,
+    models,
     notifications,
     pii,
     pipelines,
@@ -39,6 +40,7 @@ from lintel.api.routes import (
     sandboxes,
     settings,
     skills,
+    streams,
     teams,
     threads,
     triggers,
@@ -56,6 +58,7 @@ from lintel.api.routes.audit import AuditEntryStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.credentials import InMemoryCredentialStore
 from lintel.api.routes.environments import InMemoryEnvironmentStore
+from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.api.routes.notifications import NotificationRuleStore
 from lintel.api.routes.pipelines import InMemoryPipelineStore
 from lintel.api.routes.policies import InMemoryPolicyStore
@@ -72,6 +75,53 @@ from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+
+
+async def _seed_defaults(stores: dict[str, Any]) -> None:
+    """Seed built-in agent definitions and skills into stores."""
+    import dataclasses
+
+    from lintel.domain.seed import DEFAULT_AGENTS, DEFAULT_SKILLS
+
+    agent_store = stores["agent_definition_store"]
+    for agent in DEFAULT_AGENTS:
+        data = dataclasses.asdict(agent)
+        # Convert tuples/frozensets to lists for JSON compat
+        for key, value in data.items():
+            if isinstance(value, (frozenset, tuple)):
+                data[key] = list(value)
+        data["model_policy"] = {
+            "provider": data.pop("model_provider"),
+            "model_name": data.pop("model_name"),
+            "max_tokens": data.pop("max_tokens"),
+            "temperature": data.pop("temperature"),
+        }
+        existing = await agent_store.get(agent.agent_id)
+        if existing is None:
+            await agent_store.create(data)
+
+    skill_store = stores["skill_store"]
+    existing_skills = await skill_store.list_skills()
+    for skill in DEFAULT_SKILLS:
+        if skill.skill_id not in existing_skills:
+            await skill_store.register(
+                skill_id=skill.skill_id,
+                version=skill.version,
+                name=skill.name,
+                input_schema=skill.input_schema or {},
+                output_schema=skill.output_schema or {},
+                execution_mode=skill.execution_mode.value,
+            )
+            if hasattr(skill_store, "_metadata"):
+                skill_store._metadata[skill.skill_id] = {
+                    "description": skill.description,
+                    "content": skill.system_prompt,
+                    "category": skill.category.value,
+                    "tags": list(skill.tags),
+                    "allowed_agent_roles": list(skill.allowed_agent_roles),
+                    "is_builtin": skill.is_builtin,
+                    "enabled": skill.enabled,
+                }
 
 
 def _create_in_memory_stores() -> dict[str, Any]:
@@ -98,6 +148,8 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "approval_request_store": InMemoryApprovalRequestStore(),
         "chat_store": ChatStore(),
         "agent_definition_store": AgentDefinitionStore(),
+        "model_store": InMemoryModelStore(),
+        "model_assignment_store": InMemoryModelAssignmentStore(),
     }
 
 
@@ -152,6 +204,12 @@ def _create_postgres_stores(pool: object) -> dict[str, Any]:
     }
 
 
+async def _noop_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
+    """Placeholder graph stream that yields nothing. Replaced by GraphCompiler."""
+    return
+    yield  # Make this an async generator
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Determine storage backend
@@ -169,6 +227,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Assign all stores to app state
     for name, store in stores.items():
         setattr(app.state, name, store)
+
+    # Wire command dispatcher
+    from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
+    from lintel.domain.workflow_executor import WorkflowExecutor
+
+    dispatcher = InMemoryCommandDispatcher()
+    event_store = stores["event_store"]
+
+    # Create a no-op graph for now (will be replaced by GraphCompiler in Phase 2)
+    from unittest.mock import AsyncMock
+
+    noop_graph = AsyncMock()
+    noop_graph.astream = _noop_astream
+
+    executor = WorkflowExecutor(event_store=event_store, graph=noop_graph)
+
+    from lintel.contracts.commands import StartWorkflow
+
+    dispatcher.register(StartWorkflow, executor.execute)
+    app.state.command_dispatcher = dispatcher
+
+    # Seed built-in agents and skills
+    await _seed_defaults(stores)
 
     # Initialize projections
     thread_status = ThreadStatusProjection()
@@ -218,6 +299,7 @@ def create_app() -> FastAPI:
     app.include_router(approvals.router, prefix="/api/v1", tags=["approvals"])
     app.include_router(sandboxes.router, prefix="/api/v1", tags=["sandboxes"])
     app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
+    app.include_router(streams.router, prefix="/api/v1", tags=["streams"])
     app.include_router(events.router, prefix="/api/v1", tags=["events"])
     app.include_router(pii.router, prefix="/api/v1", tags=["pii"])
     app.include_router(settings.router, prefix="/api/v1", tags=["settings"])
@@ -239,6 +321,7 @@ def create_app() -> FastAPI:
     app.include_router(artifacts.router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+    app.include_router(models.router, prefix="/api/v1", tags=["models"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
     # Serve SPA static files in production (must be last)

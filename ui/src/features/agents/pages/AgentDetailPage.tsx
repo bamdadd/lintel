@@ -3,7 +3,6 @@ import {
   Title,
   Stack,
   Paper,
-  Text,
   Badge,
   Group,
   Button,
@@ -19,10 +18,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  useAgentsGetModelPolicy,
-  useAgentsUpdateModelPolicy,
   useAgentsGetAgentDefinition,
-  useAgentsCreateAgentDefinition,
   useAgentsUpdateAgentDefinition,
 } from '@/generated/api/agents/agents';
 import { useSkillsListSkills } from '@/generated/api/skills/skills';
@@ -32,130 +28,99 @@ interface AgentDef {
   name: string;
   description: string;
   system_prompt: string;
-  allowed_skills: string[];
+  allowed_skills?: string[];
+  allowed_skill_ids?: string[];
   role: string;
-  model_policy: { provider: string; model_name: string; max_tokens: number; temperature: number };
+  is_builtin?: boolean;
+  model_policy?: {
+    provider: string;
+    model_name: string;
+    max_tokens: number;
+    temperature: number;
+  };
+  model_provider?: string;
+  model_name?: string;
+  max_tokens?: number;
+  temperature?: number;
 }
 
 export function Component() {
-  const { role } = useParams<{ role: string }>();
+  const { role: agentId } = useParams<{ role: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: policyResp, isLoading: policyLoading } = useAgentsGetModelPolicy(role ?? '', {
-    query: { enabled: !!role },
-  });
-  const { data: defResp, isLoading: defLoading } = useAgentsGetAgentDefinition(role ?? '', {
-    query: { enabled: !!role, retry: false },
-  });
+  const { data: defResp, isLoading } = useAgentsGetAgentDefinition(
+    agentId ?? '',
+    { query: { enabled: !!agentId } },
+  );
   const { data: skillsResp } = useSkillsListSkills();
 
-  const policyMutation = useAgentsUpdateModelPolicy();
-  const createDefMutation = useAgentsCreateAgentDefinition();
   const updateDefMutation = useAgentsUpdateAgentDefinition();
 
-  const policy = policyResp?.data as
-    | { provider?: string; model_name?: string; max_tokens?: number; temperature?: number }
-    | undefined;
-
   const definition = defResp?.data as AgentDef | undefined;
-  const availableSkills = ((skillsResp?.data ?? []) as Array<{ skill_id: string; name: string }>).map(
-    (s) => ({ value: s.skill_id, label: s.name || s.skill_id }),
-  );
-
-  const policyForm = useForm({
-    initialValues: {
-      provider: policy?.provider ?? 'anthropic',
-      model_name: policy?.model_name ?? '',
-      max_tokens: policy?.max_tokens ?? 4096,
-      temperature: policy?.temperature ?? 0,
-    },
-  });
+  const availableSkills = (
+    (skillsResp?.data ?? []) as Array<{ skill_id: string; name: string }>
+  ).map((s) => ({ value: s.skill_id, label: s.name || s.skill_id }));
 
   const defForm = useForm({
     initialValues: {
-      name: definition?.name ?? (role ?? ''),
+      name: definition?.name ?? '',
       description: definition?.description ?? '',
       system_prompt: definition?.system_prompt ?? '',
-      allowed_skills: definition?.allowed_skills ?? [],
+      allowed_skills: definition?.allowed_skills ?? definition?.allowed_skill_ids ?? [],
+      provider: definition?.model_policy?.provider ?? definition?.model_provider ?? 'anthropic',
+      model_name: definition?.model_policy?.model_name ?? definition?.model_name ?? '',
+      max_tokens: definition?.model_policy?.max_tokens ?? definition?.max_tokens ?? 4096,
+      temperature: definition?.model_policy?.temperature ?? definition?.temperature ?? 0,
     },
   });
 
   // Sync form values when data loads
-  if (policy && !policyForm.isDirty()) {
-    policyForm.setValues({
-      provider: policy.provider ?? 'anthropic',
-      model_name: policy.model_name ?? '',
-      max_tokens: policy.max_tokens ?? 4096,
-      temperature: policy.temperature ?? 0,
-    });
-  }
   if (definition && !defForm.isDirty()) {
     defForm.setValues({
       name: definition.name,
       description: definition.description ?? '',
       system_prompt: definition.system_prompt ?? '',
-      allowed_skills: definition.allowed_skills ?? [],
+      allowed_skills: definition.allowed_skills ?? definition.allowed_skill_ids ?? [],
+      provider: definition.model_policy?.provider ?? definition.model_provider ?? 'anthropic',
+      model_name: definition.model_policy?.model_name ?? definition.model_name ?? '',
+      max_tokens: definition.model_policy?.max_tokens ?? definition.max_tokens ?? 4096,
+      temperature: definition.model_policy?.temperature ?? definition.temperature ?? 0,
     });
   }
 
-  if (policyLoading || defLoading) return <Center py="xl"><Loader /></Center>;
+  if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const handlePolicySubmit = policyForm.onSubmit((values) => {
-    policyMutation.mutate(
-      { role: role ?? '', data: values },
+  const handleSubmit = defForm.onSubmit((values) => {
+    const { provider, model_name, max_tokens, temperature, ...rest } = values;
+    updateDefMutation.mutate(
+      {
+        agentId: agentId ?? '',
+        data: {
+          ...rest,
+          model_policy: { provider, model_name, max_tokens, temperature },
+        },
+      },
       {
         onSuccess: () => {
-          notifications.show({ title: 'Saved', message: 'Model policy updated', color: 'green' });
-          void queryClient.invalidateQueries({ queryKey: ['/api/v1/agents/policies'] });
+          notifications.show({
+            title: 'Saved',
+            message: 'Agent definition updated',
+            color: 'green',
+          });
+          void queryClient.invalidateQueries({
+            queryKey: ['/api/v1/agents/definitions'],
+          });
         },
         onError: () => {
-          notifications.show({ title: 'Error', message: 'Failed to update policy', color: 'red' });
+          notifications.show({
+            title: 'Error',
+            message: 'Failed to update definition',
+            color: 'red',
+          });
         },
       },
     );
-  });
-
-  const handleDefSubmit = defForm.onSubmit((values) => {
-    const payload = {
-      ...values,
-      agent_id: role ?? '',
-      role: role ?? '',
-      model_policy: {
-        provider: policyForm.values.provider,
-        model_name: policyForm.values.model_name,
-        max_tokens: policyForm.values.max_tokens,
-        temperature: policyForm.values.temperature,
-      },
-    };
-
-    if (definition) {
-      updateDefMutation.mutate(
-        { agentId: role ?? '', data: values },
-        {
-          onSuccess: () => {
-            notifications.show({ title: 'Saved', message: 'Agent definition updated', color: 'green' });
-            void queryClient.invalidateQueries({ queryKey: ['/api/v1/agents/definitions'] });
-          },
-          onError: () => {
-            notifications.show({ title: 'Error', message: 'Failed to update definition', color: 'red' });
-          },
-        },
-      );
-    } else {
-      createDefMutation.mutate(
-        { data: payload },
-        {
-          onSuccess: () => {
-            notifications.show({ title: 'Created', message: 'Agent definition created', color: 'green' });
-            void queryClient.invalidateQueries({ queryKey: ['/api/v1/agents/definitions'] });
-          },
-          onError: () => {
-            notifications.show({ title: 'Error', message: 'Failed to create definition', color: 'red' });
-          },
-        },
-      );
-    }
   });
 
   return (
@@ -164,8 +129,11 @@ export function Component() {
         <Button variant="subtle" onClick={() => void navigate('/agents')}>
           &larr; Back
         </Button>
-        <Title order={2}>Agent: {role}</Title>
-        <Badge size="lg">{role}</Badge>
+        <Title order={2}>{definition?.name ?? agentId}</Title>
+        {definition?.role && <Badge size="lg">{definition.role}</Badge>}
+        {definition?.is_builtin && (
+          <Badge variant="light" color="gray" size="sm">built-in</Badge>
+        )}
       </Group>
 
       <Tabs defaultValue="definition">
@@ -176,9 +144,13 @@ export function Component() {
 
         <Tabs.Panel value="definition" pt="md">
           <Paper withBorder p="lg" radius="md">
-            <form onSubmit={handleDefSubmit}>
+            <form onSubmit={handleSubmit}>
               <Stack gap="sm">
-                <TextInput label="Name" placeholder="Agent name" {...defForm.getInputProps('name')} />
+                <TextInput
+                  label="Name"
+                  placeholder="Agent name"
+                  {...defForm.getInputProps('name')}
+                />
                 <Textarea
                   label="Description"
                   placeholder="What this agent does"
@@ -204,9 +176,9 @@ export function Component() {
                 <Group>
                   <Button
                     type="submit"
-                    loading={createDefMutation.isPending || updateDefMutation.isPending}
+                    loading={updateDefMutation.isPending}
                   >
-                    {definition ? 'Update Definition' : 'Create Definition'}
+                    Update Definition
                   </Button>
                 </Group>
               </Stack>
@@ -216,21 +188,36 @@ export function Component() {
 
         <Tabs.Panel value="model" pt="md">
           <Paper withBorder p="lg" radius="md">
-            <form onSubmit={handlePolicySubmit}>
+            <form onSubmit={handleSubmit}>
               <Stack gap="sm">
-                <TextInput label="Provider" {...policyForm.getInputProps('provider')} />
-                <TextInput label="Model Name" {...policyForm.getInputProps('model_name')} />
-                <NumberInput label="Max Tokens" min={1} {...policyForm.getInputProps('max_tokens')} />
+                <TextInput
+                  label="Provider"
+                  {...defForm.getInputProps('provider')}
+                />
+                <TextInput
+                  label="Model Name"
+                  {...defForm.getInputProps('model_name')}
+                />
+                <NumberInput
+                  label="Max Tokens"
+                  min={1}
+                  {...defForm.getInputProps('max_tokens')}
+                />
                 <NumberInput
                   label="Temperature"
                   min={0}
                   max={2}
                   step={0.1}
                   decimalScale={2}
-                  {...policyForm.getInputProps('temperature')}
+                  {...defForm.getInputProps('temperature')}
                 />
                 <Group>
-                  <Button type="submit" loading={policyMutation.isPending}>Save Policy</Button>
+                  <Button
+                    type="submit"
+                    loading={updateDefMutation.isPending}
+                  >
+                    Save
+                  </Button>
                 </Group>
               </Stack>
             </form>

@@ -50,9 +50,11 @@ class DefaultModelRouter:
         self,
         routing_table: dict[tuple[str, str], ModelPolicy] | None = None,
         fallback: ModelPolicy = FALLBACK_POLICY,
+        ollama_api_base: str | None = None,
     ) -> None:
         self._routing = DEFAULT_ROUTING if routing_table is None else routing_table
         self._fallback = fallback
+        self._ollama_api_base = ollama_api_base
 
     async def select_model(
         self,
@@ -87,6 +89,9 @@ class DefaultModelRouter:
         }
         if tools:
             kwargs["tools"] = tools
+
+        if policy.provider == "ollama" and self._ollama_api_base:
+            kwargs["api_base"] = self._ollama_api_base
 
         response = await litellm.acompletion(**kwargs)
         return {

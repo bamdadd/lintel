@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test
+.PHONY: help install test test-unit test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -64,3 +64,6 @@ ui-generate: ## Regenerate API client from OpenAPI spec
 
 ui-test: ## Run UI tests
 	cd ui && bun run vitest run
+
+dev: ## Launch tmux dev environment (3 claude prompts + API/UI/DB)
+	./scripts/dev-tmux.sh

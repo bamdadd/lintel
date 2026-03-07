@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from lintel.contracts.commands import ScheduleAgentStep
 from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
 
+_VALID_ROLES = frozenset(role.value for role in AgentRole)
+
 
 class AgentDefinitionStore:
     """In-memory store for user-defined agent definitions."""

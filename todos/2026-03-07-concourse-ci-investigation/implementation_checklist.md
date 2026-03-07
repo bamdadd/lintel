@@ -20,13 +20,13 @@ graph LR
 
 ## Phase 1: Foundation — Wire Command Bus, SSE Streaming, Basic Triggers
 
-- [ ] Step 1.1: CommandDispatcher protocol + InMemoryCommandDispatcher
-- [ ] Step 1.2: WorkflowExecutor — wire StartWorkflow to graph.astream() with event emission
-- [ ] Step 1.3: Wire API routes to dispatcher (replace `return asdict(command)`)
-- [ ] Step 1.4: SSE streaming endpoint (`GET /runs/{id}/stream`)
-- [ ] Step 1.5: TriggerHandler — map Slack/webhook events to StartWorkflow commands
-- [ ] Step 1.6: UI — RunDetailPage with useSSEStream hook and StepPanel components
-- [ ] Validation: `make test-unit && make test-integration && make lint && make typecheck`
+- [x] Step 1.1: CommandDispatcher protocol + InMemoryCommandDispatcher
+- [x] Step 1.2: WorkflowExecutor — wire StartWorkflow to graph.astream() with event emission
+- [x] Step 1.3: Wire API routes to dispatcher (replace `return asdict(command)`)
+- [x] Step 1.4: SSE streaming endpoint (`GET /runs/{id}/stream`)
+- [x] Step 1.5: TriggerHandler — map Slack/webhook events to StartWorkflow commands
+- [x] Step 1.6: UI — RunDetailPage with useSSEStream hook and StepPanel components
+- [x] Validation: `make test-unit && make test-integration && make lint && make typecheck`
 
 ## Phase 2: Graph Compiler, Timing Metrics, Pipeline DAG UI
 

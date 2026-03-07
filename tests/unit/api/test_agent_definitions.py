@@ -56,18 +56,25 @@ class TestAgentDefinitions:
         resp = client.post("/api/v1/agents/definitions", json=payload)
         assert resp.status_code == 409
 
-    def test_list_definitions_empty(self, client: TestClient) -> None:
+    def test_list_definitions_has_builtins(self, client: TestClient) -> None:
         resp = client.get("/api/v1/agents/definitions")
         assert resp.status_code == 200
-        assert resp.json() == []
+        items = resp.json()
+        assert len(items) > 0
+        ids = {d["agent_id"] for d in items}
+        assert "agent_coder" in ids
+        assert "agent_reviewer" in ids
+        assert "agent_architect" in ids
 
-    def test_list_definitions(self, client: TestClient) -> None:
+    def test_list_definitions_after_create(self, client: TestClient) -> None:
+        resp_before = client.get("/api/v1/agents/definitions")
+        count_before = len(resp_before.json())
         _create_definition(client, agent_id="a1", name="A1")
         _create_definition(client, agent_id="a2", name="A2")
 
         resp = client.get("/api/v1/agents/definitions")
         assert resp.status_code == 200
-        assert len(resp.json()) == 2
+        assert len(resp.json()) == count_before + 2
 
     def test_get_definition(self, client: TestClient) -> None:
         _create_definition(client, agent_id="lookup-me")

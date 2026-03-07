@@ -76,6 +76,13 @@ def get_skill_store(request: Request) -> InMemorySkillStore:
     return request.app.state.skill_store  # type: ignore[no-any-return]
 
 
+def _get_metadata(store: InMemorySkillStore, skill_id: str) -> dict[str, Any]:
+    """Safely get skill metadata (only exists on in-memory store)."""
+    if hasattr(store, "_metadata"):
+        return store._metadata.get(skill_id, {})
+    return {}
+
+
 # ---------------------------------------------------------------------------
 # Request models
 # ---------------------------------------------------------------------------
@@ -118,8 +125,9 @@ async def register_skill(
         output_schema=body.output_schema,
         execution_mode=body.execution_mode.value,
     )
-    store._metadata[body.skill_id] = {"description": body.description, "content": body.content}
-    return {"skill_id": body.skill_id, **asdict(descriptor), **store._metadata[body.skill_id]}
+    if hasattr(store, "_metadata"):
+        store._metadata[body.skill_id] = {"description": body.description, "content": body.content}
+    return {"skill_id": body.skill_id, **asdict(descriptor), **_get_metadata(store, body.skill_id)}
 
 
 @router.get("/skills")
@@ -128,7 +136,7 @@ async def list_skills(
 ) -> list[dict[str, Any]]:
     skills = await store.list_skills()
     return [
-        {"skill_id": sid, **asdict(desc), **store._metadata.get(sid, {})}
+        {"skill_id": sid, **asdict(desc), **_get_metadata(store, sid)}
         for sid, desc in skills.items()
     ]
 
@@ -141,7 +149,7 @@ async def get_skill(
     skills = await store.list_skills()
     if skill_id not in skills:
         raise HTTPException(status_code=404, detail="Skill not found")
-    return {"skill_id": skill_id, **asdict(skills[skill_id]), **store._metadata.get(skill_id, {})}
+    return {"skill_id": skill_id, **asdict(skills[skill_id]), **_get_metadata(store, skill_id)}
 
 
 class UpdateSkillRequest(BaseModel):
@@ -164,17 +172,18 @@ async def update_skill(
         raise HTTPException(status_code=404, detail="Skill not found")
     descriptor = skills[skill_id]
     updates = body.model_dump(exclude_none=True)
-    meta = store._metadata.get(skill_id, {})
+    meta = _get_metadata(store, skill_id)
     if "description" in updates:
         meta["description"] = updates.pop("description")
     if "content" in updates:
         meta["content"] = updates.pop("content")
-    store._metadata[skill_id] = meta
+    if hasattr(store, "_metadata"):
+        store._metadata[skill_id] = meta
     if "execution_mode" in updates:
         updates["execution_mode"] = SkillExecutionMode(updates["execution_mode"])
     for key, val in updates.items():
         object.__setattr__(descriptor, key, val)
-    return {"skill_id": skill_id, **asdict(descriptor), **store._metadata.get(skill_id, {})}
+    return {"skill_id": skill_id, **asdict(descriptor), **_get_metadata(store, skill_id)}
 
 
 @router.delete("/skills/{skill_id}", status_code=204)

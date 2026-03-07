@@ -32,10 +32,8 @@ class TestWorkflowAPI:
         )
         assert resp.status_code == 201
         data = resp.json()
-        assert data["thread_ref"]["workspace_id"] == "W1"
-        assert data["thread_ref"]["channel_id"] == "C1"
-        assert data["thread_ref"]["thread_ts"] == "123.456"
-        assert data["workflow_type"] == "code_review"
+        assert "run_id" in data
+        assert data["status"] == "started"
 
     def test_list_workflows_empty(self, client: TestClient) -> None:
         resp = client.get("/api/v1/workflows")

@@ -6,9 +6,10 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from lintel.api.deps import get_thread_status_projection
+from lintel.api.deps import get_command_dispatcher, get_thread_status_projection
 from lintel.contracts.commands import ProcessIncomingMessage, StartWorkflow
 from lintel.contracts.types import ThreadRef
+from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 
 router = APIRouter()
@@ -33,6 +34,7 @@ class ProcessMessageRequest(BaseModel):
 @router.post("/workflows", status_code=201)
 async def start_workflow(
     body: StartWorkflowRequest,
+    dispatcher: Annotated[InMemoryCommandDispatcher, Depends(get_command_dispatcher)],
 ) -> dict[str, Any]:
     """Start a new workflow."""
     thread_ref = ThreadRef(
@@ -44,7 +46,8 @@ async def start_workflow(
         thread_ref=thread_ref,
         workflow_type=body.workflow_type,
     )
-    return asdict(command)
+    run_id = await dispatcher.dispatch(command)
+    return {"run_id": run_id, "status": "started"}
 
 
 @router.get("/workflows")

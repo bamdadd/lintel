@@ -36,6 +36,7 @@ import {
   IconServer,
   IconLock,
   IconBrain,
+  IconCpu,
   IconPackage,
   IconCheckbox,
   IconListCheck,
@@ -76,6 +77,7 @@ const navSections: NavSection[] = [
       { label: 'Agents', path: '/agents', icon: IconRobot },
       { label: 'Skills', path: '/skills', icon: IconCode },
       { label: 'AI Providers', path: '/ai-providers', icon: IconBrain },
+      { label: 'Models', path: '/models', icon: IconCpu },
     ],
   },
   {

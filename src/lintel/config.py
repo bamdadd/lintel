@@ -43,6 +43,7 @@ class ModelSettings(BaseSettings):
     default_model: str = "claude-sonnet-4-20250514"
     fallback_provider: str = "ollama"
     fallback_model: str = "llama3.1:8b"
+    ollama_api_base: str = "http://localhost:11434"
 
 
 class SandboxSettings(BaseSettings):

@@ -39,18 +39,25 @@ class TestSkillsAPI:
         resp = client.post("/api/v1/skills", json=SKILL_BODY)
         assert resp.status_code == 409
 
-    def test_list_skills_empty(self, client: TestClient) -> None:
+    def test_list_skills_has_builtins(self, client: TestClient) -> None:
         resp = client.get("/api/v1/skills")
         assert resp.status_code == 200
-        assert resp.json() == []
+        items = resp.json()
+        assert len(items) > 0
+        builtin_ids = {s["skill_id"] for s in items}
+        assert "skill_write_code" in builtin_ids
+        assert "skill_code_review" in builtin_ids
 
     def test_list_skills_after_registration(self, client: TestClient) -> None:
+        resp_before = client.get("/api/v1/skills")
+        count_before = len(resp_before.json())
         client.post("/api/v1/skills", json=SKILL_BODY)
         resp = client.get("/api/v1/skills")
         assert resp.status_code == 200
         items = resp.json()
-        assert len(items) == 1
-        assert items[0]["skill_id"] == "s1"
+        assert len(items) == count_before + 1
+        ids = {s["skill_id"] for s in items}
+        assert "s1" in ids
 
     def test_invoke_skill(self, client: TestClient) -> None:
         client.post("/api/v1/skills", json=SKILL_BODY)

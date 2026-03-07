@@ -58,9 +58,13 @@ class TestEnums:
         assert len(ActorType) == 3
 
     def test_agent_role_values(self) -> None:
-        expected = {"planner", "coder", "reviewer", "pm", "designer", "summarizer"}
+        expected = {
+            "planner", "coder", "reviewer", "pm", "designer", "summarizer",
+            "architect", "qa_engineer", "devops", "security", "tech_lead",
+            "documentation", "triage",
+        }
         assert {r.value for r in AgentRole} == expected
-        assert len(AgentRole) == 6
+        assert len(AgentRole) == 13
 
     def test_workflow_phase_values(self) -> None:
         assert WorkflowPhase.INGESTING == "ingesting"

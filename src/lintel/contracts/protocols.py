@@ -26,6 +26,12 @@ if TYPE_CHECKING:
     )
 
 
+class CommandDispatcher(Protocol):
+    """Routes commands to registered handlers."""
+
+    async def dispatch(self, command: object) -> object: ...
+
+
 class EventStore(Protocol):
     """Append-only event persistence with optimistic concurrency."""
 

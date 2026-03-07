@@ -2,6 +2,8 @@
 
 from fastapi import Request
 
+from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
+from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
@@ -26,3 +28,13 @@ def get_projection_engine(request: Request) -> InMemoryProjectionEngine:
 def get_repository_store(request: Request) -> InMemoryRepositoryStore:
     """Get repository store from app state."""
     return request.app.state.repository_store  # type: ignore[no-any-return]
+
+
+def get_event_store(request: Request) -> InMemoryEventStore:
+    """Get event store from app state."""
+    return request.app.state.event_store  # type: ignore[no-any-return]
+
+
+def get_command_dispatcher(request: Request) -> InMemoryCommandDispatcher:
+    """Get command dispatcher from app state."""
+    return request.app.state.command_dispatcher  # type: ignore[no-any-return]
