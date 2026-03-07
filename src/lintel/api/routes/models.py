@@ -152,6 +152,12 @@ async def create_model(
     provider_store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
 ) -> dict[str, Any]:
     """Register an AI model."""
+    all_providers = await provider_store.list_all()
+    if not all_providers:
+        raise HTTPException(
+            status_code=409,
+            detail="No AI providers configured. Please add a provider first at /ai-providers before adding models.",
+        )
     provider = await provider_store.get(body.provider_id)
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")

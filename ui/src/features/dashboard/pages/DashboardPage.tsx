@@ -1,14 +1,109 @@
-import { SimpleGrid, Title, Stack, Text, Table, Loader, Center } from '@mantine/core';
+import {
+  SimpleGrid,
+  Title,
+  Stack,
+  Text,
+  Table,
+  Loader,
+  Center,
+  Paper,
+  Group,
+  Button,
+  ThemeIcon,
+  List,
+} from '@mantine/core';
+import {
+  IconRocket,
+  IconCheck,
+  IconCircleDashed,
+} from '@tabler/icons-react';
+import { useNavigate } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { useMetricsOverviewMetrics } from '@/generated/api/metrics/metrics';
 import { useThreadsListThreads } from '@/generated/api/threads/threads';
 import { useEventsListEvents } from '@/generated/api/events/events';
 import { StatsCard } from '../components/StatsCard';
 import { StatusBadge } from '@/shared/components/StatusBadge';
+import { customInstance } from '@/shared/api/client';
 
 interface OverviewData {
   pii?: { total_detected?: number; total_anonymised?: number };
   sandboxes?: { total?: number };
   connections?: { total?: number };
+}
+
+interface OnboardingStatus {
+  has_ai_provider: boolean;
+  has_repo: boolean;
+  has_chat: boolean;
+  is_complete: boolean;
+}
+
+function useOnboardingStatus() {
+  return useQuery({
+    queryKey: ['/api/v1/onboarding/status'],
+    queryFn: () =>
+      customInstance<{ data: OnboardingStatus; status: number }>(
+        '/api/v1/onboarding/status',
+        { method: 'GET' },
+      ).then((r) => r.data),
+  });
+}
+
+function OnboardingBanner() {
+  const navigate = useNavigate();
+  const { data: status, isLoading } = useOnboardingStatus();
+
+  if (isLoading || !status || status.is_complete) return null;
+
+  const steps = [
+    { label: 'AI provider configured', done: status.has_ai_provider },
+    { label: 'Repository connected', done: status.has_repo },
+    { label: 'Chat enabled (optional)', done: status.has_chat },
+  ];
+
+  return (
+    <Paper withBorder p="lg" radius="md">
+      <Group justify="space-between" align="flex-start">
+        <Group align="flex-start" gap="md">
+          <ThemeIcon size={48} radius="xl" color="blue" variant="light">
+            <IconRocket size={24} />
+          </ThemeIcon>
+          <Stack gap="xs">
+            <Title order={4}>Get started with Lintel</Title>
+            <Text c="dimmed" size="sm">
+              Complete setup to start running AI workflows on your codebase.
+            </Text>
+            <List spacing={4} size="sm" mt={4}>
+              {steps.map((s) => (
+                <List.Item
+                  key={s.label}
+                  icon={
+                    s.done ? (
+                      <ThemeIcon color="green" size={20} radius="xl">
+                        <IconCheck size={12} />
+                      </ThemeIcon>
+                    ) : (
+                      <ThemeIcon color="gray" size={20} radius="xl" variant="light">
+                        <IconCircleDashed size={12} />
+                      </ThemeIcon>
+                    )
+                  }
+                >
+                  <Text size="sm" c={s.done ? 'dimmed' : undefined}>
+                    {s.label}
+                  </Text>
+                </List.Item>
+              ))}
+            </List>
+          </Stack>
+        </Group>
+        <Button onClick={() => void navigate('/setup')}>
+          Set up workspace
+        </Button>
+      </Group>
+    </Paper>
+  );
 }
 
 export function Component() {
@@ -23,6 +118,9 @@ export function Component() {
   return (
     <Stack gap="lg">
       <Title order={2}>Dashboard</Title>
+
+      <OnboardingBanner />
+
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
         <StatsCard label="Sandboxes" value={overview?.sandboxes?.total ?? 0} />
         <StatsCard label="Connections" value={overview?.connections?.total ?? 0} />

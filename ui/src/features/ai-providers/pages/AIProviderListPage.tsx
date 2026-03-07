@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
   Loader, Center, ActionIcon, Badge, Switch, PasswordInput,
-  TagsInput, Textarea,
+  Textarea,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
@@ -24,7 +24,6 @@ interface ProviderItem {
   name: string;
   api_base: string;
   is_default: boolean;
-  models: string[];
   has_api_key: boolean;
   config: Record<string, unknown>;
 }
@@ -35,10 +34,22 @@ const PROVIDER_TYPES = [
   { value: 'azure_openai', label: 'Azure OpenAI' },
   { value: 'google', label: 'Google' },
   { value: 'ollama', label: 'Ollama' },
+  { value: 'bedrock', label: 'AWS Bedrock' },
+  { value: 'custom', label: 'Custom' },
 ];
 
 const typeColor: Record<string, string> = {
-  anthropic: 'violet', openai: 'green', azure_openai: 'blue', google: 'red', ollama: 'gray',
+  anthropic: 'violet', openai: 'green', azure_openai: 'blue', google: 'red', ollama: 'gray', bedrock: 'orange', custom: 'cyan',
+};
+
+const FIELD_CONFIG: Record<string, { showApiKey: boolean; showApiBase: boolean; apiKeyRequired: boolean; apiBaseRequired: boolean }> = {
+  anthropic:    { showApiKey: true,  showApiBase: true,  apiKeyRequired: true,  apiBaseRequired: false },
+  openai:       { showApiKey: true,  showApiBase: true,  apiKeyRequired: true,  apiBaseRequired: false },
+  azure_openai: { showApiKey: true,  showApiBase: true,  apiKeyRequired: true,  apiBaseRequired: true },
+  google:       { showApiKey: true,  showApiBase: true,  apiKeyRequired: true,  apiBaseRequired: false },
+  ollama:       { showApiKey: false, showApiBase: true,  apiKeyRequired: false, apiBaseRequired: true },
+  bedrock:      { showApiKey: false, showApiBase: true,  apiKeyRequired: false, apiBaseRequired: false },
+  custom:       { showApiKey: true,  showApiBase: true,  apiKeyRequired: false, apiBaseRequired: true },
 };
 
 export function Component() {
@@ -60,18 +71,28 @@ export function Component() {
       api_key: '',
       api_base: '',
       is_default: false,
-      models: [] as string[],
       config: '',
     },
-    validate: { name: (v) => (v.trim() ? null : 'Required') },
+    validate: {
+      name: (v) => (v.trim() ? null : 'Required'),
+      api_key: (v, values) => {
+        const cfg = FIELD_CONFIG[values.provider_type];
+        return cfg?.apiKeyRequired && !v.trim() ? 'API key is required for this provider' : null;
+      },
+      api_base: (v, values) => {
+        const cfg = FIELD_CONFIG[values.provider_type];
+        return cfg?.apiBaseRequired && !v.trim() ? 'API base URL is required for this provider' : null;
+      },
+    },
   });
+
+  const fieldCfg = FIELD_CONFIG[form.values.provider_type] ?? { showApiKey: true, showApiBase: true, apiKeyRequired: false, apiBaseRequired: false };
 
   const editFormState = useForm({
     initialValues: {
       name: '',
       api_base: '',
       is_default: false,
-      models: [] as string[],
       config: '',
     },
   });
@@ -104,7 +125,6 @@ export function Component() {
       name: p.name,
       api_base: p.api_base ?? '',
       is_default: p.is_default,
-      models: p.models ?? [],
       config: p.config ? JSON.stringify(p.config, null, 2) : '',
     });
   };
@@ -166,7 +186,6 @@ export function Component() {
             <Table.Tr>
               <Table.Th>Name</Table.Th>
               <Table.Th>Type</Table.Th>
-              <Table.Th>Models</Table.Th>
               <Table.Th>API Key</Table.Th>
               <Table.Th>Default</Table.Th>
               <Table.Th />
@@ -177,9 +196,6 @@ export function Component() {
               <Table.Tr key={p.provider_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(p)}>
                 <Table.Td>{p.name}</Table.Td>
                 <Table.Td><Badge color={typeColor[p.provider_type] ?? 'gray'}>{p.provider_type}</Badge></Table.Td>
-                <Table.Td>
-                  <Group gap={4}>{(p.models ?? []).slice(0, 3).map((m) => <Badge key={m} size="sm" variant="light">{m}</Badge>)}{(p.models?.length ?? 0) > 3 && <Badge size="sm" variant="light">+{p.models.length - 3}</Badge>}</Group>
-                </Table.Td>
                 <Table.Td>
                   <Group gap={4}>
                     <Badge color={p.has_api_key ? 'green' : 'gray'} variant="light">{p.has_api_key ? 'Set' : 'Missing'}</Badge>
@@ -205,9 +221,20 @@ export function Component() {
           <Stack gap="sm">
             <TextInput label="Name" placeholder="My Anthropic Account" {...form.getInputProps('name')} />
             <Select label="Provider Type" data={PROVIDER_TYPES} {...form.getInputProps('provider_type')} />
-            <PasswordInput label="API Key" placeholder="sk-..." {...form.getInputProps('api_key')} />
-            <TextInput label="API Base URL" placeholder="https://api.anthropic.com (optional)" {...form.getInputProps('api_base')} />
-            <TagsInput label="Models" placeholder="Type model name and press Enter" {...form.getInputProps('models')} />
+            {fieldCfg.showApiKey && (
+              <PasswordInput
+                label={`API Key${fieldCfg.apiKeyRequired ? '' : ' (optional)'}`}
+                placeholder="sk-..."
+                {...form.getInputProps('api_key')}
+              />
+            )}
+            {fieldCfg.showApiBase && (
+              <TextInput
+                label={`API Base URL${fieldCfg.apiBaseRequired ? '' : ' (optional)'}`}
+                placeholder={form.values.provider_type === 'ollama' ? 'http://localhost:11434' : 'https://api.example.com'}
+                {...form.getInputProps('api_base')}
+              />
+            )}
             <Switch label="Set as default provider" {...form.getInputProps('is_default', { type: 'checkbox' })} />
             <Textarea label="Extra Config (JSON)" minRows={2} styles={{ input: { fontFamily: 'monospace' } }} {...form.getInputProps('config')} />
             <Button type="submit" loading={createMut.isPending}>Add Provider</Button>
@@ -220,7 +247,6 @@ export function Component() {
           <Stack gap="sm">
             <TextInput label="Name" {...editFormState.getInputProps('name')} />
             <TextInput label="API Base URL" {...editFormState.getInputProps('api_base')} />
-            <TagsInput label="Models" placeholder="Type and press Enter" {...editFormState.getInputProps('models')} />
             <Switch label="Default provider" {...editFormState.getInputProps('is_default', { type: 'checkbox' })} />
             <Textarea label="Config (JSON)" minRows={2} styles={{ input: { fontFamily: 'monospace' } }} {...editFormState.getInputProps('config')} />
             <Button type="submit" loading={updateMut.isPending}>Save</Button>

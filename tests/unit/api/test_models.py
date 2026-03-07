@@ -26,6 +26,7 @@ def _create_provider(client: TestClient, provider_id: str = "prov-1") -> dict:
             "provider_id": provider_id,
             "provider_type": "anthropic",
             "name": "Anthropic",
+            "api_key": "sk-ant-test-12345678",
         },
     )
     assert resp.status_code == 201
@@ -63,7 +64,20 @@ class TestModelsAPI:
         assert data["provider_type"] == "anthropic"
         assert data["capabilities"] == ["coding", "planning"]
 
+    def test_create_model_no_providers_configured(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/models",
+            json={
+                "provider_id": "prov-1",
+                "name": "Test",
+                "model_name": "test",
+            },
+        )
+        assert resp.status_code == 409
+        assert "add a provider first" in resp.json()["detail"].lower()
+
     def test_create_model_missing_provider(self, client: TestClient) -> None:
+        _create_provider(client)
         resp = client.post(
             "/api/v1/models",
             json={

@@ -28,7 +28,6 @@ class TestAIProvidersAPI:
                 "provider_type": "anthropic",
                 "name": "Anthropic Production",
                 "api_key": "sk-ant-api03-xxxxxxxxxxxxxxxxxxxx",
-                "models": ["claude-sonnet-4-20250514", "claude-haiku-35-20241022"],
                 "is_default": True,
             },
         )
@@ -40,7 +39,6 @@ class TestAIProvidersAPI:
         assert data["has_api_key"] is True
         assert "api_key_preview" in data
         assert "xxxxxxxxxxxxxxxxxxxx" not in data.get("api_key_preview", "")
-        assert len(data["models"]) == 2
 
     def test_create_provider_without_key(self, client: TestClient) -> None:
         resp = client.post(
@@ -60,6 +58,7 @@ class TestAIProvidersAPI:
             "provider_id": "p1",
             "provider_type": "anthropic",
             "name": "P1",
+            "api_key": "sk-ant-test-key-12345678",
         }
         client.post("/api/v1/ai-providers", json=body)
         resp = client.post("/api/v1/ai-providers", json=body)
@@ -73,11 +72,21 @@ class TestAIProvidersAPI:
     def test_list_providers(self, client: TestClient) -> None:
         client.post(
             "/api/v1/ai-providers",
-            json={"provider_id": "p1", "provider_type": "anthropic", "name": "A"},
+            json={
+                "provider_id": "p1",
+                "provider_type": "anthropic",
+                "name": "A",
+                "api_key": "sk-ant-test-12345678",
+            },
         )
         client.post(
             "/api/v1/ai-providers",
-            json={"provider_id": "p2", "provider_type": "openai", "name": "B"},
+            json={
+                "provider_id": "p2",
+                "provider_type": "openai",
+                "name": "B",
+                "api_key": "sk-test-12345678",
+            },
         )
         resp = client.get("/api/v1/ai-providers")
         assert len(resp.json()) == 2
@@ -86,15 +95,25 @@ class TestAIProvidersAPI:
         resp = client.get("/api/v1/ai-providers/types")
         assert resp.status_code == 200
         types = resp.json()
-        assert "anthropic" in types
-        assert "openai" in types
-        assert "ollama" in types
-        assert "azure_openai" in types
+        type_names = [t["provider_type"] for t in types]
+        assert "anthropic" in type_names
+        assert "openai" in type_names
+        assert "ollama" in type_names
+        assert "azure_openai" in type_names
+        # Ollama should hide api_key
+        ollama = next(t for t in types if t["provider_type"] == "ollama")
+        assert "api_key" in ollama["hidden_fields"]
+        assert "api_base" in ollama["required_fields"]
 
     def test_get_provider(self, client: TestClient) -> None:
         client.post(
             "/api/v1/ai-providers",
-            json={"provider_id": "p1", "provider_type": "anthropic", "name": "A"},
+            json={
+                "provider_id": "p1",
+                "provider_type": "anthropic",
+                "name": "A",
+                "api_key": "sk-ant-test-12345678",
+            },
         )
         resp = client.get("/api/v1/ai-providers/p1")
         assert resp.status_code == 200
@@ -111,6 +130,7 @@ class TestAIProvidersAPI:
                 "provider_id": "p1",
                 "provider_type": "anthropic",
                 "name": "Default",
+                "api_key": "sk-ant-test-12345678",
                 "is_default": True,
             },
         )
@@ -125,16 +145,20 @@ class TestAIProvidersAPI:
     def test_update_provider(self, client: TestClient) -> None:
         client.post(
             "/api/v1/ai-providers",
-            json={"provider_id": "p1", "provider_type": "anthropic", "name": "Old"},
+            json={
+                "provider_id": "p1",
+                "provider_type": "anthropic",
+                "name": "Old",
+                "api_key": "sk-ant-test-12345678",
+            },
         )
         resp = client.patch(
             "/api/v1/ai-providers/p1",
-            json={"name": "New Name", "models": ["claude-sonnet-4-20250514"]},
+            json={"name": "New Name"},
         )
         assert resp.status_code == 200
         data = resp.json()
         assert data["name"] == "New Name"
-        assert data["models"] == ["claude-sonnet-4-20250514"]
 
     def test_update_provider_not_found(self, client: TestClient) -> None:
         resp = client.patch("/api/v1/ai-providers/nope", json={"name": "x"})
@@ -143,7 +167,12 @@ class TestAIProvidersAPI:
     def test_update_api_key(self, client: TestClient) -> None:
         client.post(
             "/api/v1/ai-providers",
-            json={"provider_id": "p1", "provider_type": "openai", "name": "OAI"},
+            json={
+                "provider_id": "p1",
+                "provider_type": "openai",
+                "name": "OAI",
+                "api_key": "sk-test-12345678",
+            },
         )
         resp = client.put(
             "/api/v1/ai-providers/p1/api-key",
@@ -166,7 +195,12 @@ class TestAIProvidersAPI:
     def test_delete_provider(self, client: TestClient) -> None:
         client.post(
             "/api/v1/ai-providers",
-            json={"provider_id": "p1", "provider_type": "anthropic", "name": "A"},
+            json={
+                "provider_id": "p1",
+                "provider_type": "anthropic",
+                "name": "A",
+                "api_key": "sk-ant-test-12345678",
+            },
         )
         resp = client.delete("/api/v1/ai-providers/p1")
         assert resp.status_code == 204
@@ -174,6 +208,66 @@ class TestAIProvidersAPI:
 
     def test_delete_provider_not_found(self, client: TestClient) -> None:
         resp = client.delete("/api/v1/ai-providers/nope")
+        assert resp.status_code == 404
+
+    def test_create_anthropic_requires_api_key(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/ai-providers",
+            json={"provider_id": "p1", "provider_type": "anthropic", "name": "A"},
+        )
+        assert resp.status_code == 422
+        assert "api_key is required" in resp.json()["detail"]
+
+    def test_create_ollama_rejects_api_key(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/ai-providers",
+            json={
+                "provider_id": "p1",
+                "provider_type": "ollama",
+                "name": "Ollama",
+                "api_base": "http://localhost:11434",
+                "api_key": "should-not-be-here",
+            },
+        )
+        assert resp.status_code == 422
+        assert "not used" in resp.json()["detail"]
+
+    def test_create_ollama_requires_api_base(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/ai-providers",
+            json={"provider_id": "p1", "provider_type": "ollama", "name": "Ollama"},
+        )
+        assert resp.status_code == 422
+        assert "api_base is required" in resp.json()["detail"]
+
+    def test_list_provider_models(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/ai-providers",
+            json={
+                "provider_id": "p1",
+                "provider_type": "anthropic",
+                "name": "Anthropic",
+                "api_key": "sk-ant-test-12345678",
+            },
+        )
+        client.post(
+            "/api/v1/models",
+            json={
+                "model_id": "m1",
+                "provider_id": "p1",
+                "name": "Claude Sonnet",
+                "model_name": "claude-sonnet-4-20250514",
+            },
+        )
+        resp = client.get("/api/v1/ai-providers/p1/models")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["model_id"] == "m1"
+        assert data[0]["provider_name"] == "Anthropic"
+
+    def test_list_provider_models_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/ai-providers/nonexistent/models")
         assert resp.status_code == 404
 
     def test_api_key_not_exposed_in_list(self, client: TestClient) -> None:

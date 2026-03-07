@@ -33,6 +33,7 @@ from lintel.api.routes import (
     metrics,
     models,
     notifications,
+    onboarding,
     pii,
     pipelines,
     policies,
@@ -323,6 +324,7 @@ def create_app() -> FastAPI:
     app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
     app.include_router(models.router, prefix="/api/v1", tags=["models"])
+    app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
     # Serve SPA static files in production (must be last)

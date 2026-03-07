@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev
+.PHONY: help install test test-unit test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -67,3 +67,10 @@ ui-test: ## Run UI tests
 
 dev: ## Launch tmux dev environment (3 claude prompts + API/UI/DB)
 	./scripts/dev-tmux.sh
+
+ollama-pull: ## Pull Ollama models (qwen2.5-coder:32b, llama3.1:70b)
+	ollama pull qwen2.5-coder:32b
+	ollama pull llama3.1:70b
+
+ollama-serve: ollama-pull ## Pull models and start Ollama server
+	ollama serve

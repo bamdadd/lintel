@@ -36,9 +36,13 @@ tmux new-window -t "$SESSION" -n services
 # Left: API server with DB
 tmux send-keys -t "$SESSION:services" "make serve-db" Enter
 
-# Right: UI dev server
+# Middle: UI dev server
 tmux split-window -h -t "$SESSION:services"
 tmux send-keys -t "$SESSION:services" "make ui-dev" Enter
+
+# Right: Ollama server
+tmux split-window -h -t "$SESSION:services"
+tmux send-keys -t "$SESSION:services" "make ollama-serve" Enter
 
 # Create third window: "editor" (nvim + terminal)
 tmux new-window -t "$SESSION" -n editor

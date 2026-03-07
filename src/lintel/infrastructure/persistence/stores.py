@@ -44,6 +44,11 @@ class PostgresAIProviderStore(PostgresCrudStore):
         super().__init__(pool, "ai_provider", "provider_id", AIProvider)
         self._pool_ref = pool
 
+    async def add(self, provider: Any, api_key: str = "") -> None:  # noqa: ANN401
+        await super().add(provider)
+        if api_key:
+            await self.update_api_key(provider.provider_id, api_key)
+
     async def update_api_key(self, provider_id: str, api_key: str) -> None:
         async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(

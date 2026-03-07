@@ -2,12 +2,13 @@ import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
   Loader, Center, ActionIcon, Badge, Switch, NumberInput, TagsInput,
-  Textarea, Text, Tabs,
+  Textarea, Text, Tabs, Alert,
 } from '@mantine/core';
+import { Link } from 'react-router';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconPlug } from '@tabler/icons-react';
+import { IconTrash, IconPlug, IconAlertCircle } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useModelsListModels,
@@ -104,6 +105,7 @@ export function Component() {
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   const models = (modelsResp?.data ?? []) as ModelItem[];
+  const hasProviders = providers.length > 0;
 
   const handleCreate = form.onSubmit((values) => {
     let config: Record<string, unknown> = {};
@@ -190,17 +192,23 @@ export function Component() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Models</Title>
-        <Button onClick={open}>Add Model</Button>
+        <Button onClick={open} disabled={!hasProviders}>Add Model</Button>
       </Group>
 
-      {models.length === 0 ? (
+      {!hasProviders && (
+        <Alert icon={<IconAlertCircle size={16} />} title="No AI providers configured" color="yellow">
+          You need to <Link to="../ai-providers" style={{ color: 'inherit', textDecoration: 'underline' }}>add an AI provider</Link> before you can add models.
+        </Alert>
+      )}
+
+      {models.length === 0 && hasProviders ? (
         <EmptyState
           title="No models configured"
           description="Add AI models from your providers and assign them to tasks, chats, workflow steps, or agent roles"
           actionLabel="Add Model"
           onAction={open}
         />
-      ) : (
+      ) : models.length === 0 ? null : (
         <Table striped highlightOnHover>
           <Table.Thead>
             <Table.Tr>

@@ -11,10 +11,16 @@ class AIProviderResponse(BaseModel):
     name: str
     api_base: str = ""
     is_default: bool = False
-    models: list[str] = []
     config: dict[str, Any] | None = None
     has_api_key: bool = False
     api_key_preview: str = ""
+
+
+class ProviderTypeInfo(BaseModel):
+    provider_type: str
+    required_fields: list[str] = []
+    optional_fields: list[str] = []
+    hidden_fields: list[str] = []
 
 
 class APIKeyUpdateResponse(BaseModel):

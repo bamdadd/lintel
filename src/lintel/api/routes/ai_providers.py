@@ -64,6 +64,45 @@ def get_ai_provider_store(request: Request) -> InMemoryAIProviderStore:
     return request.app.state.ai_provider_store  # type: ignore[no-any-return]
 
 
+PROVIDER_FIELD_REQUIREMENTS: dict[AIProviderType, dict[str, Any]] = {
+    AIProviderType.OLLAMA: {
+        "required": ["api_base"],
+        "optional": ["config"],
+        "hidden": ["api_key"],
+    },
+    AIProviderType.ANTHROPIC: {
+        "required": ["api_key"],
+        "optional": ["api_base", "config"],
+        "hidden": [],
+    },
+    AIProviderType.OPENAI: {
+        "required": ["api_key"],
+        "optional": ["api_base", "config"],
+        "hidden": [],
+    },
+    AIProviderType.AZURE_OPENAI: {
+        "required": ["api_key", "api_base"],
+        "optional": ["config"],
+        "hidden": [],
+    },
+    AIProviderType.GOOGLE: {
+        "required": ["api_key"],
+        "optional": ["api_base", "config"],
+        "hidden": [],
+    },
+    AIProviderType.BEDROCK: {
+        "required": [],
+        "optional": ["api_base", "config"],
+        "hidden": ["api_key"],
+    },
+    AIProviderType.CUSTOM: {
+        "required": ["api_base"],
+        "optional": ["api_key", "config"],
+        "hidden": [],
+    },
+}
+
+
 class CreateAIProviderRequest(BaseModel):
     provider_id: str = Field(default_factory=lambda: str(uuid4()))
     provider_type: AIProviderType
@@ -71,7 +110,6 @@ class CreateAIProviderRequest(BaseModel):
     api_key: str = ""
     api_base: str = ""
     is_default: bool = False
-    models: list[str] = []
     config: dict[str, Any] = {}
 
 
@@ -79,7 +117,6 @@ class UpdateAIProviderRequest(BaseModel):
     name: str | None = None
     api_base: str | None = None
     is_default: bool | None = None
-    models: list[str] | None = None
     config: dict[str, Any] | None = None
 
 
@@ -99,6 +136,24 @@ async def create_ai_provider(
     store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
 ) -> dict[str, Any]:
     """Register an AI model provider."""
+    reqs = PROVIDER_FIELD_REQUIREMENTS.get(body.provider_type, {})
+    hidden = reqs.get("hidden", [])
+    required = reqs.get("required", [])
+    if "api_key" in required and not body.api_key:
+        raise HTTPException(
+            status_code=422,
+            detail=f"api_key is required for {body.provider_type.value} providers",
+        )
+    if "api_base" in required and not body.api_base:
+        raise HTTPException(
+            status_code=422,
+            detail=f"api_base is required for {body.provider_type.value} providers",
+        )
+    if "api_key" in hidden and body.api_key:
+        raise HTTPException(
+            status_code=422,
+            detail=f"api_key is not used for {body.provider_type.value} providers",
+        )
     existing = await store.get(body.provider_id)
     if existing is not None:
         raise HTTPException(status_code=409, detail="Provider already exists")
@@ -108,7 +163,6 @@ async def create_ai_provider(
         name=body.name,
         api_base=body.api_base,
         is_default=body.is_default,
-        models=tuple(body.models),
         config=body.config or None,
     )
     await store.add(provider, api_key=body.api_key)
@@ -136,9 +190,18 @@ async def list_ai_providers(
 
 
 @router.get("/ai-providers/types")
-async def list_provider_types() -> list[str]:
-    """List supported AI provider types."""
-    return [t.value for t in AIProviderType]
+async def list_provider_types() -> list[dict[str, Any]]:
+    """List supported AI provider types with their field requirements."""
+    results = []
+    for t in AIProviderType:
+        reqs = PROVIDER_FIELD_REQUIREMENTS.get(t, {})
+        results.append({
+            "provider_type": t.value,
+            "required_fields": reqs.get("required", []),
+            "optional_fields": reqs.get("optional", []),
+            "hidden_fields": reqs.get("hidden", []),
+        })
+    return results
 
 
 @router.get("/ai-providers/default")
@@ -182,8 +245,6 @@ async def update_ai_provider(
         raise HTTPException(status_code=404, detail="Provider not found")
     current = asdict(provider)
     updates = body.model_dump(exclude_none=True)
-    if "models" in updates:
-        updates["models"] = tuple(updates["models"])
     merged = {**current, **updates}
     updated = AIProvider(**merged)
     await store.update(updated)
@@ -221,3 +282,27 @@ async def delete_ai_provider(
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
     await store.remove(provider_id)
+
+
+@router.get("/ai-providers/{provider_id}/models")
+async def list_provider_models(
+    provider_id: str,
+    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    request: Request,
+) -> list[dict[str, Any]]:
+    """List all models registered under a specific provider."""
+    provider = await store.get(provider_id)
+    if provider is None:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    from lintel.api.routes.models import get_model_store
+
+    model_store = get_model_store(request)
+    models = await model_store.list_by_provider(provider_id)
+    results = []
+    for m in models:
+        d = asdict(m)
+        d["capabilities"] = list(m.capabilities)
+        d["provider_name"] = provider.name
+        d["provider_type"] = provider.provider_type.value
+        results.append(d)
+    return results
