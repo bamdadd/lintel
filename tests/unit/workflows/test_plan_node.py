@@ -64,13 +64,13 @@ class TestPlanWork:
             }
         )
         runtime = AsyncMock()
-        runtime.execute_step.return_value = {"content": plan_json}
+        runtime.execute_step_stream.return_value = {"content": plan_json}
 
         config = {"configurable": {"agent_runtime": runtime}}
         result = await plan_work(state, config)
 
-        runtime.execute_step.assert_called_once()
-        call_kwargs = runtime.execute_step.call_args.kwargs
+        runtime.execute_step_stream.assert_called_once()
+        call_kwargs = runtime.execute_step_stream.call_args.kwargs
         assert call_kwargs["agent_role"].value == "planner"
         assert call_kwargs["step_name"] == "plan_work"
         assert "Remove AI Providers" in call_kwargs["messages"][1]["content"]
@@ -83,10 +83,10 @@ class TestPlanWork:
     async def test_empty_messages_fallback(self, state: dict) -> None:
         state["sanitized_messages"] = []
         runtime = AsyncMock()
-        runtime.execute_step.return_value = {"content": '{"tasks": [], "summary": "empty"}'}
+        runtime.execute_step_stream.return_value = {"content": '{"tasks": [], "summary": "empty"}'}
 
         config = {"configurable": {"agent_runtime": runtime}}
         await plan_work(state, config)
 
-        call_kwargs = runtime.execute_step.call_args.kwargs
+        call_kwargs = runtime.execute_step_stream.call_args.kwargs
         assert "No description provided" in call_kwargs["messages"][1]["content"]

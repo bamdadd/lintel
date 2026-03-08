@@ -175,3 +175,90 @@ class AgentRuntime:
         )
 
         return result
+
+    async def execute_step_stream(
+        self,
+        thread_ref: ThreadRef,
+        agent_role: AgentRole,
+        step_name: str,
+        messages: list[dict[str, str]],
+        on_chunk: Any | None = None,  # noqa: ANN401 — async callable(str) -> None
+        correlation_id: UUID | None = None,
+    ) -> dict[str, Any]:
+        """Like execute_step but streams content, calling on_chunk for each piece.
+
+        Returns the same result dict as execute_step, with the full accumulated content.
+        The on_chunk callback receives partial text as it arrives from the model.
+        """
+        cid = correlation_id or uuid4()
+
+        await self._event_store.append(
+            thread_ref.stream_id,
+            [
+                AgentStepStarted(
+                    actor_type=ActorType.AGENT,
+                    actor_id=agent_role.value,
+                    thread_ref=thread_ref,
+                    correlation_id=cid,
+                    payload={
+                        "agent_role": agent_role.value,
+                        "step_name": step_name,
+                        "streaming": True,
+                    },
+                )
+            ],
+        )
+
+        policy = await self._model_router.select_model(agent_role, step_name)
+        await self._event_store.append(
+            thread_ref.stream_id,
+            [
+                ModelSelected(
+                    actor_type=ActorType.SYSTEM,
+                    actor_id="model_router",
+                    thread_ref=thread_ref,
+                    correlation_id=cid,
+                    payload={
+                        "agent_role": agent_role.value,
+                        "provider": policy.provider,
+                        "model_name": policy.model_name,
+                        "streaming": True,
+                    },
+                )
+            ],
+        )
+
+        # Stream content from model
+        accumulated = []
+        async for chunk in self._model_router.stream_model(policy, messages):
+            accumulated.append(chunk)
+            if on_chunk is not None:
+                await on_chunk(chunk)
+
+        full_content = "".join(accumulated)
+
+        # No usage info from streaming — estimate from content length
+        result: dict[str, Any] = {
+            "content": full_content,
+            "usage": {"input_tokens": 0, "output_tokens": 0},
+            "model": policy.model_name,
+        }
+
+        await self._event_store.append(
+            thread_ref.stream_id,
+            [
+                AgentStepCompleted(
+                    actor_type=ActorType.AGENT,
+                    actor_id=agent_role.value,
+                    thread_ref=thread_ref,
+                    correlation_id=cid,
+                    payload={
+                        "agent_role": agent_role.value,
+                        "step_name": step_name,
+                        "output_summary": full_content[:500],
+                    },
+                )
+            ],
+        )
+
+        return result

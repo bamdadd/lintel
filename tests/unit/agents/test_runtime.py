@@ -113,3 +113,68 @@ class TestAgentRuntime:
         for call in event_store.append.call_args_list:
             event = call[0][1][0]
             assert event.correlation_id == cid
+
+    async def test_execute_step_stream_accumulates_chunks(self) -> None:
+        event_store, model_router = _make_mocks()
+
+        async def fake_stream(*_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            for chunk in ["Hello", ", ", "world!"]:
+                yield chunk
+
+        model_router.stream_model = fake_stream
+        runtime = AgentRuntime(event_store, model_router)
+        thread_ref = ThreadRef("W1", "C1", "t1")
+
+        result = await runtime.execute_step_stream(
+            thread_ref=thread_ref,
+            agent_role=AgentRole.PLANNER,
+            step_name="planning",
+            messages=[{"role": "user", "content": "Plan"}],
+        )
+
+        assert result["content"] == "Hello, world!"
+
+    async def test_execute_step_stream_calls_on_chunk(self) -> None:
+        event_store, model_router = _make_mocks()
+        chunks_received: list[str] = []
+
+        async def fake_stream(*_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            for chunk in ["line1\n", "line2\n"]:
+                yield chunk
+
+        model_router.stream_model = fake_stream
+        runtime = AgentRuntime(event_store, model_router)
+        thread_ref = ThreadRef("W1", "C1", "t1")
+
+        async def on_chunk(chunk: str) -> None:
+            chunks_received.append(chunk)
+
+        await runtime.execute_step_stream(
+            thread_ref=thread_ref,
+            agent_role=AgentRole.RESEARCHER,
+            step_name="research",
+            messages=[{"role": "user", "content": "Research"}],
+            on_chunk=on_chunk,
+        )
+
+        assert chunks_received == ["line1\n", "line2\n"]
+
+    async def test_execute_step_stream_emits_events(self) -> None:
+        event_store, model_router = _make_mocks()
+
+        async def fake_stream(*_args: Any, **_kwargs: Any) -> Any:  # noqa: ANN401
+            yield "done"
+
+        model_router.stream_model = fake_stream
+        runtime = AgentRuntime(event_store, model_router)
+        thread_ref = ThreadRef("W1", "C1", "t1")
+
+        await runtime.execute_step_stream(
+            thread_ref=thread_ref,
+            agent_role=AgentRole.PLANNER,
+            step_name="plan",
+            messages=[],
+        )
+
+        # Should emit: StepStarted, ModelSelected, StepCompleted (3 events, no ModelCallCompleted)
+        assert event_store.append.call_count == 3

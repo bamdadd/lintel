@@ -123,7 +123,23 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
 
     thread_ref = _build_thread_ref(state.get("thread_ref", ""))
 
-    result = await agent_runtime.execute_step(
+    # Stream LLM output so partial results appear in stage logs in real-time
+    _line_buffer: list[str] = []
+
+    async def _on_chunk(chunk: str) -> None:
+        """Buffer streaming chunks and flush complete lines as stage logs."""
+        _line_buffer.append(chunk)
+        text = "".join(_line_buffer)
+        while "\n" in text:
+            line, text = text.split("\n", 1)
+            stripped = line.strip()
+            if stripped:
+                await append_log(config, "plan", stripped, state)
+        _line_buffer.clear()
+        if text:
+            _line_buffer.append(text)
+
+    result = await agent_runtime.execute_step_stream(
         thread_ref=thread_ref,
         agent_role=AgentRole.PLANNER,
         step_name="plan_work",
@@ -131,8 +147,13 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             {"role": "system", "content": PLAN_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
-        tools=[],  # No tools — planner analyses context and produces a plan directly
+        on_chunk=_on_chunk,
     )
+
+    # Flush remaining buffer
+    remaining = "".join(_line_buffer).strip()
+    if remaining:
+        await append_log(config, "plan", remaining, state)
 
     content = result.get("content", "")
     plan = _parse_plan(content)

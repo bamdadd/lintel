@@ -140,7 +140,24 @@ async def research_codebase(
             workspace_id="lintel-chat", channel_id="chat", thread_ts=thread_ref_str
         )
 
-    result = await agent_runtime.execute_step(
+    # Stream LLM output so partial results appear in stage logs in real-time
+    _line_buffer: list[str] = []
+
+    async def _on_chunk(chunk: str) -> None:
+        """Buffer streaming chunks and flush complete lines as stage logs."""
+        _line_buffer.append(chunk)
+        text = "".join(_line_buffer)
+        # Flush complete lines
+        while "\n" in text:
+            line, text = text.split("\n", 1)
+            stripped = line.strip()
+            if stripped:
+                await append_log(config, "research", stripped, state)
+        _line_buffer.clear()
+        if text:
+            _line_buffer.append(text)
+
+    result = await agent_runtime.execute_step_stream(
         thread_ref=thread_ref,
         agent_role=AgentRole.RESEARCHER,
         step_name="research_codebase",
@@ -151,8 +168,13 @@ async def research_codebase(
                 "content": (f"{codebase_context}\n\n---\n\n## User Request\n{user_request}"),
             },
         ],
-        tools=[],  # No tools — context is already gathered from sandbox
+        on_chunk=_on_chunk,
     )
+
+    # Flush any remaining buffered content
+    remaining = "".join(_line_buffer).strip()
+    if remaining:
+        await append_log(config, "research", remaining, state)
 
     research_report = result.get("content", "")
     usage = extract_token_usage("research", result)
