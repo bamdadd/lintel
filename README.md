@@ -1,36 +1,99 @@
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.12+-blue?logo=python&logoColor=white" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/LangGraph-0.3+-purple?logo=langchain&logoColor=white" alt="LangGraph">
+  <img src="https://img.shields.io/badge/PostgreSQL-15+-336791?logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+</p>
+
 # Lintel
 
-Open source AI collaboration infrastructure.
+**The AI-human engineering platform where agents and humans collaborate as teammates.**
 
-Lintel coordinates AI agents and human teams inside conversation threads. Teams interact through Slack, while agents plan, code, review, and execute work in isolated sandboxes. Every action is recorded in an append-only event store, giving you a complete audit trail.
+Lintel doesn't just measure software delivery — it *executes* it. Teams interact through Slack or the web UI while specialised AI agents plan, code, review, and ship work in isolated sandboxes. Every action is recorded in an append-only event store, giving you a complete audit trail and DORA-grade metrics — all derived from the event stream, not bolted on.
 
-## What it does
+> DX, LinearB, and Minware are mirrors — they show you what happened.
+> Lintel is a flywheel — it measures, acts, and improves automatically.
 
-- **Multi-agent orchestration** -- Specialised agents (planner, coder, reviewer, PM, designer, summarizer) collaborate within a single thread
-- **Slack-native** -- Conversations happen where your team already works
-- **Sandboxed execution** -- Code runs in isolated containers, not on your infrastructure
-- **PII protection** -- Messages are scanned and anonymised before reaching any model
-- **Event-sourced** -- Every decision, model call, and approval is an immutable event
-- **Human-in-the-loop** -- Agents propose; humans approve merges, deployments, and sensitive actions
-- **Model-agnostic** -- Route to any LLM provider per agent role via policy
+---
+
+## How it works
+
+```
+  +---------+     +---------+     +--------+     +--------+     +---------+     +-------+
+  | DESIRE  | --> | DEVELOP | --> | REVIEW | --> | DEPLOY | --> | OBSERVE | --> | LEARN |
+  +---------+     +---------+     +--------+     +--------+     +---------+     +-------+
+       ^                                                                           |
+       +----------------------- learnings inform next desire ----------------------+
+```
+
+You describe what you want in a Slack thread or chat. Lintel classifies the request, builds a work plan, writes the code, runs tests, requests reviews, and waits for your approval before merging. Each phase transition is an event. Each event feeds metrics. Metrics trigger guardrails. The flywheel turns.
+
+### Pipeline stages
+
+```
+ingest → route → setup_workspace → research → approve_research
+  → plan → approve_spec → implement → test → review → approve_merge → merge
+```
+
+Every stage is observable, retryable, and produces audit events. Approval gates pause the pipeline and wait for human sign-off.
+
+---
+
+## Key capabilities
+
+| | |
+|---|---|
+| **Multi-agent orchestration** | Specialised agents (planner, coder, reviewer, PM, designer, summarizer) collaborate within a single workflow, each routable to different LLM providers |
+| **Chat-driven workflows** | Describe work in natural language — Lintel classifies intent, creates work items, and dispatches the right pipeline |
+| **Sandboxed execution** | Code runs in isolated Docker containers with `--cap-drop ALL`, seccomp profiles, read-only root filesystems, and no network after clone |
+| **PII protection** | Messages are scanned with Presidio and anonymised before reaching any model |
+| **Event-sourced audit trail** | Every decision, model call, approval, and state change is an immutable event with full correlation tracking |
+| **Human-in-the-loop** | Agents propose; humans approve merges, deployments, and sensitive actions via configurable approval gates |
+| **Model-agnostic routing** | Route any agent role to any provider (OpenAI, Anthropic, Bedrock, Ollama, Azure) with priority-based model assignment policies |
+| **MCP integration** | All 170+ API endpoints are automatically exposed as MCP tools, plus a client for connecting to external MCP servers |
+| **Web UI** | Full-featured dashboard with 27 feature modules — pipelines, chat, sandboxes, agents, models, audit logs, and more |
+
+---
 
 ## Architecture
 
 ```
-Slack  -->  Channel Adapter  -->  PII Pipeline  -->  Event Store
-                                                         |
-                                                    LangGraph Workflows
-                                                    /        |        \
-                                              Planner    Coder    Reviewer
-                                                           |
-                                                       Sandbox
-                                                           |
-                                                    Repo / PR
+                          ┌─────────────────┐
+                          │   Slack / Chat   │
+                          └────────┬────────┘
+                                   │
+                          ┌────────▼────────┐
+                          │  PII Pipeline   │
+                          └────────┬────────┘
+                                   │
+              ┌────────────────────▼────────────────────┐
+              │           Event Store (Postgres)         │
+              │  append-only · correlation · causation   │
+              └────────────────────┬────────────────────┘
+                                   │
+              ┌────────────────────▼────────────────────┐
+              │         LangGraph Workflow Engine        │
+              │                                          │
+              │  ┌──────────┐ ┌────────┐ ┌──────────┐  │
+              │  │ Planner  │ │ Coder  │ │ Reviewer │  │
+              │  └────┬─────┘ └───┬────┘ └────┬─────┘  │
+              │       │           │            │         │
+              │       ▼           ▼            ▼         │
+              │  ┌─────────────────────────────────┐    │
+              │  │    Sandboxed Execution (Docker)  │    │
+              │  └─────────────────────────────────┘    │
+              └────────────────────┬────────────────────┘
+                                   │
+              ┌────────────────────▼────────────────────┐
+              │      Projections · Metrics · Audit       │
+              └─────────────────────────────────────────┘
 ```
 
 The system follows **event sourcing with CQRS**. Commands express intent and may fail. Events are past-tense facts that are never modified. Domain code depends on Protocol interfaces; infrastructure provides concrete implementations.
 
-### Domain Model
+<details>
+<summary><strong>Domain model</strong> (click to expand)</summary>
 
 ```mermaid
 erDiagram
@@ -57,7 +120,6 @@ erDiagram
     Stage ||--o{ ApprovalRequest : "may require"
 
     SandboxJob }o--|| Repository : "operates on"
-
     Environment ||--o{ Variable : "has variables"
 
     ChatSession }o--|| Project : "belongs to"
@@ -65,254 +127,132 @@ erDiagram
     ChatSession ||--o{ PipelineRun : "can trigger"
 
     Model }o--|| AIProvider : "provided by"
-
     AgentDefinition ||--o{ SkillDefinition : "uses skills"
-
-    Project {
-        string project_id PK
-        string name
-        string default_branch
-        enum status
-    }
-
-    Repository {
-        string repo_id PK
-        string name
-        string url
-        string default_branch
-        string provider
-    }
-
-    WorkflowDefinition {
-        string definition_id PK
-        string name
-        string description
-        string entry_point
-        bool is_template
-    }
-
-    WorkflowStepConfig {
-        string node_name
-        string agent_id FK
-        string model_id FK
-        string provider_id FK
-        bool requires_approval
-    }
-
-    PipelineRun {
-        string run_id PK
-        string project_id FK
-        string work_item_id FK
-        string workflow_definition_id FK
-        string environment_id FK
-        enum status
-    }
-
-    Environment {
-        string environment_id PK
-        string name
-        enum env_type
-    }
-
-    Variable {
-        string variable_id PK
-        string key
-        string value
-        string environment_id FK
-        bool is_secret
-    }
-
-    ChatSession {
-        string session_id PK
-        string project_id FK
-        string thread_ref
-    }
-
-    MCPServer {
-        string server_id PK
-        string name
-        string url
-        bool enabled
-    }
-
-    AIProvider {
-        string provider_id PK
-        string name
-        enum provider_type
-        string api_base
-    }
-
-    Model {
-        string model_id PK
-        string provider_id FK
-        string name
-        string model_name
-        int max_tokens
-    }
-
-    AgentDefinition {
-        string agent_id PK
-        string name
-        string role
-        string category
-        string system_prompt
-    }
-
-    SkillDefinition {
-        string skill_id PK
-        string name
-        string version
-        enum category
-        enum execution_mode
-    }
-
-    Stage {
-        string stage_id PK
-        string name
-        string stage_type
-        enum status
-    }
-
-    AgentSession {
-        string session_id PK
-        string agent_role
-        string model_used
-    }
-
-    ApprovalRequest {
-        string approval_id PK
-        string gate_type
-        enum status
-    }
-
-    WorkItem {
-        string work_item_id PK
-        string project_id FK
-        string title
-        enum work_type
-        enum status
-    }
-
-    Credential {
-        string credential_id PK
-        string name
-        enum credential_type
-    }
-
-    Trigger {
-        string trigger_id PK
-        string project_id FK
-        enum trigger_type
-        string name
-    }
-
-    SandboxJob {
-        string command
-        int timeout_seconds
-    }
-
-    NotificationRule {
-        string rule_id PK
-        string project_id FK
-        enum channel
-        string target
-    }
-
-    Policy {
-        string policy_id PK
-        string name
-        enum action
-    }
 ```
 
-Key abstractions live in `src/lintel/contracts/`:
+</details>
 
-| Module | Purpose |
-|---|---|
-| `types.py` | Core value objects (`ThreadRef`, enums, `ModelPolicy`) |
-| `commands.py` | Imperative command schemas |
-| `events.py` | Immutable event types with `EventEnvelope` wrapper |
-| `protocols.py` | Service boundary interfaces (`EventStore`, `Deidentifier`, `ChannelAdapter`, `ModelRouter`, `SandboxManager`, `RepoProvider`, `SkillRegistry`) |
-
-## Requirements
-
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) package manager
-- PostgreSQL (for the event store)
-- NATS (for messaging)
-
-## Getting started
-
-```bash
-# Install dependencies
-make install
-
-# Run the dev server
-make serve
-
-# Run all checks
-make all
-```
-
-## Local development with Docker
-
-```bash
-# Copy and fill in environment variables
-cp .env.example .env
-
-# Start all services (Postgres, NATS, Lintel)
-cd ops && docker compose up -d
-
-# Verify
-curl http://localhost:8000/healthz
-
-# Stop
-cd ops && docker compose down
-```
-
-## Available commands
-
-Run `make help` to see all targets.
-
-```
-make install          Install all dependencies
-make test             Run all tests
-make test-unit        Run unit tests
-make test-integration Run integration tests
-make test-e2e         Run e2e tests
-make lint             Check linting and formatting
-make typecheck        Run mypy strict type checking
-make format           Auto-fix formatting and lint
-make serve            Start dev server on :8000
-make migrate          Run event store migrations
-make all              Run lint, typecheck, and tests
-```
-
-## Project layout
+### Clean architecture boundaries
 
 ```
 src/lintel/
-  contracts/       Domain types, commands, events, protocol interfaces
-  domain/          Domain logic
-  agents/          Agent role definitions
-  workflows/       LangGraph workflow graphs and nodes
-  projections/     CQRS read-side projections
+  contracts/       Pure domain — types, commands, events, Protocol interfaces (no I/O)
+  domain/          Domain logic and event dispatching
+  agents/          Agent role definitions (planner, coder, reviewer, PM, designer, summarizer)
+  workflows/       LangGraph workflow graphs and node implementations
+  projections/     CQRS read-side projections (audit, metrics)
   skills/          Pluggable agent capabilities
-  api/             FastAPI routes and middleware
-  infrastructure/  Concrete implementations
-    channels/      Slack adapter
-    event_store/   PostgreSQL event persistence
-    models/        LLM routing (litellm)
-    pii/           PII detection and anonymisation (presidio)
-    sandbox/       Isolated execution environments
-    vault/         Encrypted secret storage
-    repos/         Git and PR operations
-    observability/ OpenTelemetry tracing
-tests/
-  unit/            Fast, no external dependencies
-  integration/     Uses testcontainers (Postgres, NATS)
-  e2e/             Full system tests
+  api/             FastAPI routes, middleware, MCP surface
+  infrastructure/  Concrete implementations of Protocol interfaces
+    channels/        Slack adapter (slack-bolt)
+    event_store/     PostgreSQL event persistence (asyncpg + SQLAlchemy async)
+    models/          LLM provider routing (litellm)
+    pii/             PII detection and anonymisation (Presidio)
+    sandbox/         Isolated Docker execution environments
+    vault/           Encrypted secret storage (cryptography)
+    repos/           Git and PR operations
+    mcp/             MCP tool client for external servers
+    observability/   OpenTelemetry tracing
 ```
+
+Domain code depends only on `contracts/` abstractions — never on infrastructure.
+
+---
+
+## Quick start
+
+### Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) package manager
+- Docker (for sandboxes and local Postgres)
+
+### Install and run
+
+```bash
+git clone https://github.com/bamdadd/lintel.git
+cd lintel
+
+# Install dependencies
+make install
+
+# Start dev server (in-memory stores, no external deps)
+make serve
+
+# Or with Postgres
+make serve-db
+
+# Open the UI
+open http://localhost:8000
+```
+
+### Run checks
+
+```bash
+make all              # lint + typecheck + test (917 tests)
+```
+
+### Docker Compose (full stack)
+
+```bash
+cp .env.example .env  # fill in your API keys
+cd ops && docker compose up -d
+
+curl http://localhost:8000/healthz
+```
+
+---
+
+## Available commands
+
+```
+make install          Install all dependencies (uv sync --all-extras)
+make serve            Dev server on :8000 (in-memory)
+make serve-db         Dev server on :8000 (PostgreSQL)
+make test             Run all tests
+make test-unit        Unit tests only
+make test-integration Integration tests (testcontainers)
+make test-e2e         End-to-end tests
+make lint             Ruff check + format check
+make typecheck        mypy strict mode
+make format           Auto-fix formatting and lint
+make migrate          Run event store migrations
+make all              lint + typecheck + test
+make dev              Launch tmux dev environment (3 windows)
+```
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| API | FastAPI, Pydantic v2, uvicorn |
+| Workflows | LangGraph, LangChain |
+| LLM routing | litellm (OpenAI, Anthropic, Bedrock, Ollama, Azure) |
+| Database | PostgreSQL, asyncpg, SQLAlchemy async |
+| Messaging | NATS |
+| PII | Presidio (analyzer + anonymizer) |
+| Sandbox | Docker (isolated containers) |
+| Secrets | cryptography (Fernet) |
+| Observability | OpenTelemetry (SDK + OTLP exporter) |
+| Slack | slack-bolt, slack-sdk |
+| MCP | fastapi-mcp (auto-expose), custom tool client |
+| UI | React, Vite, Mantine, TanStack Query |
+| Testing | pytest, pytest-asyncio, testcontainers |
+| Code quality | ruff, mypy (strict mode) |
+
+---
+
+## Documentation
+
+- [Platform Vision](docs/vision.md) — mission, principles, and differentiation
+- [Architecture](docs/architecture.md) — detailed system design
+- [Events](docs/events.md) — event types and the event store
+- [Local Development](docs/local-dev.md) — dev environment setup
+- [Requirements](docs/requirements/) — delivery loop, entities, guardrails, metrics, integrations
+
+---
 
 ## License
 
