@@ -158,6 +158,18 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/work-items/pages/WorkItemListPage'),
       },
       {
+        path: 'boards',
+        lazy: () => import('@/features/boards/pages/BoardListPage'),
+      },
+      {
+        path: 'boards/tags',
+        lazy: () => import('@/features/boards/pages/TagManagementPage'),
+      },
+      {
+        path: 'boards/:boardId',
+        lazy: () => import('@/features/boards/pages/BoardPage'),
+      },
+      {
         path: 'settings',
         lazy: () => import('@/features/settings/pages/SettingsPage'),
       },

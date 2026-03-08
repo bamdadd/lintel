@@ -41,6 +41,7 @@ import {
   IconCheckbox,
   IconListCheck,
   IconPlug,
+  IconLayoutKanban,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -60,6 +61,7 @@ const navSections: NavSection[] = [
       { label: 'Chat', path: '/chat', icon: IconMessageCircle },
       { label: 'Threads', path: '/threads', icon: IconMessages },
       { label: 'Work Items', path: '/work-items', icon: IconListCheck },
+      { label: 'Boards', path: '/boards', icon: IconLayoutKanban },
     ],
   },
   {

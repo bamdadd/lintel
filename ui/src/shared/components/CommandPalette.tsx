@@ -26,6 +26,7 @@ import {
   IconPackage,
   IconCheckbox,
   IconListCheck,
+  IconLayoutKanban,
 } from '@tabler/icons-react';
 
 const navActions = [
@@ -33,6 +34,7 @@ const navActions = [
   { id: 'chat', label: 'Chat', description: 'Chat with agents', path: '/chat', icon: IconMessageCircle },
   { id: 'threads', label: 'Threads', description: 'View all threads', path: '/threads', icon: IconMessages },
   { id: 'work-items', label: 'Work Items', description: 'Track features and bugs', path: '/work-items', icon: IconListCheck },
+  { id: 'boards', label: 'Boards', description: 'Kanban boards for work items', path: '/boards', icon: IconLayoutKanban },
   { id: 'workflows', label: 'Workflows', description: 'Manage workflow definitions', path: '/workflows', icon: IconGitBranch },
   { id: 'pipelines', label: 'Pipelines', description: 'Pipeline runs', path: '/pipelines', icon: IconPlayerPlay },
   { id: 'repositories', label: 'Repositories', description: 'Manage repositories', path: '/repositories', icon: IconFolder },
