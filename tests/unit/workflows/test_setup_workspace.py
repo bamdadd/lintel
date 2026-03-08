@@ -249,6 +249,39 @@ class TestSetupWorkspace:
         await store.add(
             Variable(
                 variable_id="v2",
+                key="DEBUG",
+                value="true",
+                environment_id="env-1",
+            )
+        )
+        state = _make_state(environment_id="env-1")
+
+        result = await setup_workspace(
+            state,  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "variable_store": store}},
+        )
+
+        assert result["sandbox_id"] is not None
+        config = manager.created_configs[0]
+        env_dict = dict(config.environment)
+        assert env_dict["API_URL"] == "https://api.test"
+        assert env_dict["DEBUG"] == "true"
+
+    async def test_secrets_excluded_from_env_vars(self) -> None:
+        """Secret variables are NOT injected as env vars in SandboxConfig."""
+        manager = DummySandboxManager()
+        store = InMemoryVariableStore()
+        await store.add(
+            Variable(
+                variable_id="v1",
+                key="API_URL",
+                value="https://api.test",
+                environment_id="env-1",
+            )
+        )
+        await store.add(
+            Variable(
+                variable_id="v2",
                 key="SECRET_KEY",
                 value="s3cret",
                 environment_id="env-1",
@@ -266,7 +299,42 @@ class TestSetupWorkspace:
         config = manager.created_configs[0]
         env_dict = dict(config.environment)
         assert env_dict["API_URL"] == "https://api.test"
-        assert env_dict["SECRET_KEY"] == "s3cret"
+        assert "SECRET_KEY" not in env_dict
+
+    async def test_secrets_written_as_files_in_sandbox(self) -> None:
+        """Secret variables are written to /run/secrets/<key> in the sandbox."""
+        manager = DummySandboxManager()
+        store = InMemoryVariableStore()
+        await store.add(
+            Variable(
+                variable_id="v1",
+                key="DB_PASSWORD",
+                value="p@ssw0rd",
+                environment_id="env-1",
+                is_secret=True,
+            )
+        )
+        await store.add(
+            Variable(
+                variable_id="v2",
+                key="API_TOKEN",
+                value="tok-abc",
+                environment_id="env-1",
+                is_secret=True,
+            )
+        )
+        state = _make_state(environment_id="env-1")
+
+        result = await setup_workspace(
+            state,  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager, "variable_store": store}},
+        )
+
+        assert result["sandbox_id"] is not None
+        assert manager.written_files["/run/secrets/DB_PASSWORD"] == "p@ssw0rd"
+        assert manager.written_files["/run/secrets/API_TOKEN"] == "tok-abc"
+        # mkdir -p /run/secrets should have been executed
+        assert any("mkdir -p /run/secrets" in cmd for cmd in manager.executed)
 
     async def test_no_variables_without_environment_id(self) -> None:
         manager = DummySandboxManager()
