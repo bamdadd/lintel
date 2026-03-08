@@ -148,6 +148,7 @@ async def spawn_implementation(
                 tools=sandbox_tool_schemas(),
                 sandbox_manager=sandbox_manager,
                 sandbox_id=sandbox_id,
+                max_iterations=50,
             )
             agent_output = result.get("content", "Implementation complete.")
             usage = extract_token_usage("implement", result)

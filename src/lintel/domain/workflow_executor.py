@@ -617,10 +617,16 @@ class WorkflowExecutor:
                     if stage.started_at:
                         start_ts = datetime.fromisoformat(stage.started_at).timestamp()
                         duration = timestamp_ms - int(start_ts * 1000)
+                    # Preserve status if the node already marked itself failed
+                    final_status = (
+                        stage.status
+                        if stage.status == StageStatus.FAILED
+                        else StageStatus.SUCCEEDED
+                    )
                     updated_stages.append(
                         replace(
                             stage,
-                            status=StageStatus.SUCCEEDED,
+                            status=final_status,
                             started_at=started,
                             finished_at=finished,
                             duration_ms=duration,

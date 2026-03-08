@@ -135,8 +135,15 @@ class DockerSandboxManager:
 
     async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
         container = self._get_container(sandbox_id)
+        # Ensure parent directories exist before writing
+        dest_dir = os.path.dirname(path) or "/"
+        from lintel.contracts.types import SandboxJob
+
+        await self.execute(
+            sandbox_id,
+            SandboxJob(command=f"mkdir -p {dest_dir}", timeout_seconds=10),
+        )
         tar_stream = create_tar(path, content)
-        dest_dir = os.path.dirname(path) or "/workspace"
         try:
             await asyncio.to_thread(container.put_archive, dest_dir, tar_stream)
         except SandboxNotFoundError:
