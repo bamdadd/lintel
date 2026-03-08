@@ -5,6 +5,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from lintel.contracts.events import ConnectionCreated, ConnectionUpdated, ConnectionRemoved, SettingsUpdated
+from lintel.domain.event_dispatcher import dispatch_event
+
 router = APIRouter()
 
 
@@ -62,6 +65,11 @@ async def create_connection(body: ConnectionRequest, request: Request) -> dict[s
         "status": "untested",
     }
     connections[body.connection_id] = entry
+    await dispatch_event(
+        request,
+        ConnectionCreated(payload={"resource_id": body.connection_id}),
+        stream_id=f"connection:{body.connection_id}",
+    )
     return entry
 
 
@@ -93,6 +101,11 @@ async def update_connection(
         conn["name"] = body.name
     if body.config is not None:
         conn["config"] = body.config
+    await dispatch_event(
+        request,
+        ConnectionUpdated(payload={"resource_id": connection_id}),
+        stream_id=f"connection:{connection_id}",
+    )
     return conn
 
 
@@ -103,6 +116,11 @@ async def delete_connection(connection_id: str, request: Request) -> None:
     if connection_id not in connections:
         raise HTTPException(status_code=404, detail="Connection not found")
     del connections[connection_id]
+    await dispatch_event(
+        request,
+        ConnectionRemoved(payload={"resource_id": connection_id}),
+        stream_id=f"connection:{connection_id}",
+    )
 
 
 @router.post("/settings/connections/{connection_id}/test")
@@ -131,4 +149,9 @@ async def update_settings(body: UpdateSettingsRequest, request: Request) -> dict
     settings = get_general_settings(request)
     for key, value in body.model_dump(exclude_none=True).items():
         settings[key] = value
+    await dispatch_event(
+        request,
+        SettingsUpdated(payload={}),
+        stream_id="settings",
+    )
     return settings

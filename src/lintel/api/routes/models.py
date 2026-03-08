@@ -13,7 +13,9 @@ from lintel.api.routes.ai_providers import (
     InMemoryAIProviderStore,
     get_ai_provider_store,
 )
+from lintel.contracts.events import ModelRegistered, ModelUpdated, ModelRemoved, ModelAssignmentCreated, ModelAssignmentRemoved
 from lintel.contracts.types import Model, ModelAssignment, ModelAssignmentContext
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -147,6 +149,7 @@ async def _enrich_model(
 
 @router.post("/models", status_code=201)
 async def create_model(
+    request: Request,
     body: CreateModelRequest,
     store: Annotated[InMemoryModelStore, Depends(get_model_store)],
     provider_store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
@@ -177,6 +180,7 @@ async def create_model(
         config=body.config or None,
     )
     await store.add(model)
+    await dispatch_event(request, ModelRegistered(payload={"resource_id": body.model_id, "model_name": body.model_name}), stream_id=f"model:{body.model_id}")
     return await _enrich_model(model, provider_store)
 
 
@@ -209,6 +213,7 @@ async def get_model(
 
 @router.patch("/models/{model_id}")
 async def update_model(
+    request: Request,
     model_id: str,
     body: UpdateModelRequest,
     store: Annotated[InMemoryModelStore, Depends(get_model_store)],
@@ -225,11 +230,13 @@ async def update_model(
     merged = {**current, **updates}
     updated = Model(**merged)
     await store.update(updated)
+    await dispatch_event(request, ModelUpdated(payload={"resource_id": model_id}), stream_id=f"model:{model_id}")
     return await _enrich_model(updated, provider_store)
 
 
 @router.delete("/models/{model_id}", status_code=204)
 async def delete_model(
+    request: Request,
     model_id: str,
     store: Annotated[InMemoryModelStore, Depends(get_model_store)],
     assignment_store: Annotated[InMemoryModelAssignmentStore, Depends(get_model_assignment_store)],
@@ -240,10 +247,12 @@ async def delete_model(
         raise HTTPException(status_code=404, detail="Model not found")
     await assignment_store.remove_by_model(model_id)
     await store.remove(model_id)
+    await dispatch_event(request, ModelRemoved(payload={"resource_id": model_id}), stream_id=f"model:{model_id}")
 
 
 @router.post("/models/{model_id}/assignments", status_code=201)
 async def create_model_assignment(
+    request: Request,
     model_id: str,
     body: CreateModelAssignmentRequest,
     store: Annotated[InMemoryModelStore, Depends(get_model_store)],
@@ -261,6 +270,7 @@ async def create_model_assignment(
         priority=body.priority,
     )
     await assignment_store.add(assignment)
+    await dispatch_event(request, ModelAssignmentCreated(payload={"resource_id": body.assignment_id, "model_id": model_id}), stream_id=f"model:{model_id}")
     return asdict(assignment)
 
 
@@ -294,6 +304,7 @@ async def list_all_assignments(
 
 @router.delete("/model-assignments/{assignment_id}", status_code=204)
 async def delete_model_assignment(
+    request: Request,
     assignment_id: str,
     assignment_store: Annotated[InMemoryModelAssignmentStore, Depends(get_model_assignment_store)],
 ) -> None:
@@ -302,3 +313,4 @@ async def delete_model_assignment(
     if assignment is None:
         raise HTTPException(status_code=404, detail="Assignment not found")
     await assignment_store.remove(assignment_id)
+    await dispatch_event(request, ModelAssignmentRemoved(payload={"resource_id": assignment_id}), stream_id="model_assignments")

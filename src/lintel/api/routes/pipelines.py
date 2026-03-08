@@ -12,7 +12,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import (
+    PipelineRunCancelled,
+    PipelineRunDeleted,
+    PipelineRunStarted,
+    PipelineStageApproved,
+    PipelineStageRejected,
+    PipelineStageRetried,
+)
 from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -86,6 +95,7 @@ class CreatePipelineRequest(BaseModel):
 async def create_pipeline(
     body: CreatePipelineRequest,
     store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
 ) -> dict[str, Any]:
     existing = await store.get(body.run_id)
     if existing is not None:
@@ -109,6 +119,7 @@ async def create_pipeline(
         stages=stages,
     )
     await store.add(run)
+    await dispatch_event(request, PipelineRunStarted(payload={"resource_id": body.run_id, "run_id": body.run_id, "project_id": body.project_id, "workflow": body.workflow_definition_id}), stream_id=f"run:{body.run_id}")
     return asdict(run)
 
 
@@ -163,6 +174,7 @@ async def get_stage(
 async def cancel_pipeline(
     run_id: str,
     store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
 ) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
@@ -197,6 +209,7 @@ async def cancel_pipeline(
         trigger_id=run.trigger_id,
     )
     await store.update(updated)
+    await dispatch_event(request, PipelineRunCancelled(payload={"resource_id": run_id, "run_id": run_id}), stream_id=f"run:{run_id}")
     return asdict(updated)
 
 
@@ -204,11 +217,13 @@ async def cancel_pipeline(
 async def delete_pipeline(
     run_id: str,
     store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
 ) -> None:
     run = await store.get(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     await store.remove(run_id)
+    await dispatch_event(request, PipelineRunDeleted(payload={"resource_id": run_id, "run_id": run_id}), stream_id=f"run:{run_id}")
 
 
 def _find_stage(run: PipelineRun, stage_id: str) -> Stage | None:
@@ -331,6 +346,7 @@ async def retry_stage(
 
     updated = replace(run, stages=tuple(new_stages))
     await store.update(updated)
+    await dispatch_event(request, PipelineStageRetried(payload={"resource_id": stage_id, "run_id": run_id, "stage_name": stage.name, "retry_count": stage.retry_count + 1}), stream_id=f"run:{run_id}")
 
     # TODO: Re-invoke the workflow node via the executor (Phase 2 integration).
     # For now, the stage is reset and the executor's stream loop will pick it up
@@ -387,6 +403,7 @@ async def reject_stage(
         status=PipelineStatus.FAILED,
     )
     await store.update(updated)
+    await dispatch_event(request, PipelineStageRejected(payload={"resource_id": stage_id, "run_id": run_id, "stage_name": stage.name}), stream_id=f"run:{run_id}")
 
     # Clean up suspended run in executor
     executor = getattr(request.app.state, "workflow_executor", None)
@@ -465,6 +482,7 @@ async def approve_stage(
         status=PipelineStatus.RUNNING,
     )
     await store.update(updated)
+    await dispatch_event(request, PipelineStageApproved(payload={"resource_id": stage_id, "run_id": run_id, "stage_name": stage.name}), stream_id=f"run:{run_id}")
 
     # Resume the workflow in the background
     executor = getattr(request.app.state, "workflow_executor", None)

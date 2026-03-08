@@ -9,7 +9,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import MCPServerRegistered, MCPServerRemoved, MCPServerUpdated
 from lintel.contracts.types import MCPServer
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -73,6 +75,7 @@ class UpdateMCPServerRequest(BaseModel):
 async def create_mcp_server(
     body: CreateMCPServerRequest,
     store: MCPServerStoreDep,
+    request: Request,
 ) -> dict[str, Any]:
     """Register an MCP server."""
     existing = await store.get(body.server_id)
@@ -87,6 +90,11 @@ async def create_mcp_server(
         config=body.config or None,
     )
     await store.add(server)
+    await dispatch_event(
+        request,
+        MCPServerRegistered(payload={"resource_id": server.server_id}),
+        stream_id=f"mcp_server:{server.server_id}",
+    )
     return asdict(server)
 
 
@@ -116,6 +124,7 @@ async def update_mcp_server(
     server_id: str,
     body: UpdateMCPServerRequest,
     store: MCPServerStoreDep,
+    request: Request,
 ) -> dict[str, Any]:
     """Update an MCP server's configuration."""
     server = await store.get(server_id)
@@ -126,6 +135,11 @@ async def update_mcp_server(
     merged = {**current, **updates}
     updated = MCPServer(**merged)
     await store.update(updated)
+    await dispatch_event(
+        request,
+        MCPServerUpdated(payload={"resource_id": server_id}),
+        stream_id=f"mcp_server:{server_id}",
+    )
     return asdict(updated)
 
 
@@ -133,12 +147,18 @@ async def update_mcp_server(
 async def delete_mcp_server(
     server_id: str,
     store: MCPServerStoreDep,
+    request: Request,
 ) -> None:
     """Remove an MCP server."""
     server = await store.get(server_id)
     if server is None:
         raise HTTPException(status_code=404, detail="MCP server not found")
     await store.remove(server_id)
+    await dispatch_event(
+        request,
+        MCPServerRemoved(payload={"resource_id": server_id}),
+        stream_id=f"mcp_server:{server_id}",
+    )
 
 
 @router.get("/mcp-servers/{server_id}/tools")

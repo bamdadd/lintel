@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import TriggerCreated, TriggerRemoved, TriggerUpdated
 from lintel.contracts.types import Trigger, TriggerType
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -84,6 +86,7 @@ class UpdateTriggerRequest(BaseModel):
 @router.post("/triggers", status_code=201)
 async def create_trigger(
     body: CreateTriggerRequest,
+    request: Request,
     store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.trigger_id)
@@ -98,6 +101,7 @@ async def create_trigger(
         enabled=body.enabled,
     )
     await store.add(trigger)
+    await dispatch_event(request, TriggerCreated(payload={"resource_id": trigger.trigger_id}), stream_id=f"trigger:{trigger.trigger_id}")
     return asdict(trigger)
 
 
@@ -125,6 +129,7 @@ async def get_trigger(
 async def update_trigger(
     trigger_id: str,
     body: UpdateTriggerRequest,
+    request: Request,
     store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
 ) -> dict[str, Any]:
     trigger = await store.get(trigger_id)
@@ -133,15 +138,18 @@ async def update_trigger(
     updates = body.model_dump(exclude_none=True)
     updated = Trigger(**{**asdict(trigger), **updates})
     await store.update(updated)
+    await dispatch_event(request, TriggerUpdated(payload={"resource_id": trigger_id}), stream_id=f"trigger:{trigger_id}")
     return asdict(updated)
 
 
 @router.delete("/triggers/{trigger_id}", status_code=204)
 async def delete_trigger(
     trigger_id: str,
+    request: Request,
     store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
 ) -> None:
     trigger = await store.get(trigger_id)
     if trigger is None:
         raise HTTPException(status_code=404, detail="Trigger not found")
     await store.remove(trigger_id)
+    await dispatch_event(request, TriggerRemoved(payload={"resource_id": trigger_id}), stream_id=f"trigger:{trigger_id}")

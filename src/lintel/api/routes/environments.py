@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import EnvironmentCreated, EnvironmentUpdated, EnvironmentRemoved
 from lintel.contracts.types import Environment, EnvironmentType
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -55,6 +57,7 @@ class UpdateEnvironmentRequest(BaseModel):
 @router.post("/environments", status_code=201)
 async def create_environment(
     body: CreateEnvironmentRequest,
+    request: Request,
     store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.environment_id)
@@ -67,6 +70,7 @@ async def create_environment(
         config=body.config,
     )
     await store.add(env)
+    await dispatch_event(request, EnvironmentCreated(payload={"resource_id": env.environment_id}), stream_id=f"environment:{env.environment_id}")
     return asdict(env)
 
 
@@ -93,6 +97,7 @@ async def get_environment(
 async def update_environment(
     environment_id: str,
     body: UpdateEnvironmentRequest,
+    request: Request,
     store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
 ) -> dict[str, Any]:
     env = await store.get(environment_id)
@@ -101,15 +106,18 @@ async def update_environment(
     updates = body.model_dump(exclude_none=True)
     updated = Environment(**{**asdict(env), **updates})
     await store.update(updated)
+    await dispatch_event(request, EnvironmentUpdated(payload={"resource_id": environment_id}), stream_id=f"environment:{environment_id}")
     return asdict(updated)
 
 
 @router.delete("/environments/{environment_id}", status_code=204)
 async def delete_environment(
     environment_id: str,
+    request: Request,
     store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
 ) -> None:
     env = await store.get(environment_id)
     if env is None:
         raise HTTPException(status_code=404, detail="Environment not found")
     await store.remove(environment_id)
+    await dispatch_event(request, EnvironmentRemoved(payload={"resource_id": environment_id}), stream_id=f"environment:{environment_id}")

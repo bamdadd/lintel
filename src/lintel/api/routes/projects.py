@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import ProjectCreated, ProjectRemoved, ProjectUpdated
 from lintel.contracts.types import Project, ProjectStatus
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -67,6 +69,7 @@ class UpdateProjectRequest(BaseModel):
 
 @router.post("/projects", status_code=201)
 async def create_project(
+    request: Request,
     body: CreateProjectRequest,
     store: Annotated[ProjectStore, Depends(get_project_store)],
 ) -> dict[str, Any]:
@@ -82,6 +85,7 @@ async def create_project(
         status=body.status,
     )
     await store.add(project)
+    await dispatch_event(request, ProjectCreated(payload={"resource_id": body.project_id, "name": body.name}), stream_id=f"project:{body.project_id}")
     return _to_response(asdict(project))
 
 
@@ -106,6 +110,7 @@ async def get_project(
 
 @router.patch("/projects/{project_id}")
 async def update_project(
+    request: Request,
     project_id: str,
     body: UpdateProjectRequest,
     store: Annotated[ProjectStore, Depends(get_project_store)],
@@ -119,11 +124,13 @@ async def update_project(
             updates[key] = tuple(updates[key])
     merged = {**item, **updates}
     await store.update(project_id, merged)
+    await dispatch_event(request, ProjectUpdated(payload={"resource_id": project_id, "fields": list(updates.keys())}), stream_id=f"project:{project_id}")
     return _to_response(merged)
 
 
 @router.delete("/projects/{project_id}", status_code=204)
 async def remove_project(
+    request: Request,
     project_id: str,
     store: Annotated[ProjectStore, Depends(get_project_store)],
 ) -> None:
@@ -131,3 +138,4 @@ async def remove_project(
     if item is None:
         raise HTTPException(status_code=404, detail="Project not found")
     await store.remove(project_id)
+    await dispatch_event(request, ProjectRemoved(payload={"resource_id": project_id, "name": item.get("name", "")}), stream_id=f"project:{project_id}")
