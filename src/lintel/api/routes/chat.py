@@ -117,6 +117,16 @@ class ChatStore:
             results = [c for c in results if c["project_id"] == project_id]
         return results
 
+    async def update_fields(
+        self,
+        conversation_id: str,
+        **fields: object,
+    ) -> None:
+        """Update arbitrary fields on a conversation."""
+        conv = self._conversations.get(conversation_id)
+        if conv is not None:
+            conv.update(fields)
+
     async def add_message(
         self,
         conversation_id: str,
@@ -351,9 +361,8 @@ async def _try_select_project(
     try:
         idx = int(lower) - 1
         if 0 <= idx < len(projects):
-            conv = await store.get(conversation_id)
-            if conv is not None:
-                conv["project_id"] = projects[idx].get("project_id", projects[idx].get("name"))
+            pid = projects[idx].get("project_id", projects[idx].get("name"))
+            await store.update_fields(conversation_id, project_id=pid)
             return True
     except ValueError:
         pass
@@ -362,9 +371,8 @@ async def _try_select_project(
     for p in projects:
         name = p.get("name", "")
         if name.lower() == lower or p.get("project_id", "").lower() == lower:
-            conv = await store.get(conversation_id)
-            if conv is not None:
-                conv["project_id"] = p.get("project_id", p.get("name"))
+            pid = p.get("project_id", p.get("name"))
+            await store.update_fields(conversation_id, project_id=pid)
             return True
 
     return False
@@ -455,10 +463,7 @@ async def _dispatch_workflow(
             logger.warning("pipeline_run_creation_failed", run_id=run_id)
 
     # Store workflow tracking IDs on the conversation for status queries
-    conv = await store.get(conversation_id)
-    if conv is not None:
-        conv["work_item_id"] = work_item_id
-        conv["run_id"] = run_id
+    await store.update_fields(conversation_id, work_item_id=work_item_id, run_id=run_id)
 
     # Gather repo context for the command
     cmd_repo_url = repo_url or ""
@@ -568,11 +573,14 @@ async def _handle_classified_message(
                 role="agent",
                 content=prompt_msg,
             )
-            conv_data["_pending_workflow"] = {
-                "workflow_type": result.workflow_type,
-                "message": message,
-                "reply": result.reply,
-            }
+            await store.update_fields(
+                conversation_id,
+                _pending_workflow={
+                    "workflow_type": result.workflow_type,
+                    "message": message,
+                    "reply": result.reply,
+                },
+            )
             return None
         await _dispatch_workflow(
             request,
@@ -769,8 +777,7 @@ async def send_message(
                 ),
                 stream_id=f"conversation:{conversation_id}",
             )
-            if conv is not None:
-                conv.pop("_pending_workflow", None)
+            await store.update_fields(conversation_id, _pending_workflow=None)
             await _dispatch_workflow(
                 request,
                 store,

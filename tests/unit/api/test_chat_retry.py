@@ -56,20 +56,46 @@ class TestRetryEndpoint:
         assert resp.json()["run_id"] is not None
         run_id = resp.json()["run_id"]
 
-        # Mark the pipeline as failed so retry is allowed
-        pipeline_store = client.app.state.pipeline_store  # type: ignore[union-attr]
-        import asyncio
+        # Mark the pipeline as failed so retry is allowed.
+        # Use a fresh asyncpg pool to avoid connection conflicts with TestClient.
         import dataclasses
+        import os
 
         from lintel.contracts.types import PipelineStatus
 
-        async def _fail_run() -> None:
-            run = await pipeline_store.get(run_id)
-            if run is not None:
-                failed = dataclasses.replace(run, status=PipelineStatus.FAILED)
-                await pipeline_store.update(failed)
+        pipeline_store = client.app.state.pipeline_store  # type: ignore[union-attr]
+        dsn = os.environ.get("LINTEL_DB_DSN")
 
-        asyncio.get_event_loop().run_until_complete(_fail_run())
+        if dsn:
+            # Postgres backend — use a fresh pool in a new event loop
+            import asyncio
+            import concurrent.futures
+
+            import asyncpg
+
+            async def _fail_run_pg() -> None:
+                pool = await asyncpg.create_pool(dsn)
+                assert pool is not None
+                store = type(pipeline_store)(pool)  # type: ignore[call-arg]
+                run = await store.get(run_id)
+                if run is not None:
+                    failed = dataclasses.replace(run, status=PipelineStatus.FAILED)
+                    await store.update(failed)
+                await pool.close()
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(asyncio.run, _fail_run_pg()).result()
+        else:
+            # In-memory backend — direct mutation is fine
+            import asyncio
+
+            async def _fail_run() -> None:
+                run = await pipeline_store.get(run_id)
+                if run is not None:
+                    failed = dataclasses.replace(run, status=PipelineStatus.FAILED)
+                    await pipeline_store.update(failed)
+
+            asyncio.get_event_loop().run_until_complete(_fail_run())
 
         # Retry
         resp = client.post(f"/api/v1/chat/conversations/{conv_id}/retry")

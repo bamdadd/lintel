@@ -344,6 +344,17 @@ class PostgresChatStore:
             filters["project_id"] = project_id
         return await self._store.list_all(**filters)
 
+    async def update_fields(
+        self,
+        conversation_id: str,
+        **fields: object,
+    ) -> None:
+        """Update arbitrary fields on a conversation and persist."""
+        conv = await self.get(conversation_id)
+        if conv is not None:
+            conv.update(fields)
+            await self._store.put(conversation_id, conv)
+
     async def add_message(
         self,
         conversation_id: str,
