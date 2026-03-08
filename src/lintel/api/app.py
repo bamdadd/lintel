@@ -26,6 +26,7 @@ from lintel.api.routes import (
     approvals,
     artifacts,
     audit,
+    boards,
     chat,
     credentials,
     environments,
@@ -59,6 +60,7 @@ from lintel.api.routes.ai_providers import InMemoryAIProviderStore
 from lintel.api.routes.approval_requests import InMemoryApprovalRequestStore
 from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
 from lintel.api.routes.audit import AuditEntryStore
+from lintel.api.routes.boards import BoardStore, TagStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.credentials import InMemoryCredentialStore
 from lintel.api.routes.environments import InMemoryEnvironmentStore
@@ -155,6 +157,8 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "model_assignment_store": InMemoryModelAssignmentStore(),
         "mcp_server_store": InMemoryMCPServerStore(),
         "sandbox_store": sandboxes.SandboxStore(),
+        "tag_store": TagStore(),
+        "board_store": BoardStore(),
     }
 
 
@@ -430,6 +434,7 @@ def create_app() -> FastAPI:
     app.include_router(models.router, prefix="/api/v1", tags=["models"])
     app.include_router(mcp_servers.router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
+    app.include_router(boards.router, prefix="/api/v1", tags=["boards"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
     # Expose all API endpoints as MCP tools/resources

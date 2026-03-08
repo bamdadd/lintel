@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import NewType
+from typing import TYPE_CHECKING, NewType
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -292,6 +295,42 @@ class WorkItem:
     thread_ref_str: str = ""
     branch_name: str = ""
     pr_url: str = ""
+    tags: tuple[str, ...] = ()
+    column_id: str = ""
+    column_position: int = 0
+
+
+# --- Task Board ---
+
+
+@dataclass(frozen=True)
+class Tag:
+    """Label that can be attached to work items for grouping and filtering."""
+
+    tag_id: str
+    project_id: str
+    name: str
+    color: str = "#6b7280"
+
+
+@dataclass(frozen=True)
+class BoardColumn:
+    """A column within a board (e.g. To Do, In Progress, Done)."""
+
+    column_id: str
+    name: str
+    position: int = 0
+    work_item_status: str = ""
+
+
+@dataclass(frozen=True)
+class Board:
+    """A task board that organises work items into columns."""
+
+    board_id: str
+    project_id: str
+    name: str
+    columns: tuple[BoardColumn, ...] = ()
 
 
 # --- Pipeline & Stages ---
@@ -718,6 +757,43 @@ class ChatSession:
     project_id: str
     thread_ref_str: str = ""
     mcp_server_ids: tuple[str, ...] = ()
+
+
+# --- Delivery Loop ---
+
+DEFAULT_DELIVERY_PHASES: tuple[str, ...] = (
+    "desire",
+    "develop",
+    "review",
+    "deploy",
+    "observe",
+    "learn",
+)
+
+
+@dataclass(frozen=True)
+class PhaseTransitionRecord:
+    """Records a single phase transition in the delivery loop."""
+
+    from_phase: str
+    to_phase: str
+    occurred_at: datetime
+    is_rework: bool = False
+
+
+@dataclass(frozen=True)
+class DeliveryLoop:
+    """Tracks the full delivery lifecycle for a work item."""
+
+    loop_id: str
+    work_item_id: str
+    project_id: str
+    phase_sequence: tuple[str, ...] = DEFAULT_DELIVERY_PHASES
+    current_phase: str = ""
+    phase_history: tuple[PhaseTransitionRecord, ...] = ()
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    learnings: dict[str, object] | None = None
 
 
 CorrelationId = NewType("CorrelationId", UUID)

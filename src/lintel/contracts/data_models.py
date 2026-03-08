@@ -142,6 +142,40 @@ class WorkItemData(BaseModel):
     thread_ref_str: str = ""
     branch_name: str = ""
     pr_url: str = ""
+    tags: list[str] = Field(default_factory=list)
+    column_id: str = ""
+    column_position: int = 0
+
+    model_config = ConfigDict(extra="allow")
+
+
+class TagData(BaseModel):
+    """Tag store representation."""
+
+    tag_id: str
+    project_id: str = ""
+    name: str = ""
+    color: str = "#6b7280"
+
+    model_config = ConfigDict(extra="allow")
+
+
+class BoardColumnData(BaseModel):
+    """Board column representation."""
+
+    column_id: str
+    name: str = ""
+    position: int = 0
+    work_item_status: str = ""
+
+
+class BoardData(BaseModel):
+    """Board store representation."""
+
+    board_id: str
+    project_id: str = ""
+    name: str = ""
+    columns: list[BoardColumnData] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="allow")
 
