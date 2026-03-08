@@ -156,7 +156,7 @@ class DefaultModelRouter:
     def _cache_key(
         self,
         model_string: str,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None,
     ) -> str:
         """Compute a deterministic hash for a model call."""
@@ -179,7 +179,7 @@ class DefaultModelRouter:
     async def call_model(
         self,
         policy: ModelPolicy,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
         api_base: str | None = None,
     ) -> dict[str, Any]:
@@ -256,7 +256,7 @@ class DefaultModelRouter:
     async def stream_model(
         self,
         policy: ModelPolicy,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         api_base: str | None = None,
     ) -> AsyncIterator[str]:
         """Stream model response token by token."""
