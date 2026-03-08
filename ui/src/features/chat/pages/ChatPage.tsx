@@ -22,6 +22,7 @@ import remarkGfm from 'remark-gfm';
 import '../chat-markdown.css';
 import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
+import { useChatSSE } from '../hooks/useChatSSE';
 import {
   useChatListConversations,
   useChatCreateConversation,
@@ -129,15 +130,20 @@ export function Component() {
   const { data: convResp } = useChatGetConversation(activeConvId ?? '', {
     query: {
       enabled: isRealConvId,
-      refetchInterval: 3000,
     },
   });
   const createMutation = useChatCreateConversation();
   const deleteMutation = useChatDeleteConversation();
+  const { sseMessages, reset: resetSSE } = useChatSSE(isRealConvId ? activeConvId : null);
 
   const conversations = (convsResp?.data ?? []) as Conversation[];
   const activeConversation = convResp?.data as Conversation | undefined;
-  const serverMessages = activeConversation?.messages ?? [];
+  const fetchedMessages = activeConversation?.messages ?? [];
+
+  // Merge fetched messages with SSE real-time messages (deduplicate by message_id)
+  const fetchedIds = new Set(fetchedMessages.map((m) => m.message_id));
+  const newFromSSE = sseMessages.filter((m) => !fetchedIds.has(m.message_id));
+  const serverMessages = [...fetchedMessages, ...newFromSSE];
 
   // Deduplicate: drop pending messages whose content already appears in server messages
   const serverContents = new Set(serverMessages.map((m) => m.content));
@@ -362,7 +368,7 @@ export function Component() {
                       cursor: 'pointer',
                       background: activeConvId === c.conversation_id ? 'var(--mantine-color-dark-5)' : undefined,
                     }}
-                    onClick={() => { setActiveConvId(c.conversation_id); setPendingMessages([]); setIsThinking(false); void navigate(`/chat/${c.conversation_id}`); }}
+                    onClick={() => { setActiveConvId(c.conversation_id); setPendingMessages([]); setIsThinking(false); resetSSE(); void navigate(`/chat/${c.conversation_id}`); }}
                   >
                     <Box style={{ flex: 1, minWidth: 0 }}>
                       <Text size="xs" truncate>

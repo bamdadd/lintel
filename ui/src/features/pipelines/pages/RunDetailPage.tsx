@@ -34,13 +34,13 @@ export function Component() {
     stepMap.get(nodeName)!.push(evt);
   }
 
-  const getStepStatus = (evts: typeof events) => {
+  const getStepStatus = (evts: typeof events): { status: 'pending' | 'running' | 'started' | 'succeeded' | 'failed' | 'errored'; label: string } => {
     const last = evts[evts.length - 1];
-    if (last?.event_type === 'PipelineRunFailed') return 'failed' as const;
-    if (last?.event_type === 'PipelineRunCompleted') return 'succeeded' as const;
-    if (last?.event_type === 'PipelineStageCompleted') return 'succeeded' as const;
-    if (last?.event_type === 'PipelineRunStarted') return 'started' as const;
-    return 'running' as const;
+    if (last?.event_type === 'PipelineRunFailed') return { status: 'failed', label: 'Failed' };
+    if (last?.event_type === 'PipelineRunCompleted') return { status: 'succeeded', label: 'Completed' };
+    if (last?.event_type === 'PipelineStageCompleted') return { status: 'succeeded', label: 'Stage Completed' };
+    if (last?.event_type === 'PipelineRunStarted') return { status: 'started', label: 'Started' };
+    return { status: 'running', label: 'Running' };
   };
 
   return (
@@ -66,14 +66,18 @@ export function Component() {
       )}
 
       <Stack gap="xs">
-        {Array.from(stepMap.entries()).map(([name, stepEvents]) => (
-          <StepPanel
-            key={name}
-            stepName={name}
-            status={getStepStatus(stepEvents)}
-            events={stepEvents}
-          />
-        ))}
+        {Array.from(stepMap.entries()).map(([name, stepEvents]) => {
+          const { status: stepStatus, label } = getStepStatus(stepEvents);
+          return (
+            <StepPanel
+              key={name}
+              stepName={name}
+              status={stepStatus}
+              statusLabel={label}
+              events={stepEvents}
+            />
+          );
+        })}
       </Stack>
 
       {status === 'ended' && events.length === 0 && (

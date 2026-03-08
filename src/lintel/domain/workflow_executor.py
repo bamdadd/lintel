@@ -225,6 +225,7 @@ class WorkflowExecutor:
                 )
                 await self._mark_stage_waiting_approval(run_id, next_node)
                 await self._update_pipeline_status(run_id, "waiting_approval")
+                await self._create_approval_request(run_id, next_node)
                 await self._notify_chat(
                     run_id,
                     f"⏸️ **{next_node}** — waiting for approval\n"
@@ -353,6 +354,61 @@ class WorkflowExecutor:
             )
         except Exception:
             pass
+
+    async def _get_stage_id(self, run_id: str, node_name: str) -> str | None:
+        """Look up the stage_id for a given node name."""
+        if self._app_state is None:
+            return None
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return None
+        try:
+            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+
+            stage_name = NODE_TO_STAGE.get(node_name, node_name)
+            run = await pipeline_store.get(run_id)
+            if run is None:
+                return None
+            for stage in run.stages:
+                if isinstance(stage, dict):
+                    stage = _dict_to_stage(stage)
+                if stage.name == stage_name:
+                    return stage.stage_id
+        except Exception:
+            pass
+        return None
+
+    async def _create_approval_request(self, run_id: str, node_name: str) -> None:
+        """Create an ApprovalRequest record when workflow pauses at an approval gate."""
+        if self._app_state is None:
+            return
+        approval_store = getattr(self._app_state, "approval_request_store", None)
+        if approval_store is None:
+            return
+        try:
+            from lintel.contracts.types import ApprovalRequest
+            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+
+            gate_type = NODE_TO_STAGE.get(node_name, node_name)
+            approval = ApprovalRequest(
+                approval_id=str(uuid4()),
+                run_id=run_id,
+                gate_type=gate_type,
+            )
+            await approval_store.add(approval)
+            logger.info(
+                "approval_request_created",
+                approval_id=approval.approval_id,
+                run_id=run_id,
+                gate_type=gate_type,
+            )
+        except Exception as exc:
+            logger.warning(
+                "create_approval_request_failed",
+                run_id=run_id,
+                node_name=node_name,
+                error=str(exc),
+            )
 
     async def _mark_stage_waiting_approval(self, run_id: str, node_name: str) -> None:
         """Mark an approval gate stage as waiting_approval."""

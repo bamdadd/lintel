@@ -8,6 +8,7 @@ import type { StreamEvent } from '../hooks/useSSEStream';
 interface StepPanelProps {
   stepName: string;
   status: 'pending' | 'running' | 'started' | 'succeeded' | 'failed' | 'errored';
+  statusLabel?: string;
   durationMs?: number;
   events: StreamEvent[];
 }
@@ -21,7 +22,7 @@ const statusColor: Record<string, string> = {
   errored: 'red',
 };
 
-export function StepPanel({ stepName, status, durationMs, events }: StepPanelProps) {
+export function StepPanel({ stepName, status, statusLabel, durationMs, events }: StepPanelProps) {
   const [opened, setOpened] = useState(status === 'failed' || status === 'errored');
 
   // Extract token usage from stage output events
@@ -51,7 +52,7 @@ export function StepPanel({ stepName, status, durationMs, events }: StepPanelPro
             {opened ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
           </ActionIcon>
           <Text fw={500} size="sm">{stepName}</Text>
-          <Badge color={statusColor[status] ?? 'gray'} size="sm">{status}</Badge>
+          <Badge color={statusColor[status] ?? 'gray'} size="sm">{statusLabel ?? status}</Badge>
         </Group>
         <Group gap="sm">
           {tokenUsage && (

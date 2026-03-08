@@ -199,6 +199,172 @@ async def test_execute_marks_running_stages_failed_on_error() -> None:
     assert failed_stages[0].error
 
 
+async def test_execute_creates_approval_request_on_interrupt() -> None:
+    """REQ-1.1: An ApprovalRequest is created when workflow pauses at an approval gate."""
+    from lintel.contracts.types import (
+        ApprovalRequest,
+        PipelineRun,
+        PipelineStatus,
+        Stage,
+        StageStatus,
+    )
+
+    event_store = AsyncMock()
+
+    async def fake_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
+        yield {"research": {"research_context": "some context"}}
+
+    graph = MagicMock()
+    graph.astream = fake_astream
+    state = MagicMock()
+    state.next = ("approval_gate_research",)
+    graph.get_state = MagicMock(return_value=state)
+
+    stages = (
+        Stage(stage_id="s1", name="research", stage_type="research", status=StageStatus.PENDING),
+        Stage(
+            stage_id="s2",
+            name="approve_research",
+            stage_type="approve_research",
+            status=StageStatus.PENDING,
+        ),
+        Stage(stage_id="s3", name="plan", stage_type="plan", status=StageStatus.PENDING),
+    )
+    run = PipelineRun(
+        run_id="test-run",
+        project_id="p1",
+        work_item_id="wi-1",
+        workflow_definition_id="feature_to_pr",
+        status=PipelineStatus.RUNNING,
+        stages=stages,
+    )
+
+    pipeline_store = AsyncMock()
+    pipeline_store.get = AsyncMock(return_value=run)
+    pipeline_store.update = AsyncMock()
+
+    # Track approval requests
+    added_approvals: list[ApprovalRequest] = []
+
+    async def capture_add(approval: ApprovalRequest) -> None:
+        added_approvals.append(approval)
+
+    approval_store = AsyncMock()
+    approval_store.add = AsyncMock(side_effect=capture_add)
+
+    app_state = MagicMock()
+    app_state.pipeline_store = pipeline_store
+    app_state.work_item_store = None
+    app_state.chat_store = None
+    app_state.approval_request_store = approval_store
+
+    command = StartWorkflow(
+        thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
+        workflow_type="feature_to_pr",
+        run_id="test-run",
+    )
+
+    executor = WorkflowExecutor(
+        event_store=event_store,
+        graph=graph,
+        app_state=app_state,
+    )
+    await executor.execute(command)
+
+    # Should have created an ApprovalRequest
+    assert len(added_approvals) == 1
+    approval = added_approvals[0]
+    assert approval.run_id == "test-run"
+    assert approval.gate_type == "approve_research"
+    assert approval.approval_id  # non-empty
+
+
+async def test_execute_notifies_chat_on_interrupt() -> None:
+    """REQ-1.1: Chat notification sent when workflow pauses for approval."""
+    from lintel.contracts.types import (
+        PipelineRun,
+        PipelineStatus,
+        Stage,
+        StageStatus,
+    )
+
+    event_store = AsyncMock()
+
+    async def fake_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
+        yield {"research": {"research_context": "ctx"}}
+
+    graph = MagicMock()
+    graph.astream = fake_astream
+    state = MagicMock()
+    state.next = ("approval_gate_research",)
+    graph.get_state = MagicMock(return_value=state)
+
+    stages = (
+        Stage(stage_id="s1", name="research", stage_type="research", status=StageStatus.PENDING),
+        Stage(
+            stage_id="s2",
+            name="approve_research",
+            stage_type="approve_research",
+            status=StageStatus.PENDING,
+        ),
+    )
+    run = PipelineRun(
+        run_id="test-run",
+        project_id="p1",
+        work_item_id="wi-1",
+        workflow_definition_id="feature_to_pr",
+        status=PipelineStatus.RUNNING,
+        stages=stages,
+        trigger_type="chat:conv-123",
+    )
+
+    pipeline_store = AsyncMock()
+    pipeline_store.get = AsyncMock(return_value=run)
+    pipeline_store.update = AsyncMock()
+
+    chat_messages: list[dict[str, str]] = []
+
+    async def capture_msg(
+        conv_id: str,
+        *,
+        user_id: str,
+        display_name: str,
+        role: str,
+        content: str,
+    ) -> dict[str, str]:
+        chat_messages.append({"conv_id": conv_id, "content": content})
+        return {"message_id": "m1"}
+
+    chat_store = AsyncMock()
+    chat_store.get = AsyncMock(return_value={"conversation_id": "conv-123", "messages": []})
+    chat_store.add_message = AsyncMock(side_effect=capture_msg)
+
+    app_state = MagicMock()
+    app_state.pipeline_store = pipeline_store
+    app_state.work_item_store = None
+    app_state.chat_store = chat_store
+    app_state.approval_request_store = None
+
+    command = StartWorkflow(
+        thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
+        workflow_type="feature_to_pr",
+        run_id="test-run",
+    )
+
+    executor = WorkflowExecutor(
+        event_store=event_store,
+        graph=graph,
+        app_state=app_state,
+    )
+    await executor.execute(command)
+
+    # Should have sent chat messages (stage completion + approval waiting)
+    approval_msgs = [m for m in chat_messages if "waiting for approval" in m["content"]]
+    assert len(approval_msgs) >= 1
+    assert approval_msgs[0]["conv_id"] == "conv-123"
+    assert "approval_gate_research" in approval_msgs[0]["content"]
+
+
 async def test_execute_pauses_at_interrupt() -> None:
     """Graph with interrupt_before should pause and mark stage as waiting_approval."""
     from lintel.contracts.types import (
