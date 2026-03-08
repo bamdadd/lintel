@@ -139,8 +139,11 @@ class TestHookTriggering:
         bus = FakeEventBus()
         mgr = HookManager(event_bus=bus)
         hook = WorkflowHook(
-            hook_id="h1", project_id="p1", name="disabled",
-            event_pattern="*", enabled=False,
+            hook_id="h1",
+            project_id="p1",
+            name="disabled",
+            event_pattern="*",
+            enabled=False,
         )
         mgr.register(hook)
 
@@ -150,10 +153,12 @@ class TestHookTriggering:
     async def test_conditions_filter(self) -> None:
         bus = FakeEventBus()
         mgr = HookManager(event_bus=bus)
-        mgr.register(_make_hook(
-            event_pattern="PipelineStageCompleted",
-            conditions={"stage": "review"},
-        ))
+        mgr.register(
+            _make_hook(
+                event_pattern="PipelineStageCompleted",
+                conditions={"stage": "review"},
+            )
+        )
 
         await mgr.handle(_make_event("PipelineStageCompleted", {"stage": "deploy"}))
         assert mgr.stats["triggered"] == 0
@@ -165,7 +170,9 @@ class TestHookTriggering:
         triggered: list[tuple[str, str]] = []
 
         async def callback(
-            hook: WorkflowHook, event: EventEnvelope, params: dict[str, Any],
+            hook: WorkflowHook,
+            event: EventEnvelope,
+            params: dict[str, Any],
         ) -> None:
             triggered.append((hook.hook_id, event.event_type))
 

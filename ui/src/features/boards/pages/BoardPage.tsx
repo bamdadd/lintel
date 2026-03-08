@@ -1,12 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { Title, Stack, Group, Loader, Center, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBoardsGetBoard, useWorkItemsForBoard, useUpdateWorkItem } from '../api';
 import type { WorkItem } from '../api';
 import { BoardColumn } from '../components/BoardColumn';
+import { WorkItemDetailDrawer } from '../components/WorkItemDetailDrawer';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 export function Component() {
@@ -19,6 +21,13 @@ export function Component() {
   );
   const updateMut = useUpdateWorkItem();
   const qc = useQueryClient();
+  const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
+
+  const handleClickItem = (item: WorkItem) => {
+    setSelectedItem(item);
+    openDrawer();
+  };
 
   const columns = useMemo(
     () => [...(board?.columns ?? [])].sort((a, b) => a.position - b.position),
@@ -131,6 +140,7 @@ export function Component() {
               columnId="__unassigned__"
               name="Unassigned"
               items={itemsByColumn['__unassigned__'] ?? []}
+              onClickItem={handleClickItem}
             />
           )}
           {columns.map((col) => (
@@ -139,10 +149,13 @@ export function Component() {
               columnId={col.column_id}
               name={col.name}
               items={itemsByColumn[col.column_id] ?? []}
+              onClickItem={handleClickItem}
             />
           ))}
         </Group>
       </DragDropContext>
+
+      <WorkItemDetailDrawer item={selectedItem} opened={drawerOpened} onClose={closeDrawer} />
     </Stack>
   );
 }

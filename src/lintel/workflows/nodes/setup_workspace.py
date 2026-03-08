@@ -202,9 +202,7 @@ async def setup_workspace(
                 SandboxJob(command="mkdir -p /run/secrets", timeout_seconds=10),
             )
             for var in secret_vars:
-                await sandbox_manager.write_file(
-                    sandbox_id, f"/run/secrets/{var.key}", var.value
-                )
+                await sandbox_manager.write_file(sandbox_id, f"/run/secrets/{var.key}", var.value)
             await append_log(
                 config,
                 "setup_workspace",

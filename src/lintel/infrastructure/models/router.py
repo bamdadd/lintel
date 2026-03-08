@@ -66,8 +66,7 @@ class DefaultModelRouter:
             Path(db_path).parent.mkdir(parents=True, exist_ok=True)
             conn = sqlite3.connect(db_path)
             conn.execute(
-                "CREATE TABLE IF NOT EXISTS llm_cache "
-                "(cache_key TEXT PRIMARY KEY, response TEXT)"
+                "CREATE TABLE IF NOT EXISTS llm_cache (cache_key TEXT PRIMARY KEY, response TEXT)"
             )
             conn.commit()
             self._sqlite_cache = conn
@@ -84,7 +83,8 @@ class DefaultModelRouter:
                 "SELECT response FROM llm_cache WHERE cache_key = ?", (key,)
             ).fetchone()
             if row:
-                return json.loads(row[0])
+                result: dict[str, Any] = json.loads(row[0])
+                return result
         except Exception:
             logger.debug("sqlite_cache_read_error", key=key[:12])
         return None

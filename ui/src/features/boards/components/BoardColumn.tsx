@@ -7,9 +7,10 @@ interface BoardColumnProps {
   columnId: string;
   name: string;
   items: WorkItem[];
+  onClickItem?: (item: WorkItem) => void;
 }
 
-export function BoardColumn({ columnId, name, items }: BoardColumnProps) {
+export function BoardColumn({ columnId, name, items, onClickItem }: BoardColumnProps) {
   return (
     <Paper
       withBorder
@@ -37,7 +38,7 @@ export function BoardColumn({ columnId, name, items }: BoardColumnProps) {
           >
             <Stack gap={0} p={4}>
               {items.map((item, idx) => (
-                <WorkItemCard key={item.work_item_id} item={item} index={idx} />
+                <WorkItemCard key={item.work_item_id} item={item} index={idx} onClickItem={onClickItem} />
               ))}
               {provided.placeholder}
             </Stack>

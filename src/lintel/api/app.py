@@ -218,6 +218,9 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "model_assignment_store": PostgresModelAssignmentStore(pool),
         "mcp_server_store": PostgresMCPServerStore(pool),
         "sandbox_store": PostgresSandboxStore(pool),
+        # No Postgres implementations yet — use in-memory stores
+        "tag_store": TagStore(),
+        "board_store": BoardStore(),
     }
 
 

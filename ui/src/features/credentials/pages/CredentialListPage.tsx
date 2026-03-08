@@ -62,7 +62,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const credentials = (resp?.data ?? []) as CredItem[];
+  const credentials = (resp?.data ?? []) as unknown as CredItem[];
 
   const handleCreate = form.onSubmit((values) => {
     const repoIds = values.repo_ids
@@ -73,7 +73,7 @@ export function Component() {
       {
         data: {
           name: values.name,
-          credential_type: values.credential_type,
+          credential_type: values.credential_type as never,
           secret: values.secret,
           repo_ids: repoIds.length > 0 ? repoIds : undefined,
         },

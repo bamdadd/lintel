@@ -70,6 +70,9 @@ class UpdateWorkItemRequest(BaseModel):
     thread_ref_str: str | None = None
     branch_name: str | None = None
     pr_url: str | None = None
+    column_id: str | None = None
+    column_position: int | None = None
+    tags: list[str] | None = None
 
 
 @router.post("/work-items", status_code=201)

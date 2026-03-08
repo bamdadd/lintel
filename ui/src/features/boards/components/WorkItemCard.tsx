@@ -21,9 +21,10 @@ const statusColor: Record<string, string> = {
 interface WorkItemCardProps {
   item: WorkItem;
   index: number;
+  onClickItem?: (item: WorkItem) => void;
 }
 
-export function WorkItemCard({ item, index }: WorkItemCardProps) {
+export function WorkItemCard({ item, index, onClickItem }: WorkItemCardProps) {
   return (
     <Draggable draggableId={item.work_item_id} index={index}>
       {(provided, snapshot) => (
@@ -35,7 +36,9 @@ export function WorkItemCard({ item, index }: WorkItemCardProps) {
           mb="xs"
           withBorder
           shadow={snapshot.isDragging ? 'md' : 'xs'}
+          onClick={() => onClickItem?.(item)}
           style={{
+            cursor: 'pointer',
             ...provided.draggableProps.style,
             opacity: snapshot.isDragging ? 0.9 : 1,
           }}

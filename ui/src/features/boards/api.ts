@@ -23,6 +23,9 @@ export interface WorkItem {
   work_type: string;
   status: string;
   assignee_agent_role: string;
+  thread_ref_str: string;
+  branch_name: string;
+  pr_url: string;
   tags: string[];
   column_id: string;
   column_position: number;

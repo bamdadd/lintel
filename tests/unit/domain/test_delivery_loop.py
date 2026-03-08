@@ -108,12 +108,8 @@ class TestPhaseTransition:
         bus = FakeEventBus()
         mgr = DeliveryLoopManager(event_bus=bus)
 
-        await mgr.handle(
-            _make_event("WorkItemCreated", {"work_item_id": "wi-1"})
-        )
-        await mgr.handle(
-            _make_event("PipelineRunStarted", {"work_item_id": "wi-1"})
-        )
+        await mgr.handle(_make_event("WorkItemCreated", {"work_item_id": "wi-1"}))
+        await mgr.handle(_make_event("PipelineRunStarted", {"work_item_id": "wi-1"}))
 
         loop = mgr.get_loop("wi-1")
         assert loop is not None
@@ -123,12 +119,8 @@ class TestPhaseTransition:
         bus = FakeEventBus()
         mgr = DeliveryLoopManager(event_bus=bus)
 
-        await mgr.handle(
-            _make_event("WorkItemCreated", {"work_item_id": "wi-1"})
-        )
-        await mgr.handle(
-            _make_event("PipelineRunStarted", {"work_item_id": "wi-1"})
-        )
+        await mgr.handle(_make_event("WorkItemCreated", {"work_item_id": "wi-1"}))
+        await mgr.handle(_make_event("PipelineRunStarted", {"work_item_id": "wi-1"}))
 
         transitioned = [e for e in bus.published if isinstance(e, DeliveryLoopPhaseTransitioned)]
         assert len(transitioned) == 1
@@ -140,9 +132,7 @@ class TestPhaseTransition:
         bus = FakeEventBus()
         mgr = DeliveryLoopManager(event_bus=bus)
 
-        await mgr.handle(
-            _make_event("PipelineRunStarted", {"work_item_id": "unknown"})
-        )
+        await mgr.handle(_make_event("PipelineRunStarted", {"work_item_id": "unknown"}))
 
         assert len(bus.published) == 0
 
@@ -150,16 +140,10 @@ class TestPhaseTransition:
         bus = FakeEventBus()
         mgr = DeliveryLoopManager(event_bus=bus)
 
-        await mgr.handle(
-            _make_event("WorkItemCreated", {"work_item_id": "wi-1"})
-        )
-        await mgr.handle(
-            _make_event("PipelineRunStarted", {"work_item_id": "wi-1"})
-        )
+        await mgr.handle(_make_event("WorkItemCreated", {"work_item_id": "wi-1"}))
+        await mgr.handle(_make_event("PipelineRunStarted", {"work_item_id": "wi-1"}))
         bus.published.clear()
-        await mgr.handle(
-            _make_event("PipelineRunStarted", {"work_item_id": "wi-1"})
-        )
+        await mgr.handle(_make_event("PipelineRunStarted", {"work_item_id": "wi-1"}))
 
         assert len(bus.published) == 0
 

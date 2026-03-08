@@ -42,9 +42,7 @@ class TestTagCRUD:
         assert tags[0]["name"] == "t1"
 
     def test_update_tag(self, client: TestClient) -> None:
-        create = client.post(
-            "/api/v1/tags", json={"project_id": "p1", "name": "old"}
-        )
+        create = client.post("/api/v1/tags", json={"project_id": "p1", "name": "old"})
         tag_id = create.json()["tag_id"]
 
         resp = client.patch(f"/api/v1/tags/{tag_id}", json={"name": "new"})
@@ -52,9 +50,7 @@ class TestTagCRUD:
         assert resp.json()["name"] == "new"
 
     def test_delete_tag(self, client: TestClient) -> None:
-        create = client.post(
-            "/api/v1/tags", json={"project_id": "p1", "name": "tmp"}
-        )
+        create = client.post("/api/v1/tags", json={"project_id": "p1", "name": "tmp"})
         tag_id = create.json()["tag_id"]
 
         resp = client.delete(f"/api/v1/tags/{tag_id}")
@@ -107,9 +103,7 @@ class TestBoardCRUD:
         assert boards[0]["name"] == "B1"
 
     def test_update_board(self, client: TestClient) -> None:
-        create = client.post(
-            "/api/v1/boards", json={"project_id": "p1", "name": "Old"}
-        )
+        create = client.post("/api/v1/boards", json={"project_id": "p1", "name": "Old"})
         board_id = create.json()["board_id"]
 
         resp = client.patch(f"/api/v1/boards/{board_id}", json={"name": "New"})
@@ -117,9 +111,7 @@ class TestBoardCRUD:
         assert resp.json()["name"] == "New"
 
     def test_delete_board(self, client: TestClient) -> None:
-        create = client.post(
-            "/api/v1/boards", json={"project_id": "p1", "name": "tmp"}
-        )
+        create = client.post("/api/v1/boards", json={"project_id": "p1", "name": "tmp"})
         board_id = create.json()["board_id"]
 
         resp = client.delete(f"/api/v1/boards/{board_id}")
