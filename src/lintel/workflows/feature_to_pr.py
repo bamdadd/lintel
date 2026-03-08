@@ -69,13 +69,39 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_edge("approval_gate_research", "plan")
     graph.add_edge("plan", "approval_gate_spec")
     graph.add_edge("approval_gate_spec", "implement")
-    graph.add_edge("implement", "test")
-    graph.add_edge("test", "review")
-    graph.add_edge("review", "approval_gate_merge")
+    graph.add_conditional_edges(
+        "implement",
+        _check_phase,
+        {"continue": "test", "close": "close"},
+    )
+    graph.add_conditional_edges(
+        "test",
+        _check_phase,
+        {"continue": "review", "close": "close"},
+    )
+    graph.add_conditional_edges(
+        "review",
+        _check_phase,
+        {"continue": "approval_gate_merge", "close": "close"},
+    )
     graph.add_edge("approval_gate_merge", "close")
     graph.add_edge("close", END)
 
     return graph
+
+
+def _check_phase(state: ThreadWorkflowState) -> str:
+    """Stop the pipeline if a node signals failure via error or failed verdict."""
+    if state.get("error"):
+        return "close"
+    phase = state.get("current_phase", "")
+    if phase == "closed":
+        return "close"
+    # Check if the last agent output has a failed verdict
+    for output in reversed(state.get("agent_outputs", [])):
+        if isinstance(output, dict) and output.get("verdict") in ("failed", "request_changes"):
+            return "close"
+    return "continue"
 
 
 def _route_decision(state: ThreadWorkflowState) -> str:

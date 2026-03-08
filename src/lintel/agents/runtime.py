@@ -17,6 +17,7 @@ from lintel.contracts.events import (
 from lintel.contracts.types import ActorType
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from uuid import UUID
 
     from lintel.contracts.protocols import EventStore, ModelRouter, SandboxManager
@@ -128,6 +129,7 @@ class AgentRuntime:
         sandbox_manager: SandboxManager | None = None,
         sandbox_id: str | None = None,
         max_iterations: int = DEFAULT_MAX_TOOL_ITERATIONS,
+        on_tool_call: Callable[[int, str, str], Awaitable[None]] | None = None,
     ) -> dict[str, Any]:
         cid = correlation_id or uuid4()
 
@@ -237,6 +239,8 @@ class AgentRuntime:
                     result_length=len(tool_result),
                     step_name=step_name,
                 )
+                if on_tool_call is not None:
+                    await on_tool_call(iteration, func_name, tool_result)
                 loop_messages.append(
                     {
                         "role": "tool",

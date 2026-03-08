@@ -132,6 +132,17 @@ async def spawn_implementation(
         try:
             from lintel.agents.sandbox_tools import sandbox_tool_schemas
 
+            async def _on_tool_call(
+                iteration: int, tool_name: str, tool_result: str,
+            ) -> None:
+                short_name = tool_name.replace("sandbox_", "")
+                preview = tool_result[:120].replace("\n", " ") if tool_result else ""
+                await append_log(
+                    _config, "implement",
+                    f"[{iteration}] {short_name}: {preview}",
+                    state,
+                )
+
             result = await agent_runtime.execute_step(
                 thread_ref=thread_ref,
                 agent_role=AgentRole.CODER,
@@ -149,6 +160,7 @@ async def spawn_implementation(
                 sandbox_manager=sandbox_manager,
                 sandbox_id=sandbox_id,
                 max_iterations=50,
+                on_tool_call=_on_tool_call,
             )
             agent_output = result.get("content", "Implementation complete.")
             usage = extract_token_usage("implement", result)

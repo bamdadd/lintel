@@ -29,7 +29,7 @@ async def run_tests(
 ) -> dict[str, Any]:
     """Run the project test suite in the sandbox and report results."""
     from lintel.contracts.types import SandboxJob
-    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import append_log, mark_completed, mark_running
 
     _config = config or {}
     sandbox_manager: SandboxManager | None = _config.get("configurable", {}).get("sandbox_manager")
@@ -85,6 +85,7 @@ async def run_tests(
         else:
             test_command = "echo 'No test runner detected'"
 
+    await append_log(_config, "test", f"Running: {test_command}", state)
     try:
         result = await sandbox_manager.execute(
             sandbox_id,
@@ -100,6 +101,11 @@ async def run_tests(
     passed = result.exit_code == 0
     verdict = "passed" if passed else "failed"
     output = result.stdout + result.stderr
+
+    # Log test output to stage
+    await append_log(_config, "test", f"Exit code: {result.exit_code}", state)
+    for line in output.strip().split("\n")[:30]:
+        await append_log(_config, "test", line, state)
 
     # Truncate long output
     if len(output) > 5000:

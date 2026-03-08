@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 from langgraph.graph import END, StateGraph
 
+from lintel.workflows.feature_to_pr import _check_phase
 from lintel.workflows.nodes.generic import (
     build_release,
     code_scan,
@@ -77,9 +78,11 @@ def build_bug_fix_graph() -> StateGraph[Any]:
     g.set_entry_point("triage")
     g.add_edge("triage", "reproduce")
     g.add_edge("reproduce", "fix")
-    g.add_edge("fix", "test")
-    g.add_edge("test", "review")
-    g.add_edge("review", "approval_gate_merge")
+    g.add_conditional_edges("fix", _check_phase, {"continue": "test", "close": "close"})
+    g.add_conditional_edges("test", _check_phase, {"continue": "review", "close": "close"})
+    g.add_conditional_edges(
+        "review", _check_phase, {"continue": "approval_gate_merge", "close": "close"},
+    )
     g.add_edge("approval_gate_merge", "close")
     g.add_edge("close", END)
     return g
@@ -117,9 +120,13 @@ def build_refactor_graph() -> StateGraph[Any]:
     g.add_edge("research", "plan")
     g.add_edge("plan", "approval_gate_spec")
     g.add_edge("approval_gate_spec", "refactor")
-    g.add_edge("refactor", "test")
-    g.add_edge("test", "review")
-    g.add_edge("review", "approval_gate_merge")
+    g.add_conditional_edges(
+        "refactor", _check_phase, {"continue": "test", "close": "close"},
+    )
+    g.add_conditional_edges("test", _check_phase, {"continue": "review", "close": "close"})
+    g.add_conditional_edges(
+        "review", _check_phase, {"continue": "approval_gate_merge", "close": "close"},
+    )
     g.add_edge("approval_gate_merge", "close")
     g.add_edge("close", END)
     return g
@@ -155,8 +162,10 @@ def build_incident_response_graph() -> StateGraph[Any]:
     g.set_entry_point("triage")
     g.add_edge("triage", "investigate")
     g.add_edge("investigate", "hotfix")
-    g.add_edge("hotfix", "test")
-    g.add_edge("test", "approval_gate_deploy")
+    g.add_conditional_edges("hotfix", _check_phase, {"continue": "test", "close": END})
+    g.add_conditional_edges(
+        "test", _check_phase, {"continue": "approval_gate_deploy", "close": END},
+    )
     g.add_edge("approval_gate_deploy", "deploy")
     g.add_edge("deploy", "post_mortem")
     g.add_edge("post_mortem", END)
@@ -193,8 +202,10 @@ def build_release_graph() -> StateGraph[Any]:
     g.set_entry_point("changelog")
     g.add_edge("changelog", "version_bump")
     g.add_edge("version_bump", "build")
-    g.add_edge("build", "test")
-    g.add_edge("test", "approval_gate_release")
+    g.add_conditional_edges("build", _check_phase, {"continue": "test", "close": END})
+    g.add_conditional_edges(
+        "test", _check_phase, {"continue": "approval_gate_release", "close": END},
+    )
     g.add_edge("approval_gate_release", "deploy")
     g.add_edge("deploy", "notify")
     g.add_edge("notify", END)
