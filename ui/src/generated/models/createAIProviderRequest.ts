@@ -14,6 +14,5 @@ export interface CreateAIProviderRequest {
   api_key?: string;
   api_base?: string;
   is_default?: boolean;
-  models?: string[];
   config?: CreateAIProviderRequestConfig;
 }

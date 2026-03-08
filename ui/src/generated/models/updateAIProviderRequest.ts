@@ -10,6 +10,5 @@ export interface UpdateAIProviderRequest {
   name?: string | null;
   api_base?: string | null;
   is_default?: boolean | null;
-  models?: string[] | null;
   config?: UpdateAIProviderRequestConfig;
 }

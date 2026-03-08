@@ -72,6 +72,8 @@ export function Component() {
       api_base: '',
       is_default: false,
       config: '',
+      aws_region: '',
+      aws_profile: '',
     },
     validate: {
       name: (v) => (v.trim() ? null : 'Required'),
@@ -94,6 +96,8 @@ export function Component() {
       api_base: '',
       is_default: false,
       config: '',
+      aws_region: '',
+      aws_profile: '',
     },
   });
 
@@ -106,8 +110,13 @@ export function Component() {
     if (values.config.trim()) {
       try { config = JSON.parse(values.config); } catch { notifications.show({ title: 'Error', message: 'Invalid JSON config', color: 'red' }); return; }
     }
+    if (values.provider_type === 'bedrock') {
+      if (values.aws_region.trim()) config.aws_region_name = values.aws_region.trim();
+      if (values.aws_profile.trim()) config.aws_profile_name = values.aws_profile.trim();
+    }
+    const { aws_region: _r, aws_profile: _p, ...rest } = values;
     createMut.mutate(
-      { data: { ...values, config } },
+      { data: { ...rest, config } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: 'AI Provider added', color: 'green' });
@@ -121,11 +130,14 @@ export function Component() {
 
   const openEdit = (p: ProviderItem) => {
     setEditItem(p);
+    const cfg = p.config ?? {};
     editFormState.setValues({
       name: p.name,
       api_base: p.api_base ?? '',
       is_default: p.is_default,
       config: p.config ? JSON.stringify(p.config, null, 2) : '',
+      aws_region: (cfg.aws_region_name as string) ?? '',
+      aws_profile: (cfg.aws_profile_name as string) ?? '',
     });
   };
 
@@ -135,8 +147,16 @@ export function Component() {
     if (values.config.trim()) {
       try { config = JSON.parse(values.config); } catch { notifications.show({ title: 'Error', message: 'Invalid JSON', color: 'red' }); return; }
     }
+    if (editItem.provider_type === 'bedrock') {
+      config = config ?? {};
+      if (values.aws_region.trim()) config.aws_region_name = values.aws_region.trim();
+      else delete config.aws_region_name;
+      if (values.aws_profile.trim()) config.aws_profile_name = values.aws_profile.trim();
+      else delete config.aws_profile_name;
+    }
+    const { aws_region: _r, aws_profile: _p, ...rest } = values;
     updateMut.mutate(
-      { providerId: editItem.provider_id, data: { ...values, config } },
+      { providerId: editItem.provider_id, data: { ...rest, config } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Updated', message: 'Provider updated', color: 'green' });
@@ -235,6 +255,12 @@ export function Component() {
                 {...form.getInputProps('api_base')}
               />
             )}
+            {form.values.provider_type === 'bedrock' && (
+              <>
+                <TextInput label="AWS Region" placeholder="eu-west-1" {...form.getInputProps('aws_region')} />
+                <TextInput label="AWS Profile (optional)" placeholder="default" description="AWS SSO/CLI profile name" {...form.getInputProps('aws_profile')} />
+              </>
+            )}
             <Switch label="Set as default provider" {...form.getInputProps('is_default', { type: 'checkbox' })} />
             <Textarea label="Extra Config (JSON)" minRows={2} styles={{ input: { fontFamily: 'monospace' } }} {...form.getInputProps('config')} />
             <Button type="submit" loading={createMut.isPending}>Add Provider</Button>
@@ -247,6 +273,12 @@ export function Component() {
           <Stack gap="sm">
             <TextInput label="Name" {...editFormState.getInputProps('name')} />
             <TextInput label="API Base URL" {...editFormState.getInputProps('api_base')} />
+            {editItem?.provider_type === 'bedrock' && (
+              <>
+                <TextInput label="AWS Region" placeholder="eu-west-1" {...editFormState.getInputProps('aws_region')} />
+                <TextInput label="AWS Profile (optional)" placeholder="default" description="AWS SSO/CLI profile name" {...editFormState.getInputProps('aws_profile')} />
+              </>
+            )}
             <Switch label="Default provider" {...editFormState.getInputProps('is_default', { type: 'checkbox' })} />
             <Textarea label="Config (JSON)" minRows={2} styles={{ input: { fontFamily: 'monospace' } }} {...editFormState.getInputProps('config')} />
             <Button type="submit" loading={updateMut.isPending}>Save</Button>

@@ -9,7 +9,6 @@ export interface CreateVariableRequest {
   variable_id?: string;
   key: string;
   value: string;
-  project_id?: string;
   environment_id?: string;
   is_secret?: boolean;
 }

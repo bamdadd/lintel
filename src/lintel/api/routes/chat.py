@@ -188,12 +188,18 @@ async def _resolve_model(
     if provider is None:
         return None, None
 
+    # Merge provider config (e.g. aws_profile_name, aws_region_name) with model config
+    extra: dict[str, object] = {}
+    if provider.config:
+        extra.update(provider.config)
+    if model.config:
+        extra.update(model.config)
     policy = ModelPolicy(
         provider=provider.provider_type.value,
         model_name=model.model_name,
         max_tokens=model.max_tokens,
         temperature=model.temperature,
-        extra_params=model.config,
+        extra_params=extra or None,
     )
     api_base = provider.api_base or None
     return policy, api_base

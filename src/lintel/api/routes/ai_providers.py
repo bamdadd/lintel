@@ -321,10 +321,13 @@ async def list_available_models(
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
 
+    if provider.provider_type == AIProviderType.BEDROCK:
+        return await _list_bedrock_models(provider)
+
     if provider.provider_type != AIProviderType.OLLAMA:
         raise HTTPException(
             status_code=400,
-            detail=f"Model discovery is only supported for ollama providers,"
+            detail=f"Model discovery is only supported for ollama and bedrock providers,"
             f" got {provider.provider_type.value}",
         )
 
@@ -362,6 +365,96 @@ async def list_available_models(
             }
         )
     return results
+
+
+BEDROCK_MODEL_DEFAULTS: dict[str, dict[str, Any]] = {
+    "claude-sonnet-4": {"max_tokens": 8192, "temperature": 0.0},
+    "claude-haiku-4": {"max_tokens": 8192, "temperature": 0.0},
+    "claude-3-5-sonnet": {"max_tokens": 8192, "temperature": 0.0},
+    "claude-3-5-haiku": {"max_tokens": 8192, "temperature": 0.0},
+    "claude-3-sonnet": {"max_tokens": 4096, "temperature": 0.0},
+    "claude-3-haiku": {"max_tokens": 4096, "temperature": 0.0},
+    "claude-3-opus": {"max_tokens": 4096, "temperature": 0.0},
+}
+
+
+def _bedrock_model_defaults(model_id: str) -> dict[str, Any]:
+    """Get sensible defaults for a Bedrock model."""
+    for key, defaults in BEDROCK_MODEL_DEFAULTS.items():
+        if key in model_id:
+            return defaults
+    return {"max_tokens": 4096, "temperature": 0.0}
+
+
+async def _list_bedrock_models(provider: AIProvider) -> list[dict[str, Any]]:
+    """List available foundation models from AWS Bedrock."""
+    import asyncio
+
+    import boto3
+
+    config = provider.config or {}
+    region = config.get("aws_region_name", "us-east-1")
+    profile = config.get("aws_profile_name")
+
+    def _fetch() -> list[dict[str, Any]]:
+        session = boto3.Session(profile_name=profile, region_name=str(region))
+        client = session.client("bedrock")
+        results: list[dict[str, Any]] = []
+
+        # List cross-region inference profiles (eu.*, us.*, ap.* prefixed models)
+        try:
+            profiles_resp = client.list_inference_profiles()
+            for profile_info in profiles_resp.get("inferenceProfileSummaries", []):
+                profile_id = profile_info.get("inferenceProfileId", "")
+                profile_name = profile_info.get("inferenceProfileName", profile_id)
+                defaults = _bedrock_model_defaults(profile_id)
+                results.append(
+                    {
+                        "model_name": profile_id,
+                        "display_name": f"{profile_name} (cross-region)",
+                        "family": "Cross-Region",
+                        "parameter_size": "",
+                        "quantization_level": "",
+                        "format": "",
+                        "size_bytes": 0,
+                        "max_tokens": defaults["max_tokens"],
+                        "temperature": defaults["temperature"],
+                    }
+                )
+        except Exception:
+            pass  # Inference profiles API may not be available in all regions
+
+        # List foundation models
+        response = client.list_foundation_models(
+            byOutputModality="TEXT",
+        )
+        for model in response.get("modelSummaries", []):
+            model_id = model.get("modelId", "")
+            model_name = model.get("modelName", model_id)
+            provider_name = model.get("providerName", "")
+            defaults = _bedrock_model_defaults(model_id)
+            results.append(
+                {
+                    "model_name": model_id,
+                    "display_name": model_name,
+                    "family": provider_name,
+                    "parameter_size": "",
+                    "quantization_level": "",
+                    "format": "",
+                    "size_bytes": 0,
+                    "max_tokens": defaults["max_tokens"],
+                    "temperature": defaults["temperature"],
+                }
+            )
+        return results
+
+    try:
+        return await asyncio.to_thread(_fetch)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to list Bedrock models: {exc}",
+        ) from exc
 
 
 @router.get("/ai-providers/{provider_id}/models")

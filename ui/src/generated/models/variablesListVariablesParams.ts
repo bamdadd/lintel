@@ -6,6 +6,5 @@
  */
 
 export type VariablesListVariablesParams = {
-project_id?: string | null;
 environment_id?: string | null;
 };

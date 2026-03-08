@@ -100,7 +100,10 @@ def build_code_review_graph() -> StateGraph[Any]:
 
 
 def build_refactor_graph() -> StateGraph[Any]:
+    from lintel.workflows.nodes.setup_workspace import setup_workspace
+
     g: StateGraph[Any] = StateGraph(ThreadWorkflowState)
+    g.add_node("setup_workspace", setup_workspace)
     g.add_node("research", research_codebase)
     g.add_node("plan", plan_work)
     g.add_node("approval_gate_spec", _gate("approval_gate_spec"))
@@ -109,7 +112,8 @@ def build_refactor_graph() -> StateGraph[Any]:
     g.add_node("review", review_output)
     g.add_node("approval_gate_merge", _gate("approval_gate_merge"))
     g.add_node("close", lambda s: {**s, "current_phase": "closed"})
-    g.set_entry_point("research")
+    g.set_entry_point("setup_workspace")
+    g.add_edge("setup_workspace", "research")
     g.add_edge("research", "plan")
     g.add_edge("plan", "approval_gate_spec")
     g.add_edge("approval_gate_spec", "refactor")
@@ -160,12 +164,16 @@ def build_incident_response_graph() -> StateGraph[Any]:
 
 
 def build_documentation_graph() -> StateGraph[Any]:
+    from lintel.workflows.nodes.setup_workspace import setup_workspace
+
     g: StateGraph[Any] = StateGraph(ThreadWorkflowState)
+    g.add_node("setup_workspace", setup_workspace)
     g.add_node("research", research_codebase)
     g.add_node("draft", draft_docs)
     g.add_node("review", review_output)
     g.add_node("publish", publish_docs)
-    g.set_entry_point("research")
+    g.set_entry_point("setup_workspace")
+    g.add_edge("setup_workspace", "research")
     g.add_edge("research", "draft")
     g.add_edge("draft", "review")
     g.add_edge("review", "publish")

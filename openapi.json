@@ -986,6 +986,61 @@
         }
       }
     },
+    "/api/v1/sandboxes/{sandbox_id}/logs": {
+      "get": {
+        "tags": [
+          "sandboxes"
+        ],
+        "summary": "Get Sandbox Logs",
+        "description": "Get container logs for a sandbox.",
+        "operationId": "sandboxes_get_sandbox_logs",
+        "parameters": [
+          {
+            "name": "sandbox_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sandbox Id"
+            }
+          },
+          {
+            "name": "tail",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 200,
+              "title": "Tail"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sandboxes Get Sandbox Logs"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sandboxes/{sandbox_id}/execute": {
       "post": {
         "tags": [
@@ -1135,6 +1190,71 @@
                     "type": "string"
                   },
                   "title": "Response Sandboxes Read File"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sandboxes/{sandbox_id}/tree": {
+      "get": {
+        "tags": [
+          "sandboxes"
+        ],
+        "summary": "Get File Tree",
+        "description": "Get a file tree from the sandbox, similar to Docker Desktop's file browser.",
+        "operationId": "sandboxes_get_file_tree",
+        "parameters": [
+          {
+            "name": "sandbox_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sandbox Id"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "/workspace",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 3,
+              "title": "Depth"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sandboxes Get File Tree"
                 }
               }
             }
@@ -3616,6 +3736,218 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Pipelines Cancel Pipeline"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pipelines/{run_id}/stages/{stage_id}/logs": {
+      "get": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "Stream Stage Logs",
+        "description": "Stream stage logs via SSE. Shows stored logs and polls for new ones.",
+        "operationId": "pipelines_stream_stage_logs",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pipelines/{run_id}/stages/{stage_id}/retry": {
+      "post": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "Retry Stage",
+        "description": "Retry a failed or stuck stage. Resets it to running and re-invokes the node.",
+        "operationId": "pipelines_retry_stage",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pipelines Retry Stage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pipelines/{run_id}/stages/{stage_id}/reject": {
+      "post": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "Reject Stage",
+        "description": "Reject a stage that is waiting for human approval, failing the pipeline.",
+        "operationId": "pipelines_reject_stage",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pipelines Reject Stage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pipelines/{run_id}/stages/{stage_id}/approve": {
+      "post": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "Approve Stage",
+        "description": "Approve a stage that is waiting for human approval and resume the workflow.",
+        "operationId": "pipelines_approve_stage",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pipelines Approve Stage"
                 }
               }
             }
@@ -6169,6 +6501,47 @@
         }
       }
     },
+    "/api/v1/chat/conversations/{conversation_id}/events": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Stream Conversation Events",
+        "description": "Stream new chat messages via SSE for real-time updates.",
+        "operationId": "chat_stream_conversation_events",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/chat/conversations/{conversation_id}/status": {
       "get": {
         "tags": [
@@ -7022,6 +7395,7 @@
           "qa_engineer",
           "devops",
           "security",
+          "researcher",
           "tech_lead",
           "documentation",
           "triage"

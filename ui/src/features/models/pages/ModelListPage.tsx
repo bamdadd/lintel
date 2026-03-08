@@ -15,14 +15,25 @@ import {
   useModelsCreateModel,
   useModelsUpdateModel,
   useModelsDeleteModel,
-  useModelsCreateAssignment,
-  useModelsDeleteAssignment,
+  useModelsCreateModelAssignment,
+  useModelsDeleteModelAssignment,
   useModelsListModelAssignments,
-  useAvailableModels,
 } from '@/generated/api/models/models';
-import type { ModelItem, ModelAssignmentItem, AvailableModel } from '@/generated/api/models/models';
-import { useAiProvidersListAiProviders } from '@/generated/api/ai-providers/ai-providers';
+import {
+  useAiProvidersListAiProviders,
+  useAiProvidersListAvailableModels,
+} from '@/generated/api/ai-providers/ai-providers';
+import type { AiProvidersListAvailableModels200Item } from '@/generated/models';
 import { EmptyState } from '@/shared/components/EmptyState';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ModelItem = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ModelAssignmentItem = Record<string, any>;
+type AvailableModel = AiProvidersListAvailableModels200Item & {
+  model_name: string; display_name: string; family: string;
+  parameter_size: string; quantization_level: string; max_tokens: number; temperature: number;
+};
 
 const CONTEXT_OPTIONS = [
   { value: 'task', label: 'Task' },
@@ -32,12 +43,29 @@ const CONTEXT_OPTIONS = [
   { value: 'agent_role', label: 'Agent Role' },
 ];
 
+const AGENT_ROLES = [
+  { value: 'planner', label: 'Planner' },
+  { value: 'coder', label: 'Coder' },
+  { value: 'reviewer', label: 'Reviewer' },
+  { value: 'pm', label: 'PM' },
+  { value: 'designer', label: 'Designer' },
+  { value: 'summarizer', label: 'Summarizer' },
+  { value: 'architect', label: 'Architect' },
+  { value: 'qa_engineer', label: 'QA Engineer' },
+  { value: 'devops', label: 'DevOps' },
+  { value: 'security', label: 'Security' },
+  { value: 'researcher', label: 'Researcher' },
+  { value: 'tech_lead', label: 'Tech Lead' },
+  { value: 'documentation', label: 'Documentation' },
+  { value: 'triage', label: 'Triage' },
+];
+
 const contextColor: Record<string, string> = {
   task: 'blue', chat: 'green', workflow_step: 'orange', pipeline_step: 'violet', agent_role: 'red',
 };
 
 const providerTypeColor: Record<string, string> = {
-  anthropic: 'violet', openai: 'green', azure_openai: 'blue', google: 'red', ollama: 'gray',
+  anthropic: 'violet', openai: 'green', azure_openai: 'blue', google: 'red', ollama: 'gray', bedrock: 'orange',
 };
 
 interface ProviderOption {
@@ -52,8 +80,8 @@ export function Component() {
   const createMut = useModelsCreateModel();
   const updateMut = useModelsUpdateModel();
   const deleteMut = useModelsDeleteModel();
-  const createAssignMut = useModelsCreateAssignment();
-  const deleteAssignMut = useModelsDeleteAssignment();
+  const createAssignMut = useModelsCreateModelAssignment();
+  const deleteAssignMut = useModelsDeleteModelAssignment();
   const qc = useQueryClient();
 
   const [opened, { open, close }] = useDisclosure(false);
@@ -108,10 +136,12 @@ export function Component() {
 
   const selectedProvider = providersList.find((p) => p.provider_id === form.values.provider_id);
   const isOllamaProvider = selectedProvider?.provider_type === 'ollama';
+  const isBedrockProvider = selectedProvider?.provider_type === 'bedrock';
+  const hasModelDiscovery = isOllamaProvider || isBedrockProvider;
 
-  const { data: availableModelsResp, isLoading: loadingAvailable } = useAvailableModels(
+  const { data: availableModelsResp, isLoading: loadingAvailable } = useAiProvidersListAvailableModels(
     form.values.provider_id,
-    { query: { enabled: isOllamaProvider && !!form.values.provider_id } },
+    { query: { enabled: hasModelDiscovery && !!form.values.provider_id } },
   );
   const availableModels = (availableModelsResp as { data?: AvailableModel[] } | undefined)?.data ?? [];
   const availableModelOptions = availableModels.map((m) => ({
@@ -350,20 +380,20 @@ export function Component() {
                 }
               }}
             />
-            {isOllamaProvider ? (
+            {hasModelDiscovery ? (
               <Select
                 label="Model"
-                placeholder={loadingAvailable ? 'Loading models from Ollama...' : 'Select a model'}
+                placeholder={loadingAvailable ? `Loading models from ${isBedrockProvider ? 'Bedrock' : 'Ollama'}...` : 'Select a model'}
                 data={availableModelOptions}
                 searchable
-                nothingFoundMessage={loadingAvailable ? 'Loading...' : 'No models found — pull models in Ollama first'}
+                nothingFoundMessage={loadingAvailable ? 'Loading...' : isBedrockProvider ? 'No models found — check your AWS credentials and region' : 'No models found — pull models in Ollama first'}
                 value={form.values.model_name}
                 onChange={handleAvailableModelSelect}
                 error={form.errors.model_name}
                 disabled={loadingAvailable}
                 description={
                   availableModels.find((m) => m.model_name === form.values.model_name)
-                    ? `${availableModels.find((m) => m.model_name === form.values.model_name)!.family} · ${availableModels.find((m) => m.model_name === form.values.model_name)!.parameter_size} · ${availableModels.find((m) => m.model_name === form.values.model_name)!.quantization_level}`
+                    ? `${availableModels.find((m) => m.model_name === form.values.model_name)!.family}${availableModels.find((m) => m.model_name === form.values.model_name)!.parameter_size ? ` · ${availableModels.find((m) => m.model_name === form.values.model_name)!.parameter_size}` : ''}${availableModels.find((m) => m.model_name === form.values.model_name)!.quantization_level ? ` · ${availableModels.find((m) => m.model_name === form.values.model_name)!.quantization_level}` : ''}`
                     : undefined
                 }
               />
@@ -427,15 +457,58 @@ export function Component() {
       <Modal opened={!!assignModal} onClose={() => { setAssignModal(null); assignForm.reset(); }} title="Assign Model">
         <form onSubmit={handleAssign}>
           <Stack gap="sm">
-            <Select label="Context" data={CONTEXT_OPTIONS} {...assignForm.getInputProps('context')} />
-            <TextInput
-              label="Context ID"
-              placeholder={assignForm.values.context === 'agent_role' ? 'planner, coder, reviewer...' : 'Step or task identifier'}
-              description="The specific item this model is assigned to"
-              {...assignForm.getInputProps('context_id')}
+            <Select
+              label="Context"
+              data={CONTEXT_OPTIONS}
+              {...assignForm.getInputProps('context')}
+              onChange={(val) => {
+                assignForm.setFieldValue('context', val ?? 'task');
+                assignForm.setFieldValue('context_id', '');
+              }}
             />
+            {assignForm.values.context === 'agent_role' ? (
+              <Select
+                label="Agent Role"
+                data={AGENT_ROLES}
+                searchable
+                placeholder="Select an agent role"
+                {...assignForm.getInputProps('context_id')}
+              />
+            ) : (
+              <TextInput
+                label="Context ID"
+                placeholder="Step or task identifier"
+                description="The specific item this model is assigned to"
+                {...assignForm.getInputProps('context_id')}
+              />
+            )}
             <NumberInput label="Priority" description="Higher = preferred" min={0} {...assignForm.getInputProps('priority')} />
             <Button type="submit" loading={createAssignMut.isPending}>Assign</Button>
+            {assignForm.values.context === 'agent_role' && (
+              <Button
+                variant="light"
+                loading={createAssignMut.isPending}
+                onClick={() => {
+                  if (!assignModal) return;
+                  const promises = AGENT_ROLES.map((role) =>
+                    createAssignMut.mutateAsync({
+                      modelId: assignModal,
+                      data: { context: 'agent_role', context_id: role.value, priority: assignForm.values.priority },
+                    }),
+                  );
+                  Promise.all(promises).then(() => {
+                    notifications.show({ title: 'Assigned', message: `Model assigned to all ${AGENT_ROLES.length} agent roles`, color: 'green' });
+                    void qc.invalidateQueries({ queryKey: ['/api/v1/models'] });
+                    void qc.invalidateQueries({ queryKey: [`/api/v1/models/${assignModal}/assignments`] });
+                    assignForm.reset(); setAssignModal(null);
+                  }).catch(() => {
+                    notifications.show({ title: 'Error', message: 'Failed to assign to some roles', color: 'red' });
+                  });
+                }}
+              >
+                Assign to All Roles
+              </Button>
+            )}
           </Stack>
         </form>
       </Modal>

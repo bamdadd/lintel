@@ -26,8 +26,10 @@ import type {
 import type {
   ChatCreateConversation201,
   ChatGetConversation200,
+  ChatGetConversationStatus200,
   ChatListConversations200Item,
   ChatListConversationsParams,
+  ChatRetryWorkflow200,
   ChatSendMessage201,
   HTTPValidationError,
   SendMessageRequest,
@@ -42,7 +44,7 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
- * Start a new conversation.
+ * Start a new conversation, optionally with an initial message.
  * @summary Create Conversation
  */
 export type chatCreateConversationResponse201 = {
@@ -464,7 +466,7 @@ export const useChatDeleteConversation = <TError = HTTPValidationError,
       return useMutation(getChatDeleteConversationMutationOptions(options), queryClient);
     }
     /**
- * Send a message to an existing conversation.
+ * Send a message to an existing conversation. Routes user messages through the chat router.
  * @summary Send Message
  */
 export type chatSendMessageResponse201 = {
@@ -553,5 +555,421 @@ export const useChatSendMessage = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getChatSendMessageMutationOptions(options), queryClient);
+    }
+    /**
+ * Send a message and stream the AI response as SSE.
+ * @summary Send Message Stream
+ */
+export type chatSendMessageStreamResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type chatSendMessageStreamResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type chatSendMessageStreamResponseSuccess = (chatSendMessageStreamResponse200) & {
+  headers: Headers;
+};
+export type chatSendMessageStreamResponseError = (chatSendMessageStreamResponse422) & {
+  headers: Headers;
+};
+
+export type chatSendMessageStreamResponse = (chatSendMessageStreamResponseSuccess | chatSendMessageStreamResponseError)
+
+export const getChatSendMessageStreamUrl = (conversationId: string,) => {
+
+
+  
+
+  return `/api/v1/chat/conversations/${conversationId}/messages/stream`
+}
+
+export const chatSendMessageStream = async (conversationId: string,
+    sendMessageRequest: SendMessageRequest, options?: RequestInit): Promise<chatSendMessageStreamResponse> => {
+  
+  return customInstance<chatSendMessageStreamResponse>(getChatSendMessageStreamUrl(conversationId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      sendMessageRequest,)
+  }
+);}
+  
+
+
+
+export const getChatSendMessageStreamMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatSendMessageStream>>, TError,{conversationId: string;data: SendMessageRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof chatSendMessageStream>>, TError,{conversationId: string;data: SendMessageRequest}, TContext> => {
+
+const mutationKey = ['chatSendMessageStream'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chatSendMessageStream>>, {conversationId: string;data: SendMessageRequest}> = (props) => {
+          const {conversationId,data} = props ?? {};
+
+          return  chatSendMessageStream(conversationId,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChatSendMessageStreamMutationResult = NonNullable<Awaited<ReturnType<typeof chatSendMessageStream>>>
+    export type ChatSendMessageStreamMutationBody = SendMessageRequest
+    export type ChatSendMessageStreamMutationError = HTTPValidationError
+
+    /**
+ * @summary Send Message Stream
+ */
+export const useChatSendMessageStream = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatSendMessageStream>>, TError,{conversationId: string;data: SendMessageRequest}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof chatSendMessageStream>>,
+        TError,
+        {conversationId: string;data: SendMessageRequest},
+        TContext
+      > => {
+      return useMutation(getChatSendMessageStreamMutationOptions(options), queryClient);
+    }
+    /**
+ * Stream new chat messages via SSE for real-time updates.
+ * @summary Stream Conversation Events
+ */
+export type chatStreamConversationEventsResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type chatStreamConversationEventsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type chatStreamConversationEventsResponseSuccess = (chatStreamConversationEventsResponse200) & {
+  headers: Headers;
+};
+export type chatStreamConversationEventsResponseError = (chatStreamConversationEventsResponse422) & {
+  headers: Headers;
+};
+
+export type chatStreamConversationEventsResponse = (chatStreamConversationEventsResponseSuccess | chatStreamConversationEventsResponseError)
+
+export const getChatStreamConversationEventsUrl = (conversationId: string,) => {
+
+
+  
+
+  return `/api/v1/chat/conversations/${conversationId}/events`
+}
+
+export const chatStreamConversationEvents = async (conversationId: string, options?: RequestInit): Promise<chatStreamConversationEventsResponse> => {
+  
+  return customInstance<chatStreamConversationEventsResponse>(getChatStreamConversationEventsUrl(conversationId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getChatStreamConversationEventsQueryKey = (conversationId: string,) => {
+    return [
+    `/api/v1/chat/conversations/${conversationId}/events`
+    ] as const;
+    }
+
+    
+export const getChatStreamConversationEventsQueryOptions = <TData = Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError = HTTPValidationError>(conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getChatStreamConversationEventsQueryKey(conversationId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof chatStreamConversationEvents>>> = ({ signal }) => chatStreamConversationEvents(conversationId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(conversationId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ChatStreamConversationEventsQueryResult = NonNullable<Awaited<ReturnType<typeof chatStreamConversationEvents>>>
+export type ChatStreamConversationEventsQueryError = HTTPValidationError
+
+
+export function useChatStreamConversationEvents<TData = Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError = HTTPValidationError>(
+ conversationId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof chatStreamConversationEvents>>,
+          TError,
+          Awaited<ReturnType<typeof chatStreamConversationEvents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useChatStreamConversationEvents<TData = Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError = HTTPValidationError>(
+ conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof chatStreamConversationEvents>>,
+          TError,
+          Awaited<ReturnType<typeof chatStreamConversationEvents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useChatStreamConversationEvents<TData = Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError = HTTPValidationError>(
+ conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Stream Conversation Events
+ */
+
+export function useChatStreamConversationEvents<TData = Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError = HTTPValidationError>(
+ conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatStreamConversationEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getChatStreamConversationEventsQueryOptions(conversationId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * Return workflow status for a conversation (project, work item, run).
+ * @summary Get Conversation Status
+ */
+export type chatGetConversationStatusResponse200 = {
+  data: ChatGetConversationStatus200
+  status: 200
+}
+
+export type chatGetConversationStatusResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type chatGetConversationStatusResponseSuccess = (chatGetConversationStatusResponse200) & {
+  headers: Headers;
+};
+export type chatGetConversationStatusResponseError = (chatGetConversationStatusResponse422) & {
+  headers: Headers;
+};
+
+export type chatGetConversationStatusResponse = (chatGetConversationStatusResponseSuccess | chatGetConversationStatusResponseError)
+
+export const getChatGetConversationStatusUrl = (conversationId: string,) => {
+
+
+  
+
+  return `/api/v1/chat/conversations/${conversationId}/status`
+}
+
+export const chatGetConversationStatus = async (conversationId: string, options?: RequestInit): Promise<chatGetConversationStatusResponse> => {
+  
+  return customInstance<chatGetConversationStatusResponse>(getChatGetConversationStatusUrl(conversationId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getChatGetConversationStatusQueryKey = (conversationId: string,) => {
+    return [
+    `/api/v1/chat/conversations/${conversationId}/status`
+    ] as const;
+    }
+
+    
+export const getChatGetConversationStatusQueryOptions = <TData = Awaited<ReturnType<typeof chatGetConversationStatus>>, TError = HTTPValidationError>(conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatGetConversationStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getChatGetConversationStatusQueryKey(conversationId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof chatGetConversationStatus>>> = ({ signal }) => chatGetConversationStatus(conversationId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(conversationId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof chatGetConversationStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ChatGetConversationStatusQueryResult = NonNullable<Awaited<ReturnType<typeof chatGetConversationStatus>>>
+export type ChatGetConversationStatusQueryError = HTTPValidationError
+
+
+export function useChatGetConversationStatus<TData = Awaited<ReturnType<typeof chatGetConversationStatus>>, TError = HTTPValidationError>(
+ conversationId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatGetConversationStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof chatGetConversationStatus>>,
+          TError,
+          Awaited<ReturnType<typeof chatGetConversationStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useChatGetConversationStatus<TData = Awaited<ReturnType<typeof chatGetConversationStatus>>, TError = HTTPValidationError>(
+ conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatGetConversationStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof chatGetConversationStatus>>,
+          TError,
+          Awaited<ReturnType<typeof chatGetConversationStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useChatGetConversationStatus<TData = Awaited<ReturnType<typeof chatGetConversationStatus>>, TError = HTTPValidationError>(
+ conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatGetConversationStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Conversation Status
+ */
+
+export function useChatGetConversationStatus<TData = Awaited<ReturnType<typeof chatGetConversationStatus>>, TError = HTTPValidationError>(
+ conversationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof chatGetConversationStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getChatGetConversationStatusQueryOptions(conversationId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * Retry a failed workflow from the last checkpoint.
+ * @summary Retry Workflow
+ */
+export type chatRetryWorkflowResponse200 = {
+  data: ChatRetryWorkflow200
+  status: 200
+}
+
+export type chatRetryWorkflowResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type chatRetryWorkflowResponseSuccess = (chatRetryWorkflowResponse200) & {
+  headers: Headers;
+};
+export type chatRetryWorkflowResponseError = (chatRetryWorkflowResponse422) & {
+  headers: Headers;
+};
+
+export type chatRetryWorkflowResponse = (chatRetryWorkflowResponseSuccess | chatRetryWorkflowResponseError)
+
+export const getChatRetryWorkflowUrl = (conversationId: string,) => {
+
+
+  
+
+  return `/api/v1/chat/conversations/${conversationId}/retry`
+}
+
+export const chatRetryWorkflow = async (conversationId: string, options?: RequestInit): Promise<chatRetryWorkflowResponse> => {
+  
+  return customInstance<chatRetryWorkflowResponse>(getChatRetryWorkflowUrl(conversationId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getChatRetryWorkflowMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatRetryWorkflow>>, TError,{conversationId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof chatRetryWorkflow>>, TError,{conversationId: string}, TContext> => {
+
+const mutationKey = ['chatRetryWorkflow'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chatRetryWorkflow>>, {conversationId: string}> = (props) => {
+          const {conversationId} = props ?? {};
+
+          return  chatRetryWorkflow(conversationId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChatRetryWorkflowMutationResult = NonNullable<Awaited<ReturnType<typeof chatRetryWorkflow>>>
+    
+    export type ChatRetryWorkflowMutationError = HTTPValidationError
+
+    /**
+ * @summary Retry Workflow
+ */
+export const useChatRetryWorkflow = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatRetryWorkflow>>, TError,{conversationId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof chatRetryWorkflow>>,
+        TError,
+        {conversationId: string},
+        TContext
+      > => {
+      return useMutation(getChatRetryWorkflowMutationOptions(options), queryClient);
     }
     

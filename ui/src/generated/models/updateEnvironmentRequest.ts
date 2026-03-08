@@ -10,6 +10,5 @@ import type { UpdateEnvironmentRequestConfig } from './updateEnvironmentRequestC
 export interface UpdateEnvironmentRequest {
   name?: string | null;
   env_type?: EnvironmentType | null;
-  project_id?: string | null;
   config?: UpdateEnvironmentRequestConfig;
 }
