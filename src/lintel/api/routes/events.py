@@ -44,9 +44,7 @@ async def get_events_by_stream(
             ),
             "actor_id": e.actor_id,
             "actor_type": (
-                e.actor_type.value
-                if hasattr(e.actor_type, "value")
-                else str(e.actor_type)
+                e.actor_type.value if hasattr(e.actor_type, "value") else str(e.actor_type)
             ),
         }
         for e in envelopes

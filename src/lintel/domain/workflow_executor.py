@@ -195,7 +195,11 @@ class WorkflowExecutor:
                     step_start = total_tokens.get("_step_start", time.time())
                     duration = time.time() - step_start
                     record_step_duration(
-                        run_id, node_name, node_name, "completed", duration,
+                        run_id,
+                        node_name,
+                        node_name,
+                        "completed",
+                        duration,
                     )
                     if isinstance(output, dict):
                         for entry in output.get("token_usage", []):
@@ -204,7 +208,10 @@ class WorkflowExecutor:
                                 model_id = entry.get("model", "unknown")
                                 if step_total:
                                     record_step_tokens(
-                                        run_id, node_name, model_id, step_total,
+                                        run_id,
+                                        node_name,
+                                        model_id,
+                                        step_total,
                                     )
                     total_tokens["_step_start"] = time.time()
 

@@ -32,6 +32,7 @@ import {
 import { useModelsListModels } from '@/generated/api/models/models';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { TimeAgo } from '@/shared/components/TimeAgo';
 
 interface Message {
   message_id: string;
@@ -374,9 +375,7 @@ export function Component() {
                       <Text size="xs" truncate>
                         {c.messages?.[0]?.content?.slice(0, 40) ?? 'New conversation'}
                       </Text>
-                      <Text size="xs" c="dimmed">
-                        {new Date(c.created_at).toLocaleString()}
-                      </Text>
+                      <TimeAgo date={c.created_at} size="xs" c="dimmed" />
                     </Box>
                     <ActionIcon
                       size="xs"
@@ -455,9 +454,7 @@ export function Component() {
                           <Badge size="xs" variant="light">
                             {m.display_name ?? m.role}
                           </Badge>
-                          <Text size="xs" c="dimmed">
-                            {new Date(m.timestamp).toLocaleTimeString()}
-                          </Text>
+                          <TimeAgo date={m.timestamp} size="xs" c="dimmed" />
                         </Group>
                         {m.role === 'user' ? (
                           <Text size="sm" style={{ whiteSpace: 'pre-wrap' }} c="white" dir="auto">

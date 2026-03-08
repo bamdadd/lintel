@@ -23,7 +23,9 @@ def mock_model_router() -> AsyncMock:
     router = AsyncMock()
     router.select_model = AsyncMock(
         return_value=ModelPolicy(
-            provider="test", model_name="test-model", max_tokens=100,
+            provider="test",
+            model_name="test-model",
+            max_tokens=100,
         ),
     )
     router.call_model = AsyncMock(

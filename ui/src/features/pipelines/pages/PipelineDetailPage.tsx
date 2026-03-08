@@ -6,6 +6,7 @@ import {
 } from '@mantine/core';
 import { IconArrowLeft, IconCheck, IconRefresh, IconX } from '@tabler/icons-react';
 import { StageReportEditor } from '../components/StageReportEditor';
+import { PlanView } from '../components/PlanView';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
@@ -13,6 +14,7 @@ import {
 import { PipelineDAG } from '../components/PipelineDAG';
 import { StepTimingBar } from '../components/StepTimingBar';
 import { usePipelineSSE } from '../hooks/usePipelineSSE';
+import { TimeAgo } from '@/shared/components/TimeAgo';
 
 const statusColor: Record<string, string> = {
   pending: 'gray',
@@ -279,8 +281,8 @@ export function Component() {
                       </Group>
                     </Group>
                     <Text size="sm" c="dimmed">Type: {selectedStage.stage_type ?? '—'}</Text>
-                    <Text size="sm">Started: {selectedStage.started_at ? new Date(selectedStage.started_at).toLocaleString() : '—'}</Text>
-                    <Text size="sm">Finished: {selectedStage.finished_at ? new Date(selectedStage.finished_at).toLocaleString() : '—'}</Text>
+                    <Group gap={4}><Text size="sm">Started:</Text><TimeAgo date={selectedStage.started_at} size="sm" /></Group>
+                    <Group gap={4}><Text size="sm">Finished:</Text><TimeAgo date={selectedStage.finished_at} size="sm" /></Group>
                     {selectedStage.duration_ms ? (
                       <Text size="sm">Duration: {(selectedStage.duration_ms / 1000).toFixed(1)}s</Text>
                     ) : null}
@@ -365,19 +367,9 @@ export function Component() {
                       />
                     )}
 
-                    {/* Plan output — editable */}
+                    {/* Plan output — structured view */}
                     {selectedStage.outputs?.plan && (
-                      <StageReportEditor
-                        runId={runId!}
-                        stageId={selectedStage.stage_id}
-                        stageName={selectedStage.name}
-                        initialContent={
-                          typeof selectedStage.outputs.plan === 'string'
-                            ? selectedStage.outputs.plan
-                            : JSON.stringify(selectedStage.outputs.plan, null, 2)
-                        }
-                        status={selectedStage.status}
-                      />
+                      <PlanView plan={selectedStage.outputs.plan as Record<string, unknown> | string} />
                     )}
 
                     {/* Other outputs (non-plan) */}

@@ -9,6 +9,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '../../chat/chat-markdown.css';
+import { TimeAgo } from '@/shared/components/TimeAgo';
 
 interface ReportVersion {
   version: number;
@@ -240,9 +241,7 @@ export function StageReportEditor({
                     </Badge>
                     <Text size="xs" c="dimmed">{v.editor}</Text>
                   </Group>
-                  <Text size="xs" c="dimmed">
-                    {new Date(v.timestamp).toLocaleString()}
-                  </Text>
+                  <TimeAgo date={v.timestamp} size="xs" c="dimmed" />
                 </Group>
               ))
             )}

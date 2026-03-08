@@ -151,6 +151,7 @@ async def research_codebase(
                 "content": (f"{codebase_context}\n\n---\n\n## User Request\n{user_request}"),
             },
         ],
+        tools=[],  # No tools — context is already gathered from sandbox
     )
 
     research_report = result.get("content", "")

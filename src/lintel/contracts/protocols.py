@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
+    from datetime import datetime
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
@@ -77,6 +78,20 @@ class EventStore(Protocol):
     async def read_by_correlation(
         self,
         correlation_id: UUID,
+    ) -> list[EventEnvelope]: ...
+
+    async def read_by_event_type(
+        self,
+        event_type: str,
+        from_position: int = 0,
+        limit: int = 1000,
+    ) -> list[EventEnvelope]: ...
+
+    async def read_by_time_range(
+        self,
+        from_time: datetime,
+        to_time: datetime,
+        event_types: frozenset[str] | None = None,
     ) -> list[EventEnvelope]: ...
 
 

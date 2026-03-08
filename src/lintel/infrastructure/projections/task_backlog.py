@@ -45,9 +45,7 @@ class TaskBacklogProjection:
         }
         current["status"] = status_map.get(event.event_type, current.get("status", "unknown"))
         current["last_event_at"] = event.occurred_at.isoformat()
-        current.update(
-            {k: v for k, v in event.payload.items() if k in ("agent_role", "step_name")}
-        )
+        current.update({k: v for k, v in event.payload.items() if k in ("agent_role", "step_name")})
 
         self._tasks[task_key] = current
 

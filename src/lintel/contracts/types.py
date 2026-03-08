@@ -349,6 +349,7 @@ class PipelineRun:
     trigger_type: str = ""
     trigger_id: str = ""
     environment_id: str = ""
+    created_at: str = ""
 
 
 # --- Environment & Variables ---

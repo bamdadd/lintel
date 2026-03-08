@@ -165,6 +165,23 @@ class TestWriteAndReadFile:
         assert resp.json()["content"] == "hello"
 
 
+class TestCleanupWorkspace:
+    def test_cleans_workspace(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={"workspace_id": "ws1", "channel_id": "ch1", "thread_ts": "1.0"},
+        )
+        sandbox_id = resp.json()["sandbox_id"]
+
+        resp = client.post(f"/api/v1/sandboxes/{sandbox_id}/cleanup-workspace")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "cleaned"
+
+    def test_not_found(self, client: TestClient) -> None:
+        resp = client.post("/api/v1/sandboxes/nonexistent/cleanup-workspace")
+        assert resp.status_code == 404
+
+
 class TestDestroySandbox:
     def test_destroys(self, client: TestClient) -> None:
         resp = client.post(

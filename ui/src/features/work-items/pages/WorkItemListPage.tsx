@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select, Textarea,
-  Loader, Center, ActionIcon, Badge,
+  Loader, Center, ActionIcon, Badge, Text,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconExternalLink } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useWorkItemsListWorkItems,
@@ -142,19 +142,43 @@ export function Component() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Title</Table.Th>
-              <Table.Th>Type</Table.Th>
               <Table.Th>Status</Table.Th>
               <Table.Th>Project</Table.Th>
+              <Table.Th>Links</Table.Th>
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {items.map((w) => (
               <Table.Tr key={w.work_item_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(w)}>
-                <Table.Td>{w.title}</Table.Td>
-                <Table.Td><Badge color={typeColor[w.work_type] ?? 'gray'} variant="light">{w.work_type}</Badge></Table.Td>
-                <Table.Td><Badge color={statusColor[w.status] ?? 'gray'}>{w.status}</Badge></Table.Td>
-                <Table.Td>{projectName(w.project_id)}</Table.Td>
+                <Table.Td>
+                  <Group gap="xs" wrap="nowrap">
+                    <Badge color={typeColor[w.work_type] ?? 'gray'} variant="light" size="sm">{w.work_type}</Badge>
+                    <Text size="sm" fw={500} truncate>{w.title}</Text>
+                  </Group>
+                </Table.Td>
+                <Table.Td><Badge color={statusColor[w.status] ?? 'gray'}>{w.status?.replace('_', ' ')}</Badge></Table.Td>
+                <Table.Td><Text size="sm">{projectName(w.project_id)}</Text></Table.Td>
+                <Table.Td>
+                  <Group gap="xs">
+                    {w.branch_name && (
+                      <Badge variant="outline" size="sm" color="gray" radius="sm">{w.branch_name}</Badge>
+                    )}
+                    {w.pr_url && (
+                      <ActionIcon
+                        variant="subtle"
+                        size="sm"
+                        component="a"
+                        href={w.pr_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                      >
+                        <IconExternalLink size={14} />
+                      </ActionIcon>
+                    )}
+                  </Group>
+                </Table.Td>
                 <Table.Td>
                   <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(w.work_item_id); }}>
                     <IconTrash size={16} />

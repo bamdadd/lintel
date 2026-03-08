@@ -8,6 +8,7 @@ import structlog
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from datetime import datetime
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
@@ -79,6 +80,36 @@ class InMemoryEventStore:
         for stream in self._streams.values():
             for event in stream:
                 if event.correlation_id == correlation_id:
+                    result.append(event)
+        result.sort(key=lambda e: e.occurred_at)
+        return result
+
+    async def read_by_event_type(
+        self,
+        event_type: str,
+        from_position: int = 0,
+        limit: int = 1000,
+    ) -> list[EventEnvelope]:
+        all_events: list[EventEnvelope] = []
+        for stream in self._streams.values():
+            for event in stream:
+                if event.event_type == event_type:
+                    all_events.append(event)
+        all_events.sort(key=lambda e: e.occurred_at)
+        return all_events[from_position : from_position + limit]
+
+    async def read_by_time_range(
+        self,
+        from_time: datetime,
+        to_time: datetime,
+        event_types: frozenset[str] | None = None,
+    ) -> list[EventEnvelope]:
+        result: list[EventEnvelope] = []
+        for stream in self._streams.values():
+            for event in stream:
+                if from_time <= event.occurred_at <= to_time and (
+                    event_types is None or event.event_type in event_types
+                ):
                     result.append(event)
         result.sort(key=lambda e: e.occurred_at)
         return result

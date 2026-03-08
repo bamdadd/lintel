@@ -570,3 +570,195 @@ Currently these are read-only outputs. Users should be able to edit them to corr
    - Last-write-wins for edits (no real-time collaborative editing in v1)
    - Edit attribution: track which user made which edits
    - Slack notification when a report is ready for review/editing
+
+---
+
+## REQ-014: Sandbox Firewall & Resource Isolation
+
+### Overview
+
+Fine-grained runtime control over sandbox network access and filesystem permissions — allowing operators to restrict what a sandbox can reach and what it can modify, configurable per-sandbox and changeable at runtime.
+
+### Context
+
+Sandboxes currently use coarse-grained isolation: `network_mode: "none"` or `"bridge"`, `cap_drop: ["ALL"]`, and tmpfs mounts. This is insufficient for workflows that need partial network access (e.g. allow PyPI but block everything else) or selective filesystem restrictions (e.g. read-only source tree with writable output directory).
+
+### Docker Capabilities Available
+
+The following Docker primitives are available for implementation:
+
+#### Network isolation
+- **Custom bridge networks** — create per-sandbox or per-policy networks via `client.networks.create()` with internal/driver options
+- **Runtime connect/disconnect** — `Network.connect(container)` and `Network.disconnect(container)` allow dynamic network attachment without container restart
+- **Network modes** — `none`, `bridge`, `host`, `container:<id>` set at creation
+- **DNS control** — custom DNS servers via `dns` parameter to restrict resolution
+- **Docker network policies (2025)** — domain-based HTTP/HTTPS filtering with wildcard support (`*.pypi.org`, `github.com:443`); currently CLI-only, no SDK API yet
+
+#### Filesystem isolation
+- **Read-only root filesystem** — `read_only=True` at container creation
+- **Selective mounts** — `volumes` with `mode='ro'` or `mode='rw'` per bind mount
+- **tmpfs** — ephemeral writable directories with size limits (`tmpfs={'/tmp': 'size=100m'}`)
+- **Seccomp profiles** — custom JSON profiles passed via `security_opt=['seccomp=/path/to/profile.json']` to restrict syscalls
+- **AppArmor profiles** — MAC enforcement via `security_opt=['apparmor=profile-name']`
+- **Capability control** — `cap_drop=['ALL']` + selective `cap_add` for least-privilege
+
+#### Limitations
+- No runtime filesystem permission changes post-creation (requires container recreation)
+- Docker network policies (domain filtering) have no Python SDK support yet — CLI only
+- Seccomp profiles must be file paths, not inline JSON
+
+### Requirements
+
+1. **Network firewall policies**
+   - Define named network policies: `unrestricted`, `package-registries-only`, `no-network`, `custom`
+   - `package-registries-only` allows: `pypi.org`, `registry.npmjs.org`, `proxy.golang.org`, `rubygems.org` (configurable allowlist)
+   - `custom` accepts a list of allowed domains/IPs with optional port restrictions
+   - Policies are assignable per-sandbox at creation or changed at runtime
+   - Implementation: custom bridge networks with iptables rules for IP-based filtering; DNS-based filtering for domain allowlists (custom DNS proxy or dnsmasq in sidecar container)
+
+2. **Filesystem access policies**
+   - Define mount profiles: which host paths can be mounted, read-only vs read-write
+   - Support read-only source tree with writable output directory pattern: `/workspace/src` (ro) + `/workspace/output` (rw)
+   - Configurable tmpfs sizes per directory
+   - Seccomp profile selection: `default`, `strict` (minimal syscalls), `custom` (user-provided JSON)
+   - AppArmor profile support for environments where AppArmor is available
+
+3. **Runtime control API**
+   - `POST /sandboxes/{id}/network-policy` — change network policy at runtime (connect/disconnect networks)
+   - `GET /sandboxes/{id}/network-policy` — get current network policy and connectivity status
+   - `POST /sandboxes/{id}/cleanup-workspace` — clear workspace files (already implemented)
+   - Network changes are immediate — no container restart required
+
+4. **UI**
+   - Network policy selector on sandbox creation (dropdown: unrestricted, package-registries-only, no-network, custom)
+   - Runtime network toggle on sandbox detail page (with confirmation for escalating access)
+   - Visual indicator of current network policy (badge showing active policy)
+   - Filesystem policy display in sandbox configuration tab
+
+5. **Workflow integration**
+   - Workflows can specify required network policy per stage (e.g. `research` stage needs network, `code` stage does not)
+   - Automatic policy transitions: network enabled for clone → disabled for code execution → enabled for push
+   - Policy violations emit events (`SandboxPolicyViolation`) for audit
+
+6. **Audit & observability**
+   - Log all network policy changes as events (`SandboxNetworkPolicyChanged`)
+   - Track network usage per sandbox (bytes in/out, DNS queries, blocked requests)
+   - Alert on unexpected network access attempts from no-network sandboxes
+
+### Implementation notes
+
+- Phase 1: Named network policies using custom bridge networks + DNS control (fully supported by Docker SDK)
+- Phase 2: Domain-based filtering via DNS proxy sidecar (dnsmasq or CoreDNS with policy plugin)
+- Phase 3: Docker network policies integration when SDK support lands
+- Filesystem policies are creation-time only — changing filesystem isolation requires sandbox recreation
+
+---
+
+## REQ-015: Internal Task Board
+
+### Overview
+
+A built-in task management board within Lintel that provides a flexible, configurable view of work items — similar to Jira or Notion boards. External integrations (Jira, Linear) mirror their data into this same internal model, giving teams a single place to see all work regardless of origin.
+
+### Data Model
+
+The task board extends the existing `WorkItem` with flexible metadata rather than introducing a separate entity.
+
+#### Board
+
+```python
+@dataclass(frozen=True)
+class Board:
+    board_id: str
+    project_id: str
+    name: str
+    columns: tuple[BoardColumn, ...]     # ordered columns (e.g. To Do, In Progress, Done)
+    group_by: str = ""                   # tag key to group by (e.g. "epic", "team", "priority")
+    default_sort: str = "created_at"     # field or tag key to sort within columns
+    filters: dict[str, object] = field(default_factory=dict)  # saved filters
+
+@dataclass(frozen=True)
+class BoardColumn:
+    column_id: str
+    name: str                            # display name (e.g. "To Do", "In Review")
+    maps_to_status: str                  # WorkItemStatus value this column represents
+    wip_limit: int = 0                   # 0 = unlimited
+    color: str = ""                      # optional hex color for the column header
+```
+
+#### Tags (flexible key-value metadata on WorkItem)
+
+```python
+@dataclass(frozen=True)
+class Tag:
+    key: str       # e.g. "epic", "priority", "component", "sprint"
+    value: str     # e.g. "Auth Overhaul", "P1", "api", "2026-W10"
+    color: str = ""
+```
+
+`WorkItem` gains:
+- `tags: tuple[Tag, ...] = ()` — arbitrary key-value tags
+- `column_position: int = 0` — ordering within a board column
+- `external_ticket_id: str = ""` — (already planned in ENT-M2)
+- `external_ticket_url: str = ""` — (already planned in ENT-M2)
+
+Tags are fully user-defined — Lintel does not enforce a fixed set of keys. Common conventions (epic, priority, component, sprint) are suggested but not required.
+
+### Requirements
+
+1. **Board configuration**
+   - Each project has one or more boards (e.g. "Engineering Board", "Design Board")
+   - Columns are user-defined and map to `WorkItemStatus` values (many columns can map to the same status)
+   - Column order is drag-and-drop reorderable in the UI
+   - WIP limits: optional per-column limit that shows a visual warning when exceeded
+
+2. **Tags & grouping**
+   - Work items can have any number of tags (key-value pairs)
+   - Tags are project-scoped — available tags are discovered from usage, not pre-defined
+   - Group-by: board can group rows by any tag key (e.g. group by "epic" shows one swimlane per epic)
+   - Filter: filter board by tag values, status, assignee, work type, date range
+   - Bulk tag operations: select multiple items, add/remove tags
+
+3. **Board views**
+   - **Kanban view** — columns as vertical lanes, cards as work items, drag to move between columns
+   - **List view** — table with sortable/filterable columns (like Notion database view)
+   - **Grouped view** — list or kanban grouped by a tag key (swimlanes)
+   - Users can switch between views; each view preserves its own sort/filter state
+
+4. **Integration mirroring**
+   - External ticketing integrations (Jira, Linear) sync into the same `WorkItem` + `Tag` model
+   - External fields map to tags: Jira epic → `tag(key="epic", value="EPIC-123: Auth")`, Jira labels → tags, Jira priority → `tag(key="priority", value="High")`
+   - Sync is bidirectional: moving a card on the Lintel board updates the external ticket status, and vice versa
+   - Conflict resolution: last-write-wins with `external_synced_at` timestamp tracking
+   - Items created in Lintel can optionally be pushed to the external tracker
+
+5. **API**
+   - `POST /projects/{id}/boards` — create a board
+   - `GET /projects/{id}/boards` — list boards for a project
+   - `GET /boards/{id}` — get board with columns and work items
+   - `PATCH /boards/{id}` — update board config (columns, group_by, filters)
+   - `PATCH /work-items/{id}/tags` — add/remove tags on a work item
+   - `PATCH /work-items/{id}/position` — move item to a column + position (drag-and-drop)
+   - `GET /projects/{id}/tags` — list all tag keys and values in use (for autocomplete)
+
+6. **Events**
+   - `BoardCreated`, `BoardUpdated` — board configuration changes
+   - `WorkItemTagged`, `WorkItemUntagged` — tag changes
+   - `WorkItemMoved` — column/position changes on the board
+   - `ExternalTicketMirrored` — item synced from external tracker
+
+7. **UI**
+   - Board page accessible from the project sidebar
+   - Kanban board with drag-and-drop (columns, card ordering)
+   - Card displays: title, status badge, tags as colored chips, assignee avatar, work type icon
+   - Quick-add: create a work item directly from the board (inline form at top of column)
+   - Tag management: click a tag chip to filter by it, right-click for edit/remove
+   - Epic swimlanes: when grouped by epic, collapsible rows with item count and progress bar
+
+### Non-goals (v1)
+
+- Custom fields beyond tags (no typed fields like number, date, dropdown — tags are string key-value only)
+- Automations / rules (e.g. "when moved to Done, close the ticket") — use REQ-012 hooks for this
+- Time tracking or story points
+- Sub-tasks or parent-child relationships between work items
+- Real-time collaborative editing of work item descriptions

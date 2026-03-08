@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import {
-  Title, Stack, Table, Button, Group, Modal, TextInput, Select,
-  Loader, Center, ActionIcon, Badge, Switch, Textarea,
+  Title, Stack, Button, Group, Modal, TextInput, Select,
+  Loader, Center, ActionIcon, Badge, Switch, Textarea, Text, Paper,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import {
+  IconTrash, IconWebhook, IconBrandSlack, IconClock,
+  IconGitPullRequest, IconHandClick,
+} from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useTriggersListTriggers,
@@ -35,6 +38,35 @@ const TRIGGER_TYPES = [
   { value: 'pr_event', label: 'PR Event' },
   { value: 'manual', label: 'Manual' },
 ];
+
+const TRIGGER_META: Record<string, { icon: typeof IconWebhook; color: string; label: string; description: string }> = {
+  slack_message: { icon: IconBrandSlack, color: 'grape', label: 'Slack Message', description: 'Fires when a matching Slack message is received' },
+  webhook: { icon: IconWebhook, color: 'blue', label: 'Webhook', description: 'Fires on incoming HTTP webhook' },
+  schedule: { icon: IconClock, color: 'orange', label: 'Schedule', description: 'Fires on a cron schedule' },
+  pr_event: { icon: IconGitPullRequest, color: 'teal', label: 'PR Event', description: 'Fires on pull request activity' },
+  manual: { icon: IconHandClick, color: 'gray', label: 'Manual', description: 'Triggered manually by a user' },
+};
+
+/** Summarise trigger config as a human-readable string. */
+function configSummary(triggerType: string, config: Record<string, unknown> | null): string {
+  if (!config || Object.keys(config).length === 0) return 'No configuration';
+  switch (triggerType) {
+    case 'schedule':
+      return config.cron ? `Cron: ${config.cron as string}` : `${Object.keys(config).length} setting(s)`;
+    case 'webhook':
+      return config.path ? `Path: ${config.path as string}` : config.url ? `URL: ${config.url as string}` : `${Object.keys(config).length} setting(s)`;
+    case 'slack_message':
+      return config.channel ? `Channel: ${config.channel as string}` : config.pattern ? `Pattern: ${config.pattern as string}` : `${Object.keys(config).length} setting(s)`;
+    case 'pr_event': {
+      const parts: string[] = [];
+      if (config.repo) parts.push(config.repo as string);
+      if (config.actions) parts.push(`on ${(config.actions as string[]).join(', ')}`);
+      return parts.length > 0 ? parts.join(' ') : `${Object.keys(config).length} setting(s)`;
+    }
+    default:
+      return `${Object.keys(config).length} setting(s)`;
+  }
+}
 
 export function Component() {
   const { data: resp, isLoading } = useTriggersListTriggers();
@@ -126,32 +158,38 @@ export function Component() {
       {triggers.length === 0 ? (
         <EmptyState title="No triggers" description="Create triggers to automate workflows" actionLabel="Create Trigger" onAction={open} />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Type</Table.Th>
-              <Table.Th>Project</Table.Th>
-              <Table.Th>Enabled</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {triggers.map((t) => (
-              <Table.Tr key={t.trigger_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(t)}>
-                <Table.Td>{t.name}</Table.Td>
-                <Table.Td><Badge variant="light">{t.trigger_type}</Badge></Table.Td>
-                <Table.Td>{projectName(t.project_id)}</Table.Td>
-                <Table.Td><Badge color={t.enabled ? 'green' : 'gray'}>{t.enabled ? 'On' : 'Off'}</Badge></Table.Td>
-                <Table.Td>
-                  <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(t.trigger_id); }}>
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <Stack gap="xs">
+          {triggers.map((t) => {
+            const meta = TRIGGER_META[t.trigger_type] ?? TRIGGER_META.manual;
+            const Icon = meta.icon;
+            return (
+              <Paper key={t.trigger_id} withBorder p="sm" style={{ cursor: 'pointer' }} onClick={() => openEdit(t)}>
+                <Group justify="space-between" wrap="nowrap">
+                  <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                    <Icon size={20} color={`var(--mantine-color-${meta.color}-6)`} style={{ flexShrink: 0 }} />
+                    <Stack gap={2} style={{ minWidth: 0 }}>
+                      <Group gap="xs">
+                        <Text fw={500} size="sm" truncate>{t.name}</Text>
+                        <Badge color={meta.color} variant="light" size="xs">{meta.label}</Badge>
+                        {!t.enabled && <Badge color="gray" variant="outline" size="xs">Disabled</Badge>}
+                      </Group>
+                      <Group gap="xs">
+                        <Text size="xs" c="dimmed" truncate>{configSummary(t.trigger_type, t.config)}</Text>
+                        <Text size="xs" c="dimmed">in {projectName(t.project_id)}</Text>
+                      </Group>
+                    </Stack>
+                  </Group>
+                  <Group gap="xs" wrap="nowrap">
+                    <Badge color={t.enabled ? 'green' : 'gray'} size="sm">{t.enabled ? 'On' : 'Off'}</Badge>
+                    <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(t.trigger_id); }}>
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
+                </Group>
+              </Paper>
+            );
+          })}
+        </Stack>
       )}
 
       <Modal opened={opened} onClose={close} title="Create Trigger">

@@ -138,6 +138,7 @@ async def append_log(
         trigger_type=run.trigger_type,
         trigger_id=run.trigger_id,
         environment_id=run.environment_id,
+        created_at=run.created_at,
     )
     try:
         await pipeline_store.update(updated)
@@ -231,6 +232,7 @@ async def update_stage(
         trigger_type=run.trigger_type,
         trigger_id=run.trigger_id,
         environment_id=run.environment_id,
+        created_at=run.created_at,
     )
     try:
         await pipeline_store.update(updated)

@@ -114,9 +114,15 @@ class AgentRuntime:
             ],
         )
 
-        # Merge MCP tools with any explicitly passed tools
+        # Merge MCP tools with any explicitly passed tools.
+        # Pass tools=[] to explicitly disable all tools (including MCP).
+        # Pass tools=None to auto-discover MCP tools.
+        # Pass tools=[...] to use those tools AND merge MCP tools.
         all_tools = list(tools) if tools else []
-        mcp_tools = await self._gather_mcp_tools()
+        if tools is None or len(tools) > 0:
+            mcp_tools = await self._gather_mcp_tools()
+        else:
+            mcp_tools = []
         if mcp_tools:
             all_tools.extend(mcp_tools)
             logger.info(
@@ -127,7 +133,9 @@ class AgentRuntime:
             )
 
         result = await self._model_router.call_model(
-            policy, messages, all_tools or None,
+            policy,
+            messages,
+            all_tools or None,
         )
 
         await self._event_store.append(

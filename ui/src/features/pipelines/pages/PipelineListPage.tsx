@@ -16,6 +16,7 @@ import {
 } from '@/generated/api/pipelines/pipelines';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { TimeAgo } from '@/shared/components/TimeAgo';
 
 interface PipelineRun {
   run_id: string;
@@ -31,7 +32,7 @@ interface PipelineRun {
 interface ProjectItem { project_id: string; name: string; }
 
 const statusColor: Record<string, string> = {
-  pending: 'gray', running: 'blue', succeeded: 'green', failed: 'red', cancelled: 'orange',
+  pending: 'gray', running: 'blue', succeeded: 'green', failed: 'red', cancelled: 'orange', waiting_approval: 'yellow',
 };
 
 export function Component() {
@@ -53,7 +54,9 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const runs = (resp?.data ?? []) as PipelineRun[];
+  const runs = [...((resp?.data ?? []) as PipelineRun[])].sort(
+    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
+  );
 
   const handleCreate = form.onSubmit((values) => {
     createMut.mutate(
@@ -135,7 +138,7 @@ export function Component() {
                   )}
                 </Table.Td>
                 <Table.Td><Badge color={statusColor[r.status] ?? 'gray'}>{r.status}</Badge></Table.Td>
-                <Table.Td><Text size="sm">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</Text></Table.Td>
+                <Table.Td><TimeAgo date={r.created_at} size="sm" /></Table.Td>
                 <Table.Td>
                   <Group gap={4}>
                     {r.status === 'running' && (

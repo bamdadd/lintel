@@ -703,6 +703,151 @@ class AuditRecorded(EventEnvelope):
     event_type: str = "AuditRecorded"
 
 
+# --- Collaboration Events (Layer 2) ---
+
+
+@dataclass(frozen=True)
+class TeamMemberAdded(EventEnvelope):
+    event_type: str = "TeamMemberAdded"
+
+
+@dataclass(frozen=True)
+class TeamMemberRemoved(EventEnvelope):
+    event_type: str = "TeamMemberRemoved"
+
+
+@dataclass(frozen=True)
+class TeamMemberRoleChanged(EventEnvelope):
+    event_type: str = "TeamMemberRoleChanged"
+
+
+@dataclass(frozen=True)
+class ChannelRegistered(EventEnvelope):
+    event_type: str = "ChannelRegistered"
+
+
+@dataclass(frozen=True)
+class ChannelUpdated(EventEnvelope):
+    event_type: str = "ChannelUpdated"
+
+
+@dataclass(frozen=True)
+class ChannelDisabled(EventEnvelope):
+    event_type: str = "ChannelDisabled"
+
+
+@dataclass(frozen=True)
+class IntegrationRegistered(EventEnvelope):
+    event_type: str = "IntegrationRegistered"
+
+
+@dataclass(frozen=True)
+class IntegrationSynced(EventEnvelope):
+    event_type: str = "IntegrationSynced"
+
+
+@dataclass(frozen=True)
+class IntegrationFailed(EventEnvelope):
+    event_type: str = "IntegrationFailed"
+
+
+# --- Guardrail Events (Layer 3) ---
+
+
+@dataclass(frozen=True)
+class GuardrailTriggered(EventEnvelope):
+    event_type: str = "GuardrailTriggered"
+
+
+@dataclass(frozen=True)
+class GuardrailEscalated(EventEnvelope):
+    event_type: str = "GuardrailEscalated"
+
+
+@dataclass(frozen=True)
+class GuardrailResolved(EventEnvelope):
+    event_type: str = "GuardrailResolved"
+
+
+# --- Deployment Events (Layer 4) ---
+
+
+@dataclass(frozen=True)
+class DeploymentStarted(EventEnvelope):
+    event_type: str = "DeploymentStarted"
+
+
+@dataclass(frozen=True)
+class DeploymentSucceeded(EventEnvelope):
+    event_type: str = "DeploymentSucceeded"
+
+
+@dataclass(frozen=True)
+class DeploymentFailed(EventEnvelope):
+    event_type: str = "DeploymentFailed"
+
+
+@dataclass(frozen=True)
+class DeploymentRolledBack(EventEnvelope):
+    event_type: str = "DeploymentRolledBack"
+
+
+@dataclass(frozen=True)
+class ExperimentStarted(EventEnvelope):
+    event_type: str = "ExperimentStarted"
+
+
+@dataclass(frozen=True)
+class VariantAssigned(EventEnvelope):
+    event_type: str = "VariantAssigned"
+
+
+@dataclass(frozen=True)
+class ExperimentCompleted(EventEnvelope):
+    event_type: str = "ExperimentCompleted"
+
+
+# --- Metrics Events (Layer 5) ---
+
+
+@dataclass(frozen=True)
+class DeliveryMetricComputed(EventEnvelope):
+    event_type: str = "DeliveryMetricComputed"
+
+
+@dataclass(frozen=True)
+class AgentPerformanceComputed(EventEnvelope):
+    event_type: str = "AgentPerformanceComputed"
+
+
+@dataclass(frozen=True)
+class HumanPerformanceComputed(EventEnvelope):
+    event_type: str = "HumanPerformanceComputed"
+
+
+# --- Delivery Loop Events (Layer 6) ---
+
+
+@dataclass(frozen=True)
+class DeliveryLoopStarted(EventEnvelope):
+    event_type: str = "DeliveryLoopStarted"
+
+
+@dataclass(frozen=True)
+class DeliveryLoopPhaseTransitioned(EventEnvelope):
+    event_type: str = "DeliveryLoopPhaseTransitioned"
+
+
+@dataclass(frozen=True)
+class LearningCaptured(EventEnvelope):
+    event_type: str = "LearningCaptured"
+
+
+@dataclass(frozen=True)
+class DeliveryLoopCompleted(EventEnvelope):
+    event_type: str = "DeliveryLoopCompleted"
+
+
 # --- Event Registry ---
 
 EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
@@ -823,6 +968,37 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         ApprovalRequestApproved,
         ApprovalRequestRejected,
         AuditRecorded,
+        # Layer 2 — Collaboration
+        TeamMemberAdded,
+        TeamMemberRemoved,
+        TeamMemberRoleChanged,
+        ChannelRegistered,
+        ChannelUpdated,
+        ChannelDisabled,
+        IntegrationRegistered,
+        IntegrationSynced,
+        IntegrationFailed,
+        # Layer 3 — Guardrails
+        GuardrailTriggered,
+        GuardrailEscalated,
+        GuardrailResolved,
+        # Layer 4 — Deployment
+        DeploymentStarted,
+        DeploymentSucceeded,
+        DeploymentFailed,
+        DeploymentRolledBack,
+        ExperimentStarted,
+        VariantAssigned,
+        ExperimentCompleted,
+        # Layer 5 — Metrics
+        DeliveryMetricComputed,
+        AgentPerformanceComputed,
+        HumanPerformanceComputed,
+        # Layer 6 — Delivery Loop
+        DeliveryLoopStarted,
+        DeliveryLoopPhaseTransitioned,
+        LearningCaptured,
+        DeliveryLoopCompleted,
     ]
 }
 

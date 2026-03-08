@@ -131,6 +131,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             {"role": "system", "content": PLAN_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
+        tools=[],  # No tools — planner analyses context and produces a plan directly
     )
 
     content = result.get("content", "")

@@ -468,6 +468,31 @@ async def get_file_tree(
         raise HTTPException(status_code=404, detail="Sandbox not found") from None
 
 
+@router.post("/sandboxes/{sandbox_id}/cleanup-workspace")
+async def cleanup_workspace(
+    sandbox_id: str,
+    request: Request,
+) -> dict[str, str]:
+    """Remove all files from /workspace in the sandbox."""
+    manager = request.app.state.sandbox_manager
+    try:
+        result = await manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command="rm -rf /workspace/* /workspace/.[!.]* /workspace/..?* 2>/dev/null; echo ok",
+                timeout_seconds=30,
+            ),
+        )
+        if result.exit_code != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Cleanup failed: {result.stderr.strip()}",
+            )
+        return {"status": "cleaned", "sandbox_id": sandbox_id}
+    except SandboxNotFoundError:
+        raise HTTPException(status_code=404, detail="Sandbox not found") from None
+
+
 @router.delete("/sandboxes/{sandbox_id}", status_code=204)
 async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
     """Destroy a sandbox."""

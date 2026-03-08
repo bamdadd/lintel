@@ -464,6 +464,7 @@ async def _dispatch_workflow(
             trigger_type=f"chat:{conversation_id}",
             trigger_id=trigger_id,
             stages=stages,
+            created_at=datetime.now(UTC).isoformat(),
         )
         try:
             await pipeline_store.add(pipeline_run)

@@ -111,6 +111,8 @@ async def create_pipeline(
         )
         for name in stage_names
     )
+    from datetime import UTC, datetime
+
     run = PipelineRun(
         run_id=body.run_id,
         project_id=body.project_id,
@@ -119,6 +121,7 @@ async def create_pipeline(
         trigger_type=body.trigger_type,
         trigger_id=body.trigger_id,
         stages=stages,
+        created_at=datetime.now(UTC).isoformat(),
     )
     await store.add(run)
     await dispatch_event(
@@ -219,6 +222,7 @@ async def cancel_pipeline(
         stages=cancelled_stages,
         trigger_type=run.trigger_type,
         trigger_id=run.trigger_id,
+        created_at=run.created_at,
     )
     await store.update(updated)
     await dispatch_event(

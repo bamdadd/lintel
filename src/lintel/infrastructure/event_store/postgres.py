@@ -12,6 +12,7 @@ from lintel.contracts.events import EVENT_TYPE_MAP, EventEnvelope
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from datetime import datetime
     from uuid import UUID
 
     import asyncpg
@@ -187,6 +188,49 @@ class PostgresEventStore:
                 "SELECT * FROM events WHERE correlation_id = $1 ORDER BY occurred_at",
                 correlation_id,
             )
+            return [_row_to_event(row) for row in rows]
+
+    async def read_by_event_type(
+        self,
+        event_type: str,
+        from_position: int = 0,
+        limit: int = 1000,
+    ) -> list[EventEnvelope]:
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM events WHERE event_type = $1 "
+                "ORDER BY occurred_at OFFSET $2 LIMIT $3",
+                event_type,
+                from_position,
+                limit,
+            )
+            return [_row_to_event(row) for row in rows]
+
+    async def read_by_time_range(
+        self,
+        from_time: datetime,
+        to_time: datetime,
+        event_types: frozenset[str] | None = None,
+    ) -> list[EventEnvelope]:
+        async with self._pool.acquire() as conn:
+            if event_types:
+                rows = await conn.fetch(
+                    "SELECT * FROM events "
+                    "WHERE occurred_at >= $1 AND occurred_at <= $2 "
+                    "AND event_type = ANY($3::text[]) "
+                    "ORDER BY occurred_at",
+                    from_time,
+                    to_time,
+                    list(event_types),
+                )
+            else:
+                rows = await conn.fetch(
+                    "SELECT * FROM events "
+                    "WHERE occurred_at >= $1 AND occurred_at <= $2 "
+                    "ORDER BY occurred_at",
+                    from_time,
+                    to_time,
+                )
             return [_row_to_event(row) for row in rows]
 
 

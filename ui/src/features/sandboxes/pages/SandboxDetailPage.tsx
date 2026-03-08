@@ -5,7 +5,7 @@ import {
   Code, TextInput, ScrollArea, ActionIcon, Tabs, UnstyledButton,
 } from '@mantine/core';
 import {
-  IconArrowLeft, IconRefresh, IconTrash,
+  IconArrowLeft, IconRefresh, IconTrash, IconEraser,
   IconFolder, IconFolderOpen, IconFile, IconChevronRight, IconChevronDown,
 } from '@tabler/icons-react';
 import {
@@ -143,6 +143,7 @@ export function Component() {
   const { data: metadata, isLoading: metaLoading } = useSandboxMetadata(sandboxId);
   const executeMutation = useSandboxesExecuteCommand();
   const destroyMutation = useSandboxesDestroySandbox();
+  const [cleaningUp, setCleaningUp] = useState(false);
 
   const [activeTab, setActiveTab] = useState<string | null>('files');
   const [command, setCommand] = useState('');
@@ -269,6 +270,27 @@ export function Component() {
         },
       },
     );
+  };
+
+  const handleCleanupWorkspace = async () => {
+    if (!sandboxId) return;
+    setCleaningUp(true);
+    try {
+      const res = await fetch(`/api/v1/sandboxes/${sandboxId}/cleanup-workspace`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        notifications.show({ title: 'Workspace cleaned', message: 'All files in /workspace removed', color: 'teal' });
+        void queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes', sandboxId, 'tree'] });
+      } else {
+        const data = await res.json().catch(() => ({ detail: 'Unknown error' }));
+        notifications.show({ title: 'Cleanup failed', message: data.detail ?? 'Unknown error', color: 'red' });
+      }
+    } catch (err) {
+      notifications.show({ title: 'Cleanup failed', message: String(err), color: 'red' });
+    } finally {
+      setCleaningUp(false);
+    }
   };
 
   const handleDestroy = () => {
@@ -463,6 +485,15 @@ export function Component() {
       </Tabs>
 
       <Group>
+        <Button
+          color="orange"
+          variant="light"
+          leftSection={<IconEraser size={16} />}
+          onClick={handleCleanupWorkspace}
+          loading={cleaningUp}
+        >
+          Clean Workspace
+        </Button>
         <Button
           color="red"
           variant="light"

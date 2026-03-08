@@ -28,7 +28,8 @@ def executor() -> WorkflowExecutor:
 
 class TestPolicyEvaluation:
     async def test_evaluate_policy_returns_require_approval_by_default(
-        self, executor: WorkflowExecutor,
+        self,
+        executor: WorkflowExecutor,
     ) -> None:
         """Default policy when no policies are configured."""
         executor._app_state.policy_store.list_all = AsyncMock(return_value=[])
@@ -36,7 +37,8 @@ class TestPolicyEvaluation:
         assert result == "require_approval"
 
     async def test_evaluate_policy_returns_auto_approve(
-        self, executor: WorkflowExecutor,
+        self,
+        executor: WorkflowExecutor,
     ) -> None:
         """Policy with auto_approve action."""
         from lintel.contracts.types import Policy
@@ -61,7 +63,8 @@ class TestPolicyEvaluation:
         assert result == "auto_approve"
 
     async def test_evaluate_policy_returns_block(
-        self, executor: WorkflowExecutor,
+        self,
+        executor: WorkflowExecutor,
     ) -> None:
         """Policy with block action."""
         from lintel.contracts.types import Policy
@@ -86,7 +89,8 @@ class TestPolicyEvaluation:
         assert result == "block"
 
     async def test_evaluate_policy_handles_exception(
-        self, executor: WorkflowExecutor,
+        self,
+        executor: WorkflowExecutor,
     ) -> None:
         """Falls back to require_approval on error."""
         executor._app_state.policy_store.list_all = AsyncMock(

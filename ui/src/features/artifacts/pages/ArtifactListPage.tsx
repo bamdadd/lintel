@@ -8,6 +8,7 @@ import {
   useArtifactsListTestResults,
 } from '@/generated/api/artifacts/artifacts';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { TimeAgo } from '@/shared/components/TimeAgo';
 
 interface ArtifactItem {
   artifact_id: string;
@@ -88,7 +89,7 @@ export function Component() {
                     <Table.Td><code>{a.path}</code></Table.Td>
                     <Table.Td><Badge variant="light">{a.artifact_type}</Badge></Table.Td>
                     <Table.Td><Text size="xs" c="dimmed">{a.run_id?.slice(0, 8)}</Text></Table.Td>
-                    <Table.Td><Text size="sm">{a.created_at ? new Date(a.created_at).toLocaleString() : '—'}</Text></Table.Td>
+                    <Table.Td><TimeAgo date={a.created_at} size="sm" /></Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -131,7 +132,7 @@ export function Component() {
                         <Progress value={passRate} color={passRate === 100 ? 'green' : passRate > 80 ? 'yellow' : 'red'} size="sm" />
                         <Text size="xs" ta="center">{passRate}%</Text>
                       </Table.Td>
-                      <Table.Td><Text size="sm">{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</Text></Table.Td>
+                      <Table.Td><TimeAgo date={t.created_at} size="sm" /></Table.Td>
                     </Table.Tr>
                   );
                 })}
