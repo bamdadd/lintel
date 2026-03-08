@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Modal,
   TextInput,
@@ -9,11 +9,12 @@ import {
   ActionIcon,
   Text,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash, IconGripVertical } from '@tabler/icons-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { customInstance } from '@/shared/api/client';
-import { useProjectsListProjects } from '@/generated/api/projects/projects';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUpdateBoard } from '../api';
+import type { Board } from '../api';
 
 interface ColumnDef {
   id: string;
@@ -21,12 +22,8 @@ interface ColumnDef {
   work_item_status: string;
 }
 
-interface ProjectItem {
-  project_id: string;
-  name: string;
-}
-
-interface CreateBoardModalProps {
+interface EditBoardModalProps {
+  board: Board | null;
   opened: boolean;
   onClose: () => void;
 }
@@ -41,35 +38,30 @@ const WORK_ITEM_STATUSES = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-let nextId = 0;
-
-function defaultColumns(): ColumnDef[] {
-  return [
-    { id: `c${++nextId}`, name: 'To Do', work_item_status: 'todo' },
-    { id: `c${++nextId}`, name: 'In Progress', work_item_status: 'in_progress' },
-    { id: `c${++nextId}`, name: 'Done', work_item_status: 'done' },
-  ];
+let nextTempId = 0;
+function tempId() {
+  return `__new_${++nextTempId}`;
 }
 
-export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
-  const { data: projectsResp } = useProjectsListProjects();
-  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
-
+export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) {
   const [name, setName] = useState('');
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [columns, setColumns] = useState<ColumnDef[]>(defaultColumns);
+  const [columns, setColumns] = useState<ColumnDef[]>([]);
 
   const qc = useQueryClient();
-  const createBoard = useMutation({
-    mutationFn: (data: { project_id: string; name: string; columns: { name: string; position: number; work_item_status: string }[] }) =>
-      customInstance('/api/v1/boards', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['/api/v1/boards'] }),
-  });
+  const updateBoard = useUpdateBoard();
 
-  const addColumn = () => setColumns([...columns, { id: `c${++nextId}`, name: '', work_item_status: '' }]);
+  useEffect(() => {
+    if (board) {
+      setName(board.name);
+      setColumns(
+        [...board.columns]
+          .sort((a, b) => a.position - b.position)
+          .map((c) => ({ id: c.column_id, name: c.name, work_item_status: c.work_item_status })),
+      );
+    }
+  }, [board]);
+
+  const addColumn = () => setColumns([...columns, { id: tempId(), name: '', work_item_status: '' }]);
   const removeColumn = (i: number) => setColumns(columns.filter((_, idx) => idx !== i));
   const updateColumn = (i: number, field: 'name' | 'work_item_status', value: string) =>
     setColumns(columns.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
@@ -83,46 +75,42 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
   };
 
   const handleSubmit = () => {
-    if (!projectId || !name.trim() || columns.length === 0) return;
-    createBoard.mutate(
+    if (!board || !name.trim() || columns.length === 0) return;
+    updateBoard.mutate(
       {
-        project_id: projectId,
-        name: name.trim(),
-        columns: columns.map((c, i) => ({
-          name: c.name,
-          position: i,
-          work_item_status: c.work_item_status,
-        })),
+        boardId: board.board_id,
+        data: {
+          name: name.trim(),
+          columns: columns.map((c, i) => ({
+            column_id: c.id.startsWith('__new_') ? undefined : c.id,
+            name: c.name,
+            position: i,
+            work_item_status: c.work_item_status,
+          })),
+        },
       },
       {
         onSuccess: () => {
-          setName('');
-          setProjectId(null);
-          setColumns(defaultColumns());
+          void qc.invalidateQueries({ queryKey: ['/api/v1/boards'] });
+          notifications.show({ title: 'Saved', message: 'Board updated', color: 'green' });
           onClose();
+        },
+        onError: () => {
+          notifications.show({ title: 'Error', message: 'Failed to update board', color: 'red' });
         },
       },
     );
   };
 
-  const valid = !!projectId && !!name.trim() && columns.length > 0 && columns.every((c) => c.name.trim());
+  const valid = !!name.trim() && columns.length > 0 && columns.every((c) => c.name.trim());
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Create Board" size="lg">
+    <Modal opened={opened} onClose={onClose} title="Edit Board" size="lg">
       <Stack gap="sm">
         <TextInput
           label="Board Name"
-          placeholder="My Board"
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
-          required
-        />
-        <Select
-          label="Project"
-          placeholder="Select project"
-          data={projects.map((p) => ({ value: p.project_id, label: p.name }))}
-          value={projectId}
-          onChange={setProjectId}
           required
         />
 
@@ -136,7 +124,7 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
         </Group>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="create-columns">
+          <Droppable droppableId="edit-columns">
             {(provided) => (
               <Stack gap="xs" ref={provided.innerRef} {...provided.droppableProps}>
                 {columns.map((col, i) => (
@@ -189,9 +177,14 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
           </Droppable>
         </DragDropContext>
 
-        <Button onClick={handleSubmit} loading={createBoard.isPending} disabled={!valid} mt="md">
-          Create Board
-        </Button>
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} loading={updateBoard.isPending} disabled={!valid}>
+            Save
+          </Button>
+        </Group>
       </Stack>
     </Modal>
   );

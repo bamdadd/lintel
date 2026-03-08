@@ -1,8 +1,10 @@
-import { Title, Stack, Loader, Center, Table, Text, Badge, Group, Button } from '@mantine/core';
+import { Title, Stack, Loader, Center, Table, Text, Badge, Group, Button, ActionIcon } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useNavigate } from 'react-router';
-import { useBoardsListBoards } from '../api';
+import { useQueryClient } from '@tanstack/react-query';
+import { notifications } from '@mantine/notifications';
+import { useBoardsListBoards, useDeleteBoard } from '../api';
 import type { Board } from '../api';
 import { CreateBoardModal } from '../components/CreateBoardModal';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
@@ -21,6 +23,22 @@ export function Component() {
   const { data: resp, isLoading } = useBoardsListBoards(firstProjectId);
   const navigate = useNavigate();
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
+  const qc = useQueryClient();
+  const deleteBoard = useDeleteBoard();
+
+  const handleDelete = (e: React.MouseEvent, boardId: string) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this board?')) return;
+    deleteBoard.mutate(boardId, {
+      onSuccess: () => {
+        void qc.invalidateQueries({ queryKey: ['/api/v1/boards'] });
+        notifications.show({ title: 'Deleted', message: 'Board removed', color: 'green' });
+      },
+      onError: () => {
+        notifications.show({ title: 'Error', message: 'Failed to delete board', color: 'red' });
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -54,6 +72,7 @@ export function Component() {
               <Table.Th>Name</Table.Th>
               <Table.Th>Columns</Table.Th>
               <Table.Th>Project</Table.Th>
+              <Table.Th w={60} />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -87,6 +106,16 @@ export function Component() {
                     {projects.find((p) => p.project_id === b.project_id)?.name ??
                       b.project_id}
                   </Text>
+                </Table.Td>
+                <Table.Td>
+                  <ActionIcon
+                    color="red"
+                    variant="subtle"
+                    onClick={(e) => handleDelete(e, b.board_id)}
+                    loading={deleteBoard.isPending}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
                 </Table.Td>
               </Table.Tr>
             ))}

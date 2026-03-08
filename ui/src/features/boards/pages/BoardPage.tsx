@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
-import { Title, Stack, Group, Loader, Center, Text } from '@mantine/core';
+import { Title, Stack, Group, Loader, Center, Text, ActionIcon, Button } from '@mantine/core';
+import { IconSettings, IconPlus } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
@@ -8,6 +9,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useBoardsGetBoard, useWorkItemsForBoard, useUpdateWorkItem } from '../api';
 import type { WorkItem } from '../api';
 import { BoardColumn } from '../components/BoardColumn';
+import { EditBoardModal } from '../components/EditBoardModal';
+import { CreateWorkItemModal } from '../components/CreateWorkItemModal';
 import { WorkItemDetailDrawer } from '../components/WorkItemDetailDrawer';
 import { EmptyState } from '@/shared/components/EmptyState';
 
@@ -23,6 +26,8 @@ export function Component() {
   const qc = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
+  const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
+  const [createItemOpened, { open: openCreateItem, close: closeCreateItem }] = useDisclosure(false);
 
   const handleClickItem = (item: WorkItem) => {
     setSelectedItem(item);
@@ -131,7 +136,19 @@ export function Component() {
             Kanban
           </Text>
         </Group>
+        <Group gap="xs">
+          <Button leftSection={<IconPlus size={16} />} size="sm" onClick={openCreateItem}>
+            New Work Item
+          </Button>
+          <ActionIcon variant="subtle" onClick={openEdit}>
+            <IconSettings size={20} />
+          </ActionIcon>
+        </Group>
       </Group>
+      <EditBoardModal board={board ?? null} opened={editOpened} onClose={closeEdit} />
+      {board?.project_id && (
+        <CreateWorkItemModal opened={createItemOpened} onClose={closeCreateItem} projectId={board.project_id} />
+      )}
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <Group gap="md" align="flex-start" wrap="nowrap" style={{ overflowX: 'auto' }}>

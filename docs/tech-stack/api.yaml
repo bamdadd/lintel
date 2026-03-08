@@ -7,6 +7,8 @@ description: >
 task_runner: make
 dependency_manager: uv
 
+clean_code_path: docs/clean-code/python/
+
 frameworks:
   - name: fastapi
     version: ">=0.115"
@@ -157,6 +159,102 @@ frameworks:
       - retry
       - wait
       - stop
+
+  - name: uvicorn
+    version: ">=0.34"
+    context7_library_id: /kludex/uvicorn
+    documentation_urls:
+      - https://www.uvicorn.org/
+    topics:
+      - deployment
+      - settings
+      - ssl
+      - workers
+
+  - name: langgraph-checkpoint-postgres
+    version: ">=2.0"
+    context7_library_id: /langchain-ai/langgraph
+    documentation_urls:
+      - https://langchain-ai.github.io/langgraph/
+    topics:
+      - checkpointing
+      - persistence
+      - postgres
+
+  - name: presidio-anonymizer
+    version: ">=2.2"
+    context7_library_id: /microsoft/presidio
+    documentation_urls:
+      - https://microsoft.github.io/presidio/
+    topics:
+      - anonymizers
+      - operators
+      - deanonymize
+
+  - name: slack-sdk
+    version: ">=3.33"
+    context7_library_id: /slackapi/python-slack-sdk
+    documentation_urls:
+      - https://slack.dev/python-slack-sdk/
+    topics:
+      - web-client
+      - webhook
+      - oauth
+      - models
+
+  - name: pydantic-settings
+    version: ">=2.7"
+    context7_library_id: /pydantic/pydantic-settings
+    documentation_urls:
+      - https://docs.pydantic.dev/latest/concepts/pydantic_settings/
+    topics:
+      - env-variables
+      - dotenv
+      - secrets
+      - sources
+
+  - name: opentelemetry-exporter-otlp
+    version: ">=1.29"
+    context7_library_id: /open-telemetry/opentelemetry-python
+    documentation_urls:
+      - https://opentelemetry-python.readthedocs.io/en/latest/
+    topics:
+      - otlp
+      - grpc
+      - http
+      - exporters
+
+  - name: fastapi-mcp
+    version: ">=0.4.0"
+    context7_library_id: /tadata-org/fastapi_mcp
+    documentation_urls:
+      - https://github.com/tadata-org/fastapi_mcp
+    topics:
+      - tools
+      - resources
+      - authentication
+
+  - name: boto3
+    version: ">=1.35"
+    context7_library_id: /boto/boto3
+    documentation_urls:
+      - https://boto3.amazonaws.com/v1/documentation/api/latest/index.html
+    topics:
+      - s3
+      - bedrock
+      - sessions
+      - credentials
+
+  - name: anthropic
+    version: ">=0.84.0"
+    context7_library_id: /anthropics/anthropic-sdk-python
+    documentation_urls:
+      - https://docs.anthropic.com/en/docs/
+    topics:
+      - messages
+      - streaming
+      - tool-use
+      - bedrock
 
 deployment:
   platform: github-actions

@@ -75,6 +75,32 @@ export function useWorkItemsForBoard(projectId?: string) {
   });
 }
 
+export function useUpdateBoard() {
+  return useMutation({
+    mutationFn: ({
+      boardId,
+      data,
+    }: {
+      boardId: string;
+      data: Record<string, unknown>;
+    }) =>
+      customInstance<SingleResponse<Board>>(
+        `/api/v1/boards/${boardId}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        },
+      ),
+  });
+}
+
+export function useDeleteBoard() {
+  return useMutation({
+    mutationFn: (boardId: string) =>
+      customInstance<undefined>(`/api/v1/boards/${boardId}`, { method: 'DELETE' }),
+  });
+}
+
 export function useUpdateWorkItem() {
   return useMutation({
     mutationFn: ({
