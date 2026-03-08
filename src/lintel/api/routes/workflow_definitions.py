@@ -8,6 +8,13 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import (
+    WorkflowDefinitionCreated,
+    WorkflowDefinitionRemoved,
+    WorkflowDefinitionUpdated,
+)
+from lintel.domain.event_dispatcher import dispatch_event
+
 router = APIRouter()
 
 
@@ -86,6 +93,11 @@ async def create_workflow_definition(
         "updated_at": now,
     }
     defs[body.definition_id] = entry
+    await dispatch_event(
+        request,
+        WorkflowDefinitionCreated(payload={"resource_id": body.definition_id}),
+        stream_id=f"workflow_definition:{body.definition_id}",
+    )
     return entry
 
 
@@ -124,6 +136,11 @@ async def update_workflow_definition(
     for key, value in body.model_dump(exclude_none=True).items():
         entry[key] = value
     entry["updated_at"] = datetime.now(UTC).isoformat()
+    await dispatch_event(
+        request,
+        WorkflowDefinitionUpdated(payload={"resource_id": definition_id}),
+        stream_id=f"workflow_definition:{definition_id}",
+    )
     return entry
 
 
@@ -134,3 +151,8 @@ async def delete_workflow_definition(definition_id: str, request: Request) -> No
     if definition_id not in defs:
         raise HTTPException(status_code=404, detail="Definition not found")
     del defs[definition_id]
+    await dispatch_event(
+        request,
+        WorkflowDefinitionRemoved(payload={"resource_id": definition_id}),
+        stream_id=f"workflow_definition:{definition_id}",
+    )

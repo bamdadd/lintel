@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import TeamCreated, TeamRemoved, TeamUpdated
 from lintel.contracts.types import Team
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -62,6 +64,7 @@ def _team_to_dict(team: Team) -> dict[str, Any]:
 @router.post("/teams", status_code=201)
 async def create_team(
     body: CreateTeamRequest,
+    request: Request,
     store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.team_id)
@@ -74,6 +77,11 @@ async def create_team(
         project_ids=tuple(body.project_ids),
     )
     await store.add(team)
+    await dispatch_event(
+        request,
+        TeamCreated(payload={"resource_id": body.team_id, "name": body.name}),
+        stream_id=f"team:{body.team_id}",
+    )
     return _team_to_dict(team)
 
 
@@ -100,6 +108,7 @@ async def get_team(
 async def update_team(
     team_id: str,
     body: UpdateTeamRequest,
+    request: Request,
     store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
 ) -> dict[str, Any]:
     team = await store.get(team_id)
@@ -112,15 +121,26 @@ async def update_team(
         updates["project_ids"] = tuple(updates["project_ids"])
     updated = Team(**{**asdict(team), **updates})
     await store.update(updated)
+    await dispatch_event(
+        request,
+        TeamUpdated(payload={"resource_id": team_id, "fields": list(updates.keys())}),
+        stream_id=f"team:{team_id}",
+    )
     return _team_to_dict(updated)
 
 
 @router.delete("/teams/{team_id}", status_code=204)
 async def delete_team(
     team_id: str,
+    request: Request,
     store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
 ) -> None:
     team = await store.get(team_id)
     if team is None:
         raise HTTPException(status_code=404, detail="Team not found")
     await store.remove(team_id)
+    await dispatch_event(
+        request,
+        TeamRemoved(payload={"resource_id": team_id, "name": team.name}),
+        stream_id=f"team:{team_id}",
+    )

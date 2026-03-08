@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from lintel.contracts.commands import StartWorkflow
+from lintel.contracts.events import TriggerFired
 from lintel.contracts.types import ThreadRef
+from lintel.domain.event_dispatcher import dispatch_event_raw
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import CommandDispatcher
@@ -15,8 +17,9 @@ if TYPE_CHECKING:
 class TriggerHandler:
     """Maps Slack messages and webhooks to StartWorkflow commands."""
 
-    def __init__(self, dispatcher: CommandDispatcher) -> None:
+    def __init__(self, dispatcher: CommandDispatcher, app_state: Any = None) -> None:  # noqa: ANN401
         self._dispatcher = dispatcher
+        self._app_state = app_state
 
     async def handle_slack_message(
         self,
@@ -34,6 +37,20 @@ class TriggerHandler:
             workflow_type=workflow_type,
         )
         result = await self._dispatcher.dispatch(command)
+        if self._app_state is not None:
+            await dispatch_event_raw(
+                self._app_state,
+                TriggerFired(
+                    payload={
+                        "resource_id": thread_ts,
+                        "trigger_source": "slack",
+                        "workflow_type": workflow_type,
+                        "workspace_id": workspace_id,
+                        "channel_id": channel_id,
+                    }
+                ),
+                stream_id=f"trigger:slack:{thread_ts}",
+            )
         return str(result)
 
     async def handle_webhook(
@@ -51,4 +68,16 @@ class TriggerHandler:
             workflow_type=pipeline_id,
         )
         result = await self._dispatcher.dispatch(command)
+        if self._app_state is not None:
+            await dispatch_event_raw(
+                self._app_state,
+                TriggerFired(
+                    payload={
+                        "resource_id": run_ref,
+                        "trigger_source": "webhook",
+                        "pipeline_id": pipeline_id,
+                    }
+                ),
+                stream_id=f"trigger:webhook:{run_ref}",
+            )
         return str(result)

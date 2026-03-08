@@ -8,7 +8,9 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from lintel.contracts.commands import RevealPII
+from lintel.contracts.events import VaultRevealRequested
 from lintel.contracts.types import ThreadRef
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -69,6 +71,11 @@ async def reveal_pii(body: RevealPIIRequest, request: Request) -> dict[str, Any]
     )
     stats = get_pii_stats(request)
     stats["total_reveals"] += 1
+    await dispatch_event(
+        request,
+        VaultRevealRequested(payload={"resource_id": body.placeholder}),
+        stream_id="pii",
+    )
     return asdict(command)
 
 

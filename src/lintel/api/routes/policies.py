@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import PolicyCreated, PolicyRemoved, PolicyUpdated
 from lintel.contracts.types import Policy, PolicyAction
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -70,6 +72,7 @@ def _policy_to_dict(policy: Policy) -> dict[str, Any]:
 @router.post("/policies", status_code=201)
 async def create_policy(
     body: CreatePolicyRequest,
+    request: Request,
     store: Annotated[InMemoryPolicyStore, Depends(get_policy_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.policy_id)
@@ -85,6 +88,11 @@ async def create_policy(
         project_id=body.project_id,
     )
     await store.add(policy)
+    await dispatch_event(
+        request,
+        PolicyCreated(payload={"resource_id": policy.policy_id}),
+        stream_id=f"policy:{policy.policy_id}",
+    )
     return _policy_to_dict(policy)
 
 
@@ -115,6 +123,7 @@ async def get_policy(
 async def update_policy(
     policy_id: str,
     body: UpdatePolicyRequest,
+    request: Request,
     store: Annotated[InMemoryPolicyStore, Depends(get_policy_store)],
 ) -> dict[str, Any]:
     policy = await store.get(policy_id)
@@ -125,15 +134,22 @@ async def update_policy(
         updates["approvers"] = tuple(updates["approvers"])
     updated = Policy(**{**asdict(policy), **updates})
     await store.update(updated)
+    await dispatch_event(
+        request, PolicyUpdated(payload={"resource_id": policy_id}), stream_id=f"policy:{policy_id}"
+    )
     return _policy_to_dict(updated)
 
 
 @router.delete("/policies/{policy_id}", status_code=204)
 async def delete_policy(
     policy_id: str,
+    request: Request,
     store: Annotated[InMemoryPolicyStore, Depends(get_policy_store)],
 ) -> None:
     policy = await store.get(policy_id)
     if policy is None:
         raise HTTPException(status_code=404, detail="Policy not found")
     await store.remove(policy_id)
+    await dispatch_event(
+        request, PolicyRemoved(payload={"resource_id": policy_id}), stream_id=f"policy:{policy_id}"
+    )

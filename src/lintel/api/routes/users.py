@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import UserCreated, UserRemoved, UserUpdated
 from lintel.contracts.types import User, UserRole
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -63,6 +65,7 @@ def _user_to_dict(user: User) -> dict[str, Any]:
 @router.post("/users", status_code=201)
 async def create_user(
     body: CreateUserRequest,
+    request: Request,
     store: Annotated[InMemoryUserStore, Depends(get_user_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.user_id)
@@ -77,6 +80,11 @@ async def create_user(
         team_ids=tuple(body.team_ids),
     )
     await store.add(user)
+    await dispatch_event(
+        request,
+        UserCreated(payload={"resource_id": body.user_id, "name": body.name}),
+        stream_id=f"user:{body.user_id}",
+    )
     return _user_to_dict(user)
 
 
@@ -103,6 +111,7 @@ async def get_user(
 async def update_user(
     user_id: str,
     body: UpdateUserRequest,
+    request: Request,
     store: Annotated[InMemoryUserStore, Depends(get_user_store)],
 ) -> dict[str, Any]:
     user = await store.get(user_id)
@@ -111,15 +120,26 @@ async def update_user(
     updates = body.model_dump(exclude_none=True)
     updated = User(**{**asdict(user), **updates})
     await store.update(updated)
+    await dispatch_event(
+        request,
+        UserUpdated(payload={"resource_id": user_id, "fields": list(updates.keys())}),
+        stream_id=f"user:{user_id}",
+    )
     return _user_to_dict(updated)
 
 
 @router.delete("/users/{user_id}", status_code=204)
 async def delete_user(
     user_id: str,
+    request: Request,
     store: Annotated[InMemoryUserStore, Depends(get_user_store)],
 ) -> None:
     user = await store.get(user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     await store.remove(user_id)
+    await dispatch_event(
+        request,
+        UserRemoved(payload={"resource_id": user_id, "name": user.name}),
+        stream_id=f"user:{user_id}",
+    )

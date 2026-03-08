@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
 from lintel.contracts.types import WorkItem, WorkItemStatus, WorkItemType
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -69,6 +71,7 @@ class UpdateWorkItemRequest(BaseModel):
 @router.post("/work-items", status_code=201)
 async def create_work_item(
     body: CreateWorkItemRequest,
+    request: Request,
     store: Annotated[WorkItemStore, Depends(get_work_item_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.work_item_id)
@@ -87,6 +90,17 @@ async def create_work_item(
         pr_url=body.pr_url,
     )
     await store.add(work_item)
+    await dispatch_event(
+        request,
+        WorkItemCreated(
+            payload={
+                "resource_id": body.work_item_id,
+                "title": body.title,
+                "project_id": body.project_id,
+            }
+        ),
+        stream_id=f"work_item:{body.work_item_id}",
+    )
     return asdict(work_item)
 
 
@@ -113,6 +127,7 @@ async def get_work_item(
 async def update_work_item(
     work_item_id: str,
     body: UpdateWorkItemRequest,
+    request: Request,
     store: Annotated[WorkItemStore, Depends(get_work_item_store)],
 ) -> dict[str, Any]:
     item = await store.get(work_item_id)
@@ -121,15 +136,26 @@ async def update_work_item(
     updates = body.model_dump(exclude_none=True)
     merged = {**item, **updates}
     await store.update(work_item_id, merged)
+    await dispatch_event(
+        request,
+        WorkItemUpdated(payload={"resource_id": work_item_id, "fields": list(updates.keys())}),
+        stream_id=f"work_item:{work_item_id}",
+    )
     return merged
 
 
 @router.delete("/work-items/{work_item_id}", status_code=204)
 async def remove_work_item(
     work_item_id: str,
+    request: Request,
     store: Annotated[WorkItemStore, Depends(get_work_item_store)],
 ) -> None:
     item = await store.get(work_item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Work item not found")
     await store.remove(work_item_id)
+    await dispatch_event(
+        request,
+        WorkItemRemoved(payload={"resource_id": work_item_id, "title": item.get("title", "")}),
+        stream_id=f"work_item:{work_item_id}",
+    )

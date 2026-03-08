@@ -8,7 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.contracts.commands import ScheduleAgentStep
+from lintel.contracts.events import (
+    AgentDefinitionCreated,
+    AgentDefinitionRemoved,
+    AgentDefinitionUpdated,
+)
 from lintel.contracts.types import AgentRole, ThreadRef
+from lintel.domain.event_dispatcher import dispatch_event
 
 _VALID_ROLES = frozenset(role.value for role in AgentRole)
 
@@ -140,16 +146,23 @@ AgentDefStoreDep = Annotated[AgentDefinitionStore, Depends(get_agent_definition_
 async def create_agent_definition(
     body: CreateAgentDefinitionRequest,
     store: AgentDefStoreDep,
+    request: Request,
 ) -> dict[str, Any]:
     """Create a custom agent definition."""
     definition = body.model_dump()
     try:
-        return await store.create(definition)
+        result = await store.create(definition)
     except ValueError:
         raise HTTPException(  # noqa: B904
             status_code=409,
             detail=(f"Agent definition '{body.agent_id}' already exists"),
         )
+    await dispatch_event(
+        request,
+        AgentDefinitionCreated(payload={"resource_id": body.agent_id}),
+        stream_id=f"agent_definition:{body.agent_id}",
+    )
+    return result
 
 
 @router.get("/agents/definitions")
@@ -180,22 +193,30 @@ async def update_agent_definition(
     agent_id: str,
     body: UpdateAgentDefinitionRequest,
     store: AgentDefStoreDep,
+    request: Request,
 ) -> dict[str, Any]:
     """Update a custom agent definition (partial)."""
     updates = body.model_dump(exclude_none=True)
     try:
-        return await store.update(agent_id, updates)
+        result = await store.update(agent_id, updates)
     except KeyError:
         raise HTTPException(  # noqa: B904
             status_code=404,
             detail=f"Agent definition '{agent_id}' not found",
         )
+    await dispatch_event(
+        request,
+        AgentDefinitionUpdated(payload={"resource_id": agent_id}),
+        stream_id=f"agent_definition:{agent_id}",
+    )
+    return result
 
 
 @router.delete("/agents/definitions/{agent_id}", status_code=204)
 async def delete_agent_definition(
     agent_id: str,
     store: AgentDefStoreDep,
+    request: Request,
 ) -> None:
     """Delete a custom agent definition."""
     try:
@@ -205,3 +226,8 @@ async def delete_agent_definition(
             status_code=404,
             detail=f"Agent definition '{agent_id}' not found",
         )
+    await dispatch_event(
+        request,
+        AgentDefinitionRemoved(payload={"resource_id": agent_id}),
+        stream_id=f"agent_definition:{agent_id}",
+    )

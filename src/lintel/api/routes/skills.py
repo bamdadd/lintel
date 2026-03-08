@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import SkillInvoked, SkillRegistered, SkillRemoved, SkillUpdated
 from lintel.contracts.types import SkillCategory, SkillDescriptor, SkillExecutionMode, SkillResult
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -113,6 +115,7 @@ class InvokeSkillRequest(BaseModel):
 @router.post("/skills", status_code=201)
 async def register_skill(
     body: RegisterSkillRequest,
+    request: Request,
     store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
 ) -> dict[str, Any]:
     existing = await store.list_skills()
@@ -132,6 +135,11 @@ async def register_skill(
             "content": body.content,
             "category": body.category.value,
         }
+    await dispatch_event(
+        request,
+        SkillRegistered(payload={"resource_id": body.skill_id}),
+        stream_id=f"skill:{body.skill_id}",
+    )
     return {"skill_id": body.skill_id, **asdict(descriptor), **_get_metadata(store, body.skill_id)}
 
 
@@ -170,6 +178,7 @@ class UpdateSkillRequest(BaseModel):
 async def update_skill(
     skill_id: str,
     body: UpdateSkillRequest,
+    request: Request,
     store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
 ) -> dict[str, Any]:
     """Update a registered skill."""
@@ -191,12 +200,16 @@ async def update_skill(
         updates["execution_mode"] = SkillExecutionMode(updates["execution_mode"])
     for key, val in updates.items():
         object.__setattr__(descriptor, key, val)
+    await dispatch_event(
+        request, SkillUpdated(payload={"resource_id": skill_id}), stream_id=f"skill:{skill_id}"
+    )
     return {"skill_id": skill_id, **asdict(descriptor), **_get_metadata(store, skill_id)}
 
 
 @router.delete("/skills/{skill_id}", status_code=204)
 async def delete_skill(
     skill_id: str,
+    request: Request,
     store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
 ) -> None:
     """Delete a registered skill."""
@@ -204,12 +217,16 @@ async def delete_skill(
         await store.delete(skill_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Skill not found")  # noqa: B904
+    await dispatch_event(
+        request, SkillRemoved(payload={"resource_id": skill_id}), stream_id=f"skill:{skill_id}"
+    )
 
 
 @router.post("/skills/{skill_id}/invoke")
 async def invoke_skill(
     skill_id: str,
     body: InvokeSkillRequest,
+    request: Request,
     store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
 ) -> dict[str, Any]:
     try:
@@ -220,4 +237,7 @@ async def invoke_skill(
         )
     except KeyError:
         raise HTTPException(status_code=404, detail="Skill not found")  # noqa: B904
+    await dispatch_event(
+        request, SkillInvoked(payload={"resource_id": skill_id}), stream_id=f"skill:{skill_id}"
+    )
     return asdict(result)

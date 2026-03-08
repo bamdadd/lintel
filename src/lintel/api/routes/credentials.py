@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import CredentialRevoked, CredentialStored
 from lintel.contracts.types import Credential, CredentialType
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -83,6 +85,7 @@ class UpdateCredentialRequest(BaseModel):
 
 @router.post("/credentials", status_code=201)
 async def store_credential(
+    request: Request,
     body: StoreCredentialRequest,
     store: Annotated[InMemoryCredentialStore, Depends(get_credential_store)],
 ) -> dict[str, Any]:
@@ -96,6 +99,17 @@ async def store_credential(
         name=body.name,
         secret=body.secret,
         repo_ids=body.repo_ids,
+    )
+    await dispatch_event(
+        request,
+        CredentialStored(
+            payload={
+                "resource_id": body.credential_id,
+                "name": body.name,
+                "credential_type": body.credential_type,
+            }
+        ),
+        stream_id=f"credential:{body.credential_id}",
     )
     result = asdict(cred)
     result["secret_preview"] = _mask_secret(body.secret)
@@ -137,6 +151,7 @@ async def list_credentials_for_repo(
 @router.delete("/credentials/{credential_id}", status_code=204)
 async def revoke_credential(
     credential_id: str,
+    request: Request,
     store: Annotated[InMemoryCredentialStore, Depends(get_credential_store)],
 ) -> None:
     """Revoke and delete a credential."""
@@ -144,3 +159,8 @@ async def revoke_credential(
     if cred is None:
         raise HTTPException(status_code=404, detail="Credential not found")
     await store.revoke(credential_id)
+    await dispatch_event(
+        request,
+        CredentialRevoked(payload={"resource_id": credential_id}),
+        stream_id=f"credential:{credential_id}",
+    )

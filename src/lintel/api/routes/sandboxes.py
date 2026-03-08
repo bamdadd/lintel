@@ -8,7 +8,14 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from lintel.contracts.errors import SandboxNotFoundError
+from lintel.contracts.events import (
+    SandboxCommandExecuted,
+    SandboxCreated,
+    SandboxDestroyed,
+    SandboxFileWritten,
+)
 from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -240,6 +247,11 @@ async def create_sandbox(
         entry["devcontainer"] = body.devcontainer.model_dump()
     store = request.app.state.sandbox_store
     await store.add(sandbox_id, entry)
+    await dispatch_event(
+        request,
+        SandboxCreated(payload={"resource_id": sandbox_id, "image": body.image}),
+        stream_id=f"sandbox:{sandbox_id}",
+    )
     return {"sandbox_id": sandbox_id}
 
 
@@ -289,6 +301,13 @@ async def execute_command(
                 timeout_seconds=body.timeout_seconds,
             ),
         )
+        await dispatch_event(
+            request,
+            SandboxCommandExecuted(
+                payload={"resource_id": sandbox_id, "command": body.command[:200]}
+            ),
+            stream_id=f"sandbox:{sandbox_id}",
+        )
         return {
             "exit_code": result.exit_code,
             "stdout": result.stdout,
@@ -308,6 +327,11 @@ async def write_file(
     manager = request.app.state.sandbox_manager
     try:
         await manager.write_file(sandbox_id, body.path, body.content)
+        await dispatch_event(
+            request,
+            SandboxFileWritten(payload={"resource_id": sandbox_id, "path": body.path}),
+            stream_id=f"sandbox:{sandbox_id}",
+        )
         return {"status": "written", "path": body.path}
     except SandboxNotFoundError:
         raise HTTPException(status_code=404, detail="Sandbox not found") from None
@@ -450,5 +474,10 @@ async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
         await manager.destroy(sandbox_id)
         store = request.app.state.sandbox_store
         await store.remove(sandbox_id)
+        await dispatch_event(
+            request,
+            SandboxDestroyed(payload={"resource_id": sandbox_id}),
+            stream_id=f"sandbox:{sandbox_id}",
+        )
     except SandboxNotFoundError:
         raise HTTPException(status_code=404, detail="Sandbox not found") from None

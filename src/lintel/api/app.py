@@ -75,6 +75,7 @@ from lintel.api.routes.users import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
 from lintel.api.routes.work_items import WorkItemStore
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
+from lintel.infrastructure.projections.audit import AuditProjection
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
@@ -321,9 +322,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Initialize projections
     thread_status = ThreadStatusProjection()
     task_backlog = TaskBacklogProjection()
+    audit_projection = AuditProjection(stores["audit_entry_store"])
     engine = InMemoryProjectionEngine()
     await engine.register(thread_status)
     await engine.register(task_backlog)
+    await engine.register(audit_projection)
 
     app.state.thread_status_projection = thread_status
     app.state.task_backlog_projection = task_backlog

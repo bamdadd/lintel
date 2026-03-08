@@ -19,6 +19,12 @@ if TYPE_CHECKING:
     from lintel.domain.chat_router import ChatRouterResult
 
 from lintel.contracts.commands import StartWorkflow
+from lintel.contracts.events import (
+    ConversationCreated,
+    ConversationDeleted,
+    ProjectSelected,
+    WorkflowTriggered,
+)
 from lintel.contracts.types import (
     ModelPolicy,
     PipelineRun,
@@ -31,7 +37,7 @@ from lintel.contracts.types import (
     WorkItemStatus,
     WorkItemType,
 )
-from lintel.workflows.nodes._event_helpers import emit_audit_entry
+from lintel.domain.event_dispatcher import dispatch_event
 
 logger = structlog.get_logger()
 
@@ -510,16 +516,18 @@ async def _dispatch_workflow(
         run_id=run_id,
     )
 
-    # Emit audit entry for workflow start
-    audit_store = getattr(request.app.state, "audit_entry_store", None)
-    await emit_audit_entry(
-        audit_store,
-        actor_id="system",
-        actor_type="system",
-        action="workflow_started",
-        resource_type="work_item",
-        resource_id=work_item_id,
-        details={"workflow_type": workflow_type, "conversation_id": conversation_id},
+    await dispatch_event(
+        request,
+        WorkflowTriggered(
+            payload={
+                "resource_id": work_item_id,
+                "workflow_type": workflow_type,
+                "conversation_id": conversation_id,
+                "project_id": project_id,
+                "run_id": run_id,
+            }
+        ),
+        stream_id=f"conversation:{conversation_id}",
     )
 
 
@@ -618,6 +626,17 @@ async def create_conversation(
         display_name=body.display_name,
         project_id=body.project_id,
         model_id=body.model_id,
+    )
+    await dispatch_event(
+        request,
+        ConversationCreated(
+            payload={
+                "resource_id": conversation_id,
+                "user_id": body.user_id,
+                "project_id": body.project_id or "",
+            }
+        ),
+        stream_id=f"conversation:{conversation_id}",
     )
 
     # If no message, just create the empty conversation
@@ -740,18 +759,15 @@ async def send_message(
         # User is replying to project selection prompt
         matched = await _try_select_project(request, store, conversation_id, body.message)
         if matched:
-            # Emit audit entry for project selection
             updated_conv = await store.get(conversation_id)
             selected_project_id = updated_conv.get("project_id", "") if updated_conv else ""
-            audit_store = getattr(request.app.state, "audit_entry_store", None)
-            await emit_audit_entry(
-                audit_store,
-                actor_id=body.user_id,
-                actor_type="user",
-                action="project_selected",
-                resource_type="conversation",
-                resource_id=conversation_id,
-                details={"project_id": selected_project_id},
+            await dispatch_event(
+                request,
+                ProjectSelected(
+                    payload={"resource_id": conversation_id, "project_id": selected_project_id},
+                    actor_id=body.user_id,
+                ),
+                stream_id=f"conversation:{conversation_id}",
             )
             if conv is not None:
                 conv.pop("_pending_workflow", None)
@@ -1038,9 +1054,17 @@ async def retry_workflow(
 async def delete_conversation(
     conversation_id: str,
     store: ChatStoreDep,
+    request: Request,
 ) -> None:
     """Delete a conversation."""
-    if not await store.delete(conversation_id):
+    deleted = await store.delete(conversation_id)
+    if deleted:
+        await dispatch_event(
+            request,
+            ConversationDeleted(payload={"resource_id": conversation_id}),
+            stream_id=f"conversation:{conversation_id}",
+        )
+    if not deleted:
         raise HTTPException(
             status_code=404,
             detail=f"Conversation {conversation_id} not found",

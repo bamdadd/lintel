@@ -71,6 +71,15 @@ class WorkflowExecutor:
         # Store compiled graphs and configs per run_id for resumption
         self._suspended_runs: dict[str, dict[str, Any]] = {}
 
+    async def _project_events(self, events: list[Any]) -> None:
+        """Forward events to the projection engine (if available)."""
+        engine = getattr(self._app_state, "projection_engine", None) if self._app_state else None
+        if engine is None:
+            return
+        for event in events:
+            with contextlib.suppress(Exception):
+                await engine.project(event)
+
     def _build_config(self, run_id: str) -> dict[str, Any]:
         return {
             "configurable": {
@@ -90,20 +99,17 @@ class WorkflowExecutor:
         run_id = command.run_id or str(uuid4())
         stream_id = f"run:{run_id}"
 
-        await self._event_store.append(
-            stream_id=stream_id,
-            events=[
-                PipelineRunStarted(
-                    event_type="PipelineRunStarted",
-                    payload={
-                        "pipeline_id": command.workflow_type,
-                        "run_id": run_id,
-                        "trigger_type": "command",
-                        "thread_ref": str(command.thread_ref),
-                    },
-                )
-            ],
+        start_event = PipelineRunStarted(
+            event_type="PipelineRunStarted",
+            payload={
+                "pipeline_id": command.workflow_type,
+                "run_id": run_id,
+                "trigger_type": "command",
+                "thread_ref": str(command.thread_ref),
+            },
         )
+        await self._event_store.append(stream_id=stream_id, events=[start_event])
+        await self._project_events([start_event])
 
         # Mark first stage as running
         await self._mark_first_stage_running(run_id)
@@ -179,20 +185,17 @@ class WorkflowExecutor:
                         else node_name
                     )
                     timestamp_ms = int(time.time() * 1000)
-                    await self._event_store.append(
-                        stream_id=stream_id,
-                        events=[
-                            PipelineStageCompleted(
-                                event_type="PipelineStageCompleted",
-                                payload={
-                                    "run_id": run_id,
-                                    "node_name": node_name,
-                                    "output": output,
-                                    "timestamp_ms": timestamp_ms,
-                                },
-                            )
-                        ],
+                    stage_event = PipelineStageCompleted(
+                        event_type="PipelineStageCompleted",
+                        payload={
+                            "run_id": run_id,
+                            "node_name": node_name,
+                            "output": output,
+                            "timestamp_ms": timestamp_ms,
+                        },
                     )
+                    await self._event_store.append(stream_id=stream_id, events=[stage_event])
+                    await self._project_events([stage_event])
                     await self._mark_stage_completed(run_id, node_name, timestamp_ms)
 
                     # Accumulate token usage from node output
@@ -232,19 +235,16 @@ class WorkflowExecutor:
             # Graph completed normally
             self._suspended_runs.pop(run_id, None)
 
-            await self._event_store.append(
-                stream_id=stream_id,
-                events=[
-                    PipelineRunCompleted(
-                        event_type="PipelineRunCompleted",
-                        payload={
-                            "run_id": run_id,
-                            "status": "succeeded",
-                            "token_usage": total_tokens,
-                        },
-                    )
-                ],
+            completed_event = PipelineRunCompleted(
+                event_type="PipelineRunCompleted",
+                payload={
+                    "run_id": run_id,
+                    "status": "succeeded",
+                    "token_usage": total_tokens,
+                },
             )
+            await self._event_store.append(stream_id=stream_id, events=[completed_event])
+            await self._project_events([completed_event])
             await self._update_pipeline_status(run_id, "succeeded")
             command = suspended.get("command")
             if command:
@@ -264,15 +264,12 @@ class WorkflowExecutor:
         except Exception as exc:
             self._suspended_runs.pop(run_id, None)
             await self._mark_running_stages_failed(run_id, str(exc))
-            await self._event_store.append(
-                stream_id=stream_id,
-                events=[
-                    PipelineRunFailed(
-                        event_type="PipelineRunFailed",
-                        payload={"run_id": run_id, "error": str(exc)},
-                    )
-                ],
+            failed_event = PipelineRunFailed(
+                event_type="PipelineRunFailed",
+                payload={"run_id": run_id, "error": str(exc)},
             )
+            await self._event_store.append(stream_id=stream_id, events=[failed_event])
+            await self._project_events([failed_event])
             await self._update_pipeline_status(run_id, "failed")
             command = suspended.get("command")
             if command:

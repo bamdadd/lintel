@@ -3,11 +3,13 @@
 from dataclasses import asdict
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from lintel.contracts.commands import GrantApproval, RejectApproval
+from lintel.contracts.events import HumanApprovalGranted, HumanApprovalRejected
 from lintel.contracts.types import ThreadRef
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -31,7 +33,7 @@ class RejectApprovalRequest(BaseModel):
 
 
 @router.post("/approvals/grant", status_code=200)
-async def grant_approval(body: GrantApprovalRequest) -> dict[str, Any]:
+async def grant_approval(request: Request, body: GrantApprovalRequest) -> dict[str, Any]:
     """Grant an approval for a workflow gate."""
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
@@ -44,11 +46,16 @@ async def grant_approval(body: GrantApprovalRequest) -> dict[str, Any]:
         approver_id=body.approver_id,
         approver_name=body.approver_name,
     )
+    await dispatch_event(
+        request,
+        HumanApprovalGranted(payload={"resource_id": body.thread_ts}),
+        stream_id="approvals",
+    )
     return asdict(command)
 
 
 @router.post("/approvals/reject", status_code=200)
-async def reject_approval(body: RejectApprovalRequest) -> dict[str, Any]:
+async def reject_approval(request: Request, body: RejectApprovalRequest) -> dict[str, Any]:
     """Reject an approval for a workflow gate."""
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
@@ -60,5 +67,10 @@ async def reject_approval(body: RejectApprovalRequest) -> dict[str, Any]:
         gate_type=body.gate_type,
         rejector_id=body.rejector_id,
         reason=body.reason,
+    )
+    await dispatch_event(
+        request,
+        HumanApprovalRejected(payload={"resource_id": body.thread_ts}),
+        stream_id="approvals",
     )
     return asdict(command)

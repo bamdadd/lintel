@@ -7,7 +7,13 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import (
+    NotificationRuleCreated,
+    NotificationRuleRemoved,
+    NotificationRuleUpdated,
+)
 from lintel.contracts.types import NotificationChannel, NotificationRule
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -65,6 +71,7 @@ class UpdateNotificationRuleRequest(BaseModel):
 @router.post("/notifications/rules", status_code=201)
 async def create_notification_rule(
     body: CreateNotificationRuleRequest,
+    request: Request,
     store: Annotated[NotificationRuleStore, Depends(get_notification_rule_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.rule_id)
@@ -79,6 +86,11 @@ async def create_notification_rule(
         enabled=body.enabled,
     )
     await store.add(rule)
+    await dispatch_event(
+        request,
+        NotificationRuleCreated(payload={"resource_id": rule.rule_id}),
+        stream_id=f"notification_rule:{rule.rule_id}",
+    )
     return _rule_to_dict(rule)
 
 
@@ -106,6 +118,7 @@ async def get_notification_rule(
 async def update_notification_rule(
     rule_id: str,
     body: UpdateNotificationRuleRequest,
+    request: Request,
     store: Annotated[NotificationRuleStore, Depends(get_notification_rule_store)],
 ) -> dict[str, Any]:
     rule = await store.get(rule_id)
@@ -114,15 +127,26 @@ async def update_notification_rule(
     updates = body.model_dump(exclude_none=True)
     updated = NotificationRule(**{**asdict(rule), **updates})
     await store.update(updated)
+    await dispatch_event(
+        request,
+        NotificationRuleUpdated(payload={"resource_id": rule_id}),
+        stream_id=f"notification_rule:{rule_id}",
+    )
     return _rule_to_dict(updated)
 
 
 @router.delete("/notifications/rules/{rule_id}", status_code=204)
 async def delete_notification_rule(
     rule_id: str,
+    request: Request,
     store: Annotated[NotificationRuleStore, Depends(get_notification_rule_store)],
 ) -> None:
     rule = await store.get(rule_id)
     if rule is None:
         raise HTTPException(status_code=404, detail="Notification rule not found")
     await store.remove(rule_id)
+    await dispatch_event(
+        request,
+        NotificationRuleRemoved(payload={"resource_id": rule_id}),
+        stream_id=f"notification_rule:{rule_id}",
+    )

@@ -7,7 +7,9 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import VariableCreated, VariableRemoved, VariableUpdated
 from lintel.contracts.types import Variable
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -102,6 +104,7 @@ def _serialize(variable: Variable) -> dict[str, Any]:
 @router.post("/variables", status_code=201)
 async def create_variable(
     body: CreateVariableRequest,
+    request: Request,
     store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
 ) -> dict[str, Any]:
     existing = await store.get(body.variable_id)
@@ -115,6 +118,11 @@ async def create_variable(
         is_secret=body.is_secret,
     )
     await store.add(variable)
+    await dispatch_event(
+        request,
+        VariableCreated(payload={"resource_id": variable.variable_id}),
+        stream_id=f"variable:{variable.variable_id}",
+    )
     return _serialize(variable)
 
 
@@ -144,6 +152,7 @@ async def get_variable(
 async def update_variable(
     variable_id: str,
     body: UpdateVariableRequest,
+    request: Request,
     store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
 ) -> dict[str, Any]:
     variable = await store.get(variable_id)
@@ -152,15 +161,26 @@ async def update_variable(
     updates = body.model_dump(exclude_none=True)
     updated = Variable(**{**asdict(variable), **updates})
     await store.update(updated)
+    await dispatch_event(
+        request,
+        VariableUpdated(payload={"resource_id": variable_id}),
+        stream_id=f"variable:{variable_id}",
+    )
     return _serialize(updated)
 
 
 @router.delete("/variables/{variable_id}", status_code=204)
 async def delete_variable(
     variable_id: str,
+    request: Request,
     store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
 ) -> None:
     variable = await store.get(variable_id)
     if variable is None:
         raise HTTPException(status_code=404, detail="Variable not found")
     await store.remove(variable_id)
+    await dispatch_event(
+        request,
+        VariableRemoved(payload={"resource_id": variable_id}),
+        stream_id=f"variable:{variable_id}",
+    )

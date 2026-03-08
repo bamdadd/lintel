@@ -114,6 +114,16 @@ class SandboxCreated(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class SandboxCommandExecuted(EventEnvelope):
+    event_type: str = "SandboxCommandExecuted"
+
+
+@dataclass(frozen=True)
+class SandboxFileWritten(EventEnvelope):
+    event_type: str = "SandboxFileWritten"
+
+
+@dataclass(frozen=True)
 class SandboxArtifactsCollected(EventEnvelope):
     event_type: str = "SandboxArtifactsCollected"
 
@@ -193,6 +203,21 @@ class HumanApprovalRejected(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class SkillRegistered(EventEnvelope):
+    event_type: str = "SkillRegistered"
+
+
+@dataclass(frozen=True)
+class SkillUpdated(EventEnvelope):
+    event_type: str = "SkillUpdated"
+
+
+@dataclass(frozen=True)
+class SkillRemoved(EventEnvelope):
+    event_type: str = "SkillRemoved"
+
+
+@dataclass(frozen=True)
 class SkillInvoked(EventEnvelope):
     event_type: str = "SkillInvoked"
 
@@ -243,6 +268,11 @@ class ProjectArchived(EventEnvelope):
     event_type: str = "ProjectArchived"
 
 
+@dataclass(frozen=True)
+class ProjectRemoved(EventEnvelope):
+    event_type: str = "ProjectRemoved"
+
+
 # --- Work Item Events ---
 
 
@@ -259,6 +289,11 @@ class WorkItemUpdated(EventEnvelope):
 @dataclass(frozen=True)
 class WorkItemCompleted(EventEnvelope):
     event_type: str = "WorkItemCompleted"
+
+
+@dataclass(frozen=True)
+class WorkItemRemoved(EventEnvelope):
+    event_type: str = "WorkItemRemoved"
 
 
 # --- Pipeline Events ---
@@ -284,6 +319,31 @@ class PipelineRunFailed(EventEnvelope):
     event_type: str = "PipelineRunFailed"
 
 
+@dataclass(frozen=True)
+class PipelineRunCancelled(EventEnvelope):
+    event_type: str = "PipelineRunCancelled"
+
+
+@dataclass(frozen=True)
+class PipelineRunDeleted(EventEnvelope):
+    event_type: str = "PipelineRunDeleted"
+
+
+@dataclass(frozen=True)
+class PipelineStageApproved(EventEnvelope):
+    event_type: str = "PipelineStageApproved"
+
+
+@dataclass(frozen=True)
+class PipelineStageRejected(EventEnvelope):
+    event_type: str = "PipelineStageRejected"
+
+
+@dataclass(frozen=True)
+class PipelineStageRetried(EventEnvelope):
+    event_type: str = "PipelineStageRetried"
+
+
 # --- Resource Version Events (Concourse-inspired) ---
 
 
@@ -305,7 +365,32 @@ class EnvironmentCreated(EventEnvelope):
     event_type: str = "EnvironmentCreated"
 
 
+@dataclass(frozen=True)
+class EnvironmentUpdated(EventEnvelope):
+    event_type: str = "EnvironmentUpdated"
+
+
+@dataclass(frozen=True)
+class EnvironmentRemoved(EventEnvelope):
+    event_type: str = "EnvironmentRemoved"
+
+
 # --- Trigger Events ---
+
+
+@dataclass(frozen=True)
+class TriggerCreated(EventEnvelope):
+    event_type: str = "TriggerCreated"
+
+
+@dataclass(frozen=True)
+class TriggerUpdated(EventEnvelope):
+    event_type: str = "TriggerUpdated"
+
+
+@dataclass(frozen=True)
+class TriggerRemoved(EventEnvelope):
+    event_type: str = "TriggerRemoved"
 
 
 @dataclass(frozen=True)
@@ -356,8 +441,248 @@ class UserCreated(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class UserUpdated(EventEnvelope):
+    event_type: str = "UserUpdated"
+
+
+@dataclass(frozen=True)
+class UserRemoved(EventEnvelope):
+    event_type: str = "UserRemoved"
+
+
+@dataclass(frozen=True)
 class TeamCreated(EventEnvelope):
     event_type: str = "TeamCreated"
+
+
+@dataclass(frozen=True)
+class TeamUpdated(EventEnvelope):
+    event_type: str = "TeamUpdated"
+
+
+@dataclass(frozen=True)
+class TeamRemoved(EventEnvelope):
+    event_type: str = "TeamRemoved"
+
+
+# --- AI Provider & Model Events ---
+
+
+@dataclass(frozen=True)
+class AIProviderCreated(EventEnvelope):
+    event_type: str = "AIProviderCreated"
+
+
+@dataclass(frozen=True)
+class AIProviderUpdated(EventEnvelope):
+    event_type: str = "AIProviderUpdated"
+
+
+@dataclass(frozen=True)
+class AIProviderRemoved(EventEnvelope):
+    event_type: str = "AIProviderRemoved"
+
+
+@dataclass(frozen=True)
+class AIProviderApiKeyUpdated(EventEnvelope):
+    event_type: str = "AIProviderApiKeyUpdated"
+
+
+@dataclass(frozen=True)
+class ModelRegistered(EventEnvelope):
+    event_type: str = "ModelRegistered"
+
+
+@dataclass(frozen=True)
+class ModelUpdated(EventEnvelope):
+    event_type: str = "ModelUpdated"
+
+
+@dataclass(frozen=True)
+class ModelRemoved(EventEnvelope):
+    event_type: str = "ModelRemoved"
+
+
+@dataclass(frozen=True)
+class ModelAssignmentCreated(EventEnvelope):
+    event_type: str = "ModelAssignmentCreated"
+
+
+@dataclass(frozen=True)
+class ModelAssignmentRemoved(EventEnvelope):
+    event_type: str = "ModelAssignmentRemoved"
+
+
+# --- Variable Events ---
+
+
+@dataclass(frozen=True)
+class VariableCreated(EventEnvelope):
+    event_type: str = "VariableCreated"
+
+
+@dataclass(frozen=True)
+class VariableUpdated(EventEnvelope):
+    event_type: str = "VariableUpdated"
+
+
+@dataclass(frozen=True)
+class VariableRemoved(EventEnvelope):
+    event_type: str = "VariableRemoved"
+
+
+# --- Workflow Definition Events ---
+
+
+@dataclass(frozen=True)
+class WorkflowDefinitionCreated(EventEnvelope):
+    event_type: str = "WorkflowDefinitionCreated"
+
+
+@dataclass(frozen=True)
+class WorkflowDefinitionUpdated(EventEnvelope):
+    event_type: str = "WorkflowDefinitionUpdated"
+
+
+@dataclass(frozen=True)
+class WorkflowDefinitionRemoved(EventEnvelope):
+    event_type: str = "WorkflowDefinitionRemoved"
+
+
+# --- Notification Rule Events ---
+
+
+@dataclass(frozen=True)
+class NotificationRuleCreated(EventEnvelope):
+    event_type: str = "NotificationRuleCreated"
+
+
+@dataclass(frozen=True)
+class NotificationRuleUpdated(EventEnvelope):
+    event_type: str = "NotificationRuleUpdated"
+
+
+@dataclass(frozen=True)
+class NotificationRuleRemoved(EventEnvelope):
+    event_type: str = "NotificationRuleRemoved"
+
+
+# --- MCP Server Events ---
+
+
+@dataclass(frozen=True)
+class MCPServerRegistered(EventEnvelope):
+    event_type: str = "MCPServerRegistered"
+
+
+@dataclass(frozen=True)
+class MCPServerUpdated(EventEnvelope):
+    event_type: str = "MCPServerUpdated"
+
+
+@dataclass(frozen=True)
+class MCPServerRemoved(EventEnvelope):
+    event_type: str = "MCPServerRemoved"
+
+
+# --- Policy Events ---
+
+
+@dataclass(frozen=True)
+class PolicyCreated(EventEnvelope):
+    event_type: str = "PolicyCreated"
+
+
+@dataclass(frozen=True)
+class PolicyUpdated(EventEnvelope):
+    event_type: str = "PolicyUpdated"
+
+
+@dataclass(frozen=True)
+class PolicyRemoved(EventEnvelope):
+    event_type: str = "PolicyRemoved"
+
+
+# --- Settings & Connection Events ---
+
+
+@dataclass(frozen=True)
+class ConnectionCreated(EventEnvelope):
+    event_type: str = "ConnectionCreated"
+
+
+@dataclass(frozen=True)
+class ConnectionUpdated(EventEnvelope):
+    event_type: str = "ConnectionUpdated"
+
+
+@dataclass(frozen=True)
+class ConnectionRemoved(EventEnvelope):
+    event_type: str = "ConnectionRemoved"
+
+
+@dataclass(frozen=True)
+class SettingsUpdated(EventEnvelope):
+    event_type: str = "SettingsUpdated"
+
+
+# --- Conversation Events ---
+
+
+@dataclass(frozen=True)
+class ConversationCreated(EventEnvelope):
+    event_type: str = "ConversationCreated"
+
+
+@dataclass(frozen=True)
+class ConversationDeleted(EventEnvelope):
+    event_type: str = "ConversationDeleted"
+
+
+@dataclass(frozen=True)
+class WorkflowTriggered(EventEnvelope):
+    event_type: str = "WorkflowTriggered"
+
+
+@dataclass(frozen=True)
+class ProjectSelected(EventEnvelope):
+    event_type: str = "ProjectSelected"
+
+
+# --- Agent Definition Events ---
+
+
+@dataclass(frozen=True)
+class AgentDefinitionCreated(EventEnvelope):
+    event_type: str = "AgentDefinitionCreated"
+
+
+@dataclass(frozen=True)
+class AgentDefinitionUpdated(EventEnvelope):
+    event_type: str = "AgentDefinitionUpdated"
+
+
+@dataclass(frozen=True)
+class AgentDefinitionRemoved(EventEnvelope):
+    event_type: str = "AgentDefinitionRemoved"
+
+
+# --- Approval Request Events ---
+
+
+@dataclass(frozen=True)
+class ApprovalRequestCreated(EventEnvelope):
+    event_type: str = "ApprovalRequestCreated"
+
+
+@dataclass(frozen=True)
+class ApprovalRequestApproved(EventEnvelope):
+    event_type: str = "ApprovalRequestApproved"
+
+
+@dataclass(frozen=True)
+class ApprovalRequestRejected(EventEnvelope):
+    event_type: str = "ApprovalRequestRejected"
 
 
 # --- Audit Events ---
@@ -385,11 +710,16 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         AgentStepCompleted,
         ModelSelected,
         ModelCallCompleted,
+        SkillRegistered,
+        SkillUpdated,
+        SkillRemoved,
         SkillInvoked,
         SkillSucceeded,
         SkillFailed,
         SandboxJobScheduled,
         SandboxCreated,
+        SandboxCommandExecuted,
+        SandboxFileWritten,
         SandboxArtifactsCollected,
         SandboxDestroyed,
         CredentialStored,
@@ -410,16 +740,28 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         ProjectCreated,
         ProjectUpdated,
         ProjectArchived,
+        ProjectRemoved,
         WorkItemCreated,
         WorkItemUpdated,
         WorkItemCompleted,
+        WorkItemRemoved,
         PipelineRunStarted,
         PipelineStageCompleted,
         PipelineRunCompleted,
         PipelineRunFailed,
+        PipelineRunCancelled,
+        PipelineRunDeleted,
+        PipelineStageApproved,
+        PipelineStageRejected,
+        PipelineStageRetried,
         ResourceVersionProduced,
         ResourceVersionConsumed,
         EnvironmentCreated,
+        EnvironmentUpdated,
+        EnvironmentRemoved,
+        TriggerCreated,
+        TriggerUpdated,
+        TriggerRemoved,
         TriggerFired,
         ArtifactStored,
         TestRunCompleted,
@@ -427,7 +769,49 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         ApprovalExpired,
         NotificationSent,
         UserCreated,
+        UserUpdated,
+        UserRemoved,
         TeamCreated,
+        TeamUpdated,
+        TeamRemoved,
+        AIProviderCreated,
+        AIProviderUpdated,
+        AIProviderRemoved,
+        AIProviderApiKeyUpdated,
+        ModelRegistered,
+        ModelUpdated,
+        ModelRemoved,
+        ModelAssignmentCreated,
+        ModelAssignmentRemoved,
+        VariableCreated,
+        VariableUpdated,
+        VariableRemoved,
+        WorkflowDefinitionCreated,
+        WorkflowDefinitionUpdated,
+        WorkflowDefinitionRemoved,
+        NotificationRuleCreated,
+        NotificationRuleUpdated,
+        NotificationRuleRemoved,
+        MCPServerRegistered,
+        MCPServerUpdated,
+        MCPServerRemoved,
+        PolicyCreated,
+        PolicyUpdated,
+        PolicyRemoved,
+        ConnectionCreated,
+        ConnectionUpdated,
+        ConnectionRemoved,
+        SettingsUpdated,
+        ConversationCreated,
+        ConversationDeleted,
+        WorkflowTriggered,
+        ProjectSelected,
+        AgentDefinitionCreated,
+        AgentDefinitionUpdated,
+        AgentDefinitionRemoved,
+        ApprovalRequestCreated,
+        ApprovalRequestApproved,
+        ApprovalRequestRejected,
         AuditRecorded,
     ]
 }

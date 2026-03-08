@@ -8,7 +8,14 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import (
+    AIProviderApiKeyUpdated,
+    AIProviderCreated,
+    AIProviderRemoved,
+    AIProviderUpdated,
+)
 from lintel.contracts.types import AIProvider, AIProviderType
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -134,6 +141,7 @@ def _mask_key(key: str) -> str:
 @router.post("/ai-providers", status_code=201)
 async def create_ai_provider(
     body: CreateAIProviderRequest,
+    request: Request,
     store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
 ) -> dict[str, Any]:
     """Register an AI model provider."""
@@ -167,6 +175,11 @@ async def create_ai_provider(
         config=body.config or None,
     )
     await store.add(provider, api_key=body.api_key)
+    await dispatch_event(
+        request,
+        AIProviderCreated(payload={"resource_id": body.provider_id, "name": body.name}),
+        stream_id=f"ai_provider:{body.provider_id}",
+    )
     result = asdict(provider)
     result["models"] = list(provider.models)
     result["has_api_key"] = bool(body.api_key)
@@ -240,6 +253,7 @@ async def get_ai_provider(
 async def update_ai_provider(
     provider_id: str,
     body: UpdateAIProviderRequest,
+    request: Request,
     store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
 ) -> dict[str, Any]:
     """Update an AI provider's configuration."""
@@ -251,6 +265,11 @@ async def update_ai_provider(
     merged = {**current, **updates}
     updated = AIProvider(**merged)
     await store.update(updated)
+    await dispatch_event(
+        request,
+        AIProviderUpdated(payload={"resource_id": provider_id, "fields": list(updates.keys())}),
+        stream_id=f"ai_provider:{provider_id}",
+    )
     d = asdict(updated)
     d["models"] = list(updated.models)
     d["has_api_key"] = await store.has_api_key(provider_id)
@@ -261,6 +280,7 @@ async def update_ai_provider(
 async def update_api_key(
     provider_id: str,
     body: UpdateAPIKeyRequest,
+    request: Request,
     store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
 ) -> dict[str, Any]:
     """Update or set the API key for a provider."""
@@ -268,6 +288,11 @@ async def update_api_key(
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
     await store.update_api_key(provider_id, body.api_key)
+    await dispatch_event(
+        request,
+        AIProviderApiKeyUpdated(payload={"resource_id": provider_id}),
+        stream_id=f"ai_provider:{provider_id}",
+    )
     return {
         "provider_id": provider_id,
         "api_key_preview": _mask_key(body.api_key),
@@ -278,6 +303,7 @@ async def update_api_key(
 @router.delete("/ai-providers/{provider_id}", status_code=204)
 async def delete_ai_provider(
     provider_id: str,
+    request: Request,
     store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
 ) -> None:
     """Remove an AI provider."""
@@ -285,6 +311,11 @@ async def delete_ai_provider(
     if provider is None:
         raise HTTPException(status_code=404, detail="Provider not found")
     await store.remove(provider_id)
+    await dispatch_event(
+        request,
+        AIProviderRemoved(payload={"resource_id": provider_id}),
+        stream_id=f"ai_provider:{provider_id}",
+    )
 
 
 OLLAMA_MODEL_DEFAULTS: dict[str, dict[str, Any]] = {

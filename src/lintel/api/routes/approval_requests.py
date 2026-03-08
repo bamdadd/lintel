@@ -7,7 +7,13 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.events import (
+    ApprovalRequestApproved,
+    ApprovalRequestCreated,
+    ApprovalRequestRejected,
+)
 from lintel.contracts.types import ApprovalRequest, ApprovalStatus
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -87,6 +93,7 @@ class RejectBody(BaseModel):
 async def create_approval_request(
     body: CreateApprovalRequestBody,
     store: StoreDep,
+    request: Request,
 ) -> dict[str, Any]:
     existing = await store.get(body.approval_id)
     if existing is not None:
@@ -99,6 +106,11 @@ async def create_approval_request(
         expires_at=body.expires_at,
     )
     await store.add(approval)
+    await dispatch_event(
+        request,
+        ApprovalRequestCreated(payload={"resource_id": approval.approval_id}),
+        stream_id=f"approval_request:{approval.approval_id}",
+    )
     return asdict(approval)
 
 
@@ -140,6 +152,7 @@ async def approve_approval_request(
     approval_id: str,
     body: DecisionBody,
     store: StoreDep,
+    request: Request,
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
@@ -157,6 +170,11 @@ async def approve_approval_request(
         }
     )
     await store.update(updated)
+    await dispatch_event(
+        request,
+        ApprovalRequestApproved(payload={"resource_id": approval_id}),
+        stream_id=f"approval_request:{approval_id}",
+    )
     return asdict(updated)
 
 
@@ -165,6 +183,7 @@ async def reject_approval_request(
     approval_id: str,
     body: RejectBody,
     store: StoreDep,
+    request: Request,
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
@@ -183,4 +202,9 @@ async def reject_approval_request(
         }
     )
     await store.update(updated)
+    await dispatch_event(
+        request,
+        ApprovalRequestRejected(payload={"resource_id": approval_id}),
+        stream_id=f"approval_request:{approval_id}",
+    )
     return asdict(updated)
