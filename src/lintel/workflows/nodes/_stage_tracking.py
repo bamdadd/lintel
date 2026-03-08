@@ -164,6 +164,86 @@ async def mark_completed(
         return
     status = "failed" if error else "succeeded"
     await update_stage(config, run_id, stage_name, status, outputs=outputs, error=error)
+    await _dispatch_notifications(config, run_id, stage_name, status)
+
+
+async def _dispatch_notifications(
+    config: Mapping[str, Any],
+    run_id: str,
+    stage_name: str,
+    status: str,
+) -> None:
+    """Evaluate notification rules and dispatch matching ones."""
+    configurable = config.get("configurable", {})
+    app_state = configurable.get("app_state")
+    if app_state is None:
+        return
+
+    notification_rule_store = getattr(app_state, "notification_rule_store", None)
+    if notification_rule_store is None:
+        return
+
+    try:
+        rules = await notification_rule_store.list_all()
+    except Exception:
+        logger.debug("notification_rules_fetch_failed")
+        return
+
+    # Build the event pattern to match against: "stage_name.status" e.g. "research.succeeded"
+    event_pattern = f"{stage_name}.{status}"
+
+    for rule in rules:
+        if not getattr(rule, "enabled", True):
+            continue
+        pattern = getattr(rule, "event_pattern", "")
+        # Match exact pattern or wildcard patterns like "*.succeeded" or "research.*"
+        if not _pattern_matches(pattern, event_pattern):
+            continue
+
+        # Get project_id filter — if rule has project_id, only match that project's runs
+        rule_project_id = getattr(rule, "project_id", "")
+        if rule_project_id:
+            pipeline_store = _get_pipeline_store(config)
+            if pipeline_store:
+                run = await pipeline_store.get(run_id)
+                if run and getattr(run, "project_id", "") != rule_project_id:
+                    continue
+
+        channel = getattr(rule, "channel", "")
+        target = getattr(rule, "target", "")
+        if channel == "slack" and target:
+            channel_adapter = getattr(app_state, "channel_adapter", None)
+            if channel_adapter is not None:
+                try:
+                    message = f"Stage *{stage_name}* is now *{status}* (run: {run_id[:12]})"
+                    await channel_adapter.send_message(
+                        channel_id=target,
+                        thread_ts="",
+                        text=message,
+                    )
+                except Exception:
+                    logger.warning(
+                        "notification_dispatch_failed",
+                        rule_id=getattr(rule, "rule_id", ""),
+                        channel=channel,
+                    )
+
+
+def _pattern_matches(pattern: str, event: str) -> bool:
+    """Match a notification rule pattern against an event string.
+
+    Supports: exact match, "*" (match all), "*.status", "stage.*".
+    """
+    if not pattern or pattern == "*":
+        return True
+    if pattern == event:
+        return True
+    # Wildcard matching: "*.succeeded" or "research.*"
+    p_parts = pattern.split(".")
+    e_parts = event.split(".")
+    if len(p_parts) != len(e_parts):
+        return False
+    return all(p == "*" or p == e for p, e in zip(p_parts, e_parts, strict=True))
 
 
 async def update_stage(
