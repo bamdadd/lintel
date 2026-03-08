@@ -16,6 +16,10 @@ from lintel.contracts.events import (
     PipelineRunStarted,
     PipelineStageCompleted,
 )
+from lintel.infrastructure.observability.step_metrics import (
+    record_step_duration,
+    record_step_tokens,
+)
 
 if TYPE_CHECKING:
     from lintel.contracts.commands import StartWorkflow
@@ -173,6 +177,7 @@ class WorkflowExecutor:
             "total_tokens",
             {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
         )
+        total_tokens["_step_start"] = time.time()
 
         try:
             async for chunk in graph.astream(input_data, config=config):
@@ -185,6 +190,24 @@ class WorkflowExecutor:
                         else node_name
                     )
                     timestamp_ms = int(time.time() * 1000)
+
+                    # Record step metrics
+                    step_start = total_tokens.get("_step_start", time.time())
+                    duration = time.time() - step_start
+                    record_step_duration(
+                        run_id, node_name, node_name, "completed", duration,
+                    )
+                    if isinstance(output, dict):
+                        for entry in output.get("token_usage", []):
+                            if isinstance(entry, dict):
+                                step_total = entry.get("total_tokens", 0)
+                                model_id = entry.get("model", "unknown")
+                                if step_total:
+                                    record_step_tokens(
+                                        run_id, node_name, model_id, step_total,
+                                    )
+                    total_tokens["_step_start"] = time.time()
+
                     stage_event = PipelineStageCompleted(
                         event_type="PipelineStageCompleted",
                         payload={
@@ -223,6 +246,48 @@ class WorkflowExecutor:
                     run_id=run_id,
                     next_node=next_node,
                 )
+
+                # Evaluate policy for this gate
+                policy_action = await self._evaluate_policy(run_id, next_node)
+
+                if policy_action == "auto_approve":
+                    logger.info(
+                        "policy_auto_approve",
+                        run_id=run_id,
+                        node=next_node,
+                    )
+                    await self._notify_chat(
+                        run_id,
+                        f"✅ **{next_node}** — auto-approved by policy\n"
+                        f"[View pipeline →](/pipelines/{run_id})",
+                    )
+                    # Resume immediately — pass None to continue from interrupt
+                    await self._stream_graph(run_id, graph, None, config)
+                    return
+
+                if policy_action == "block":
+                    logger.info(
+                        "policy_blocked",
+                        run_id=run_id,
+                        node=next_node,
+                    )
+                    await self._mark_running_stages_failed(run_id, "Blocked by policy")
+                    await self._update_pipeline_status(run_id, "failed")
+                    await self._notify_chat(
+                        run_id,
+                        f"🚫 **{next_node}** — blocked by policy\n"
+                        f"[View pipeline →](/pipelines/{run_id})",
+                    )
+                    return
+
+                if policy_action == "notify":
+                    await self._notify_chat(
+                        run_id,
+                        f"📢 **{next_node}** — policy notification: gate reached\n"
+                        f"[View pipeline →](/pipelines/{run_id})",
+                    )
+
+                # Default: require_approval
                 await self._mark_stage_waiting_approval(run_id, next_node)
                 await self._update_pipeline_status(run_id, "waiting_approval")
                 await self._create_approval_request(run_id, next_node)
@@ -377,6 +442,42 @@ class WorkflowExecutor:
         except Exception:
             pass
         return None
+
+    async def _evaluate_policy(self, run_id: str, node_name: str) -> str:
+        """Evaluate policy for an approval gate. Returns action string."""
+        if self._app_state is None:
+            return "require_approval"
+        try:
+            from lintel.workflows.nodes._policy import evaluate_gate_policy
+            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+
+            policy_store = getattr(self._app_state, "policy_store", None)
+            pipeline_store = getattr(self._app_state, "pipeline_store", None)
+
+            # Get project_id from pipeline run
+            project_id = ""
+            if pipeline_store is not None:
+                run = await pipeline_store.get(run_id)
+                if run is not None:
+                    project_id = getattr(run, "project_id", "") or ""
+
+            gate_type = NODE_TO_STAGE.get(node_name, node_name)
+            action = await evaluate_gate_policy(policy_store, project_id, gate_type)
+            result = action.value if hasattr(action, "value") else str(action)
+            logger.info(
+                "policy_evaluated",
+                run_id=run_id,
+                gate_type=gate_type,
+                action=result,
+            )
+            return result
+        except Exception as exc:
+            logger.warning(
+                "policy_evaluation_failed",
+                run_id=run_id,
+                error=str(exc),
+            )
+            return "require_approval"
 
     async def _create_approval_request(self, run_id: str, node_name: str) -> None:
         """Create an ApprovalRequest record when workflow pauses at an approval gate."""

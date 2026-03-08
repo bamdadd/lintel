@@ -135,3 +135,8 @@
 - [x] REQ-2.6: Close node pushes branch, creates PR via GitHub API, attaches review comments
 - [x] REQ-001: LLM response caching in ModelRouter (SHA-256 keyed, temperature=0 only, LRU eviction)
 - [x] REQ-013: Editable stage reports — PATCH/GET versions/POST regenerate API endpoints with versioning
+- [x] REQ-3.2: Persistent chat store verified with PostgresChatStore integration tests
+- [x] REQ-3.3: SSE streaming for pipelines (stage updates, logs) and chat (messages, token streaming)
+- [x] REQ-3.4: MCP tool integration — agents gather tools from enabled MCP servers during execution
+- [x] REQ-3.5: Observability — OTel tracing/metrics wired, step duration/token metrics, audit trail via AuditProjection (70+ events), event store query endpoints
+- [x] REQ-3.6: Policy enforcement — evaluate_gate_policy wired into approval flow (auto_approve, block, notify, require_approval)

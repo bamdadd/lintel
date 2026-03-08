@@ -224,6 +224,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     log_level = os.environ.get("LINTEL_LOG_LEVEL", "INFO").upper()
     configure_logging(log_level=log_level, log_format="console")
 
+    # Configure OpenTelemetry tracing and metrics
+    from lintel.infrastructure.observability.metrics import configure_metrics
+    from lintel.infrastructure.observability.tracing import configure_tracing
+
+    otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    configure_tracing(otel_endpoint=otel_endpoint)
+    configure_metrics()
+
     # Determine storage backend from LINTEL_STORAGE_BACKEND setting.
     # Values: "postgres" (requires LINTEL_DB_DSN), "memory" (default).
     storage_backend = os.environ.get("LINTEL_STORAGE_BACKEND", "").lower()
@@ -268,8 +276,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
 
     from lintel.agents.runtime import AgentRuntime
+    from lintel.infrastructure.mcp.tool_client import MCPToolClient
 
-    agent_runtime = AgentRuntime(event_store=event_store, model_router=model_router)
+    mcp_tool_client = MCPToolClient()
+    agent_runtime = AgentRuntime(
+        event_store=event_store,
+        model_router=model_router,
+        mcp_tool_client=mcp_tool_client,
+        mcp_server_store=stores["mcp_server_store"],
+    )
     app.state.agent_runtime = agent_runtime
     app.state.model_router = model_router
 
@@ -306,9 +321,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     dispatcher.register(StartWorkflow, executor.execute)
     app.state.command_dispatcher = dispatcher
 
-    from lintel.infrastructure.mcp.tool_client import MCPToolClient
-
-    mcp_tool_client = MCPToolClient()
     chat_router = ChatRouter(
         model_router=model_router,
         mcp_tool_client=mcp_tool_client,
