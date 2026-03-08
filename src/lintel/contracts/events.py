@@ -344,6 +344,16 @@ class PipelineStageRetried(EventEnvelope):
     event_type: str = "PipelineStageRetried"
 
 
+@dataclass(frozen=True)
+class StageReportEdited(EventEnvelope):
+    event_type: str = "StageReportEdited"
+
+
+@dataclass(frozen=True)
+class StageReportRegenerated(EventEnvelope):
+    event_type: str = "StageReportRegenerated"
+
+
 # --- Resource Version Events (Concourse-inspired) ---
 
 

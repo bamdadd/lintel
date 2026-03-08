@@ -133,3 +133,5 @@
 - [x] REQ-2.4: Repository cloning with credential injection in setup_workspace
 - [x] REQ-2.5: Code artifacts and test results persisted from implement/test nodes
 - [x] REQ-2.6: Close node pushes branch, creates PR via GitHub API, attaches review comments
+- [x] REQ-001: LLM response caching in ModelRouter (SHA-256 keyed, temperature=0 only, LRU eviction)
+- [x] REQ-013: Editable stage reports — PATCH/GET versions/POST regenerate API endpoints with versioning

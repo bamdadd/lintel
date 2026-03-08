@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -30,6 +32,8 @@ class DefaultModelRouter:
         model_store: Any = None,  # noqa: ANN401
         ai_provider_store: Any = None,  # noqa: ANN401
         model_assignment_store: Any = None,  # noqa: ANN401
+        enable_cache: bool = True,
+        cache_max_size: int = 256,
     ) -> None:
         self._default = default_policy
         self._routing = routing_table or {}
@@ -39,6 +43,12 @@ class DefaultModelRouter:
         self._ai_provider_store = ai_provider_store
         self._model_assignment_store = model_assignment_store
         self._cached_default: ModelPolicy | None = None
+        # Response cache: hash(model+messages+tools) → result dict
+        self._enable_cache = enable_cache
+        self._cache_max_size = cache_max_size
+        self._response_cache: dict[str, dict[str, Any]] = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     async def _model_to_policy(self, model: Any) -> ModelPolicy | None:  # noqa: ANN401
         """Convert a Model dataclass to a ModelPolicy via its provider."""
@@ -143,6 +153,29 @@ class DefaultModelRouter:
         )
         return policy
 
+    def _cache_key(
+        self,
+        model_string: str,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]] | None,
+    ) -> str:
+        """Compute a deterministic hash for a model call."""
+        payload = json.dumps(
+            {"model": model_string, "messages": messages, "tools": tools},
+            sort_keys=True,
+            default=str,
+        )
+        return hashlib.sha256(payload.encode()).hexdigest()
+
+    @property
+    def cache_stats(self) -> dict[str, int]:
+        """Return cache hit/miss statistics."""
+        return {
+            "hits": self._cache_hits,
+            "misses": self._cache_misses,
+            "size": len(self._response_cache),
+        }
+
     async def call_model(
         self,
         policy: ModelPolicy,
@@ -153,6 +186,17 @@ class DefaultModelRouter:
         import litellm
 
         model_string = f"{policy.provider}/{policy.model_name}"
+
+        # Check cache for exact match (only for non-tool calls with temperature 0)
+        cache_key = ""
+        if self._enable_cache and policy.temperature == 0.0 and not tools:
+            cache_key = self._cache_key(model_string, messages, tools)
+            cached = self._response_cache.get(cache_key)
+            if cached is not None:
+                self._cache_hits += 1
+                logger.debug("llm_cache_hit", model=model_string, key=cache_key[:12])
+                return cached
+
         kwargs: dict[str, Any] = {
             "model": model_string,
             "messages": messages,
@@ -179,6 +223,15 @@ class DefaultModelRouter:
             },
             "model": response.model,
         }
+        # Store in cache
+        if cache_key:
+            self._cache_misses += 1
+            if len(self._response_cache) >= self._cache_max_size:
+                # Evict oldest entry
+                oldest = next(iter(self._response_cache))
+                del self._response_cache[oldest]
+            # result is stored after tool_calls extraction below
+
         # Propagate tool calls if present
         msg = response.choices[0].message
         if hasattr(msg, "tool_calls") and msg.tool_calls:
@@ -193,6 +246,11 @@ class DefaultModelRouter:
                 }
                 for tc in msg.tool_calls
             ]
+
+        # Store in cache (after tool_calls extraction)
+        if cache_key:
+            self._response_cache[cache_key] = result
+
         return result
 
     async def stream_model(

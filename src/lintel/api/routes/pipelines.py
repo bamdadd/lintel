@@ -19,6 +19,8 @@ from lintel.contracts.events import (
     PipelineStageApproved,
     PipelineStageRejected,
     PipelineStageRetried,
+    StageReportEdited,
+    StageReportRegenerated,
 )
 from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
 from lintel.domain.event_dispatcher import dispatch_event
@@ -537,3 +539,228 @@ async def approve_stage(
         task.add_done_callback(request.app.state._background_tasks.discard)
 
     return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]
+
+
+# --- Stage Report Editing (REQ-013) ---
+
+
+class ReportEditPayload(BaseModel):
+    """Body for editing a stage report."""
+
+    content: str = Field(..., description="Updated report content (Markdown)")
+    editor: str = Field(default="user", description="Who made the edit")
+
+
+class RegeneratePayload(BaseModel):
+    """Body for regenerating a stage report."""
+
+    guidance: str = Field(default="", description="Optional prompt to guide regeneration")
+
+
+def _report_key(stage_name: str) -> str:
+    """Map stage name to the output key holding the report."""
+    if stage_name in ("research", "approve_research"):
+        return "research_report"
+    if stage_name in ("plan", "approve_spec"):
+        return "plan"
+    return "report"
+
+
+def _get_report_versions(
+    request: Request, run_id: str, stage_id: str
+) -> list[dict[str, object]]:
+    """Retrieve report version history from app state."""
+    versions_store: dict[str, list[dict[str, object]]] = getattr(
+        request.app.state, "_report_versions", {}
+    )
+    key = f"{run_id}:{stage_id}"
+    return versions_store.get(key, [])
+
+
+def _add_report_version(
+    request: Request,
+    run_id: str,
+    stage_id: str,
+    content: str,
+    editor: str,
+    version_type: str = "edit",
+) -> dict[str, object]:
+    """Append a new version to the report history."""
+    if not hasattr(request.app.state, "_report_versions"):
+        request.app.state._report_versions = {}
+    versions_store: dict[str, list[dict[str, object]]] = request.app.state._report_versions
+    key = f"{run_id}:{stage_id}"
+    versions = versions_store.setdefault(key, [])
+    version: dict[str, object] = {
+        "version": len(versions) + 1,
+        "content": content,
+        "editor": editor,
+        "type": version_type,
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+    versions.append(version)
+    return version
+
+
+@router.patch("/pipelines/{run_id}/stages/{stage_id}/report")
+async def edit_stage_report(
+    run_id: str,
+    stage_id: str,
+    body: ReportEditPayload,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
+) -> dict[str, Any]:
+    """Edit the report output of a completed or waiting_approval stage."""
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    stage = _find_stage(run, stage_id)
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
+    if status not in ("succeeded", "waiting_approval"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot edit report in '{status}' state",
+        )
+
+    # Update the report in stage outputs
+    rkey = _report_key(stage.name)
+    outputs = dict(stage.outputs) if stage.outputs else {}
+    outputs[rkey] = body.content
+
+    new_stages = [
+        replace(s, outputs=outputs) if s.stage_id == stage_id else s for s in run.stages
+    ]
+    updated = replace(run, stages=tuple(new_stages))
+    await store.update(updated)
+
+    # Record version
+    version = _add_report_version(request, run_id, stage_id, body.content, body.editor)
+
+    await dispatch_event(
+        request,
+        StageReportEdited(
+            payload={
+                "resource_id": stage_id,
+                "run_id": run_id,
+                "stage_name": stage.name,
+                "editor": body.editor,
+                "version": version["version"],
+            }
+        ),
+        stream_id=f"run:{run_id}",
+    )
+
+    return {
+        "stage_id": stage_id,
+        "report_key": rkey,
+        "version": version["version"],
+        "content": body.content,
+    }
+
+
+@router.get("/pipelines/{run_id}/stages/{stage_id}/report/versions")
+async def list_report_versions(
+    run_id: str,
+    stage_id: str,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
+) -> list[dict[str, object]]:
+    """List all versions of a stage report."""
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    stage = _find_stage(run, stage_id)
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    return _get_report_versions(request, run_id, stage_id)
+
+
+@router.post("/pipelines/{run_id}/stages/{stage_id}/regenerate")
+async def regenerate_stage(
+    run_id: str,
+    stage_id: str,
+    body: RegeneratePayload,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    request: Request,
+) -> dict[str, Any]:
+    """Re-run a stage with optional guidance, resetting it to running."""
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    stage = _find_stage(run, stage_id)
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
+    if status not in ("succeeded", "waiting_approval", "failed"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot regenerate stage in '{status}' state",
+        )
+
+    # Store guidance in stage inputs for the node to pick up
+    now = datetime.now(UTC).isoformat()
+    inputs = dict(stage.inputs) if stage.inputs else {}
+    if body.guidance:
+        inputs["regenerate_guidance"] = body.guidance
+
+    new_stages = [
+        replace(
+            s,
+            status=StageStatus.RUNNING,
+            started_at=now,
+            finished_at="",
+            error="",
+            duration_ms=0,
+            outputs=None,
+            logs=(),
+            inputs=inputs or None,
+            retry_count=s.retry_count + 1,
+        )
+        if s.stage_id == stage_id
+        else s
+        for s in run.stages
+    ]
+
+    updated = replace(run, stages=tuple(new_stages), status=PipelineStatus.RUNNING)
+    await store.update(updated)
+
+    _add_report_version(
+        request,
+        run_id,
+        stage_id,
+        f"[Regenerating: {body.guidance or 'no guidance'}]",
+        "system",
+        version_type="regenerate",
+    )
+
+    await dispatch_event(
+        request,
+        StageReportRegenerated(
+            payload={
+                "resource_id": stage_id,
+                "run_id": run_id,
+                "stage_name": stage.name,
+                "guidance": body.guidance,
+            }
+        ),
+        stream_id=f"run:{run_id}",
+    )
+
+    # Resume workflow execution for regeneration
+    executor = getattr(request.app.state, "workflow_executor", None)
+    if executor is not None:
+        task = asyncio.create_task(executor.resume(run_id))
+        request.app.state._background_tasks = getattr(
+            request.app.state, "_background_tasks", set()
+        )
+        request.app.state._background_tasks.add(task)
+        task.add_done_callback(request.app.state._background_tasks.discard)
+
+    regen_stage = _find_stage(updated, stage_id)
+    return asdict(regen_stage)  # type: ignore[arg-type]

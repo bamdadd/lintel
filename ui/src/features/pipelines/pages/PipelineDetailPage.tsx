@@ -5,9 +5,7 @@ import {
   Code, ScrollArea,
 } from '@mantine/core';
 import { IconArrowLeft, IconCheck, IconRefresh, IconX } from '@tabler/icons-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import '../../chat/chat-markdown.css';
+import { StageReportEditor } from '../components/StageReportEditor';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
@@ -346,80 +344,30 @@ export function Component() {
                       </Stack>
                     )}
 
-                    {/* Research report — rendered as markdown */}
+                    {/* Research report — editable */}
                     {selectedStage.outputs?.research_report && (
-                      <Stack gap={4}>
-                        <Text size="sm" fw={600}>Research Report</Text>
-                        <Paper withBorder p="sm">
-                          <ScrollArea.Autosize mah={500}>
-                            <div className="chat-markdown" style={{ fontSize: 13 }}>
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {selectedStage.outputs.research_report as string}
-                              </ReactMarkdown>
-                            </div>
-                          </ScrollArea.Autosize>
-                        </Paper>
-                      </Stack>
+                      <StageReportEditor
+                        runId={runId!}
+                        stageId={selectedStage.stage_id}
+                        stageName={selectedStage.name}
+                        initialContent={selectedStage.outputs.research_report as string}
+                        status={selectedStage.status}
+                      />
                     )}
 
-                    {/* Plan output — rendered as task list */}
+                    {/* Plan output — editable */}
                     {selectedStage.outputs?.plan && (
-                      <Stack gap="sm">
-                        <Text size="sm" fw={600}>Plan</Text>
-                        {(selectedStage.outputs.plan as { summary?: string })?.summary && (
-                          <Text size="sm" c="dimmed" mb={4}>
-                            {(selectedStage.outputs.plan as { summary: string }).summary}
-                          </Text>
-                        )}
-                        <Stack gap="xs">
-                          {((selectedStage.outputs.plan as { tasks?: Array<{ title?: string; description?: string; complexity?: string; file_paths?: string[] }> })?.tasks ?? []).map(
-                            (task, i) => (
-                              <Paper key={i} withBorder p="sm" radius="sm">
-                                <Stack gap="xs">
-                                  <Group justify="space-between" align="center">
-                                    <Group gap="xs">
-                                      <Badge size="lg" circle variant="light" color="blue">{i + 1}</Badge>
-                                      <Text size="sm" fw={600}>{task.title ?? 'Task'}</Text>
-                                    </Group>
-                                    {task.complexity && (
-                                      <Badge
-                                        size="sm"
-                                        variant="light"
-                                        color={
-                                          task.complexity === 'XL' ? 'red' :
-                                          task.complexity === 'L' ? 'orange' :
-                                          task.complexity === 'M' ? 'yellow' :
-                                          'green'
-                                        }
-                                      >
-                                        {task.complexity}
-                                      </Badge>
-                                    )}
-                                  </Group>
-                                  {task.file_paths && task.file_paths.length > 0 && (
-                                    <Group gap={4}>
-                                      {task.file_paths.map((fp, j) => (
-                                        <Badge key={j} size="xs" variant="dot" color="gray" radius="sm">
-                                          {fp}
-                                        </Badge>
-                                      ))}
-                                    </Group>
-                                  )}
-                                  {task.description && (
-                                    <ScrollArea.Autosize mah={300}>
-                                      <div className="chat-markdown" style={{ fontSize: 12 }}>
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                          {task.description}
-                                        </ReactMarkdown>
-                                      </div>
-                                    </ScrollArea.Autosize>
-                                  )}
-                                </Stack>
-                              </Paper>
-                            ),
-                          )}
-                        </Stack>
-                      </Stack>
+                      <StageReportEditor
+                        runId={runId!}
+                        stageId={selectedStage.stage_id}
+                        stageName={selectedStage.name}
+                        initialContent={
+                          typeof selectedStage.outputs.plan === 'string'
+                            ? selectedStage.outputs.plan
+                            : JSON.stringify(selectedStage.outputs.plan, null, 2)
+                        }
+                        status={selectedStage.status}
+                      />
                     )}
 
                     {/* Other outputs (non-plan) */}

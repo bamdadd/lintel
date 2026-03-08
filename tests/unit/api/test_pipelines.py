@@ -213,3 +213,141 @@ class TestPipelinesAPI:
         stage_id = data["stages"][0]["stage_id"]
         resp = client.post(f"/api/v1/pipelines/reject-bad/stages/{stage_id}/reject")
         assert resp.status_code == 409
+
+    # --- REQ-013: Stage Report Editing ---
+
+    def test_edit_stage_report(self, client: TestClient) -> None:
+        """PATCH report updates stage outputs and returns version."""
+        data = _create_pipeline(client, "edit-run")
+        # research stage is index 3
+        stage_id = data["stages"][3]["stage_id"]
+        store = client.app.state.pipeline_store  # type: ignore[union-attr]
+        import asyncio
+        from dataclasses import replace as dc_replace
+
+        from lintel.contracts.types import StageStatus
+
+        async def _succeed() -> None:
+            run = await store.get("edit-run")
+            stages = list(run.stages)
+            stages[3] = dc_replace(
+                stages[3],
+                status=StageStatus.SUCCEEDED,
+                outputs={"research_report": "original report"},
+            )
+            await store.update(dc_replace(run, stages=tuple(stages)))
+
+        asyncio.get_event_loop().run_until_complete(_succeed())
+
+        resp = client.patch(
+            f"/api/v1/pipelines/edit-run/stages/{stage_id}/report",
+            json={"content": "edited report", "editor": "alice"},
+        )
+        assert resp.status_code == 200
+        result = resp.json()
+        assert result["version"] == 1
+        assert result["content"] == "edited report"
+        assert result["report_key"] == "research_report"
+
+    def test_edit_report_rejects_pending_stage(self, client: TestClient) -> None:
+        """Cannot edit a pending stage report."""
+        data = _create_pipeline(client, "edit-pending")
+        stage_id = data["stages"][1]["stage_id"]
+        resp = client.patch(
+            f"/api/v1/pipelines/edit-pending/stages/{stage_id}/report",
+            json={"content": "nope"},
+        )
+        assert resp.status_code == 409
+
+    def test_report_versions_empty(self, client: TestClient) -> None:
+        """No versions before any edits."""
+        data = _create_pipeline(client, "ver-run")
+        stage_id = data["stages"][1]["stage_id"]
+        resp = client.get(
+            f"/api/v1/pipelines/ver-run/stages/{stage_id}/report/versions",
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_report_versions_accumulate(self, client: TestClient) -> None:
+        """Multiple edits create version history."""
+        data = _create_pipeline(client, "ver2-run")
+        stage_id = data["stages"][3]["stage_id"]
+        store = client.app.state.pipeline_store  # type: ignore[union-attr]
+        import asyncio
+        from dataclasses import replace as dc_replace
+
+        from lintel.contracts.types import StageStatus
+
+        async def _succeed() -> None:
+            run = await store.get("ver2-run")
+            stages = list(run.stages)
+            stages[3] = dc_replace(
+                stages[3],
+                status=StageStatus.SUCCEEDED,
+                outputs={"research_report": "v0"},
+            )
+            await store.update(dc_replace(run, stages=tuple(stages)))
+
+        asyncio.get_event_loop().run_until_complete(_succeed())
+
+        client.patch(
+            f"/api/v1/pipelines/ver2-run/stages/{stage_id}/report",
+            json={"content": "v1"},
+        )
+        client.patch(
+            f"/api/v1/pipelines/ver2-run/stages/{stage_id}/report",
+            json={"content": "v2"},
+        )
+
+        resp = client.get(
+            f"/api/v1/pipelines/ver2-run/stages/{stage_id}/report/versions",
+        )
+        versions = resp.json()
+        assert len(versions) == 2
+        assert versions[0]["version"] == 1
+        assert versions[1]["version"] == 2
+        assert versions[1]["content"] == "v2"
+
+    def test_regenerate_stage(self, client: TestClient) -> None:
+        """Regenerate resets stage to running with guidance."""
+        data = _create_pipeline(client, "regen-run")
+        stage_id = data["stages"][3]["stage_id"]
+        store = client.app.state.pipeline_store  # type: ignore[union-attr]
+        import asyncio
+        from dataclasses import replace as dc_replace
+
+        from lintel.contracts.types import StageStatus
+
+        async def _succeed() -> None:
+            run = await store.get("regen-run")
+            stages = list(run.stages)
+            stages[3] = dc_replace(
+                stages[3],
+                status=StageStatus.SUCCEEDED,
+                outputs={"research_report": "old"},
+            )
+            await store.update(dc_replace(run, stages=tuple(stages)))
+
+        asyncio.get_event_loop().run_until_complete(_succeed())
+
+        resp = client.post(
+            f"/api/v1/pipelines/regen-run/stages/{stage_id}/regenerate",
+            json={"guidance": "also check auth module"},
+        )
+        assert resp.status_code == 200
+        result = resp.json()
+        assert result["status"] == "running"
+        assert result["retry_count"] == 1
+        assert result["inputs"]["regenerate_guidance"] == "also check auth module"
+        assert result["outputs"] is None
+
+    def test_regenerate_rejects_pending(self, client: TestClient) -> None:
+        """Cannot regenerate a pending stage."""
+        data = _create_pipeline(client, "regen-bad")
+        stage_id = data["stages"][1]["stage_id"]
+        resp = client.post(
+            f"/api/v1/pipelines/regen-bad/stages/{stage_id}/regenerate",
+            json={},
+        )
+        assert resp.status_code == 409
