@@ -15,4 +15,12 @@ export const AgentRole = {
   pm: 'pm',
   designer: 'designer',
   summarizer: 'summarizer',
+  architect: 'architect',
+  qa_engineer: 'qa_engineer',
+  devops: 'devops',
+  security: 'security',
+  researcher: 'researcher',
+  tech_lead: 'tech_lead',
+  documentation: 'documentation',
+  triage: 'triage',
 } as const;

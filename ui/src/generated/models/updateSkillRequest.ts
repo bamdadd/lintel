@@ -4,12 +4,14 @@
  * Lintel
  * OpenAPI spec version: 0.1.0
  */
+import type { SkillCategory } from './skillCategory';
 import type { SkillExecutionMode } from './skillExecutionMode';
 
 export interface UpdateSkillRequest {
   name?: string | null;
   description?: string | null;
   content?: string | null;
+  category?: SkillCategory | null;
   version?: string | null;
   execution_mode?: SkillExecutionMode | null;
 }

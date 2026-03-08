@@ -28,6 +28,9 @@ import type {
   AiProvidersGetAiProvider200,
   AiProvidersGetDefaultProvider200,
   AiProvidersListAiProviders200Item,
+  AiProvidersListAvailableModels200Item,
+  AiProvidersListProviderModels200Item,
+  AiProvidersListProviderTypes200Item,
   AiProvidersUpdateAiProvider200,
   AiProvidersUpdateApiKey200,
   CreateAIProviderRequest,
@@ -245,11 +248,11 @@ export const useAiProvidersCreateAiProvider = <TError = HTTPValidationError,
       return useMutation(getAiProvidersCreateAiProviderMutationOptions(options), queryClient);
     }
     /**
- * List supported AI provider types.
+ * List supported AI provider types with their field requirements.
  * @summary List Provider Types
  */
 export type aiProvidersListProviderTypesResponse200 = {
-  data: string[]
+  data: AiProvidersListProviderTypes200Item[]
   status: 200
 }
 
@@ -855,4 +858,239 @@ export const useAiProvidersUpdateApiKey = <TError = HTTPValidationError,
       > => {
       return useMutation(getAiProvidersUpdateApiKeyMutationOptions(options), queryClient);
     }
+    /**
+ * Query the provider for available models (e.g. Ollama /api/tags).
+ * @summary List Available Models
+ */
+export type aiProvidersListAvailableModelsResponse200 = {
+  data: AiProvidersListAvailableModels200Item[]
+  status: 200
+}
+
+export type aiProvidersListAvailableModelsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type aiProvidersListAvailableModelsResponseSuccess = (aiProvidersListAvailableModelsResponse200) & {
+  headers: Headers;
+};
+export type aiProvidersListAvailableModelsResponseError = (aiProvidersListAvailableModelsResponse422) & {
+  headers: Headers;
+};
+
+export type aiProvidersListAvailableModelsResponse = (aiProvidersListAvailableModelsResponseSuccess | aiProvidersListAvailableModelsResponseError)
+
+export const getAiProvidersListAvailableModelsUrl = (providerId: string,) => {
+
+
+  
+
+  return `/api/v1/ai-providers/${providerId}/available-models`
+}
+
+export const aiProvidersListAvailableModels = async (providerId: string, options?: RequestInit): Promise<aiProvidersListAvailableModelsResponse> => {
+  
+  return customInstance<aiProvidersListAvailableModelsResponse>(getAiProvidersListAvailableModelsUrl(providerId),
+  {      
+    ...options,
+    method: 'GET'
     
+    
+  }
+);}
+  
+
+
+
+
+export const getAiProvidersListAvailableModelsQueryKey = (providerId: string,) => {
+    return [
+    `/api/v1/ai-providers/${providerId}/available-models`
+    ] as const;
+    }
+
+    
+export const getAiProvidersListAvailableModelsQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError = HTTPValidationError>(providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAiProvidersListAvailableModelsQueryKey(providerId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>> = ({ signal }) => aiProvidersListAvailableModels(providerId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(providerId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AiProvidersListAvailableModelsQueryResult = NonNullable<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>>
+export type AiProvidersListAvailableModelsQueryError = HTTPValidationError
+
+
+export function useAiProvidersListAvailableModels<TData = Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError = HTTPValidationError>(
+ providerId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof aiProvidersListAvailableModels>>,
+          TError,
+          Awaited<ReturnType<typeof aiProvidersListAvailableModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAiProvidersListAvailableModels<TData = Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError = HTTPValidationError>(
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof aiProvidersListAvailableModels>>,
+          TError,
+          Awaited<ReturnType<typeof aiProvidersListAvailableModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAiProvidersListAvailableModels<TData = Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError = HTTPValidationError>(
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Available Models
+ */
+
+export function useAiProvidersListAvailableModels<TData = Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError = HTTPValidationError>(
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListAvailableModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAiProvidersListAvailableModelsQueryOptions(providerId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * List all models registered under a specific provider.
+ * @summary List Provider Models
+ */
+export type aiProvidersListProviderModelsResponse200 = {
+  data: AiProvidersListProviderModels200Item[]
+  status: 200
+}
+
+export type aiProvidersListProviderModelsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type aiProvidersListProviderModelsResponseSuccess = (aiProvidersListProviderModelsResponse200) & {
+  headers: Headers;
+};
+export type aiProvidersListProviderModelsResponseError = (aiProvidersListProviderModelsResponse422) & {
+  headers: Headers;
+};
+
+export type aiProvidersListProviderModelsResponse = (aiProvidersListProviderModelsResponseSuccess | aiProvidersListProviderModelsResponseError)
+
+export const getAiProvidersListProviderModelsUrl = (providerId: string,) => {
+
+
+  
+
+  return `/api/v1/ai-providers/${providerId}/models`
+}
+
+export const aiProvidersListProviderModels = async (providerId: string, options?: RequestInit): Promise<aiProvidersListProviderModelsResponse> => {
+  
+  return customInstance<aiProvidersListProviderModelsResponse>(getAiProvidersListProviderModelsUrl(providerId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getAiProvidersListProviderModelsQueryKey = (providerId: string,) => {
+    return [
+    `/api/v1/ai-providers/${providerId}/models`
+    ] as const;
+    }
+
+    
+export const getAiProvidersListProviderModelsQueryOptions = <TData = Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError = HTTPValidationError>(providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAiProvidersListProviderModelsQueryKey(providerId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof aiProvidersListProviderModels>>> = ({ signal }) => aiProvidersListProviderModels(providerId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(providerId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AiProvidersListProviderModelsQueryResult = NonNullable<Awaited<ReturnType<typeof aiProvidersListProviderModels>>>
+export type AiProvidersListProviderModelsQueryError = HTTPValidationError
+
+
+export function useAiProvidersListProviderModels<TData = Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError = HTTPValidationError>(
+ providerId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof aiProvidersListProviderModels>>,
+          TError,
+          Awaited<ReturnType<typeof aiProvidersListProviderModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAiProvidersListProviderModels<TData = Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError = HTTPValidationError>(
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof aiProvidersListProviderModels>>,
+          TError,
+          Awaited<ReturnType<typeof aiProvidersListProviderModels>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAiProvidersListProviderModels<TData = Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError = HTTPValidationError>(
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Provider Models
+ */
+
+export function useAiProvidersListProviderModels<TData = Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError = HTTPValidationError>(
+ providerId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof aiProvidersListProviderModels>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAiProvidersListProviderModelsQueryOptions(providerId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+

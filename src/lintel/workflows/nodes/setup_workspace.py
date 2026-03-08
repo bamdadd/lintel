@@ -99,6 +99,11 @@ async def setup_workspace(
     repo_branch = state.get("repo_branch", "main")
     feature_branch = state.get("feature_branch", "")
     work_item_id = state.get("work_item_id", "")
+    run_id = state.get("run_id", "")
+
+    # Each pipeline run gets its own directory so runs don't collide
+    workspace_root = f"/workspace/{run_id}" if run_id else "/workspace/default"
+    repo_path = f"{workspace_root}/repo"
 
     if not repo_url:
         await mark_completed(config, "setup_workspace", state, error="No repository URL")
@@ -159,10 +164,12 @@ async def setup_workspace(
             sandbox_id = existing[0].get("sandbox_id", "")
 
     if sandbox_id:
+        # Reconnect network — previous run may have disconnected it
+        await sandbox_manager.reconnect_network(sandbox_id)
         await append_log(
             config,
             "setup_workspace",
-            f"Using existing sandbox `{sandbox_id[:12]}` from pool",
+            f"Using existing sandbox `{sandbox_id[:12]}` from pool (network reconnected)",
             state,
         )
     else:
@@ -183,6 +190,12 @@ async def setup_workspace(
         )
 
     try:
+        # Create the run-specific workspace directory
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command=f"mkdir -p {workspace_root}", timeout_seconds=10),
+        )
+
         # Resolve credentials and inject into clone URL if needed
         clone_url, has_ssh_key = await _resolve_credentials(
             state, credential_store, sandbox_manager, sandbox_id, repo_url
@@ -196,7 +209,7 @@ async def setup_workspace(
         # Check if repo is already cloned in the sandbox
         repo_check = await sandbox_manager.execute(
             sandbox_id,
-            SandboxJob(command="test -d /workspace/repo/.git && echo EXISTS", timeout_seconds=10),
+            SandboxJob(command=f"test -d {repo_path}/.git && echo EXISTS", timeout_seconds=10),
         )
         repo_already_cloned = "EXISTS" in repo_check.stdout
 
@@ -209,7 +222,7 @@ async def setup_workspace(
                 state,
             )
             reset_cmd = (
-                f"cd /workspace/repo"
+                f"cd {repo_path}"
                 f" && {git_prefix}git fetch origin {repo_branch}"
                 f" && git checkout {repo_branch}"
                 f" && git reset --hard origin/{repo_branch}"
@@ -231,7 +244,7 @@ async def setup_workspace(
                 )
                 await sandbox_manager.execute(
                     sandbox_id,
-                    SandboxJob(command="rm -rf /workspace/repo", timeout_seconds=30),
+                    SandboxJob(command=f"rm -rf {repo_path}", timeout_seconds=30),
                 )
                 repo_already_cloned = False
             else:
@@ -248,7 +261,7 @@ async def setup_workspace(
                     command=(
                         f"{git_prefix}git clone --depth=1"
                         f" --branch {repo_branch}"
-                        f" {clone_url} /workspace/repo"
+                        f" {clone_url} {repo_path}"
                     ),
                     timeout_seconds=120,
                 ),
@@ -265,10 +278,10 @@ async def setup_workspace(
         # Verify the repo exists in the sandbox
         verify_result = await sandbox_manager.execute(
             sandbox_id,
-            SandboxJob(command="ls /workspace/repo", timeout_seconds=10),
+            SandboxJob(command=f"ls {repo_path}", timeout_seconds=10),
         )
         if verify_result.exit_code != 0:
-            error_msg = "Repo not found at /workspace/repo after clone/reset"
+            error_msg = f"Repo not found at {repo_path} after clone/reset"
             await append_log(config, "setup_workspace", error_msg, state)
             await mark_completed(config, "setup_workspace", state, error=error_msg)
             raise RuntimeError(error_msg)
@@ -281,7 +294,7 @@ async def setup_workspace(
         branch_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
-                command=(f"cd /workspace/repo && git checkout -b {feature_branch}"),
+                command=f"cd {repo_path} && git checkout -b {feature_branch}",
                 timeout_seconds=30,
             ),
         )
@@ -305,7 +318,7 @@ async def setup_workspace(
                     sandbox_id,
                     extra_url,
                 )
-            target = f"/workspace/repo-{idx}"
+            target = f"{workspace_root}/repo-{idx}"
             await sandbox_manager.execute(
                 sandbox_id,
                 SandboxJob(
@@ -345,11 +358,13 @@ async def setup_workspace(
                 "sandbox_id": sandbox_id,
                 "repo_url": repo_url,
                 "feature_branch": feature_branch,
+                "workspace_path": repo_path,
             },
         )
         return {
             "sandbox_id": sandbox_id,
             "feature_branch": feature_branch,
+            "workspace_path": repo_path,
             "current_phase": "planning",
         }
     except Exception:

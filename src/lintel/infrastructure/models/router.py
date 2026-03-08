@@ -47,11 +47,18 @@ class DefaultModelRouter:
         provider = await self._ai_provider_store.get(model.provider_id)
         if provider is None:
             return None
+        extra: dict[str, object] = {}
+        if provider.config:
+            extra.update(provider.config)
+        if getattr(model, "config", None):
+            extra.update(model.config)
+        extra_params: dict[str, object] | None = extra or None
         return ModelPolicy(
             provider=provider.provider_type.value,
             model_name=model.model_name,
             max_tokens=model.max_tokens,
             temperature=model.temperature,
+            extra_params=extra_params,
         )
 
     async def _resolve_from_assignment(self, agent_role: str) -> ModelPolicy | None:

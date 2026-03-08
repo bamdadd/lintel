@@ -16,7 +16,7 @@ class TestDockerSandboxManager:
         mock_client.containers.create.return_value = mock_container
         manager._client = mock_client
 
-        config = SandboxConfig(image="python:3.12-slim")
+        config = SandboxConfig(image="mcr.microsoft.com/devcontainers/base:ubuntu")
         thread_ref = ThreadRef("W1", "C1", "t1")
 
         sandbox_id = await manager.create(config, thread_ref)
@@ -27,7 +27,7 @@ class TestDockerSandboxManager:
         assert create_kwargs[1]["read_only"] is False  # writable for workspace
         assert create_kwargs[1]["network_mode"] == "none"
         assert create_kwargs[1]["security_opt"] == ["no-new-privileges:true"]
-        assert "user" not in create_kwargs[1]  # runs as root for git/apt access
+        assert "user" not in create_kwargs[1]  # runs as root
         mock_container.start.assert_called_once()
 
     async def test_execute_returns_sandbox_result(self) -> None:

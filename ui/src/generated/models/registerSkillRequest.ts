@@ -6,6 +6,7 @@
  */
 import type { RegisterSkillRequestInputSchema } from './registerSkillRequestInputSchema';
 import type { RegisterSkillRequestOutputSchema } from './registerSkillRequestOutputSchema';
+import type { SkillCategory } from './skillCategory';
 import type { SkillExecutionMode } from './skillExecutionMode';
 
 export interface RegisterSkillRequest {
@@ -14,6 +15,7 @@ export interface RegisterSkillRequest {
   name: string;
   description?: string;
   content?: string;
+  category?: SkillCategory;
   input_schema?: RegisterSkillRequestInputSchema;
   output_schema?: RegisterSkillRequestOutputSchema;
   execution_mode?: SkillExecutionMode;

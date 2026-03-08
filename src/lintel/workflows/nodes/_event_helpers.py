@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 from lintel.contracts.types import AuditEntry
 
 
+@runtime_checkable
+class _AuditStore(Protocol):
+    async def add(self, entry: AuditEntry) -> None: ...
+
+
 async def emit_audit_entry(
-    audit_store: object | None,
+    audit_store: _AuditStore | None,
     *,
     actor_id: str,
     actor_type: str,

@@ -214,7 +214,7 @@ class SkillResult:
 class SandboxConfig:
     """Configuration for creating a sandbox container."""
 
-    image: str = "python:3.12-slim"
+    image: str = "mcr.microsoft.com/devcontainers/base:ubuntu"
     memory_limit: str = "512m"
     cpu_quota: int = 50000
     network_enabled: bool = False

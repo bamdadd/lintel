@@ -10,11 +10,7 @@ export interface CreateProjectRequest {
   project_id?: string;
   name: string;
   repo_ids?: string[];
-  channel_id?: string;
-  workspace_id?: string;
-  workflow_definition_id?: string;
   default_branch?: string;
   credential_ids?: string[];
-  ai_provider_id?: string;
   status?: ProjectStatus;
 }

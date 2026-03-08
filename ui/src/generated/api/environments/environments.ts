@@ -28,7 +28,6 @@ import type {
   EnvironmentsCreateEnvironment201,
   EnvironmentsGetEnvironment200,
   EnvironmentsListEnvironments200Item,
-  EnvironmentsListEnvironmentsParams,
   EnvironmentsUpdateEnvironment200,
   HTTPValidationError,
   UpdateEnvironmentRequest
@@ -38,6 +37,116 @@ import { customInstance } from '../../../shared/api/client';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
+
+/**
+ * @summary List Environments
+ */
+export type environmentsListEnvironmentsResponse200 = {
+  data: EnvironmentsListEnvironments200Item[]
+  status: 200
+}
+
+export type environmentsListEnvironmentsResponseSuccess = (environmentsListEnvironmentsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type environmentsListEnvironmentsResponse = (environmentsListEnvironmentsResponseSuccess)
+
+export const getEnvironmentsListEnvironmentsUrl = () => {
+
+
+  
+
+  return `/api/v1/environments`
+}
+
+export const environmentsListEnvironments = async ( options?: RequestInit): Promise<environmentsListEnvironmentsResponse> => {
+  
+  return customInstance<environmentsListEnvironmentsResponse>(getEnvironmentsListEnvironmentsUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getEnvironmentsListEnvironmentsQueryKey = () => {
+    return [
+    `/api/v1/environments`
+    ] as const;
+    }
+
+    
+export const getEnvironmentsListEnvironmentsQueryOptions = <TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getEnvironmentsListEnvironmentsQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof environmentsListEnvironments>>> = ({ signal }) => environmentsListEnvironments({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type EnvironmentsListEnvironmentsQueryResult = NonNullable<Awaited<ReturnType<typeof environmentsListEnvironments>>>
+export type EnvironmentsListEnvironmentsQueryError = unknown
+
+
+export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof environmentsListEnvironments>>,
+          TError,
+          Awaited<ReturnType<typeof environmentsListEnvironments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof environmentsListEnvironments>>,
+          TError,
+          Awaited<ReturnType<typeof environmentsListEnvironments>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Environments
+ */
+
+export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getEnvironmentsListEnvironmentsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
 
 
 
@@ -131,130 +240,6 @@ export const useEnvironmentsCreateEnvironment = <TError = HTTPValidationError,
       return useMutation(getEnvironmentsCreateEnvironmentMutationOptions(options), queryClient);
     }
     /**
- * @summary List Environments
- */
-export type environmentsListEnvironmentsResponse200 = {
-  data: EnvironmentsListEnvironments200Item[]
-  status: 200
-}
-
-export type environmentsListEnvironmentsResponse422 = {
-  data: HTTPValidationError
-  status: 422
-}
-
-export type environmentsListEnvironmentsResponseSuccess = (environmentsListEnvironmentsResponse200) & {
-  headers: Headers;
-};
-export type environmentsListEnvironmentsResponseError = (environmentsListEnvironmentsResponse422) & {
-  headers: Headers;
-};
-
-export type environmentsListEnvironmentsResponse = (environmentsListEnvironmentsResponseSuccess | environmentsListEnvironmentsResponseError)
-
-export const getEnvironmentsListEnvironmentsUrl = (params?: EnvironmentsListEnvironmentsParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/v1/environments?${stringifiedParams}` : `/api/v1/environments`
-}
-
-export const environmentsListEnvironments = async (params?: EnvironmentsListEnvironmentsParams, options?: RequestInit): Promise<environmentsListEnvironmentsResponse> => {
-  
-  return customInstance<environmentsListEnvironmentsResponse>(getEnvironmentsListEnvironmentsUrl(params),
-  {      
-    ...options,
-    method: 'GET'
-    
-    
-  }
-);}
-  
-
-
-
-
-export const getEnvironmentsListEnvironmentsQueryKey = (params?: EnvironmentsListEnvironmentsParams,) => {
-    return [
-    `/api/v1/environments`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-    
-export const getEnvironmentsListEnvironmentsQueryOptions = <TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getEnvironmentsListEnvironmentsQueryKey(params);
-
-  
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof environmentsListEnvironments>>> = ({ signal }) => environmentsListEnvironments(params, { signal, ...requestOptions });
-
-      
-
-      
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type EnvironmentsListEnvironmentsQueryResult = NonNullable<Awaited<ReturnType<typeof environmentsListEnvironments>>>
-export type EnvironmentsListEnvironmentsQueryError = HTTPValidationError
-
-
-export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(
- params: undefined |  EnvironmentsListEnvironmentsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof environmentsListEnvironments>>,
-          TError,
-          Awaited<ReturnType<typeof environmentsListEnvironments>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(
- params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof environmentsListEnvironments>>,
-          TError,
-          Awaited<ReturnType<typeof environmentsListEnvironments>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(
- params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List Environments
- */
-
-export function useEnvironmentsListEnvironments<TData = Awaited<ReturnType<typeof environmentsListEnvironments>>, TError = HTTPValidationError>(
- params?: EnvironmentsListEnvironmentsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof environmentsListEnvironments>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
- , queryClient?: QueryClient 
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getEnvironmentsListEnvironmentsQueryOptions(params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-/**
  * @summary Get Environment
  */
 export type environmentsGetEnvironmentResponse200 = {

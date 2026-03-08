@@ -91,19 +91,6 @@ class DockerSandboxManager:
         await asyncio.to_thread(container.start)
         self._containers[sandbox_id] = container
 
-        # Install git if not present (python:3.12-slim doesn't include it)
-        check = await asyncio.to_thread(
-            container.exec_run,
-            cmd="which git",
-            demux=True,
-        )
-        if check.exit_code != 0:
-            await asyncio.to_thread(
-                container.exec_run,
-                cmd="sh -c 'apt-get update -qq && apt-get install -y -qq git >/dev/null 2>&1'",
-                demux=True,
-            )
-
         return sandbox_id
 
     async def execute(
@@ -201,6 +188,16 @@ class DockerSandboxManager:
             sandbox_id, SandboxJob(command="git diff", workdir="/workspace")
         )
         return {"type": "diff", "content": result.stdout, "exit_code": result.exit_code}
+
+    async def reconnect_network(self, sandbox_id: str) -> None:
+        """Reconnect the sandbox container to the bridge network."""
+        container = self._get_container(sandbox_id)
+        client = self._get_client()
+        await asyncio.to_thread(container.reload)
+        networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
+        if "bridge" not in networks:
+            bridge = await asyncio.to_thread(client.networks.get, "bridge")
+            await asyncio.to_thread(bridge.connect, container)
 
     async def disconnect_network(self, sandbox_id: str) -> None:
         """Disconnect the sandbox container from all networks."""

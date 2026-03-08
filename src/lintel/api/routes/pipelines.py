@@ -151,7 +151,7 @@ async def list_stages(
     run = await store.get(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
-    return [asdict(s) if hasattr(s, "__dataclass_fields__") else dict(s) for s in run.stages]
+    return [asdict(s) for s in run.stages]
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}")
@@ -164,9 +164,8 @@ async def get_stage(
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     for stage in run.stages:
-        sid = stage.stage_id if hasattr(stage, "stage_id") else stage.get("stage_id", "")
-        if sid == stage_id:
-            return asdict(stage) if hasattr(stage, "__dataclass_fields__") else dict(stage)
+        if stage.stage_id == stage_id:
+            return asdict(stage)
     raise HTTPException(status_code=404, detail="Stage not found")
 
 
@@ -228,8 +227,7 @@ async def delete_pipeline(
 
 def _find_stage(run: PipelineRun, stage_id: str) -> Stage | None:
     for s in run.stages:
-        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
-        if sid == stage_id:
+        if s.stage_id == stage_id:
             return s
     return None
 
@@ -327,7 +325,7 @@ async def retry_stage(
     now = datetime.now(UTC).isoformat()
     new_stages = []
     for s in run.stages:
-        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
+        sid = s.stage_id
         if sid == stage_id:
             new_stages.append(
                 replace(
@@ -382,7 +380,7 @@ async def reject_stage(
     new_stages = []
     rejected = False
     for s in run.stages:
-        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
+        sid = s.stage_id
         if sid == stage_id:
             new_stages.append(replace(s, status=StageStatus.REJECTED))
             rejected = True
@@ -468,7 +466,7 @@ async def approve_stage(
     # Mark stage as approved
     new_stages = []
     for s in run.stages:
-        sid = s.stage_id if hasattr(s, "stage_id") else s.get("stage_id", "")
+        sid = s.stage_id
         if sid == stage_id:
             new_stages.append(replace(s, status=StageStatus.APPROVED))
         else:

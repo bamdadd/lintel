@@ -60,6 +60,9 @@ class DummySandboxManager:
     async def collect_artifacts(self, sandbox_id: str) -> dict[str, Any]:
         return {}
 
+    async def reconnect_network(self, sandbox_id: str) -> None:
+        pass
+
     async def disconnect_network(self, sandbox_id: str) -> None:
         self.network_disconnected.append(sandbox_id)
 
@@ -158,6 +161,7 @@ def _make_state(**overrides: Any) -> dict[str, Any]:  # noqa: ANN401
         "error": None,
         "project_id": "proj-1",
         "work_item_id": "wi-123",
+        "run_id": "test-run-1",
         "repo_url": "https://github.com/test/repo.git",
         "repo_branch": "main",
         "feature_branch": "",
@@ -181,11 +185,13 @@ class TestSetupWorkspace:
         assert result["current_phase"] == "planning"
         assert "lintel/feat/wi-123" in result["feature_branch"]
         assert len(manager.created) == 1
-        assert len(manager.executed) == 4  # repo check + clone + verify + checkout
-        assert "test -d" in manager.executed[0]
-        assert "git clone" in manager.executed[1]
-        assert "ls /workspace/repo" in manager.executed[2]
-        assert "git checkout -b" in manager.executed[3]
+        assert len(manager.executed) == 5  # mkdir + repo check + clone + verify + checkout
+        assert "mkdir -p" in manager.executed[0]
+        assert "test -d" in manager.executed[1]
+        assert "git clone" in manager.executed[2]
+        assert "ls /workspace/test-run-1/repo" in manager.executed[3]
+        assert "git checkout -b" in manager.executed[4]
+        assert result["workspace_path"] == "/workspace/test-run-1/repo"
 
     async def test_raises_without_repo_url(self) -> None:
         manager = DummySandboxManager()
@@ -227,7 +233,7 @@ class TestSetupWorkspace:
         )
 
         assert result["feature_branch"] == "custom/my-branch"
-        assert "custom/my-branch" in manager.executed[3]  # checkout is 4th command
+        assert "custom/my-branch" in manager.executed[4]  # checkout is 5th command (after mkdir)
 
     async def test_injects_variables_into_sandbox_config(self) -> None:
         manager = DummySandboxManager()
@@ -303,7 +309,7 @@ class TestSetupWorkspace:
 
         assert result["sandbox_id"] is not None
         assert result["current_phase"] == "planning"
-        clone_cmd = manager.executed[1]  # index 1 = clone (after repo check)
+        clone_cmd = manager.executed[2]  # index 2 = clone (after mkdir + repo check)
         assert "x-access-token:ghp_abc123secret@github.com" in clone_cmd
 
     async def test_network_disconnected_after_clone(self) -> None:
@@ -333,8 +339,8 @@ class TestSetupWorkspace:
         branch = result["feature_branch"]
         # Should follow lintel/fix/<id[:8]>-<slug> pattern for bug intent
         assert branch.startswith("lintel/fix/wi-123-")
-        assert "git checkout -b" in manager.executed[3]
-        assert branch in manager.executed[3]
+        assert "git checkout -b" in manager.executed[4]
+        assert branch in manager.executed[4]
 
     async def test_multi_repo_clones_additional_repos(self) -> None:
         """When repo_urls has multiple entries, additional repos are cloned."""
@@ -352,10 +358,10 @@ class TestSetupWorkspace:
         )
 
         assert result["sandbox_id"] is not None
-        # repo check + clone + verify + checkout + secondary clone = 5 commands
-        assert len(manager.executed) == 5
-        assert "/workspace/repo-1" in manager.executed[4]
-        assert "repo2.git" in manager.executed[4]
+        # mkdir + repo check + clone + verify + checkout + secondary clone = 6 commands
+        assert len(manager.executed) == 6
+        assert "/workspace/test-run-1/repo-1" in manager.executed[5]
+        assert "repo2.git" in manager.executed[5]
 
     async def test_clone_works_without_credentials(self) -> None:
         """Public repo clone works when no credential_store is given."""
@@ -369,7 +375,7 @@ class TestSetupWorkspace:
 
         assert result["sandbox_id"] is not None
         assert result["current_phase"] == "planning"
-        clone_cmd = manager.executed[1]  # index 1 = clone (after repo check)
+        clone_cmd = manager.executed[2]  # index 2 = clone (after mkdir + repo check)
         # URL should be unchanged — no token injection
         assert "x-access-token" not in clone_cmd
         assert "https://github.com/test/repo.git" in clone_cmd

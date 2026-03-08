@@ -189,12 +189,18 @@ async def _resolve_model(
     if provider is None:
         return None, None
 
+    # Merge provider config (e.g. aws_profile_name, aws_region_name) with model config
+    extra: dict[str, object] = {}
+    if provider.config:
+        extra.update(provider.config)
+    if model.config:
+        extra.update(model.config)
     policy = ModelPolicy(
         provider=provider.provider_type.value,
         model_name=model.model_name,
         max_tokens=model.max_tokens,
         temperature=model.temperature,
-        extra_params=model.config,
+        extra_params=extra or None,
     )
     api_base = provider.api_base or None
     return policy, api_base
@@ -570,7 +576,7 @@ async def _handle_classified_message(
     proj_ctx = _build_project_context(project, repo_url, branch)
     chat_router = request.app.state.chat_router
     try:
-        reply = await chat_router.reply(
+        reply: str = await chat_router.reply(
             message,
             model_policy=model_policy,
             api_base=api_base,
@@ -736,7 +742,8 @@ async def send_message(
                 ),
                 stream_id=f"conversation:{conversation_id}",
             )
-            conv.pop("_pending_workflow", None)
+            if conv is not None:
+                conv.pop("_pending_workflow", None)
             await _dispatch_workflow(
                 request,
                 store,

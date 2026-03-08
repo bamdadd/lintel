@@ -202,6 +202,11 @@ class SandboxManager(Protocol):
         sandbox_id: str,
     ) -> dict[str, Any]: ...
 
+    async def reconnect_network(
+        self,
+        sandbox_id: str,
+    ) -> None: ...
+
     async def disconnect_network(
         self,
         sandbox_id: str,

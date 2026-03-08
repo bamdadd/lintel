@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 IMPLEMENT_SYSTEM_PROMPT = """\
 You are a senior software engineer implementing a feature in a codebase.
-You have access to a sandbox with the project cloned at /workspace/repo.
+You have access to a sandbox with the project cloned at the workspace path provided below.
 
 You will be given a plan with tasks. Implement each task by:
 1. Reading relevant files to understand the code
@@ -56,9 +56,8 @@ async def spawn_implementation(
         }
 
     logger.info(
-        "implementation_started",
-        phase="implementing",
-        thread_ref=state.get("thread_ref", ""),
+        "implementation_started phase=implementing thread_ref=%s",
+        state.get("thread_ref", ""),
     )
 
     sandbox_id = state.get("sandbox_id")

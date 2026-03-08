@@ -29,7 +29,12 @@ import type {
   HTTPValidationError,
   SandboxesCreateSandbox201,
   SandboxesExecuteCommand200,
+  SandboxesGetFileTree200,
+  SandboxesGetFileTreeParams,
+  SandboxesGetSandboxLogs200,
+  SandboxesGetSandboxLogsParams,
   SandboxesGetSandboxStatus200,
+  SandboxesListSandboxPresets200,
   SandboxesListSandboxes200Item,
   SandboxesReadFile200,
   SandboxesReadFileParams,
@@ -41,6 +46,117 @@ import { customInstance } from '../../../shared/api/client';
 
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+
+
+/**
+ * List available sandbox presets.
+ * @summary List Sandbox Presets
+ */
+export type sandboxesListSandboxPresetsResponse200 = {
+  data: SandboxesListSandboxPresets200
+  status: 200
+}
+
+export type sandboxesListSandboxPresetsResponseSuccess = (sandboxesListSandboxPresetsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type sandboxesListSandboxPresetsResponse = (sandboxesListSandboxPresetsResponseSuccess)
+
+export const getSandboxesListSandboxPresetsUrl = () => {
+
+
+  
+
+  return `/api/v1/sandboxes/presets`
+}
+
+export const sandboxesListSandboxPresets = async ( options?: RequestInit): Promise<sandboxesListSandboxPresetsResponse> => {
+  
+  return customInstance<sandboxesListSandboxPresetsResponse>(getSandboxesListSandboxPresetsUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getSandboxesListSandboxPresetsQueryKey = () => {
+    return [
+    `/api/v1/sandboxes/presets`
+    ] as const;
+    }
+
+    
+export const getSandboxesListSandboxPresetsQueryOptions = <TData = Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSandboxesListSandboxPresetsQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>> = ({ signal }) => sandboxesListSandboxPresets({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SandboxesListSandboxPresetsQueryResult = NonNullable<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>>
+export type SandboxesListSandboxPresetsQueryError = unknown
+
+
+export function useSandboxesListSandboxPresets<TData = Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesListSandboxPresets>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesListSandboxPresets>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesListSandboxPresets<TData = Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesListSandboxPresets>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesListSandboxPresets>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesListSandboxPresets<TData = Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Sandbox Presets
+ */
+
+export function useSandboxesListSandboxPresets<TData = Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesListSandboxPresets>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSandboxesListSandboxPresetsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
 
 
 
@@ -453,6 +569,139 @@ export const useSandboxesDestroySandbox = <TError = HTTPValidationError,
       return useMutation(getSandboxesDestroySandboxMutationOptions(options), queryClient);
     }
     /**
+ * Get container logs for a sandbox.
+ * @summary Get Sandbox Logs
+ */
+export type sandboxesGetSandboxLogsResponse200 = {
+  data: SandboxesGetSandboxLogs200
+  status: 200
+}
+
+export type sandboxesGetSandboxLogsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type sandboxesGetSandboxLogsResponseSuccess = (sandboxesGetSandboxLogsResponse200) & {
+  headers: Headers;
+};
+export type sandboxesGetSandboxLogsResponseError = (sandboxesGetSandboxLogsResponse422) & {
+  headers: Headers;
+};
+
+export type sandboxesGetSandboxLogsResponse = (sandboxesGetSandboxLogsResponseSuccess | sandboxesGetSandboxLogsResponseError)
+
+export const getSandboxesGetSandboxLogsUrl = (sandboxId: string,
+    params?: SandboxesGetSandboxLogsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/sandboxes/${sandboxId}/logs?${stringifiedParams}` : `/api/v1/sandboxes/${sandboxId}/logs`
+}
+
+export const sandboxesGetSandboxLogs = async (sandboxId: string,
+    params?: SandboxesGetSandboxLogsParams, options?: RequestInit): Promise<sandboxesGetSandboxLogsResponse> => {
+  
+  return customInstance<sandboxesGetSandboxLogsResponse>(getSandboxesGetSandboxLogsUrl(sandboxId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getSandboxesGetSandboxLogsQueryKey = (sandboxId: string,
+    params?: SandboxesGetSandboxLogsParams,) => {
+    return [
+    `/api/v1/sandboxes/${sandboxId}/logs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+    
+export const getSandboxesGetSandboxLogsQueryOptions = <TData = Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError = HTTPValidationError>(sandboxId: string,
+    params?: SandboxesGetSandboxLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSandboxesGetSandboxLogsQueryKey(sandboxId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>> = ({ signal }) => sandboxesGetSandboxLogs(sandboxId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(sandboxId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SandboxesGetSandboxLogsQueryResult = NonNullable<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>>
+export type SandboxesGetSandboxLogsQueryError = HTTPValidationError
+
+
+export function useSandboxesGetSandboxLogs<TData = Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params: undefined |  SandboxesGetSandboxLogsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesGetSandboxLogs<TData = Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params?: SandboxesGetSandboxLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesGetSandboxLogs<TData = Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params?: SandboxesGetSandboxLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Sandbox Logs
+ */
+
+export function useSandboxesGetSandboxLogs<TData = Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params?: SandboxesGetSandboxLogsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetSandboxLogs>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSandboxesGetSandboxLogsQueryOptions(sandboxId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
  * Execute a command in a sandbox.
  * @summary Execute Command
  */
@@ -758,6 +1007,139 @@ export function useSandboxesReadFile<TData = Awaited<ReturnType<typeof sandboxes
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getSandboxesReadFileQueryOptions(sandboxId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * Get a file tree from the sandbox, similar to Docker Desktop's file browser.
+ * @summary Get File Tree
+ */
+export type sandboxesGetFileTreeResponse200 = {
+  data: SandboxesGetFileTree200
+  status: 200
+}
+
+export type sandboxesGetFileTreeResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type sandboxesGetFileTreeResponseSuccess = (sandboxesGetFileTreeResponse200) & {
+  headers: Headers;
+};
+export type sandboxesGetFileTreeResponseError = (sandboxesGetFileTreeResponse422) & {
+  headers: Headers;
+};
+
+export type sandboxesGetFileTreeResponse = (sandboxesGetFileTreeResponseSuccess | sandboxesGetFileTreeResponseError)
+
+export const getSandboxesGetFileTreeUrl = (sandboxId: string,
+    params?: SandboxesGetFileTreeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/sandboxes/${sandboxId}/tree?${stringifiedParams}` : `/api/v1/sandboxes/${sandboxId}/tree`
+}
+
+export const sandboxesGetFileTree = async (sandboxId: string,
+    params?: SandboxesGetFileTreeParams, options?: RequestInit): Promise<sandboxesGetFileTreeResponse> => {
+  
+  return customInstance<sandboxesGetFileTreeResponse>(getSandboxesGetFileTreeUrl(sandboxId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getSandboxesGetFileTreeQueryKey = (sandboxId: string,
+    params?: SandboxesGetFileTreeParams,) => {
+    return [
+    `/api/v1/sandboxes/${sandboxId}/tree`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+    
+export const getSandboxesGetFileTreeQueryOptions = <TData = Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError = HTTPValidationError>(sandboxId: string,
+    params?: SandboxesGetFileTreeParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSandboxesGetFileTreeQueryKey(sandboxId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sandboxesGetFileTree>>> = ({ signal }) => sandboxesGetFileTree(sandboxId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(sandboxId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SandboxesGetFileTreeQueryResult = NonNullable<Awaited<ReturnType<typeof sandboxesGetFileTree>>>
+export type SandboxesGetFileTreeQueryError = HTTPValidationError
+
+
+export function useSandboxesGetFileTree<TData = Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params: undefined |  SandboxesGetFileTreeParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesGetFileTree>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesGetFileTree>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesGetFileTree<TData = Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params?: SandboxesGetFileTreeParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sandboxesGetFileTree>>,
+          TError,
+          Awaited<ReturnType<typeof sandboxesGetFileTree>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSandboxesGetFileTree<TData = Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params?: SandboxesGetFileTreeParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get File Tree
+ */
+
+export function useSandboxesGetFileTree<TData = Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError = HTTPValidationError>(
+ sandboxId: string,
+    params?: SandboxesGetFileTreeParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sandboxesGetFileTree>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSandboxesGetFileTreeQueryOptions(sandboxId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
