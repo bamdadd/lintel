@@ -65,7 +65,7 @@ export function Component() {
   const [githubToken, setGithubToken] = useState('');
   const [repoStatus, setRepoStatus] = useState<StepStatus>('pending');
   const [repoError, setRepoError] = useState('');
-  const [repoId, setRepoId] = useState('');
+
 
   // Step 3: Chat (optional)
   const [slackToken, setSlackToken] = useState('');
@@ -135,13 +135,12 @@ export function Component() {
           secret: githubToken,
         });
       }
-      const repo = await apiPost('/repositories', {
+      await apiPost('/repositories', {
         name: repoName,
         url: repoUrl,
         default_branch: repoBranch,
         provider: 'github',
       });
-      setRepoId(repo.repo_id ?? '');
       setRepoStatus('done');
       setActive(2);
     } catch (e) {

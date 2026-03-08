@@ -15,6 +15,7 @@ import {
   useEnvironmentsDeleteEnvironment,
 } from '@/generated/api/environments/environments';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
+import type { EnvironmentType } from '@/generated/models/environmentType';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface EnvItem {
@@ -46,7 +47,7 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<EnvItem | null>(null);
 
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = [{ value: '', label: '— None —' }, ...projects.map((p) => ({ value: p.project_id, label: p.name }))];
 
   const form = useForm({
@@ -60,7 +61,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const envs = (resp?.data ?? []) as EnvItem[];
+  const envs = (resp?.data ?? []) as unknown as EnvItem[];
 
   const handleCreate = form.onSubmit((values) => {
     let config: Record<string, unknown> | null = null;
@@ -68,7 +69,7 @@ export function Component() {
       try { config = JSON.parse(values.config); } catch { notifications.show({ title: 'Error', message: 'Invalid JSON', color: 'red' }); return; }
     }
     createMut.mutate(
-      { data: { ...values, config } },
+      { data: { ...values, env_type: values.env_type as EnvironmentType, config } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: 'Environment created', color: 'green' });
@@ -92,7 +93,7 @@ export function Component() {
       try { config = JSON.parse(values.config); } catch { notifications.show({ title: 'Error', message: 'Invalid JSON', color: 'red' }); return; }
     }
     updateMut.mutate(
-      { environmentId: editItem.environment_id, data: { name: values.name, env_type: values.env_type, config } },
+      { environmentId: editItem.environment_id, data: { name: values.name, env_type: values.env_type as EnvironmentType, config } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Updated', message: 'Environment updated', color: 'green' });

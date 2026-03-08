@@ -7,7 +7,6 @@ import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconPlug, IconPlugOff, IconTool } from '@tabler/icons-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface MCPServerItem {
@@ -26,26 +25,6 @@ interface MCPTool {
 }
 
 const API = '/api/v1/mcp-servers';
-
-function useApi<T>(url: string) {
-  const [data, setData] = useState<T | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const qc = useQueryClient();
-
-  // Simple fetch on mount + when queryClient invalidates
-  useState(() => {
-    fetch(url).then(r => r.json()).then(d => { setData(d); setIsLoading(false); })
-      .catch(() => setIsLoading(false));
-  });
-
-  const refetch = () => {
-    setIsLoading(true);
-    fetch(url).then(r => r.json()).then(d => { setData(d); setIsLoading(false); })
-      .catch(() => setIsLoading(false));
-  };
-
-  return { data, isLoading, refetch };
-}
 
 export function Component() {
   const [servers, setServers] = useState<MCPServerItem[]>([]);

@@ -42,7 +42,7 @@ export function Component() {
   const [form, setForm] = useState({ name: '', url: '', credential_ids: [] as string[] });
   const repos = resp?.data;
 
-  const credentials = (credsResp?.data ?? []) as Credential[];
+  const credentials = (credsResp?.data ?? []) as unknown as Credential[];
   const credentialOptions = credentials.map((c) => ({
     value: c.credential_id,
     label: `${c.name} (${c.credential_type})`,

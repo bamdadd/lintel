@@ -63,8 +63,8 @@ export function Component() {
   const [memberFilter, setMemberFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
 
-  const users = (usersResp?.data ?? []) as UserItem[];
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
+  const users = (usersResp?.data ?? []) as unknown as UserItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
 
   const createForm = useForm({
     initialValues: { name: '' },
@@ -81,7 +81,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const teams = (resp?.data ?? []) as TeamItem[];
+  const teams = (resp?.data ?? []) as unknown as TeamItem[];
 
   const handleCreate = createForm.onSubmit((values) => {
     createMutation.mutate(

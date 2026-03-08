@@ -16,6 +16,7 @@ import {
 } from '@/generated/api/notifications/notifications';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { EmptyState } from '@/shared/components/EmptyState';
+import type { NotificationChannel } from '@/generated/models/notificationChannel';
 
 interface RuleItem {
   rule_id: string;
@@ -45,7 +46,7 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editRule, setEditRule] = useState<RuleItem | null>(null);
 
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
 
   const form = useForm({
@@ -63,7 +64,7 @@ export function Component() {
 
   const handleCreate = form.onSubmit((values) => {
     createMut.mutate(
-      { data: values },
+      { data: { ...values, channel: values.channel as NotificationChannel } },
       {
         onSuccess: () => {
           notify.show({ title: 'Created', message: 'Notification rule added', color: 'green' });

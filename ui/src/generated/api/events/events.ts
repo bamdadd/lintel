@@ -256,9 +256,7 @@ export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsList
 
 
 /**
- * Get events for a specific stream.
-
-Placeholder: requires EventStore (PostgreSQL) to be wired.
+ * Get events for a specific stream from the event store.
  * @summary Get Events By Stream
  */
 export type eventsGetEventsByStreamResponse200 = {
@@ -376,9 +374,7 @@ export function useEventsGetEventsByStream<TData = Awaited<ReturnType<typeof eve
 
 
 /**
- * Get events by correlation ID.
-
-Placeholder: requires EventStore (PostgreSQL) to be wired.
+ * Get events by correlation ID from the event store.
  * @summary Get Events By Correlation
  */
 export type eventsGetEventsByCorrelationResponse200 = {

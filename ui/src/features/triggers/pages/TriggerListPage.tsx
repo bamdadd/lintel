@@ -18,6 +18,7 @@ import {
   useTriggersDeleteTrigger,
 } from '@/generated/api/triggers/triggers';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
+import type { TriggerType } from '@/generated/models/triggerType';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface TriggerItem {
@@ -78,7 +79,7 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<TriggerItem | null>(null);
 
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
 
   const form = useForm({
@@ -100,7 +101,7 @@ export function Component() {
       try { config = JSON.parse(values.config); } catch { notifications.show({ title: 'Error', message: 'Invalid JSON config', color: 'red' }); return; }
     }
     createMut.mutate(
-      { data: { ...values, config } },
+      { data: { ...values, trigger_type: values.trigger_type as TriggerType, config } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: 'Trigger created', color: 'green' });
@@ -160,7 +161,7 @@ export function Component() {
       ) : (
         <Stack gap="xs">
           {triggers.map((t) => {
-            const meta = TRIGGER_META[t.trigger_type] ?? TRIGGER_META.manual;
+            const meta = (TRIGGER_META[t.trigger_type] ?? TRIGGER_META.manual)!;
             const Icon = meta.icon;
             return (
               <Paper key={t.trigger_id} withBorder p="sm" style={{ cursor: 'pointer' }} onClick={() => openEdit(t)}>

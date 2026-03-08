@@ -45,7 +45,7 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const navigate = useNavigate();
 
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
 
   const form = useForm({

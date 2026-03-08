@@ -168,7 +168,7 @@ export function Component() {
   }));
 
   const dagEdges = stages.slice(1).map((s, i) => ({
-    source: stages[i].stage_id,
+    source: stages[i]!.stage_id,
     target: s.stage_id,
   }));
 
@@ -288,7 +288,7 @@ export function Component() {
                     ) : null}
 
                     {/* Sandbox info */}
-                    {selectedStage.outputs?.sandbox_id && (
+                    {!!selectedStage.outputs?.sandbox_id && (
                       <Group gap="xs">
                         <Text size="sm">Sandbox:</Text>
                         <Badge
@@ -357,7 +357,7 @@ export function Component() {
                     )}
 
                     {/* Research report — editable */}
-                    {selectedStage.outputs?.research_report && (
+                    {!!selectedStage.outputs?.research_report && (
                       <StageReportEditor
                         runId={runId!}
                         stageId={selectedStage.stage_id}
@@ -368,8 +368,8 @@ export function Component() {
                     )}
 
                     {/* Plan output — structured view */}
-                    {selectedStage.outputs?.plan && (
-                      <PlanView plan={selectedStage.outputs.plan as Record<string, unknown> | string} />
+                    {!!selectedStage.outputs?.plan && (
+                      <PlanView plan={selectedStage.outputs.plan as unknown as React.ComponentProps<typeof PlanView>['plan']} />
                     )}
 
                     {/* Other outputs (non-plan) */}

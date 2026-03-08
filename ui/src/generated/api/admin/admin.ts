@@ -5,16 +5,27 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
-  useMutation
+  useMutation,
+  useQuery
 } from '@tanstack/react-query';
 import type {
+  DataTag,
+  DefinedInitialDataOptions,
+  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
+  QueryFunction,
+  QueryKey,
+  UndefinedInitialDataOptions,
   UseMutationOptions,
-  UseMutationResult
+  UseMutationResult,
+  UseQueryOptions,
+  UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
+  AdminClearCache200,
+  AdminGetCacheStats200,
   AdminResetProjections200
 } from '../../models';
 
@@ -106,5 +117,198 @@ export const useAdminResetProjections = <TError = unknown,
         TContext
       > => {
       return useMutation(getAdminResetProjectionsMutationOptions(options), queryClient);
+    }
+    /**
+ * Return model router cache hit/miss statistics.
+ * @summary Get Cache Stats
+ */
+export type adminGetCacheStatsResponse200 = {
+  data: AdminGetCacheStats200
+  status: 200
+}
+
+export type adminGetCacheStatsResponseSuccess = (adminGetCacheStatsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type adminGetCacheStatsResponse = (adminGetCacheStatsResponseSuccess)
+
+export const getAdminGetCacheStatsUrl = () => {
+
+
+  
+
+  return `/api/v1/admin/cache-stats`
+}
+
+export const adminGetCacheStats = async ( options?: RequestInit): Promise<adminGetCacheStatsResponse> => {
+  
+  return customInstance<adminGetCacheStatsResponse>(getAdminGetCacheStatsUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getAdminGetCacheStatsQueryKey = () => {
+    return [
+    `/api/v1/admin/cache-stats`
+    ] as const;
+    }
+
+    
+export const getAdminGetCacheStatsQueryOptions = <TData = Awaited<ReturnType<typeof adminGetCacheStats>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetCacheStats>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminGetCacheStatsQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetCacheStats>>> = ({ signal }) => adminGetCacheStats({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminGetCacheStats>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdminGetCacheStatsQueryResult = NonNullable<Awaited<ReturnType<typeof adminGetCacheStats>>>
+export type AdminGetCacheStatsQueryError = unknown
+
+
+export function useAdminGetCacheStats<TData = Awaited<ReturnType<typeof adminGetCacheStats>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetCacheStats>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminGetCacheStats>>,
+          TError,
+          Awaited<ReturnType<typeof adminGetCacheStats>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminGetCacheStats<TData = Awaited<ReturnType<typeof adminGetCacheStats>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetCacheStats>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminGetCacheStats>>,
+          TError,
+          Awaited<ReturnType<typeof adminGetCacheStats>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminGetCacheStats<TData = Awaited<ReturnType<typeof adminGetCacheStats>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetCacheStats>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Cache Stats
+ */
+
+export function useAdminGetCacheStats<TData = Awaited<ReturnType<typeof adminGetCacheStats>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetCacheStats>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdminGetCacheStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * Flush the model router response cache.
+ * @summary Clear Cache
+ */
+export type adminClearCacheResponse200 = {
+  data: AdminClearCache200
+  status: 200
+}
+
+export type adminClearCacheResponseSuccess = (adminClearCacheResponse200) & {
+  headers: Headers;
+};
+;
+
+export type adminClearCacheResponse = (adminClearCacheResponseSuccess)
+
+export const getAdminClearCacheUrl = () => {
+
+
+  
+
+  return `/api/v1/admin/cache-clear`
+}
+
+export const adminClearCache = async ( options?: RequestInit): Promise<adminClearCacheResponse> => {
+  
+  return customInstance<adminClearCacheResponse>(getAdminClearCacheUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getAdminClearCacheMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearCache>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminClearCache>>, TError,void, TContext> => {
+
+const mutationKey = ['adminClearCache'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminClearCache>>, void> = () => {
+          
+
+          return  adminClearCache(requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminClearCacheMutationResult = NonNullable<Awaited<ReturnType<typeof adminClearCache>>>
+    
+    export type AdminClearCacheMutationError = unknown
+
+    /**
+ * @summary Clear Cache
+ */
+export const useAdminClearCache = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminClearCache>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof adminClearCache>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAdminClearCacheMutationOptions(options), queryClient);
     }
     

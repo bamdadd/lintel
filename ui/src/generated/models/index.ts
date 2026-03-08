@@ -5,6 +5,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminClearCache200';
+export * from './adminGetCacheStats200';
 export * from './adminResetProjections200';
 export * from './agentRole';
 export * from './agentsCreateAgentDefinition201';
@@ -145,11 +147,14 @@ export * from './piiVaultActivityLog200Item';
 export * from './pipelinesApproveStage200';
 export * from './pipelinesCancelPipeline200';
 export * from './pipelinesCreatePipeline201';
+export * from './pipelinesEditStageReport200';
 export * from './pipelinesGetPipeline200';
 export * from './pipelinesGetStage200';
 export * from './pipelinesListPipelines200Item';
 export * from './pipelinesListPipelinesParams';
+export * from './pipelinesListReportVersions200Item';
 export * from './pipelinesListStages200Item';
+export * from './pipelinesRegenerateStage200';
 export * from './pipelinesRejectStage200';
 export * from './pipelinesRetryStage200';
 export * from './policiesCreatePolicy201';
@@ -164,18 +169,21 @@ export * from './projectsGetProject200';
 export * from './projectsListProjects200Item';
 export * from './projectStatus';
 export * from './projectsUpdateProject200';
+export * from './regeneratePayload';
 export * from './registerRepoRequest';
 export * from './registerSkillRequest';
 export * from './registerSkillRequestInputSchema';
 export * from './registerSkillRequestOutputSchema';
 export * from './rejectApprovalRequest';
 export * from './rejectBody';
+export * from './reportEditPayload';
 export * from './repositoriesGetRepository200';
 export * from './repositoriesListRepositories200Item';
 export * from './repositoriesRegisterRepository201';
 export * from './repositoriesUpdateRepository200';
 export * from './repoStatus';
 export * from './revealPIIRequest';
+export * from './sandboxesCleanupWorkspace200';
 export * from './sandboxesCreateSandbox201';
 export * from './sandboxesExecuteCommand200';
 export * from './sandboxesGetFileTree200';

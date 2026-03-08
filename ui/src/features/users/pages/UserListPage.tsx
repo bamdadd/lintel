@@ -15,6 +15,7 @@ import {
   useUsersDeleteUser,
 } from '@/generated/api/users/users';
 import { useTeamsListTeams } from '@/generated/api/teams/teams';
+import type { UserRole } from '@/generated/models/userRole';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface UserItem {
@@ -38,7 +39,7 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editUser, setEditUser] = useState<UserItem | null>(null);
 
-  const teams = (teamsResp?.data ?? []) as TeamItem[];
+  const teams = (teamsResp?.data ?? []) as unknown as TeamItem[];
   const teamOptions = teams.map((t) => ({ value: t.team_id, label: t.name }));
 
   const form = useForm({
@@ -52,11 +53,11 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const users = (resp?.data ?? []) as UserItem[];
+  const users = (resp?.data ?? []) as unknown as UserItem[];
 
   const handleSubmit = form.onSubmit((values) => {
     createMutation.mutate(
-      { data: values },
+      { data: { ...values, role: values.role as UserRole } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: `User "${values.name}" added`, color: 'green' });
@@ -79,7 +80,7 @@ export function Component() {
   const handleEdit = editForm.onSubmit((values) => {
     if (!editUser) return;
     updateMutation.mutate(
-      { userId: editUser.user_id, data: values },
+      { userId: editUser.user_id, data: { ...values, role: values.role as UserRole } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Updated', message: `User "${values.name}" updated`, color: 'green' });

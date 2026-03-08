@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   Stack, Group, Text, Button, Paper, Textarea, ScrollArea, Badge,
-  Collapse, TextInput, Divider,
+  Collapse, TextInput,
 } from '@mantine/core';
 import {
   IconPencil, IconDeviceFloppy, IconRefresh, IconHistory, IconX,

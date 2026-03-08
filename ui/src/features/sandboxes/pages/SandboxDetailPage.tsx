@@ -208,7 +208,7 @@ export function Component() {
       if (history.length === 0) return;
       const newIndex = historyIndex < history.length - 1 ? historyIndex + 1 : historyIndex;
       setHistoryIndex(newIndex);
-      setCommand(history[history.length - 1 - newIndex]);
+      setCommand(history[history.length - 1 - newIndex] ?? '');
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (historyIndex <= 0) {
@@ -217,7 +217,7 @@ export function Component() {
       } else {
         const newIndex = historyIndex - 1;
         setHistoryIndex(newIndex);
-        setCommand(history[history.length - 1 - newIndex]);
+        setCommand(history[history.length - 1 - newIndex] ?? '');
       }
     } else if (e.key === 'Enter') {
       handleExecute();
@@ -252,7 +252,7 @@ export function Component() {
             setLines((prev) => [...prev, { type: 'output', text: output }]);
           }
           if (data.stderr) {
-            setLines((prev) => [...prev, { type: 'error', text: data.stderr }]);
+            setLines((prev) => [...prev, { type: 'error', text: data.stderr! }]);
           }
           if (!output && !data.stderr && !isCd) {
             setLines((prev) => [...prev, { type: 'output', text: '(no output)' }]);

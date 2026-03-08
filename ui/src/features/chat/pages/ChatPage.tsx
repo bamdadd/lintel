@@ -7,7 +7,6 @@ import {
   Paper,
   Text,
   TextInput,
-  Button,
   ActionIcon,
   Loader,
   Center,
@@ -122,7 +121,7 @@ export function Component() {
   useEffect(() => {
     if (!selectedModelId && models.length > 0) {
       const defaultModel = models.find((m) => m.is_default);
-      setSelectedModelId(defaultModel?.model_id ?? models[0].model_id);
+      setSelectedModelId(defaultModel?.model_id ?? models[0]?.model_id ?? null);
     }
   }, [models, selectedModelId]);
 

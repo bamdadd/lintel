@@ -1272,6 +1272,53 @@
         }
       }
     },
+    "/api/v1/sandboxes/{sandbox_id}/cleanup-workspace": {
+      "post": {
+        "tags": [
+          "sandboxes"
+        ],
+        "summary": "Cleanup Workspace",
+        "description": "Remove all files from /workspace in the sandbox.",
+        "operationId": "sandboxes_cleanup_workspace",
+        "parameters": [
+          {
+            "name": "sandbox_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sandbox Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Sandboxes Cleanup Workspace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/skills": {
       "get": {
         "tags": [
@@ -1625,7 +1672,7 @@
           "events"
         ],
         "summary": "Get Events By Stream",
-        "description": "Get events for a specific stream.\n\nPlaceholder: requires EventStore (PostgreSQL) to be wired.",
+        "description": "Get events for a specific stream from the event store.",
         "operationId": "events_get_events_by_stream",
         "parameters": [
           {
@@ -1670,7 +1717,7 @@
           "events"
         ],
         "summary": "Get Events By Correlation",
-        "description": "Get events by correlation ID.\n\nPlaceholder: requires EventStore (PostgreSQL) to be wired.",
+        "description": "Get events by correlation ID from the event store.",
         "operationId": "events_get_events_by_correlation",
         "parameters": [
           {
@@ -3803,6 +3850,47 @@
         }
       }
     },
+    "/api/v1/pipelines/{run_id}/events": {
+      "get": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "Stream Pipeline Events",
+        "description": "Stream pipeline stage status changes via SSE for real-time UI updates.",
+        "operationId": "pipelines_stream_pipeline_events",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/pipelines/{run_id}/stages/{stage_id}/retry": {
       "post": {
         "tags": [
@@ -3948,6 +4036,191 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Pipelines Approve Stage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pipelines/{run_id}/stages/{stage_id}/report": {
+      "patch": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "Edit Stage Report",
+        "description": "Edit the report output of a completed or waiting_approval stage.",
+        "operationId": "pipelines_edit_stage_report",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportEditPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pipelines Edit Stage Report"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pipelines/{run_id}/stages/{stage_id}/report/versions": {
+      "get": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "List Report Versions",
+        "description": "List all versions of a stage report.",
+        "operationId": "pipelines_list_report_versions",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Pipelines List Report Versions"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pipelines/{run_id}/stages/{stage_id}/regenerate": {
+      "post": {
+        "tags": [
+          "pipelines"
+        ],
+        "summary": "Regenerate Stage",
+        "description": "Re-run a stage with optional guidance, resetting it to running.",
+        "operationId": "pipelines_regenerate_stage",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "stage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stage Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegeneratePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pipelines Regenerate Stage"
                 }
               }
             }
@@ -7365,6 +7638,58 @@
           }
         }
       }
+    },
+    "/api/v1/admin/cache-stats": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Cache Stats",
+        "description": "Return model router cache hit/miss statistics.",
+        "operationId": "admin_get_cache_stats",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Admin Get Cache Stats"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/cache-clear": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Clear Cache",
+        "description": "Flush the model router response cache.",
+        "operationId": "admin_clear_cache",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Admin Clear Cache"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -8628,6 +8953,19 @@
         ],
         "title": "ProjectStatus"
       },
+      "RegeneratePayload": {
+        "properties": {
+          "guidance": {
+            "type": "string",
+            "title": "Guidance",
+            "description": "Optional prompt to guide regeneration",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "RegeneratePayload",
+        "description": "Body for regenerating a stage report."
+      },
       "RegisterRepoRequest": {
         "properties": {
           "repo_id": {
@@ -8781,6 +9119,27 @@
           "error"
         ],
         "title": "RepoStatus"
+      },
+      "ReportEditPayload": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "description": "Updated report content (Markdown)"
+          },
+          "editor": {
+            "type": "string",
+            "title": "Editor",
+            "description": "Who made the edit",
+            "default": "user"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "ReportEditPayload",
+        "description": "Body for editing a stage report."
       },
       "RevealPIIRequest": {
         "properties": {

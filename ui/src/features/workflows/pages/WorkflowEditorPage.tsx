@@ -115,7 +115,7 @@ export function Component() {
         if (Array.isArray(rawEdges[0]) && typeof (rawEdges[0] as unknown[])[0] === 'string') {
           // Backend format: [["a", "b"], ...]
           setEdges((rawEdges as string[][]).map(([src, tgt]) => ({
-            id: `e-${src}-${tgt}`, source: src, target: tgt,
+            id: `e-${src}-${tgt}`, source: src!, target: tgt!,
           })));
         } else {
           // ReactFlow format: [{id, source, target}, ...]
@@ -271,7 +271,7 @@ export function Component() {
                 onChange={(v) => v && updateNodeData('role', v)}
               />
             )}
-            {selectedNode.data.agent_id && (
+            {!!selectedNode.data.agent_id && (
               <Text size="xs">
                 Agent:{' '}
                 <Text component={Link} to={`/agents/${selectedNode.data.agent_id}`} size="xs" c="blue" td="underline" span>
@@ -279,7 +279,7 @@ export function Component() {
                 </Text>
               </Text>
             )}
-            {selectedNode.data.description && (
+            {!!selectedNode.data.description && (
               <Paper p="xs" bg="var(--mantine-color-dark-6)" radius="sm">
                 <Text size="xs" fw={500} mb={4}>Description</Text>
                 <Text size="xs" c="dimmed">{String(selectedNode.data.description)}</Text>

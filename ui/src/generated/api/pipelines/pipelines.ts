@@ -29,13 +29,18 @@ import type {
   PipelinesApproveStage200,
   PipelinesCancelPipeline200,
   PipelinesCreatePipeline201,
+  PipelinesEditStageReport200,
   PipelinesGetPipeline200,
   PipelinesGetStage200,
   PipelinesListPipelines200Item,
   PipelinesListPipelinesParams,
+  PipelinesListReportVersions200Item,
   PipelinesListStages200Item,
+  PipelinesRegenerateStage200,
   PipelinesRejectStage200,
-  PipelinesRetryStage200
+  PipelinesRetryStage200,
+  RegeneratePayload,
+  ReportEditPayload
 } from '../../models';
 
 import { customInstance } from '../../../shared/api/client';
@@ -920,6 +925,124 @@ export function usePipelinesStreamStageLogs<TData = Awaited<ReturnType<typeof pi
 
 
 /**
+ * Stream pipeline stage status changes via SSE for real-time UI updates.
+ * @summary Stream Pipeline Events
+ */
+export type pipelinesStreamPipelineEventsResponse200 = {
+  data: unknown
+  status: 200
+}
+
+export type pipelinesStreamPipelineEventsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type pipelinesStreamPipelineEventsResponseSuccess = (pipelinesStreamPipelineEventsResponse200) & {
+  headers: Headers;
+};
+export type pipelinesStreamPipelineEventsResponseError = (pipelinesStreamPipelineEventsResponse422) & {
+  headers: Headers;
+};
+
+export type pipelinesStreamPipelineEventsResponse = (pipelinesStreamPipelineEventsResponseSuccess | pipelinesStreamPipelineEventsResponseError)
+
+export const getPipelinesStreamPipelineEventsUrl = (runId: string,) => {
+
+
+  
+
+  return `/api/v1/pipelines/${runId}/events`
+}
+
+export const pipelinesStreamPipelineEvents = async (runId: string, options?: RequestInit): Promise<pipelinesStreamPipelineEventsResponse> => {
+  
+  return customInstance<pipelinesStreamPipelineEventsResponse>(getPipelinesStreamPipelineEventsUrl(runId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getPipelinesStreamPipelineEventsQueryKey = (runId: string,) => {
+    return [
+    `/api/v1/pipelines/${runId}/events`
+    ] as const;
+    }
+
+    
+export const getPipelinesStreamPipelineEventsQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError = HTTPValidationError>(runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPipelinesStreamPipelineEventsQueryKey(runId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>> = ({ signal }) => pipelinesStreamPipelineEvents(runId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(runId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PipelinesStreamPipelineEventsQueryResult = NonNullable<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>>
+export type PipelinesStreamPipelineEventsQueryError = HTTPValidationError
+
+
+export function usePipelinesStreamPipelineEvents<TData = Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError = HTTPValidationError>(
+ runId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>,
+          TError,
+          Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePipelinesStreamPipelineEvents<TData = Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError = HTTPValidationError>(
+ runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>,
+          TError,
+          Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePipelinesStreamPipelineEvents<TData = Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError = HTTPValidationError>(
+ runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Stream Pipeline Events
+ */
+
+export function usePipelinesStreamPipelineEvents<TData = Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError = HTTPValidationError>(
+ runId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesStreamPipelineEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPipelinesStreamPipelineEventsQueryOptions(runId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
  * Retry a failed or stuck stage. Resets it to running and re-invokes the node.
  * @summary Retry Stage
  */
@@ -1191,5 +1314,317 @@ export const usePipelinesApproveStage = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getPipelinesApproveStageMutationOptions(options), queryClient);
+    }
+    /**
+ * Edit the report output of a completed or waiting_approval stage.
+ * @summary Edit Stage Report
+ */
+export type pipelinesEditStageReportResponse200 = {
+  data: PipelinesEditStageReport200
+  status: 200
+}
+
+export type pipelinesEditStageReportResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type pipelinesEditStageReportResponseSuccess = (pipelinesEditStageReportResponse200) & {
+  headers: Headers;
+};
+export type pipelinesEditStageReportResponseError = (pipelinesEditStageReportResponse422) & {
+  headers: Headers;
+};
+
+export type pipelinesEditStageReportResponse = (pipelinesEditStageReportResponseSuccess | pipelinesEditStageReportResponseError)
+
+export const getPipelinesEditStageReportUrl = (runId: string,
+    stageId: string,) => {
+
+
+  
+
+  return `/api/v1/pipelines/${runId}/stages/${stageId}/report`
+}
+
+export const pipelinesEditStageReport = async (runId: string,
+    stageId: string,
+    reportEditPayload: ReportEditPayload, options?: RequestInit): Promise<pipelinesEditStageReportResponse> => {
+  
+  return customInstance<pipelinesEditStageReportResponse>(getPipelinesEditStageReportUrl(runId,stageId),
+  {      
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reportEditPayload,)
+  }
+);}
+  
+
+
+
+export const getPipelinesEditStageReportMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesEditStageReport>>, TError,{runId: string;stageId: string;data: ReportEditPayload}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof pipelinesEditStageReport>>, TError,{runId: string;stageId: string;data: ReportEditPayload}, TContext> => {
+
+const mutationKey = ['pipelinesEditStageReport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pipelinesEditStageReport>>, {runId: string;stageId: string;data: ReportEditPayload}> = (props) => {
+          const {runId,stageId,data} = props ?? {};
+
+          return  pipelinesEditStageReport(runId,stageId,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PipelinesEditStageReportMutationResult = NonNullable<Awaited<ReturnType<typeof pipelinesEditStageReport>>>
+    export type PipelinesEditStageReportMutationBody = ReportEditPayload
+    export type PipelinesEditStageReportMutationError = HTTPValidationError
+
+    /**
+ * @summary Edit Stage Report
+ */
+export const usePipelinesEditStageReport = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesEditStageReport>>, TError,{runId: string;stageId: string;data: ReportEditPayload}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof pipelinesEditStageReport>>,
+        TError,
+        {runId: string;stageId: string;data: ReportEditPayload},
+        TContext
+      > => {
+      return useMutation(getPipelinesEditStageReportMutationOptions(options), queryClient);
+    }
+    /**
+ * List all versions of a stage report.
+ * @summary List Report Versions
+ */
+export type pipelinesListReportVersionsResponse200 = {
+  data: PipelinesListReportVersions200Item[]
+  status: 200
+}
+
+export type pipelinesListReportVersionsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type pipelinesListReportVersionsResponseSuccess = (pipelinesListReportVersionsResponse200) & {
+  headers: Headers;
+};
+export type pipelinesListReportVersionsResponseError = (pipelinesListReportVersionsResponse422) & {
+  headers: Headers;
+};
+
+export type pipelinesListReportVersionsResponse = (pipelinesListReportVersionsResponseSuccess | pipelinesListReportVersionsResponseError)
+
+export const getPipelinesListReportVersionsUrl = (runId: string,
+    stageId: string,) => {
+
+
+  
+
+  return `/api/v1/pipelines/${runId}/stages/${stageId}/report/versions`
+}
+
+export const pipelinesListReportVersions = async (runId: string,
+    stageId: string, options?: RequestInit): Promise<pipelinesListReportVersionsResponse> => {
+  
+  return customInstance<pipelinesListReportVersionsResponse>(getPipelinesListReportVersionsUrl(runId,stageId),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getPipelinesListReportVersionsQueryKey = (runId: string,
+    stageId: string,) => {
+    return [
+    `/api/v1/pipelines/${runId}/stages/${stageId}/report/versions`
+    ] as const;
+    }
+
+    
+export const getPipelinesListReportVersionsQueryOptions = <TData = Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError = HTTPValidationError>(runId: string,
+    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPipelinesListReportVersionsQueryKey(runId,stageId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pipelinesListReportVersions>>> = ({ signal }) => pipelinesListReportVersions(runId,stageId, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(runId && stageId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PipelinesListReportVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof pipelinesListReportVersions>>>
+export type PipelinesListReportVersionsQueryError = HTTPValidationError
+
+
+export function usePipelinesListReportVersions<TData = Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError = HTTPValidationError>(
+ runId: string,
+    stageId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pipelinesListReportVersions>>,
+          TError,
+          Awaited<ReturnType<typeof pipelinesListReportVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePipelinesListReportVersions<TData = Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError = HTTPValidationError>(
+ runId: string,
+    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pipelinesListReportVersions>>,
+          TError,
+          Awaited<ReturnType<typeof pipelinesListReportVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePipelinesListReportVersions<TData = Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError = HTTPValidationError>(
+ runId: string,
+    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Report Versions
+ */
+
+export function usePipelinesListReportVersions<TData = Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError = HTTPValidationError>(
+ runId: string,
+    stageId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof pipelinesListReportVersions>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPipelinesListReportVersionsQueryOptions(runId,stageId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * Re-run a stage with optional guidance, resetting it to running.
+ * @summary Regenerate Stage
+ */
+export type pipelinesRegenerateStageResponse200 = {
+  data: PipelinesRegenerateStage200
+  status: 200
+}
+
+export type pipelinesRegenerateStageResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type pipelinesRegenerateStageResponseSuccess = (pipelinesRegenerateStageResponse200) & {
+  headers: Headers;
+};
+export type pipelinesRegenerateStageResponseError = (pipelinesRegenerateStageResponse422) & {
+  headers: Headers;
+};
+
+export type pipelinesRegenerateStageResponse = (pipelinesRegenerateStageResponseSuccess | pipelinesRegenerateStageResponseError)
+
+export const getPipelinesRegenerateStageUrl = (runId: string,
+    stageId: string,) => {
+
+
+  
+
+  return `/api/v1/pipelines/${runId}/stages/${stageId}/regenerate`
+}
+
+export const pipelinesRegenerateStage = async (runId: string,
+    stageId: string,
+    regeneratePayload: RegeneratePayload, options?: RequestInit): Promise<pipelinesRegenerateStageResponse> => {
+  
+  return customInstance<pipelinesRegenerateStageResponse>(getPipelinesRegenerateStageUrl(runId,stageId),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      regeneratePayload,)
+  }
+);}
+  
+
+
+
+export const getPipelinesRegenerateStageMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesRegenerateStage>>, TError,{runId: string;stageId: string;data: RegeneratePayload}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof pipelinesRegenerateStage>>, TError,{runId: string;stageId: string;data: RegeneratePayload}, TContext> => {
+
+const mutationKey = ['pipelinesRegenerateStage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pipelinesRegenerateStage>>, {runId: string;stageId: string;data: RegeneratePayload}> = (props) => {
+          const {runId,stageId,data} = props ?? {};
+
+          return  pipelinesRegenerateStage(runId,stageId,data,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PipelinesRegenerateStageMutationResult = NonNullable<Awaited<ReturnType<typeof pipelinesRegenerateStage>>>
+    export type PipelinesRegenerateStageMutationBody = RegeneratePayload
+    export type PipelinesRegenerateStageMutationError = HTTPValidationError
+
+    /**
+ * @summary Regenerate Stage
+ */
+export const usePipelinesRegenerateStage = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pipelinesRegenerateStage>>, TError,{runId: string;stageId: string;data: RegeneratePayload}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof pipelinesRegenerateStage>>,
+        TError,
+        {runId: string;stageId: string;data: RegeneratePayload},
+        TContext
+      > => {
+      return useMutation(getPipelinesRegenerateStageMutationOptions(options), queryClient);
     }
     

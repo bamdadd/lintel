@@ -25,6 +25,7 @@ import {
   useCredentialsStoreCredential,
   useCredentialsRevokeCredential,
 } from '@/generated/api/credentials/credentials';
+import type { CredentialType } from '@/generated/models/credentialType';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface Credential {
@@ -54,7 +55,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const credentials = (resp?.data ?? []) as Credential[];
+  const credentials = (resp?.data ?? []) as unknown as Credential[];
   const isSSHKey = form.values.credential_type === 'ssh_key';
 
   const handleSubmit = form.onSubmit((values) => {
@@ -62,7 +63,7 @@ export function Component() {
       {
         data: {
           name: values.name,
-          credential_type: values.credential_type as 'github_token' | 'ssh_key' | 'api_key',
+          credential_type: values.credential_type as CredentialType,
           secret: values.secret,
         },
       },

@@ -17,6 +17,7 @@ import {
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { useUsersListUsers } from '@/generated/api/users/users';
 import { EmptyState } from '@/shared/components/EmptyState';
+import type { PolicyAction } from '@/generated/models/policyAction';
 
 interface PolicyItem {
   policy_id: string;
@@ -51,8 +52,8 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<PolicyItem | null>(null);
 
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
-  const users = (usersResp?.data ?? []) as UserItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
+  const users = (usersResp?.data ?? []) as unknown as UserItem[];
   const projectOptions = [{ value: '', label: '— Global —' }, ...projects.map((p) => ({ value: p.project_id, label: p.name }))];
   const userOptions = users.map((u) => ({ value: u.user_id, label: u.name }));
 
@@ -71,7 +72,7 @@ export function Component() {
 
   const handleCreate = form.onSubmit((values) => {
     createMut.mutate(
-      { data: values },
+      { data: { ...values, action: values.action as PolicyAction } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: 'Policy created', color: 'green' });
@@ -91,7 +92,7 @@ export function Component() {
   const handleEdit = editFormState.onSubmit((values) => {
     if (!editItem) return;
     updateMut.mutate(
-      { policyId: editItem.policy_id, data: values },
+      { policyId: editItem.policy_id, data: { ...values, action: values.action as PolicyAction } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Updated', message: 'Policy updated', color: 'green' });

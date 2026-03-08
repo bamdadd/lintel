@@ -51,7 +51,7 @@ migrate: ## Run event store migrations
 	LINTEL_DB_DSN=$${LINTEL_DB_DSN:-postgresql://lintel:lintel@localhost:5432/lintel} \
 		uv run python -m lintel.infrastructure.event_store.migrate
 
-all: lint typecheck test-unit test-postgres ## Run lint, typecheck, and tests (both backends)
+all: lint typecheck test-unit test-postgres ui-build ## Run lint, typecheck, tests, and UI build
 
 ui-install: ## Install UI dependencies
 	cd ui && bun install

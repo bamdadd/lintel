@@ -16,6 +16,7 @@ import {
   useAiProvidersDeleteAiProvider,
   useAiProvidersUpdateApiKey,
 } from '@/generated/api/ai-providers/ai-providers';
+import type { AIProviderType } from '@/generated/models/aIProviderType';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface ProviderItem {
@@ -103,7 +104,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const providers = (resp?.data ?? []) as ProviderItem[];
+  const providers = (resp?.data ?? []) as unknown as ProviderItem[];
 
   const handleCreate = form.onSubmit((values) => {
     let config: Record<string, unknown> = {};
@@ -116,7 +117,7 @@ export function Component() {
     }
     const { aws_region: _r, aws_profile: _p, ...rest } = values;
     createMut.mutate(
-      { data: { ...rest, config } },
+      { data: { ...rest, provider_type: rest.provider_type as AIProviderType, config } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: 'AI Provider added', color: 'green' });

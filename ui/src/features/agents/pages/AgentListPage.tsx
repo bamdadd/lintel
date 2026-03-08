@@ -55,7 +55,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const definitions = (defsResp?.data ?? []) as AgentDef[];
+  const definitions = (defsResp?.data ?? []) as unknown as AgentDef[];
 
   // Group by category
   const grouped = new Map<string, AgentDef[]>();

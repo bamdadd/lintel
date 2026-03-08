@@ -57,7 +57,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const projects = (resp?.data ?? []) as Project[];
+  const projects = (resp?.data ?? []) as unknown as Project[];
   const repos = (reposResp?.data ?? []) as Array<{ repo_id: string; name?: string; url?: string }>;
   const repoOptions = repos.map((r) => ({ value: r.repo_id, label: r.name ?? r.url ?? r.repo_id }));
 

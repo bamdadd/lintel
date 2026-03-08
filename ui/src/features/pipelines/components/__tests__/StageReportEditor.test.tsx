@@ -57,7 +57,7 @@ describe('StageReportEditor', () => {
     const textarea = screen.getByRole('textbox');
     fireEvent.change(textarea, { target: { value: 'changed' } });
     // Find Cancel next to Save (in edit toolbar)
-    const cancelBtn = screen.getAllByRole('button', { name: /cancel/i })[0];
+    const cancelBtn = screen.getAllByRole('button', { name: /cancel/i })[0]!;
     fireEvent.click(cancelBtn);
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.getByText('Findings here')).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe('StageReportEditor', () => {
     renderEditor();
     // Open regenerate panel
     const regenButtons = screen.getAllByRole('button', { name: /regenerate/i });
-    fireEvent.click(regenButtons[0]);
+    fireEvent.click(regenButtons[0]!);
 
     // Guidance input should appear (inside Collapse)
     await waitFor(() => {

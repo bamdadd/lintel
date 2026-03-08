@@ -44,8 +44,8 @@ export function Component() {
   const updateMut = useProjectsUpdateProject();
   const deleteMut = useProjectsRemoveProject();
 
-  const repos = (reposResp?.data ?? []) as RepoItem[];
-  const providers = (providersResp?.data ?? []) as ProviderItem[];
+  const repos = (reposResp?.data ?? []) as unknown as RepoItem[];
+  const providers = (providersResp?.data ?? []) as unknown as ProviderItem[];
   const repoOptions = repos.map((r) => ({ value: r.repo_id, label: r.name }));
   const providerOptions = [{ value: '', label: '— None —' }, ...providers.map((p) => ({ value: p.provider_id, label: p.name }))];
 

@@ -41,8 +41,8 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<VarItem | null>(null);
 
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
-  const envs = (envsResp?.data ?? []) as EnvItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
+  const envs = (envsResp?.data ?? []) as unknown as EnvItem[];
   const projectOptions = [{ value: '', label: '— Global —' }, ...projects.map((p) => ({ value: p.project_id, label: p.name }))];
   const envOptions = [{ value: '', label: '— All —' }, ...envs.map((e) => ({ value: e.environment_id, label: e.name }))];
 

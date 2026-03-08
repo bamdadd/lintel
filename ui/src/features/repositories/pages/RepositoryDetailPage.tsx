@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router';
 import { useState } from 'react';
 import {
-  Title, Stack, Paper, Text, Group, Button, Badge, Loader, Center,
+  Title, Stack, Paper, Text, Group, Button, Loader, Center,
   TextInput, Select, Modal,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -13,6 +13,7 @@ import {
   useRepositoriesRemoveRepository,
 } from '@/generated/api/repositories/repositories';
 import { StatusBadge } from '@/shared/components/StatusBadge';
+import type { RepoStatus } from '@/generated/models/repoStatus';
 
 interface RepoData {
   repo_id: string;
@@ -57,7 +58,7 @@ export function Component() {
 
   const handleSave = form.onSubmit((values) => {
     updateMut.mutate(
-      { repoId: repo.repo_id, data: values },
+      { repoId: repo.repo_id, data: { ...values, status: values.status as RepoStatus } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Updated', message: 'Repository updated', color: 'green' });

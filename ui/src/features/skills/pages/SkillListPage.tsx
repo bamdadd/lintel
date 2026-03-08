@@ -28,6 +28,8 @@ import {
   useSkillsUpdateSkill,
   useSkillsDeleteSkill,
 } from '@/generated/api/skills/skills';
+import type { SkillCategory } from '@/generated/models/skillCategory';
+import type { SkillExecutionMode } from '@/generated/models/skillExecutionMode';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface Skill {
@@ -94,11 +96,11 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const skills = (resp?.data ?? []) as Skill[];
+  const skills = (resp?.data ?? []) as unknown as Skill[];
 
   const handleCreate = createForm.onSubmit((values) => {
     registerMutation.mutate(
-      { data: { ...values, input_schema: {}, output_schema: {} } },
+      { data: { ...values, category: values.category as SkillCategory, execution_mode: values.execution_mode as SkillExecutionMode, input_schema: {}, output_schema: {} } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: `Skill "${values.name}" registered`, color: 'green' });
@@ -128,7 +130,7 @@ export function Component() {
   const handleEdit = editForm.onSubmit((values) => {
     if (!editSkill) return;
     updateMutation.mutate(
-      { skillId: editSkill.skill_id, data: values },
+      { skillId: editSkill.skill_id, data: { ...values, category: values.category as SkillCategory, execution_mode: values.execution_mode as SkillExecutionMode } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Updated', message: `Skill "${values.name}" updated`, color: 'green' });

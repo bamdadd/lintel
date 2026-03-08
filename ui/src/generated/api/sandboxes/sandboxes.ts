@@ -27,6 +27,7 @@ import type {
   CreateSandboxRequest,
   ExecuteRequest,
   HTTPValidationError,
+  SandboxesCleanupWorkspace200,
   SandboxesCreateSandbox201,
   SandboxesExecuteCommand200,
   SandboxesGetFileTree200,
@@ -1149,3 +1150,93 @@ export function useSandboxesGetFileTree<TData = Awaited<ReturnType<typeof sandbo
 
 
 
+/**
+ * Remove all files from /workspace in the sandbox.
+ * @summary Cleanup Workspace
+ */
+export type sandboxesCleanupWorkspaceResponse200 = {
+  data: SandboxesCleanupWorkspace200
+  status: 200
+}
+
+export type sandboxesCleanupWorkspaceResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type sandboxesCleanupWorkspaceResponseSuccess = (sandboxesCleanupWorkspaceResponse200) & {
+  headers: Headers;
+};
+export type sandboxesCleanupWorkspaceResponseError = (sandboxesCleanupWorkspaceResponse422) & {
+  headers: Headers;
+};
+
+export type sandboxesCleanupWorkspaceResponse = (sandboxesCleanupWorkspaceResponseSuccess | sandboxesCleanupWorkspaceResponseError)
+
+export const getSandboxesCleanupWorkspaceUrl = (sandboxId: string,) => {
+
+
+  
+
+  return `/api/v1/sandboxes/${sandboxId}/cleanup-workspace`
+}
+
+export const sandboxesCleanupWorkspace = async (sandboxId: string, options?: RequestInit): Promise<sandboxesCleanupWorkspaceResponse> => {
+  
+  return customInstance<sandboxesCleanupWorkspaceResponse>(getSandboxesCleanupWorkspaceUrl(sandboxId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getSandboxesCleanupWorkspaceMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCleanupWorkspace>>, TError,{sandboxId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof sandboxesCleanupWorkspace>>, TError,{sandboxId: string}, TContext> => {
+
+const mutationKey = ['sandboxesCleanupWorkspace'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sandboxesCleanupWorkspace>>, {sandboxId: string}> = (props) => {
+          const {sandboxId} = props ?? {};
+
+          return  sandboxesCleanupWorkspace(sandboxId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SandboxesCleanupWorkspaceMutationResult = NonNullable<Awaited<ReturnType<typeof sandboxesCleanupWorkspace>>>
+    
+    export type SandboxesCleanupWorkspaceMutationError = HTTPValidationError
+
+    /**
+ * @summary Cleanup Workspace
+ */
+export const useSandboxesCleanupWorkspace = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCleanupWorkspace>>, TError,{sandboxId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sandboxesCleanupWorkspace>>,
+        TError,
+        {sandboxId: string},
+        TContext
+      > => {
+      return useMutation(getSandboxesCleanupWorkspaceMutationOptions(options), queryClient);
+    }
+    

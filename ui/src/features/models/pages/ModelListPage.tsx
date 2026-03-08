@@ -24,6 +24,7 @@ import {
   useAiProvidersListAvailableModels,
 } from '@/generated/api/ai-providers/ai-providers';
 import type { AiProvidersListAvailableModels200Item } from '@/generated/models';
+import type { ModelAssignmentContext } from '@/generated/models/modelAssignmentContext';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -251,7 +252,7 @@ export function Component() {
   const handleAssign = assignForm.onSubmit((values) => {
     if (!assignModal) return;
     createAssignMut.mutate(
-      { modelId: assignModal, data: values },
+      { modelId: assignModal, data: { ...values, context: values.context as ModelAssignmentContext } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Assigned', message: 'Model assignment created', color: 'green' });
@@ -334,7 +335,7 @@ export function Component() {
                 </Table.Td>
                 <Table.Td>
                   <Group gap={4}>
-                    {(m.capabilities ?? []).slice(0, 3).map((c) => (
+                    {(m.capabilities ?? []).slice(0, 3).map((c: string) => (
                       <Badge key={c} size="sm" variant="outline">{c}</Badge>
                     ))}
                     {(m.capabilities?.length ?? 0) > 3 && (

@@ -79,7 +79,7 @@ function StagePreview({ runId, gateType }: { runId: string; gateType: string }) 
     return (
       <Paper p="sm" bg="var(--mantine-color-dark-7)" radius="sm" mt="xs">
         <Spoiler maxHeight={200} showLabel="Show more" hideLabel="Show less">
-          <PlanView plan={plan as Record<string, unknown> | string} />
+          <PlanView plan={plan as Parameters<typeof PlanView>[0]['plan']} />
         </Spoiler>
       </Paper>
     );

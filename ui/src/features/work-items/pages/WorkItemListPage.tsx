@@ -15,6 +15,8 @@ import {
   useWorkItemsRemoveWorkItem,
 } from '@/generated/api/work-items/work-items';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
+import type { WorkItemType } from '@/generated/models/workItemType';
+import type { WorkItemStatus } from '@/generated/models/workItemStatus';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface WorkItem {
@@ -63,7 +65,7 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<WorkItem | null>(null);
 
-  const projects = (projectsResp?.data ?? []) as ProjectItem[];
+  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
 
   const form = useForm({
@@ -81,7 +83,7 @@ export function Component() {
 
   const handleCreate = form.onSubmit((values) => {
     createMut.mutate(
-      { data: values },
+      { data: { ...values, work_type: values.work_type as WorkItemType } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: 'Work item created', color: 'green' });
@@ -105,7 +107,7 @@ export function Component() {
   const handleEdit = editFormState.onSubmit((values) => {
     if (!editItem) return;
     updateMut.mutate(
-      { workItemId: editItem.work_item_id, data: values },
+      { workItemId: editItem.work_item_id, data: { ...values, work_type: values.work_type as WorkItemType, status: values.status as WorkItemStatus } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Updated', message: 'Work item updated', color: 'green' });
