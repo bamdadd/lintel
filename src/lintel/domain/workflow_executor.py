@@ -445,7 +445,7 @@ class WorkflowExecutor:
                 if isinstance(stage, dict):
                     stage = _dict_to_stage(stage)
                 if stage.name == stage_name:
-                    return stage.stage_id
+                    return str(stage.stage_id)
         except Exception:
             pass
         return None

@@ -202,7 +202,7 @@ async def close_workflow(
     }
 
 
-def _build_pr_body(state: dict[str, Any], plan: dict[str, Any]) -> str:
+def _build_pr_body(state: ThreadWorkflowState, plan: dict[str, Any]) -> str:
     """Build a PR description from the workflow state."""
     lines = ["## Summary\n"]
 

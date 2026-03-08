@@ -479,7 +479,9 @@ async def cleanup_workspace(
         result = await manager.execute(
             sandbox_id,
             SandboxJob(
-                command="rm -rf /workspace/* /workspace/.[!.]* /workspace/..?* 2>/dev/null; echo ok",
+                command=(
+                    "rm -rf /workspace/* /workspace/.[!.]* /workspace/..?* 2>/dev/null; echo ok"
+                ),
                 timeout_seconds=30,
             ),
         )
