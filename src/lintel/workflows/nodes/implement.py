@@ -148,6 +148,29 @@ async def spawn_implementation(
     if rebase_warning:
         outputs.append({"node": "implement_rebase", "output": rebase_warning})
 
+    # Persist code artifact if diff available
+    diff_text = artifacts.get("diff", "") if isinstance(artifacts, dict) else ""
+    if diff_text:
+        code_artifact_store = _configurable.get("code_artifact_store")
+        if code_artifact_store is not None:
+            from uuid import uuid4
+
+            from lintel.contracts.types import CodeArtifact
+
+            artifact = CodeArtifact(
+                artifact_id=str(uuid4()),
+                work_item_id=state.get("work_item_id", ""),
+                run_id=state.get("run_id", ""),
+                artifact_type="diff",
+                path="",
+                content=diff_text,
+            )
+            try:
+                await code_artifact_store.add(artifact)
+                await append_log(_config, "implement", "Code artifact persisted", state)
+            except Exception:
+                logger.warning("code_artifact_persist_failed")
+
     stage_outputs: dict[str, object] = {}
     if usage:
         stage_outputs["token_usage"] = usage

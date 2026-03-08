@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from functools import partial
 
 from lintel.workflows.nodes.approval_gate import approval_gate
+from lintel.workflows.nodes.close import close_workflow
 from lintel.workflows.nodes.implement import spawn_implementation
 from lintel.workflows.nodes.ingest import ingest_message
 from lintel.workflows.nodes.plan import plan_work
@@ -51,7 +52,7 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
         "approval_gate_merge",
         partial(approval_gate, gate_type="merge_approval"),
     )
-    graph.add_node("close", lambda s: {**s, "current_phase": "closed"})
+    graph.add_node("close", close_workflow)
 
     graph.set_entry_point("ingest")
     graph.add_edge("ingest", "route")

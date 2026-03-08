@@ -122,3 +122,14 @@
 - [x] Trigger links pipeline back to originating chat conversation
 - [x] Chat URL syncs with active conversation selection
 - [x] Postgres nested dataclass reconstruction (Stage objects in PipelineRun.stages)
+- [x] REQ-1.1: Approval gates create ApprovalRequest and notify chat when workflow pauses
+- [x] REQ-1.2: Work item marked as failed when workflow fails
+- [x] REQ-1.3: Real-time chat updates via SSE (replaced 3s polling)
+- [x] REQ-1.4: Pipeline list row navigation to detail page
+- [x] REQ-1.5: Human-readable event type labels in RunDetailPage
+- [x] REQ-2.1: Real LangGraph execution (feature_to_pr, bug_fix, refactor, etc.)
+- [x] REQ-2.2: Agent runtime with ModelRouter + litellm (planner, coder, reviewer, researcher)
+- [x] REQ-2.3: Docker sandbox execution with security isolation
+- [x] REQ-2.4: Repository cloning with credential injection in setup_workspace
+- [x] REQ-2.5: Code artifacts and test results persisted from implement/test nodes
+- [x] REQ-2.6: Close node pushes branch, creates PR via GitHub API, attaches review comments

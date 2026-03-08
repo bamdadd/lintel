@@ -100,6 +100,26 @@ async def run_tests(
 
     logger.info("test_run_complete verdict=%s exit_code=%d", verdict, result.exit_code)
 
+    # Persist test result
+    test_result_store = _config.get("configurable", {}).get("test_result_store")
+    if test_result_store is not None:
+        from uuid import uuid4
+
+        from lintel.contracts.types import TestResult, TestVerdict
+
+        test_result_record = TestResult(
+            result_id=str(uuid4()),
+            run_id=state.get("run_id", ""),
+            stage_id="test",
+            verdict=TestVerdict.PASSED if passed else TestVerdict.FAILED,
+            output=output[:5000],
+            failures=tuple(output.split("\n")[:10]) if not passed else (),
+        )
+        try:
+            await test_result_store.add(test_result_record)
+        except Exception:
+            logger.warning("test_result_persist_failed")
+
     await mark_completed(
         _config,
         "test",
