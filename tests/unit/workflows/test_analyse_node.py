@@ -76,6 +76,7 @@ class TestAnalyseCode:
         original = None
         try:
             from lintel.workflows.nodes import _codebase_context
+
             original = _codebase_context.gather_codebase_context
             _codebase_context.gather_codebase_context = AsyncMock(return_value="mock context")
             result = await analyse_code(state, config)

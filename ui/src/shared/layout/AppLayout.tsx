@@ -88,6 +88,7 @@ const navSections: NavSection[] = [
       { label: 'Projects', path: '/projects', icon: IconBriefcase },
       { label: 'Environments', path: '/environments', icon: IconServer },
       { label: 'Variables', path: '/variables', icon: IconVariable },
+      { label: 'Credentials', path: '/credentials', icon: IconLock },
       { label: 'Triggers', path: '/triggers', icon: IconBolt },
       { label: 'Policies', path: '/policies', icon: IconLock },
       { label: 'Notifications', path: '/notifications', icon: IconBell },

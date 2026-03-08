@@ -118,6 +118,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/triggers/pages/TriggerListPage'),
       },
       {
+        path: 'credentials',
+        lazy: () => import('@/features/credentials/pages/CredentialListPage'),
+      },
+      {
         path: 'variables',
         lazy: () => import('@/features/variables/pages/VariableListPage'),
       },

@@ -95,9 +95,7 @@ async def triage_issue(
         return {
             "intent": "feature",
             "current_phase": "triaging",
-            "agent_outputs": [
-                {"node": "triage", "classification": "feature", "priority": "P2"}
-            ],
+            "agent_outputs": [{"node": "triage", "classification": "feature", "priority": "P2"}],
         }
 
     messages_list = state.get("sanitized_messages", [])

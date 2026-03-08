@@ -44,6 +44,7 @@ const navActions = [
   { id: 'projects', label: 'Projects', description: 'Manage projects', path: '/projects', icon: IconBriefcase },
   { id: 'environments', label: 'Environments', description: 'Manage environments', path: '/environments', icon: IconServer },
   { id: 'variables', label: 'Variables', description: 'Configuration variables', path: '/variables', icon: IconVariable },
+  { id: 'credentials', label: 'Credentials', description: 'SSH keys, tokens, API keys', path: '/credentials', icon: IconLock },
   { id: 'triggers', label: 'Triggers', description: 'Automation triggers', path: '/triggers', icon: IconBolt },
   { id: 'policies', label: 'Policies', description: 'Approval and security policies', path: '/policies', icon: IconLock },
   { id: 'notifications', label: 'Notifications', description: 'Notification rules', path: '/notifications', icon: IconBell },

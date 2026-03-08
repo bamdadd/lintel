@@ -73,8 +73,7 @@ class TestTriageIssue:
         runtime = AsyncMock()
         runtime.execute_step.return_value = {
             "content": (
-                '{"type": "chore", "priority": "P3",'
-                ' "severity": "low", "summary": "cleanup"}'
+                '{"type": "chore", "priority": "P3", "severity": "low", "summary": "cleanup"}'
             ),
         }
 
