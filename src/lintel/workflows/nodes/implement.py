@@ -100,6 +100,26 @@ async def spawn_implementation(
 
     plan = state.get("plan", {})
     messages = state.get("sanitized_messages", [])
+    workspace_path = state.get("workspace_path", "/workspace/repo")
+
+    # Read project guidelines for the agent
+    guidelines = ""
+    for guide_file in ("CLAUDE.md", "docs/agents.md"):
+        try:
+            from lintel.contracts.types import SandboxJob
+
+            guide_result = await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=f"cat {workspace_path}/{guide_file} 2>/dev/null || true",
+                    workdir=workspace_path,
+                    timeout_seconds=10,
+                ),
+            )
+            if guide_result.stdout.strip():
+                guidelines += f"\n\n## {guide_file}\n{guide_result.stdout.strip()}"
+        except Exception:
+            pass
 
     # Build the implementation prompt from plan
     tasks = plan.get("tasks", [])
@@ -111,10 +131,13 @@ async def spawn_implementation(
     research_context = state.get("research_context", "")
     research_section = f"\n\n## Research Context\n{research_context}" if research_context else ""
 
+    guidelines_section = f"\n\n## Project Guidelines{guidelines}" if guidelines else ""
+
     user_prompt = (
         f"## Plan\n{plan_summary}\n\n## Tasks\n{task_text}\n\n"
         f"## Original request\n{chr(10).join(messages)}"
         f"{research_section}"
+        f"{guidelines_section}"
     )
 
     # Parse thread ref for agent runtime

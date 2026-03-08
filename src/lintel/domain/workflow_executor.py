@@ -617,10 +617,10 @@ class WorkflowExecutor:
                     if stage.started_at:
                         start_ts = datetime.fromisoformat(stage.started_at).timestamp()
                         duration = timestamp_ms - int(start_ts * 1000)
-                    # Preserve status if the node already marked itself failed
+                    # Preserve status if the node already marked itself failed/skipped
                     final_status = (
                         stage.status
-                        if stage.status == StageStatus.FAILED
+                        if stage.status in (StageStatus.FAILED, StageStatus.SKIPPED)
                         else StageStatus.SUCCEEDED
                     )
                     updated_stages.append(
@@ -635,8 +635,8 @@ class WorkflowExecutor:
                     found = True
                 else:
                     updated_stages.append(stage)
-            # Mark the next stage as running
-            if found:
+            # Mark the next stage as running (only if current stage succeeded)
+            if found and final_status == StageStatus.SUCCEEDED:
                 for i, s in enumerate(updated_stages):
                     if isinstance(s, dict):
                         s = _dict_to_stage(s)

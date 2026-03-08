@@ -31,6 +31,23 @@ async def close_workflow(
     _configurable = _config.get("configurable", {})
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
 
+    # Check if pipeline is being aborted due to a failed stage
+    has_failure = False
+    for output in state.get("agent_outputs", []):
+        if isinstance(output, dict) and output.get("verdict") in (
+            "failed", "request_changes",
+        ):
+            has_failure = True
+            break
+    if state.get("error"):
+        has_failure = True
+
+    if has_failure:
+        await append_log(_config, "merge", "Pipeline aborted due to earlier failure", state)
+        # Mark all remaining pending/running stages as skipped
+        await _skip_remaining_stages(_config, state)
+        return {"current_phase": "closed"}
+
     await mark_running(_config, "merge", state)
 
     sandbox_id = state.get("sandbox_id")
@@ -200,6 +217,53 @@ async def close_workflow(
         "current_phase": "closed",
         "pr_url": pr_url,
     }
+
+
+async def _skip_remaining_stages(
+    config: dict[str, Any],
+    state: ThreadWorkflowState,
+) -> None:
+    """Mark all pending/running stages as skipped when pipeline aborts."""
+    from dataclasses import replace
+
+    from lintel.contracts.types import StageStatus
+
+    run_id = state.get("run_id", "")
+    if not run_id:
+        return
+
+    # Get pipeline store via registry fallback
+    configurable = config.get("configurable", {})
+    pipeline_store = configurable.get("pipeline_store")
+    if pipeline_store is None:
+        app_state = configurable.get("app_state")
+        if app_state is None and run_id:
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            app_state = get_app_state(run_id)
+        if app_state is not None:
+            pipeline_store = getattr(app_state, "pipeline_store", None)
+    if pipeline_store is None:
+        return
+
+    try:
+        run = await pipeline_store.get(run_id)
+        if run is None:
+            return
+        updated_stages = []
+        for s in run.stages:
+            if isinstance(s, dict):
+                from lintel.contracts.types import Stage
+
+                s = Stage(**s)
+            if s.status in (StageStatus.PENDING, StageStatus.RUNNING):
+                updated_stages.append(replace(s, status=StageStatus.SKIPPED))
+            else:
+                updated_stages.append(s)
+        updated = replace(run, stages=tuple(updated_stages))
+        await pipeline_store.update(updated)
+    except Exception:
+        logger.warning("skip_remaining_stages_failed", run_id=run_id)
 
 
 def _build_pr_body(state: ThreadWorkflowState, plan: dict[str, Any]) -> str:

@@ -92,15 +92,35 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
 
 def _check_phase(state: ThreadWorkflowState) -> str:
     """Stop the pipeline if a node signals failure via error or failed verdict."""
+    import structlog
+
+    _logger = structlog.get_logger()
+
     if state.get("error"):
+        _logger.info("check_phase_stop", reason="error", error=state.get("error"))
         return "close"
     phase = state.get("current_phase", "")
     if phase == "closed":
+        _logger.info("check_phase_stop", reason="phase_closed")
         return "close"
     # Check if the last agent output has a failed verdict
-    for output in reversed(state.get("agent_outputs", [])):
-        if isinstance(output, dict) and output.get("verdict") in ("failed", "request_changes"):
+    outputs = state.get("agent_outputs", [])
+    for output in reversed(outputs):
+        if isinstance(output, dict) and output.get("verdict") in (
+            "failed", "request_changes",
+        ):
+            _logger.info(
+                "check_phase_stop",
+                reason="failed_verdict",
+                node=output.get("node"),
+                verdict=output.get("verdict"),
+            )
             return "close"
+    _logger.info(
+        "check_phase_continue",
+        phase=phase,
+        output_count=len(outputs),
+    )
     return "continue"
 
 

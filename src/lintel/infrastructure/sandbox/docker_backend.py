@@ -13,8 +13,6 @@ from lintel.contracts.errors import (
     SandboxTimeoutError,
 )
 
-from ._tar_helpers import create_tar, extract_file
-
 if TYPE_CHECKING:
     from lintel.contracts.types import (
         SandboxConfig,
@@ -124,32 +122,38 @@ class DockerSandboxManager:
             ) from exc
 
     async def read_file(self, sandbox_id: str, path: str) -> str:
-        container = self._get_container(sandbox_id)
-        try:
-            bits, _stat = await asyncio.to_thread(container.get_archive, path)
-            return extract_file(bits)
-        except SandboxNotFoundError:
-            raise
-        except Exception as exc:
-            raise SandboxExecutionError(f"Failed to read {path}") from exc
-
-    async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
-        container = self._get_container(sandbox_id)
-        # Ensure parent directories exist before writing
-        dest_dir = os.path.dirname(path) or "/"
+        # Use cat via execute — more reliable than get_archive on mounted volumes
         from lintel.contracts.types import SandboxJob
 
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(command=f"cat {path}", timeout_seconds=10),
+        )
+        if result.exit_code != 0:
+            raise SandboxExecutionError(f"Failed to read {path}: {result.stderr}")
+        return result.stdout
+
+    async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
+        import base64
+
+        from lintel.contracts.types import SandboxJob
+
+        dest_dir = os.path.dirname(path) or "/"
         await self.execute(
             sandbox_id,
             SandboxJob(command=f"mkdir -p {dest_dir}", timeout_seconds=10),
         )
-        tar_stream = create_tar(path, content)
-        try:
-            await asyncio.to_thread(container.put_archive, dest_dir, tar_stream)
-        except SandboxNotFoundError:
-            raise
-        except Exception as exc:
-            raise SandboxExecutionError(f"Failed to write {path}") from exc
+        # Use base64 to safely transfer content (avoids shell escaping issues)
+        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"echo '{encoded}' | base64 -d > {path}",
+                timeout_seconds=30,
+            ),
+        )
+        if result.exit_code != 0:
+            raise SandboxExecutionError(f"Failed to write {path}: {result.stderr}")
 
     async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
         from lintel.contracts.types import SandboxJob

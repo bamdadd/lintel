@@ -29,7 +29,7 @@ NODE_TO_STAGE: dict[str, str] = {
     "triage": "triage",
     "analyse": "analyse",
     "ingest": "ingest",
-    "route": "ingest",  # route is part of the ingest stage
+    "route": "route",
     "setup_workspace": "setup_workspace",
     "research": "research",
     "approval_gate_research": "approve_research",
