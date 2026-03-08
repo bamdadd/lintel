@@ -312,18 +312,19 @@ class PostgresChatStore:
         project_id: str | None,
         model_id: str | None = None,
     ) -> dict[str, Any]:
-        now = datetime.now(UTC).isoformat()
-        conv: dict[str, Any] = {
-            "conversation_id": conversation_id,
-            "user_id": user_id,
-            "display_name": display_name,
-            "project_id": project_id,
-            "model_id": model_id,
-            "created_at": now,
-            "messages": [],
-        }
-        await self._store.put(conversation_id, conv)
-        return conv
+        from lintel.contracts.data_models import ConversationData
+
+        conv = ConversationData(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            display_name=display_name,
+            project_id=project_id,
+            model_id=model_id,
+            created_at=datetime.now(UTC).isoformat(),
+        )
+        data = conv.model_dump()
+        await self._store.put(conversation_id, data)
+        return data
 
     async def get(self, conversation_id: str) -> dict[str, Any] | None:
         return await self._store.get(conversation_id)
@@ -364,21 +365,24 @@ class PostgresChatStore:
         role: str,
         content: str,
     ) -> dict[str, Any]:
+        from lintel.contracts.data_models import ChatMessage
+
         conv = await self.get(conversation_id)
         if conv is None:
             msg = f"Conversation {conversation_id} not found"
             raise KeyError(msg)
-        message: dict[str, Any] = {
-            "message_id": uuid4().hex,
-            "user_id": user_id,
-            "display_name": display_name,
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-        conv["messages"].append(message)
+        message = ChatMessage(
+            message_id=uuid4().hex,
+            user_id=user_id,
+            display_name=display_name,
+            role=role,
+            content=content,
+            timestamp=datetime.now(UTC).isoformat(),
+        )
+        data = message.model_dump()
+        conv["messages"].append(data)
         await self._store.put(conversation_id, conv)
-        return message
+        return data
 
 
 class PostgresSandboxStore:

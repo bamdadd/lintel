@@ -641,15 +641,18 @@ def _add_report_version(
     versions_store: dict[str, list[dict[str, object]]] = request.app.state._report_versions
     key = f"{run_id}:{stage_id}"
     versions = versions_store.setdefault(key, [])
-    version: dict[str, object] = {
-        "version": len(versions) + 1,
-        "content": content,
-        "editor": editor,
-        "type": version_type,
-        "timestamp": datetime.now(UTC).isoformat(),
-    }
-    versions.append(version)
-    return version
+    from lintel.contracts.data_models import ReportVersion
+
+    ver = ReportVersion(
+        version=len(versions) + 1,
+        content=content,
+        editor=editor,
+        type=version_type,
+        timestamp=datetime.now(UTC).isoformat(),
+    )
+    data = ver.model_dump()
+    versions.append(data)
+    return data
 
 
 @router.patch("/pipelines/{run_id}/stages/{stage_id}/report")

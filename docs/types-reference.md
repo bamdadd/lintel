@@ -71,6 +71,20 @@
 | CorrelationId | NewType | 722 |
 | EventId | NewType | 723 |
 
+### `src/lintel/contracts/data_models.py`
+
+| Type | Kind | Line |
+|------|------|------|
+| ChatMessage | Pydantic BaseModel | 16 |
+| ConversationData | Pydantic BaseModel | 27 |
+| ConnectionData | Pydantic BaseModel | 39 |
+| GeneralSettings | Pydantic BaseModel | 49 |
+| AgentDefinitionData | Pydantic BaseModel | 59 |
+| SandboxMetadata | Pydantic BaseModel | 75 |
+| ReportVersion | Pydantic BaseModel | 90 |
+| CacheStats | Pydantic BaseModel | 100 |
+| LLMResponse | Pydantic BaseModel | 108 |
+
 ### `src/lintel/contracts/events.py`
 
 | Type | Kind | Line |

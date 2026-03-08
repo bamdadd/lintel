@@ -71,7 +71,11 @@ class SendMessageRequest(BaseModel):
 
 
 class ChatStore:
-    """Simple in-memory conversation store."""
+    """Simple in-memory conversation store.
+
+    Uses ConversationData/ChatMessage models for construction but stores
+    and returns plain dicts for backward compatibility with consumers.
+    """
 
     def __init__(self) -> None:
         self._conversations: dict[str, dict[str, Any]] = {}
@@ -85,18 +89,19 @@ class ChatStore:
         project_id: str | None,
         model_id: str | None = None,
     ) -> dict[str, Any]:
-        now = datetime.now(UTC).isoformat()
-        conv: dict[str, Any] = {
-            "conversation_id": conversation_id,
-            "user_id": user_id,
-            "display_name": display_name,
-            "project_id": project_id,
-            "model_id": model_id,
-            "created_at": now,
-            "messages": [],
-        }
-        self._conversations[conversation_id] = conv
-        return conv
+        from lintel.contracts.data_models import ConversationData
+
+        conv = ConversationData(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            display_name=display_name,
+            project_id=project_id,
+            model_id=model_id,
+            created_at=datetime.now(UTC).isoformat(),
+        )
+        data = conv.model_dump()
+        self._conversations[conversation_id] = data
+        return data
 
     async def get(self, conversation_id: str) -> dict[str, Any] | None:
         return self._conversations.get(conversation_id)
@@ -136,20 +141,23 @@ class ChatStore:
         role: str,
         content: str,
     ) -> dict[str, Any]:
+        from lintel.contracts.data_models import ChatMessage
+
         conv = self._conversations.get(conversation_id)
         if conv is None:
             msg = f"Conversation {conversation_id} not found"
             raise KeyError(msg)
-        message: dict[str, Any] = {
-            "message_id": uuid4().hex,
-            "user_id": user_id,
-            "display_name": display_name,
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-        conv["messages"].append(message)
-        return message
+        message = ChatMessage(
+            message_id=uuid4().hex,
+            user_id=user_id,
+            display_name=display_name,
+            role=role,
+            content=content,
+            timestamp=datetime.now(UTC).isoformat(),
+        )
+        data = message.model_dump()
+        conv["messages"].append(data)
+        return data
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from lintel.contracts.data_models import SandboxMetadata
 from lintel.contracts.errors import SandboxNotFoundError
 from lintel.contracts.events import (
     SandboxCommandExecuted,
@@ -27,7 +28,8 @@ class SandboxStore:
         self._sandboxes: dict[str, dict[str, Any]] = {}
 
     async def add(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
-        self._sandboxes[sandbox_id] = metadata
+        validated = SandboxMetadata.model_validate({"sandbox_id": sandbox_id, **metadata})
+        self._sandboxes[sandbox_id] = validated.model_dump()
 
     async def get(self, sandbox_id: str) -> dict[str, Any] | None:
         return self._sandboxes.get(sandbox_id)

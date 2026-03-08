@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.contracts.commands import ScheduleAgentStep
+from lintel.contracts.data_models import AgentDefinitionData
 from lintel.contracts.events import (
     AgentDefinitionCreated,
     AgentDefinitionRemoved,
@@ -32,12 +33,14 @@ class AgentDefinitionStore:
         return self._definitions.get(agent_id)
 
     async def create(self, definition: dict[str, Any]) -> dict[str, Any]:
-        agent_id = definition["agent_id"]
+        validated = AgentDefinitionData.model_validate(definition)
+        agent_id = validated.agent_id
         if agent_id in self._definitions:
             msg = f"Agent definition '{agent_id}' already exists"
             raise ValueError(msg)
-        self._definitions[agent_id] = definition
-        return definition
+        data = validated.model_dump()
+        self._definitions[agent_id] = data
+        return data
 
     async def update(self, agent_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         if agent_id not in self._definitions:

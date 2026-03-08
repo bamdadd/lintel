@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from lintel.contracts.data_models import ConnectionData
 from lintel.contracts.events import (
     ConnectionCreated,
     ConnectionRemoved,
@@ -26,13 +27,9 @@ def get_connections(request: Request) -> dict[str, dict[str, Any]]:
 def get_general_settings(request: Request) -> dict[str, Any]:
     """Get general settings from app state."""
     if not hasattr(request.app.state, "general_settings"):
-        request.app.state.general_settings = {
-            "workspace_name": "default",
-            "default_model_provider": "",
-            "pii_detection_enabled": True,
-            "sandbox_enabled": True,
-            "max_concurrent_workflows": 10,
-        }
+        from lintel.contracts.data_models import GeneralSettings
+
+        request.app.state.general_settings = GeneralSettings().model_dump()
     return request.app.state.general_settings  # type: ignore[no-any-return]
 
 
@@ -62,13 +59,14 @@ async def create_connection(body: ConnectionRequest, request: Request) -> dict[s
     connections = get_connections(request)
     if body.connection_id in connections:
         raise HTTPException(status_code=409, detail="Connection already exists")
-    entry: dict[str, Any] = {
-        "connection_id": body.connection_id,
-        "connection_type": body.connection_type,
-        "name": body.name,
-        "config": body.config,
-        "status": "untested",
-    }
+    conn_data = ConnectionData(
+        connection_id=body.connection_id,
+        connection_type=body.connection_type,
+        name=body.name,
+        config=body.config,
+        status="untested",
+    )
+    entry = conn_data.model_dump()
     connections[body.connection_id] = entry
     await dispatch_event(
         request,
