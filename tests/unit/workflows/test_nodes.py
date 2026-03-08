@@ -165,10 +165,11 @@ class TestResearchNode:
 
 class TestTriageNode:
     async def test_returns_classification(self) -> None:
-        result = await triage_issue({})
+        state: dict = {"sanitized_messages": ["fix the bug"], "thread_ref": "W1/C1/t1"}
+        config: dict = {"configurable": {}}
+        result = await triage_issue(state, config)
         assert result["current_phase"] == "triaging"
-        assert result["agent_outputs"][0]["classification"] == "bug"
-        assert result["agent_outputs"][0]["priority"] == "P2"
+        assert result["intent"] == "feature"
 
 
 class TestRunTestsNode:

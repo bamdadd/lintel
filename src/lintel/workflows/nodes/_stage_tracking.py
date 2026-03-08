@@ -26,6 +26,8 @@ def extract_token_usage(node_name: str, result: dict[str, Any]) -> dict[str, Any
 
 # Map LangGraph node names to pipeline stage names.
 NODE_TO_STAGE: dict[str, str] = {
+    "triage": "triage",
+    "analyse": "analyse",
     "ingest": "ingest",
     "route": "ingest",  # route is part of the ingest stage
     "setup_workspace": "setup_workspace",

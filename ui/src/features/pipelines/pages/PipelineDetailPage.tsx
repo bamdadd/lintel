@@ -101,10 +101,10 @@ export function Component() {
   const [rejecting, setRejecting] = useState(false);
 
   const { data: pipelineResp, isLoading, refetch: refetchPipeline } = usePipelinesGetPipeline(runId ?? '', {
-    query: {},
+    query: { staleTime: 0 },
   });
   const { data: stagesResp, refetch: refetchStages } = usePipelinesListStages(runId ?? '', {
-    query: { enabled: !!runId },
+    query: { enabled: !!runId, staleTime: 0 },
   });
 
   // Real-time updates via SSE — refetch data on every stage/pipeline change
