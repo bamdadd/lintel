@@ -1,8 +1,8 @@
-"""Dispatch domain events to the event store and projection engine.
+"""Dispatch domain events to the event store.
 
 Routes and domain services use ``dispatch_event`` to publish facts.
-The projection engine fans them out to registered projections (audit,
-webhooks, notifications, etc.) so consumers never couple to producers.
+The event store publishes to the EventBus after persisting, which
+fans events out to the projection engine and other subscribers.
 """
 
 from __future__ import annotations
@@ -25,7 +25,10 @@ async def dispatch_event(
     *,
     stream_id: str = "admin",
 ) -> None:
-    """Append *event* to the event store and project it.
+    """Append *event* to the event store.
+
+    The event store publishes to the EventBus after successful persist,
+    which delivers events to projections and other subscribers reactively.
 
     Parameters
     ----------
@@ -45,16 +48,6 @@ async def dispatch_event(
                 "event_store_append_failed",
                 event_type=event.event_type,
                 stream_id=stream_id,
-            )
-
-    engine = getattr(request.app.state, "projection_engine", None)
-    if engine is not None:
-        try:
-            await engine.project(event)
-        except Exception:
-            logger.warning(
-                "projection_failed",
-                event_type=event.event_type,
             )
 
 
@@ -78,14 +71,4 @@ async def dispatch_event_raw(
                 "event_store_append_failed",
                 event_type=event.event_type,
                 stream_id=stream_id,
-            )
-
-    engine = getattr(app_state, "projection_engine", None)
-    if engine is not None:
-        try:
-            await engine.project(event)
-        except Exception:
-            logger.warning(
-                "projection_failed",
-                event_type=event.event_type,
             )

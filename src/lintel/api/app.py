@@ -74,6 +74,7 @@ from lintel.api.routes.triggers import InMemoryTriggerStore
 from lintel.api.routes.users import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
 from lintel.api.routes.work_items import WorkItemStore
+from lintel.infrastructure.event_bus.in_memory import InMemoryEventBus
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
 from lintel.infrastructure.projections.audit import AuditProjection
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
@@ -332,14 +333,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Seed built-in agents and skills
     await _seed_defaults(stores)
 
-    # Initialize projections
+    # Initialize event bus and projections
+    event_bus = InMemoryEventBus()
+    app.state.event_bus = event_bus
+
+    # Wire event bus into the event store so events are published after persist
+    event_store.set_event_bus(event_bus)
+
     thread_status = ThreadStatusProjection()
     task_backlog = TaskBacklogProjection()
     audit_projection = AuditProjection(stores["audit_entry_store"])
-    engine = InMemoryProjectionEngine()
+    engine = InMemoryProjectionEngine(event_bus=event_bus)
     await engine.register(thread_status)
     await engine.register(task_backlog)
     await engine.register(audit_projection)
+    await engine.start()
 
     app.state.thread_status_projection = thread_status
     app.state.task_backlog_projection = task_backlog
@@ -362,6 +370,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     yield
     # Cleanup
+    await engine.stop()
     if db_pool is not None:
         await db_pool.close()
 

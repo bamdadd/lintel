@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
     import asyncpg
 
+    from lintel.contracts.protocols import EventBus
+
 logger = structlog.get_logger()
 
 
@@ -30,8 +32,13 @@ class RecordLike(Protocol):
 class PostgresEventStore:
     """Implements EventStore protocol with Postgres backend."""
 
-    def __init__(self, pool: asyncpg.Pool) -> None:
+    def __init__(self, pool: asyncpg.Pool, event_bus: EventBus | None = None) -> None:
         self._pool = pool
+        self._event_bus = event_bus
+
+    def set_event_bus(self, event_bus: EventBus) -> None:
+        """Attach an event bus after construction (for circular-dep wiring)."""
+        self._event_bus = event_bus
 
     async def append(
         self,
@@ -130,6 +137,18 @@ class PostgresEventStore:
                 count=len(events),
                 new_version=base_version + len(events),
             )
+
+        # Publish to event bus after successful persist (outside transaction)
+        if self._event_bus is not None:
+            for event in events:
+                try:
+                    await self._event_bus.publish(event)
+                except Exception:
+                    logger.warning(
+                        "event_bus_publish_failed",
+                        event_type=event.event_type,
+                        stream_id=stream_id,
+                    )
 
     async def read_stream(
         self,

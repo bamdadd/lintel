@@ -4,18 +4,28 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import structlog
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
+    from lintel.contracts.protocols import EventBus
+
+logger = structlog.get_logger()
 
 
 class InMemoryEventStore:
     """Implements EventStore protocol with a plain dict."""
 
-    def __init__(self) -> None:
+    def __init__(self, event_bus: EventBus | None = None) -> None:
         self._streams: dict[str, list[EventEnvelope]] = {}
+        self._event_bus = event_bus
+
+    def set_event_bus(self, event_bus: EventBus) -> None:
+        """Attach an event bus after construction (for circular-dep wiring)."""
+        self._event_bus = event_bus
 
     async def append(
         self,
@@ -29,6 +39,18 @@ class InMemoryEventStore:
             msg = f"Expected version {expected_version}, got {current_version}"
             raise ValueError(msg)
         stream.extend(events)
+
+        # Publish to event bus after successful persist
+        if self._event_bus is not None:
+            for event in events:
+                try:
+                    await self._event_bus.publish(event)
+                except Exception:
+                    logger.warning(
+                        "event_bus_publish_failed",
+                        event_type=event.event_type,
+                        stream_id=stream_id,
+                    )
 
     async def read_stream(
         self,

@@ -26,6 +26,26 @@ if TYPE_CHECKING:
     )
 
 
+class EventHandler(Protocol):
+    """Handles a single event delivered by the EventBus."""
+
+    async def handle(self, event: EventEnvelope) -> None: ...
+
+
+class EventBus(Protocol):
+    """Publish-subscribe bus for domain events."""
+
+    async def publish(self, event: EventEnvelope) -> None: ...
+
+    async def subscribe(
+        self,
+        event_types: frozenset[str],
+        handler: EventHandler,
+    ) -> str: ...
+
+    async def unsubscribe(self, subscription_id: str) -> None: ...
+
+
 class CommandDispatcher(Protocol):
     """Routes commands to registered handlers."""
 
