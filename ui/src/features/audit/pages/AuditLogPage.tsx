@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Title, Stack, Table, Loader, Center, Badge, Text, TextInput, Group,
-  Collapse, Paper, ActionIcon,
+  Collapse, Paper, ActionIcon, Pagination,
 } from '@mantine/core';
 import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import { useAuditListAuditEntries } from '@/generated/api/audit/audit';
@@ -18,6 +18,8 @@ interface AuditEntry {
   timestamp: string;
   details: Record<string, unknown>;
 }
+
+const PAGE_SIZE = 100;
 
 const actionColor: Record<string, string> = {
   create: 'green',
@@ -130,13 +132,23 @@ function ExpandableDetailsRow({ entry }: { entry: AuditEntry }) {
 }
 
 export function Component() {
-  const { data: resp, isLoading } = useAuditListAuditEntries();
+  const [page, setPage] = useState(1);
   const [filter, setFilter] = useState('');
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const { data: resp, isLoading } = useAuditListAuditEntries({
+    limit: PAGE_SIZE,
+    offset,
+  });
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const entries = (resp?.data ?? []) as AuditEntry[];
-  const filtered = entries.filter((e) =>
+  const body = resp?.data as { items?: AuditEntry[]; total?: number } | AuditEntry[] | undefined;
+  const items: AuditEntry[] = Array.isArray(body) ? body : (body?.items ?? []);
+  const total: number = Array.isArray(body) ? body.length : (body?.total ?? 0);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  const filtered = items.filter((e) =>
     e.actor?.toLowerCase().includes(filter.toLowerCase())
     || e.action?.toLowerCase().includes(filter.toLowerCase())
     || e.resource_type?.toLowerCase().includes(filter.toLowerCase()),
@@ -146,28 +158,40 @@ export function Component() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Audit Log</Title>
-        <TextInput placeholder="Filter by actor, action, or resource..." value={filter} onChange={(e) => setFilter(e.currentTarget.value)} style={{ width: 300 }} />
+        <Group gap="sm">
+          <TextInput placeholder="Filter by actor, action, or resource..." value={filter} onChange={(e) => setFilter(e.currentTarget.value)} style={{ width: 300 }} />
+          {total > 0 && (
+            <Text size="sm" c="dimmed">{total.toLocaleString()} entries</Text>
+          )}
+        </Group>
       </Group>
 
-      {entries.length === 0 ? (
+      {items.length === 0 && page === 1 ? (
         <EmptyState title="No audit entries" description="Audit events will appear here as actions are performed" />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Timestamp</Table.Th>
-              <Table.Th>Actor</Table.Th>
-              <Table.Th>Action</Table.Th>
-              <Table.Th>Resource</Table.Th>
-              <Table.Th w={40}>Details</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {filtered.map((e) => (
-              <ExpandableDetailsRow key={e.entry_id} entry={e} />
-            ))}
-          </Table.Tbody>
-        </Table>
+        <>
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Timestamp</Table.Th>
+                <Table.Th>Actor</Table.Th>
+                <Table.Th>Action</Table.Th>
+                <Table.Th>Resource</Table.Th>
+                <Table.Th w={40}>Details</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {filtered.map((e) => (
+                <ExpandableDetailsRow key={e.entry_id} entry={e} />
+              ))}
+            </Table.Tbody>
+          </Table>
+          {totalPages > 1 && (
+            <Center>
+              <Pagination value={page} onChange={setPage} total={totalPages} />
+            </Center>
+          )}
+        </>
       )}
     </Stack>
   );

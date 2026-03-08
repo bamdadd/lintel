@@ -64,8 +64,9 @@ class ChatRouter:
         message: str,
         model_policy: ModelPolicy | None = None,
         api_base: str | None = None,
+        enabled_workflows: set[str] | None = None,
     ) -> ChatRouterResult:
-        keyword_result = self._classify_with_keywords(message)
+        keyword_result = self._classify_with_keywords(message, enabled_workflows)
 
         if self._model_router is not None:
             try:
@@ -73,6 +74,7 @@ class ChatRouter:
                     message,
                     model_policy=model_policy,
                     api_base=api_base,
+                    enabled_workflows=enabled_workflows,
                 )
                 # If keywords say it's a workflow but LLM says chat, trust keywords —
                 # LLMs often misclassify actionable requests as chat replies
@@ -95,6 +97,7 @@ class ChatRouter:
         message: str,
         model_policy: ModelPolicy | None = None,
         api_base: str | None = None,
+        enabled_workflows: set[str] | None = None,
     ) -> ChatRouterResult:
         from lintel.contracts.types import AgentRole
 
@@ -104,7 +107,15 @@ class ChatRouter:
         else:
             policy = await self._model_router.select_model(AgentRole.TRIAGE, "classify")
 
-        workflow_types = ", ".join(WORKFLOW_KEYWORDS.keys())
+        active_keys = (
+            {k for k in WORKFLOW_KEYWORDS if k in enabled_workflows}
+            if enabled_workflows is not None
+            else set(WORKFLOW_KEYWORDS.keys())
+        )
+        if not active_keys:
+            # No workflows enabled — always chat reply
+            return ChatRouterResult(action="chat_reply", reply="")
+        workflow_types = ", ".join(active_keys)
         result = await self._model_router.call_model(
             policy,
             messages=[
@@ -185,7 +196,9 @@ class ChatRouter:
         logger.info("classify_result", action=action, workflow_type=workflow_type)
         return ChatRouterResult(action=action, workflow_type=workflow_type, reply=reply)
 
-    def _classify_with_keywords(self, message: str) -> ChatRouterResult:
+    def _classify_with_keywords(
+        self, message: str, enabled_workflows: set[str] | None = None
+    ) -> ChatRouterResult:
         lower = message.lower()
 
         # Short messages or questions are likely chat
@@ -196,8 +209,10 @@ class ChatRouter:
                 "This will be answered by the LLM once fully wired.",
             )
 
-        # Check for workflow keywords
+        # Check for workflow keywords (only enabled ones)
         for workflow_type, keywords in WORKFLOW_KEYWORDS.items():
+            if enabled_workflows is not None and workflow_type not in enabled_workflows:
+                continue
             if any(kw in lower for kw in keywords):
                 return ChatRouterResult(
                     action="start_workflow",
@@ -205,8 +220,10 @@ class ChatRouter:
                     reply=f"Starting **{workflow_type.replace('_', ' ')}** workflow...",
                 )
 
-        # Default: treat longer messages as tasks
-        if len(lower.split()) >= 8:
+        # Default: treat longer messages as tasks (only if feature_to_pr is enabled)
+        if len(lower.split()) >= 8 and (
+            enabled_workflows is None or "feature_to_pr" in enabled_workflows
+        ):
             return ChatRouterResult(
                 action="start_workflow",
                 workflow_type="feature_to_pr",

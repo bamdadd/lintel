@@ -67,7 +67,11 @@ class DummySandboxManager:
             raise SandboxNotFoundError(sandbox_id)
         return SandboxStatus.RUNNING
 
-    async def collect_artifacts(self, sandbox_id: str) -> dict[str, Any]:
+    async def collect_artifacts(
+        self,
+        sandbox_id: str,
+        workdir: str = "/workspace",
+    ) -> dict[str, Any]:
         if sandbox_id not in self._sandboxes:
             raise SandboxNotFoundError(sandbox_id)
         return {"type": "diff", "content": ""}

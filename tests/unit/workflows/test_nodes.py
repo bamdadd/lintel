@@ -133,11 +133,9 @@ class TestReviewNode:
 
 
 class TestResearchNode:
-    async def test_raises_without_sandbox(self) -> None:
-        """Research node raises RuntimeError when no sandbox is available."""
+    async def test_proceeds_without_sandbox_when_runtime_missing(self) -> None:
+        """Research node returns empty context when no sandbox and no runtime."""
         import unittest.mock
-
-        import pytest
 
         state: dict[str, Any] = {
             "sandbox_id": None,
@@ -158,9 +156,10 @@ class TestResearchNode:
                 "lintel.workflows.nodes._stage_tracking.mark_completed",
                 unittest.mock.AsyncMock(),
             ),
-            pytest.raises(RuntimeError, match="sandbox"),
         ):
-            await research_codebase(state, config)  # type: ignore[arg-type]
+            result = await research_codebase(state, config)  # type: ignore[arg-type]
+        assert result["current_phase"] == "planning"
+        assert result["research_context"] == ""
 
 
 class TestTriageNode:

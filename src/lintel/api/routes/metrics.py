@@ -40,11 +40,39 @@ async def agent_metrics(request: Request) -> dict[str, Any]:
     }
 
 
+def _store_count(state: object, attr: str, items_attr: str = "") -> int:
+    """Safely count items in an app-state store."""
+    store = getattr(state, attr, None)
+    if store is None:
+        return 0
+    if items_attr:
+        container = getattr(store, items_attr, {})
+    else:
+        # Try common internal dict attribute names
+        for name in (
+            "_data",
+            "_definitions",
+            "_skills",
+            "_models",
+            "_runs",
+            "_servers",
+            "_items",
+            "_teams",
+            "_repos",
+        ):
+            container = getattr(store, name, None)
+            if container is not None and isinstance(container, dict):
+                return len(container)
+        return 0
+    return len(container) if isinstance(container, dict | list) else 0
+
+
 @router.get("/metrics/overview")
 async def overview_metrics(request: Request) -> dict[str, Any]:
     """Combined overview metrics for the dashboard."""
+    state = request.app.state
     pii_stats: dict[str, int] = getattr(
-        request.app.state,
+        state,
         "pii_stats",
         {
             "total_scanned": 0,
@@ -54,10 +82,81 @@ async def overview_metrics(request: Request) -> dict[str, Any]:
             "total_reveals": 0,
         },
     )
-    sandbox_registry: dict[str, Any] = getattr(request.app.state, "sandbox_registry", {})
-    connections: dict[str, Any] = getattr(request.app.state, "connections", {})
+    sandbox_registry: dict[str, Any] = getattr(state, "sandbox_registry", {})
+    connections: dict[str, Any] = getattr(state, "connections", {})
+
+    # Entity counts
+    projects = _store_count(state, "project_store")
+    pipelines = _store_count(state, "pipeline_store")
+    work_items = _store_count(state, "work_item_store")
+    models = _store_count(state, "model_store")
+    agents = _store_count(state, "agent_definition_store")
+    skills = _store_count(state, "skill_store")
+    mcp_servers = _store_count(state, "mcp_server_store")
+    repos = _store_count(state, "repository_store")
+
+    # Event count from projection
+    task_backlog = getattr(state, "task_backlog_projection", None)
+    event_count = len(task_backlog.get_backlog()) if task_backlog else 0
+
+    # Pipeline status breakdown
+    pipeline_store = getattr(state, "pipeline_store", None)
+    pipeline_by_status: dict[str, int] = {}
+    if pipeline_store:
+        runs: dict[str, Any] = getattr(pipeline_store, "_runs", {})
+        for run in runs.values():
+            status = getattr(run, "status", None)
+            if status:
+                key = status.value if hasattr(status, "value") else str(status)
+                pipeline_by_status[key] = pipeline_by_status.get(key, 0) + 1
+
+    # Work item status breakdown
+    wi_store = getattr(state, "work_item_store", None)
+    wi_by_status: dict[str, int] = {}
+    if wi_store:
+        items: dict[str, Any] = getattr(wi_store, "_data", getattr(wi_store, "_items", {}))
+        if isinstance(items, dict):
+            for item in items.values():
+                if isinstance(item, dict):
+                    raw_status = item.get("status", "unknown")
+                else:
+                    raw_status = getattr(item, "status", "unknown")
+                if raw_status and hasattr(raw_status, "value"):
+                    key = str(raw_status.value)
+                else:
+                    key = str(raw_status or "unknown")
+                wi_by_status[key] = wi_by_status.get(key, 0) + 1
+
+    # Recent events (last 10)
+    recent_events: list[dict[str, Any]] = []
+    if task_backlog:
+        backlog = task_backlog.get_backlog()
+        for ev in backlog[-10:]:
+            if isinstance(ev, dict):
+                recent_events.append(ev)
+            else:
+                recent_events.append({"event_type": str(ev)})
+
+    # Agent activity count
+    activity = get_agent_activity(request)
+
     return {
         "pii": pii_stats,
         "sandboxes": {"total": len(sandbox_registry)},
         "connections": {"total": len(connections)},
+        "counts": {
+            "projects": projects,
+            "pipelines": pipelines,
+            "work_items": work_items,
+            "models": models,
+            "agents": agents,
+            "skills": skills,
+            "mcp_servers": mcp_servers,
+            "repos": repos,
+            "events": event_count,
+            "agent_steps": len(activity),
+        },
+        "pipelines_by_status": pipeline_by_status,
+        "work_items_by_status": wi_by_status,
+        "recent_events": recent_events,
     }

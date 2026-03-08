@@ -9,9 +9,12 @@ import {
   Center,
   Button,
   Group,
+  Switch,
 } from '@mantine/core';
 import { useNavigate } from 'react-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWorkflowDefinitionsListWorkflowDefinitions } from '@/generated/api/workflow-definitions/workflow-definitions';
+import { customInstance } from '@/shared/api/client';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface WorkflowDef {
@@ -22,6 +25,7 @@ interface WorkflowDef {
   stage_names?: string[];
   tags?: string[];
   is_builtin?: boolean;
+  enabled?: boolean;
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -50,7 +54,16 @@ function tagColor(tag: string): string {
 export function Component() {
   const { data: resp, isLoading } = useWorkflowDefinitionsListWorkflowDefinitions();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const definitions = (resp?.data ?? []) as WorkflowDef[];
+
+  const toggleMut = useMutation({
+    mutationFn: (definitionId: string) =>
+      customInstance(`/api/v1/workflow-definitions/${definitionId}/toggle`, {
+        method: 'PATCH',
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['/api/v1/workflow-definitions'] }),
+  });
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -76,22 +89,35 @@ export function Component() {
             const id = d.definition_id ?? '';
             const stages = d.stage_names ?? [];
             const tags = d.tags ?? [];
+            const enabled = d.enabled !== false;
             return (
               <Paper
                 key={id}
                 withBorder
                 p="md"
                 radius="md"
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', opacity: enabled ? 1 : 0.5 }}
                 onClick={() => void navigate(`/workflows/editor/${id}`)}
               >
-                <Group gap="xs" mb="sm">
-                  <Text fw={600} size="md">{d.name ?? id}</Text>
-                  {d.is_builtin && (
-                    <Badge variant="light" color="gray" size="xs">
-                      built-in
-                    </Badge>
-                  )}
+                <Group gap="xs" mb="sm" justify="space-between">
+                  <Group gap="xs">
+                    <Text fw={600} size="md">{d.name ?? id}</Text>
+                    {d.is_builtin && (
+                      <Badge variant="light" color="gray" size="xs">
+                        built-in
+                      </Badge>
+                    )}
+                  </Group>
+                  <Switch
+                    size="sm"
+                    checked={enabled}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleMut.mutate(id);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Toggle ${d.name}`}
+                  />
                 </Group>
                 {d.description && (
                   <Text size="sm" c="dimmed" lineClamp={2} mb="sm">

@@ -34,6 +34,13 @@ async def run_tests(
     _config = config or {}
     sandbox_manager: SandboxManager | None = _config.get("configurable", {}).get("sandbox_manager")
 
+    # Fall back to runtime registry after LangGraph interrupt/resume
+    run_id = state.get("run_id", "")
+    if sandbox_manager is None and run_id:
+        from lintel.workflows.nodes._runtime_registry import get_sandbox_manager
+
+        sandbox_manager = get_sandbox_manager(run_id)
+
     await mark_running(_config, "test", state)
 
     test_command: str | None = None

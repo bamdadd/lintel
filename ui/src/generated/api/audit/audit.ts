@@ -25,11 +25,11 @@ import type {
 
 import type {
   AuditGetAuditEntry200,
-  AuditListAuditEntries200Item,
   AuditListAuditEntriesParams,
   AuditRecordAuditEntry201,
   CreateAuditEntryRequest,
-  HTTPValidationError
+  HTTPValidationError,
+  PaginatedAuditResponse
 } from '../../models';
 
 import { customInstance } from '../../../shared/api/client';
@@ -132,7 +132,7 @@ export const useAuditRecordAuditEntry = <TError = HTTPValidationError,
  * @summary List Audit Entries
  */
 export type auditListAuditEntriesResponse200 = {
-  data: AuditListAuditEntries200Item[]
+  data: PaginatedAuditResponse
   status: 200
 }
 

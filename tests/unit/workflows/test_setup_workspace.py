@@ -57,7 +57,11 @@ class DummySandboxManager:
     async def get_logs(self, sandbox_id: str, tail: int = 200) -> str:
         return ""
 
-    async def collect_artifacts(self, sandbox_id: str) -> dict[str, Any]:
+    async def collect_artifacts(
+        self,
+        sandbox_id: str,
+        workdir: str = "/workspace",
+    ) -> dict[str, Any]:
         return {}
 
     async def reconnect_network(self, sandbox_id: str) -> None:
@@ -193,17 +197,18 @@ class TestSetupWorkspace:
         assert "git checkout -b" in manager.executed[4]
         assert result["workspace_path"] == "/workspace/test-run-1/repo"
 
-    async def test_raises_without_repo_url(self) -> None:
+    async def test_creates_empty_sandbox_without_repo_url(self) -> None:
         manager = DummySandboxManager()
         state = _make_state(repo_url="")
 
-        with pytest.raises(RuntimeError, match="No repository URL"):
-            await setup_workspace(
-                state,  # type: ignore[arg-type]
-                {"configurable": {"sandbox_manager": manager}},
-            )
+        result = await setup_workspace(
+            state,  # type: ignore[arg-type]
+            {"configurable": {"sandbox_manager": manager}},
+        )
 
-        assert len(manager.created) == 0
+        assert len(manager.created) == 1
+        assert result["sandbox_id"] == manager.created[0]
+        assert result["current_phase"] == "planning"
 
     async def test_destroys_sandbox_on_clone_failure(self) -> None:
         manager = DummySandboxManager()

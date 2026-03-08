@@ -577,3 +577,27 @@ class PostgresSkillStore(PostgresCrudStore):
                 data.pop("_skill_id", None)
                 result[skill_id] = self._to_instance(data)
             return result
+
+
+class PostgresTagStore(PostgresCrudStore):
+    """Postgres-backed tag store."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        from lintel.contracts.types import Tag
+
+        super().__init__(pool, "tag", "tag_id", Tag)
+
+    async def list_by_project(self, project_id: str) -> list[Any]:
+        return await self.list_all(project_id=project_id)
+
+
+class PostgresBoardStore(PostgresCrudStore):
+    """Postgres-backed board store."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        from lintel.contracts.types import Board
+
+        super().__init__(pool, "board", "board_id", Board)
+
+    async def list_by_project(self, project_id: str) -> list[Any]:
+        return await self.list_all(project_id=project_id)

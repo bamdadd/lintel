@@ -162,6 +162,18 @@ def _create_in_memory_stores() -> dict[str, Any]:
     }
 
 
+def _dc_to_dict(obj: Any) -> dict[str, Any]:  # noqa: ANN401
+    """Convert a frozen dataclass to a dict, handling nested tuples."""
+    from dataclasses import asdict
+
+    d = asdict(obj)
+    # Convert tuples to lists for JSON serialization compatibility
+    for k, v in d.items():
+        if isinstance(v, tuple):
+            d[k] = list(v)
+    return d
+
+
 def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     """Create all Postgres-backed stores."""
     from lintel.infrastructure.event_store.postgres import PostgresEventStore
@@ -191,6 +203,94 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         PostgresVariableStore,
         PostgresWorkItemStore,
     )
+    from lintel.infrastructure.persistence.stores import (
+        PostgresBoardStore as _PgBoardStore,
+    )
+    from lintel.infrastructure.persistence.stores import (
+        PostgresTagStore as _PgTagStore,
+    )
+
+    class _BoardStoreAdapter:
+        """Adapt PostgresCrudStore (dataclass) to dict-based interface used by routes."""
+
+        def __init__(self, pg: _PgBoardStore) -> None:
+            self._pg = pg
+
+        async def add(self, data: dict[str, Any]) -> None:
+            from lintel.contracts.types import Board, BoardColumn
+
+            cols = tuple(BoardColumn(**c) for c in data.get("columns", []))
+            entity = Board(
+                board_id=data["board_id"],
+                project_id=data.get("project_id", ""),
+                name=data.get("name", ""),
+                columns=cols,
+            )
+            await self._pg.add(entity)
+
+        async def get(self, board_id: str) -> dict[str, Any] | None:
+            result = await self._pg.get(board_id)
+            if result is None:
+                return None
+            return _dc_to_dict(result)
+
+        async def list_by_project(self, project_id: str) -> list[dict[str, Any]]:
+            items = await self._pg.list_by_project(project_id)
+            return [_dc_to_dict(i) for i in items]
+
+        async def update(self, board_id: str, data: dict[str, Any]) -> None:
+            from lintel.contracts.types import Board, BoardColumn
+
+            cols = tuple(BoardColumn(**c) for c in data.get("columns", []))
+            entity = Board(
+                board_id=board_id,
+                project_id=data.get("project_id", ""),
+                name=data.get("name", ""),
+                columns=cols,
+            )
+            await self._pg.update(entity)
+
+        async def remove(self, board_id: str) -> None:
+            await self._pg.remove(board_id)
+
+    class _TagStoreAdapter:
+        def __init__(self, pg: _PgTagStore) -> None:
+            self._pg = pg
+
+        async def add(self, data: dict[str, Any]) -> None:
+            from lintel.contracts.types import Tag
+
+            entity = Tag(
+                tag_id=data["tag_id"],
+                project_id=data.get("project_id", ""),
+                name=data.get("name", ""),
+                color=data.get("color", "#6b7280"),
+            )
+            await self._pg.add(entity)
+
+        async def get(self, tag_id: str) -> dict[str, Any] | None:
+            result = await self._pg.get(tag_id)
+            if result is None:
+                return None
+            return _dc_to_dict(result)
+
+        async def list_by_project(self, project_id: str) -> list[dict[str, Any]]:
+            items = await self._pg.list_by_project(project_id)
+            return [_dc_to_dict(i) for i in items]
+
+        async def update(self, tag_id: str, data: dict[str, Any]) -> None:
+            from lintel.contracts.types import Tag
+
+            entity = Tag(
+                tag_id=tag_id,
+                project_id=data.get("project_id", ""),
+                name=data.get("name", ""),
+                color=data.get("color", "#6b7280"),
+            )
+            await self._pg.update(entity)
+
+        async def remove(self, tag_id: str) -> None:
+            await self._pg.remove(tag_id)
 
     return {
         "event_store": PostgresEventStore(pool),
@@ -218,9 +318,8 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "model_assignment_store": PostgresModelAssignmentStore(pool),
         "mcp_server_store": PostgresMCPServerStore(pool),
         "sandbox_store": PostgresSandboxStore(pool),
-        # No Postgres implementations yet — use in-memory stores
-        "tag_store": TagStore(),
-        "board_store": BoardStore(),
+        "tag_store": _TagStoreAdapter(_PgTagStore(pool)),
+        "board_store": _BoardStoreAdapter(_PgBoardStore(pool)),
     }
 
 

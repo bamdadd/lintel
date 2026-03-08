@@ -80,19 +80,37 @@ async def record_audit_entry(
     return asdict(entry)
 
 
+class PaginatedAuditResponse(BaseModel):
+    items: list[dict[str, Any]]
+    total: int
+    limit: int
+    offset: int
+
+
 @router.get("/audit")
 async def list_audit_entries(
     store: Annotated[AuditEntryStore, Depends(get_audit_entry_store)],
     actor_id: str | None = None,
     resource_type: str | None = None,
     resource_id: str | None = None,
-) -> list[dict[str, Any]]:
+    limit: int = 100,
+    offset: int = 0,
+) -> PaginatedAuditResponse:
     entries = await store.list_all(
         actor_id=actor_id,
         resource_type=resource_type,
         resource_id=resource_id,
     )
-    return [asdict(e) for e in entries]
+    # Sort by timestamp descending (most recent first)
+    entries.sort(key=lambda e: e.timestamp, reverse=True)
+    total = len(entries)
+    page = entries[offset : offset + limit]
+    return PaginatedAuditResponse(
+        items=[asdict(e) for e in page],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/audit/{entry_id}")

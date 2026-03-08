@@ -12,4 +12,9 @@ export interface UpdateProjectRequest {
   default_branch?: string | null;
   credential_ids?: string[] | null;
   status?: ProjectStatus | null;
+  ai_provider_id?: string | null;
+  model_id?: string | null;
+  workflow_definition_id?: string | null;
+  channel_id?: string | null;
+  workspace_id?: string | null;
 }

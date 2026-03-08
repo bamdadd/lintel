@@ -545,6 +545,25 @@ async def _dispatch_workflow(
     )
 
 
+def _get_enabled_workflows(request: Request) -> set[str]:
+    """Return set of enabled workflow definition IDs."""
+    from lintel.api.routes.workflow_definitions import get_workflow_defs
+
+    defs = get_workflow_defs(request)
+    return {k for k, v in defs.items() if v.get("enabled", True)}
+
+
+def _is_workflow_enabled(request: Request, workflow_type: str) -> bool:
+    """Check if a workflow definition is enabled."""
+    from lintel.api.routes.workflow_definitions import get_workflow_defs
+
+    defs = get_workflow_defs(request)
+    wf = defs.get(workflow_type)
+    if wf is None:
+        return False
+    return bool(wf.get("enabled", True))
+
+
 def _infer_work_type(workflow_type: str) -> WorkItemType:
     """Map workflow type string to WorkItemType."""
     mapping = {
@@ -572,34 +591,44 @@ async def _handle_classified_message(
     result: ChatRouterResult = classify_result  # type: ignore[assignment]
 
     if result.action == "start_workflow":
-        conv_data = await store.get(conversation_id)
-        if conv_data and not conv_data.get("project_id"):
-            prompt_msg = await _prompt_project_selection(request, store, conversation_id)
-            await store.add_message(
-                conversation_id,
-                user_id="system",
-                display_name="Lintel",
-                role="agent",
-                content=prompt_msg,
+        # Check if the workflow is enabled
+        workflow_enabled = _is_workflow_enabled(request, result.workflow_type)
+        if not workflow_enabled:
+            logger.info(
+                "workflow_disabled_fallback_to_chat",
+                workflow_type=result.workflow_type,
             )
-            await store.update_fields(
+            # Fall through to chat/MCP reply instead
+            pass
+        else:
+            conv_data = await store.get(conversation_id)
+            if conv_data and not conv_data.get("project_id"):
+                prompt_msg = await _prompt_project_selection(request, store, conversation_id)
+                await store.add_message(
+                    conversation_id,
+                    user_id="system",
+                    display_name="Lintel",
+                    role="agent",
+                    content=prompt_msg,
+                )
+                await store.update_fields(
+                    conversation_id,
+                    _pending_workflow={
+                        "workflow_type": result.workflow_type,
+                        "message": message,
+                        "reply": result.reply,
+                    },
+                )
+                return None
+            await _dispatch_workflow(
+                request,
+                store,
                 conversation_id,
-                _pending_workflow={
-                    "workflow_type": result.workflow_type,
-                    "message": message,
-                    "reply": result.reply,
-                },
+                result.workflow_type,
+                message,
+                result.reply,
             )
             return None
-        await _dispatch_workflow(
-            request,
-            store,
-            conversation_id,
-            result.workflow_type,
-            message,
-            result.reply,
-        )
-        return None
 
     # Chat reply path — resolve project context for the LLM
     project, repo_url, branch = await _resolve_project_context(
@@ -684,6 +713,7 @@ async def create_conversation(
         body.message,
         model_policy=model_policy,
         api_base=api_base,
+        enabled_workflows=_get_enabled_workflows(request),
     )
 
     await _handle_classified_message(
@@ -811,6 +841,7 @@ async def send_message(
         body.message,
         model_policy=model_policy,
         api_base=api_base,
+        enabled_workflows=_get_enabled_workflows(request),
     )
 
     await _handle_classified_message(
@@ -873,6 +904,7 @@ async def send_message_stream(
                     body.message,
                     model_policy=model_policy,
                     api_base=api_base,
+                    enabled_workflows=_get_enabled_workflows(request),
                 )
                 if result.action == "start_workflow":
                     workflow_dispatched = True

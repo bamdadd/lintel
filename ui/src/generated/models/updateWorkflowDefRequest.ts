@@ -11,4 +11,5 @@ export interface UpdateWorkflowDefRequest {
   description?: string | null;
   graph?: UpdateWorkflowDefRequestGraph;
   is_template?: boolean | null;
+  enabled?: boolean | null;
 }

@@ -30,12 +30,13 @@ interface EditBoardModalProps {
 
 const WORK_ITEM_STATUSES = [
   { value: '', label: '(none)' },
-  { value: 'backlog', label: 'Backlog' },
-  { value: 'todo', label: 'To Do' },
+  { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'in_review', label: 'In Review' },
-  { value: 'done', label: 'Done' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'merged', label: 'Merged' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'failed', label: 'Failed' },
 ];
 
 let nextTempId = 0;
@@ -69,7 +70,8 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const next = [...columns];
-    const [moved] = next.splice(result.source.index, 1);
+    const moved = next.splice(result.source.index, 1)[0];
+    if (!moved) return;
     next.splice(result.destination.index, 0, moved);
     setColumns(next);
   };

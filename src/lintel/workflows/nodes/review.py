@@ -45,6 +45,19 @@ async def review_output(
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
     agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
 
+    # Fall back to runtime registry after LangGraph interrupt/resume
+    run_id = state.get("run_id", "")
+    if (sandbox_manager is None or agent_runtime is None) and run_id:
+        from lintel.workflows.nodes._runtime_registry import (
+            get_runtime,
+            get_sandbox_manager,
+        )
+
+        if sandbox_manager is None:
+            sandbox_manager = get_sandbox_manager(run_id)
+        if agent_runtime is None:
+            agent_runtime = get_runtime(run_id)
+
     await mark_running(_config, "review", state)
 
     sandbox_id = state.get("sandbox_id")
@@ -68,8 +81,8 @@ async def review_output(
     # Fall back to collected artifacts
     if not diff_text:
         for sr in state.get("sandbox_results", []):
-            if isinstance(sr, dict) and sr.get("diff"):
-                diff_text = sr["diff"]
+            if isinstance(sr, dict) and (sr.get("content") or sr.get("diff")):
+                diff_text = sr.get("content", "") or sr.get("diff", "")
                 break
 
     if not diff_text:

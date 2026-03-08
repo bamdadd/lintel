@@ -71,39 +71,32 @@ async def research_codebase(
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
     sandbox_id: str | None = state.get("sandbox_id")
 
-    # Require sandbox — setup_workspace must have succeeded
-    if sandbox_manager is None or sandbox_id is None:
-        msg = "Research requires a sandbox — setup_workspace must run first"
-        await mark_completed(config, "research", state, error=msg)
-        raise RuntimeError(msg)
+    # Gather codebase context from sandbox (if available)
+    codebase_context = ""
+    if sandbox_manager is not None and sandbox_id is not None:
+        await append_log(config, "research", "Reading codebase from sandbox...", state)
+        try:
+            workspace_path = state.get("workspace_path", "/workspace/repo")
+            codebase_context = await _gather_context(sandbox_manager, sandbox_id, workspace_path)
+        except Exception:
+            logger.warning("research_sandbox_context_failed", exc_info=True)
+            await append_log(config, "research", "Failed to read codebase from sandbox", state)
+            # Continue without codebase context — LLM can still analyse the request
 
-    # Gather codebase context from sandbox
-    await append_log(config, "research", "Reading codebase from sandbox...", state)
-    try:
-        workspace_path = state.get("workspace_path", "/workspace/repo")
-        codebase_context = await _gather_context(sandbox_manager, sandbox_id, workspace_path)
-    except Exception:
-        logger.warning("research_sandbox_context_failed", exc_info=True)
-        await append_log(config, "research", "Failed to read codebase from sandbox", state)
-        raise
-
-    if not codebase_context:
-        msg = (
-            "No codebase context gathered from sandbox — "
-            "the repository may not have been cloned successfully. "
-            f"Sandbox: {sandbox_id}"
+    if codebase_context:
+        await append_log(
+            config,
+            "research",
+            f"Codebase context gathered ({len(codebase_context):,} chars)",
+            state,
         )
-        logger.error("research_no_context", reason=msg)
-        await append_log(config, "research", msg, state)
-        await mark_completed(config, "research", state, error=msg)
-        raise RuntimeError(msg)
-
-    await append_log(
-        config,
-        "research",
-        f"Codebase context gathered ({len(codebase_context):,} chars)",
-        state,
-    )
+    else:
+        await append_log(
+            config,
+            "research",
+            "No codebase context available — analysing request only",
+            state,
+        )
 
     # Without agent runtime, return raw context as research
     if agent_runtime is None:
@@ -127,7 +120,10 @@ async def research_codebase(
     user_request = "\n".join(messages) if messages else "No description provided."
 
     # Ask the LLM to produce a structured research report
-    await append_log(config, "research", "Analysing codebase with LLM...", state)
+    label = (
+        "Analysing codebase with LLM..." if codebase_context else "Analysing request with LLM..."
+    )
+    await append_log(config, "research", label, state)
 
     from lintel.contracts.types import ThreadRef
 
@@ -165,7 +161,13 @@ async def research_codebase(
             {"role": "system", "content": RESEARCH_SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": (f"{codebase_context}\n\n---\n\n## User Request\n{user_request}"),
+                "content": (
+                    f"{codebase_context}\n\n---\n\n## User Request\n{user_request}"
+                    if codebase_context
+                    else f"## User Request\n{user_request}\n\n"
+                    "Note: No codebase context available. Analyse the request and provide "
+                    "recommendations based on general software engineering best practices."
+                ),
             },
         ],
         on_chunk=_on_chunk,

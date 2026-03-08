@@ -41,6 +41,9 @@ All entities are frozen dataclasses in `src/lintel/contracts/types.py`. All stor
 | `ChatSession` | types.py:713 | Chat session linked to project + MCP servers |
 | `ApprovalRequest` | types.py:460 | Human-in-the-loop gate |
 | `AuditEntry` | types.py:569 | Immutable action record |
+| `Tag` | types.py:307 | Label attached to work items for grouping/filtering |
+| `BoardColumn` | types.py:317 | Column within a board (name, position, status mapping) |
+| `Board` | types.py:327 | Kanban board organising work items into columns |
 
 ### Entities That Need Modification
 
@@ -480,6 +483,11 @@ Portfolio ──1:N──> Project (product)
                      │
                      ├── team_id ──> Team ──1:N──> TeamMember (human or agent)
                      │                  └──1:N──> Channel (slack/discord/teams/web)
+                     │
+                     ├──1:N──> Board ──1:N──> BoardColumn (status mapping)
+                     │            └── WorkItems placed by column_id or status
+                     │
+                     ├──1:N──> Tag ──M:N──> WorkItem (via tags list)
                      │
                      ├──1:N──> WorkItem ──1:1──> DeliveryLoop
                      │            └──1:N──> WorkflowRun ──1:N──> Stage

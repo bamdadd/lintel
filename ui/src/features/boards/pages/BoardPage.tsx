@@ -11,7 +11,7 @@ import type { WorkItem } from '../api';
 import { BoardColumn } from '../components/BoardColumn';
 import { EditBoardModal } from '../components/EditBoardModal';
 import { CreateWorkItemModal } from '../components/CreateWorkItemModal';
-import { WorkItemDetailDrawer } from '../components/WorkItemDetailDrawer';
+import { WorkItemDetailModal } from '../components/WorkItemDetailModal';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 export function Component() {
@@ -25,13 +25,13 @@ export function Component() {
   const updateMut = useUpdateWorkItem();
   const qc = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
-  const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
+  const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
   const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
   const [createItemOpened, { open: openCreateItem, close: closeCreateItem }] = useDisclosure(false);
 
   const handleClickItem = (item: WorkItem) => {
     setSelectedItem(item);
-    openDrawer();
+    openDetail();
   };
 
   const columns = useMemo(
@@ -47,12 +47,22 @@ export function Component() {
     }
     // "Unassigned" for items not in any column
     map['__unassigned__'] = [];
+    // Build a status-to-column lookup for fallback placement
+    const statusToCol: Record<string, string> = {};
+    for (const col of columns) {
+      if (col.work_item_status) {
+        statusToCol[col.work_item_status] = col.column_id;
+      }
+    }
+
     for (const item of items) {
-      const colId = item.column_id || '__unassigned__';
-      if (map[colId]) {
-        map[colId].push(item);
+      // Prefer status-based column when available (status is the source of truth),
+      // fall back to explicit column_id for items without a status mapping
+      let colId = statusToCol[item.status] ?? item.column_id ?? '';
+      if (colId && map[colId]) {
+        map[colId]!.push(item);
       } else {
-        map['__unassigned__'].push(item);
+        map['__unassigned__']!.push(item);
       }
     }
     // Sort by column_position within each column
@@ -63,35 +73,71 @@ export function Component() {
   }, [itemsResp, columns]);
 
   const handleDragEnd = (result: DropResult) => {
-    const { draggableId, destination } = result;
+    const { draggableId, source, destination } = result;
     if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
     const targetColumnId = destination.droppableId;
     const targetColumn = columns.find((c) => c.column_id === targetColumnId);
+    const sourceColumnId = source.droppableId;
 
-    const updateData: Record<string, unknown> = {
-      column_id: targetColumnId === '__unassigned__' ? '' : targetColumnId,
-      column_position: destination.index,
-    };
+    // Build the new order for the target column
+    const targetItems = [...(itemsByColumn[targetColumnId] ?? [])];
+    const sourceItems = sourceColumnId === targetColumnId
+      ? targetItems
+      : [...(itemsByColumn[sourceColumnId] ?? [])];
 
-    // If the column maps to a status, also update the work item status
-    if (targetColumn?.work_item_status) {
-      updateData.status = targetColumn.work_item_status;
+    // Remove from source
+    if (sourceColumnId === targetColumnId) {
+      const moved = targetItems.splice(source.index, 1)[0];
+      if (!moved) return;
+      targetItems.splice(destination.index, 0, moved);
+    } else {
+      const moved = sourceItems.splice(source.index, 1)[0];
+      if (!moved) return;
+      targetItems.splice(destination.index, 0, moved);
     }
 
-    updateMut.mutate(
-      { workItemId: draggableId, data: updateData },
-      {
-        onSuccess: () => {
-          void qc.invalidateQueries({ queryKey: ['/api/v1/work-items'] });
-        },
-        onError: () => {
-          notifications.show({
-            title: 'Error',
-            message: 'Failed to move work item',
-            color: 'red',
-          });
-        },
+    // Update positions for all items in the target column
+    const updates: Promise<unknown>[] = [];
+    targetItems.forEach((item, i) => {
+      const data: Record<string, unknown> = {
+        column_id: targetColumnId === '__unassigned__' ? '' : targetColumnId,
+        column_position: i,
+      };
+      if (item.work_item_id === draggableId && targetColumn?.work_item_status) {
+        data.status = targetColumn.work_item_status;
+      }
+      if (item.column_position !== i || item.work_item_id === draggableId) {
+        updates.push(
+          updateMut.mutateAsync({ workItemId: item.work_item_id, data }),
+        );
+      }
+    });
+
+    // If cross-column, also update positions in the source column
+    if (sourceColumnId !== targetColumnId) {
+      sourceItems.forEach((item, i) => {
+        if (item.column_position !== i) {
+          updates.push(
+            updateMut.mutateAsync({
+              workItemId: item.work_item_id,
+              data: { column_position: i },
+            }),
+          );
+        }
+      });
+    }
+
+    Promise.all(updates).then(
+      () => void qc.invalidateQueries({ queryKey: ['/api/v1/work-items'] }),
+      () => {
+        notifications.show({
+          title: 'Error',
+          message: 'Failed to move work item',
+          color: 'red',
+        });
+        void qc.invalidateQueries({ queryKey: ['/api/v1/work-items'] });
       },
     );
   };
@@ -172,7 +218,7 @@ export function Component() {
         </Group>
       </DragDropContext>
 
-      <WorkItemDetailDrawer item={selectedItem} opened={drawerOpened} onClose={closeDrawer} />
+      <WorkItemDetailModal item={selectedItem} opened={detailOpened} onClose={closeDetail} />
     </Stack>
   );
 }

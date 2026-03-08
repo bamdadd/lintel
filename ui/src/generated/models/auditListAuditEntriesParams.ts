@@ -9,4 +9,6 @@ export type AuditListAuditEntriesParams = {
 actor_id?: string | null;
 resource_type?: string | null;
 resource_id?: string | null;
+limit?: number;
+offset?: number;
 };

@@ -33,21 +33,22 @@ interface CreateBoardModalProps {
 
 const WORK_ITEM_STATUSES = [
   { value: '', label: '(none)' },
-  { value: 'backlog', label: 'Backlog' },
-  { value: 'todo', label: 'To Do' },
+  { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'in_review', label: 'In Review' },
-  { value: 'done', label: 'Done' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'merged', label: 'Merged' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'failed', label: 'Failed' },
 ];
 
 let nextId = 0;
 
 function defaultColumns(): ColumnDef[] {
   return [
-    { id: `c${++nextId}`, name: 'To Do', work_item_status: 'todo' },
+    { id: `c${++nextId}`, name: 'To Do', work_item_status: 'open' },
     { id: `c${++nextId}`, name: 'In Progress', work_item_status: 'in_progress' },
-    { id: `c${++nextId}`, name: 'Done', work_item_status: 'done' },
+    { id: `c${++nextId}`, name: 'Done', work_item_status: 'closed' },
   ];
 }
 
@@ -77,7 +78,8 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const next = [...columns];
-    const [moved] = next.splice(result.source.index, 1);
+    const moved = next.splice(result.source.index, 1)[0];
+    if (!moved) return;
     next.splice(result.destination.index, 0, moved);
     setColumns(next);
   };

@@ -235,6 +235,7 @@ class SandboxManager(Protocol):
     async def collect_artifacts(
         self,
         sandbox_id: str,
+        workdir: str = "/workspace",
     ) -> dict[str, Any]: ...
 
     async def reconnect_network(

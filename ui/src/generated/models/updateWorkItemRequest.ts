@@ -16,4 +16,7 @@ export interface UpdateWorkItemRequest {
   thread_ref_str?: string | null;
   branch_name?: string | null;
   pr_url?: string | null;
+  column_id?: string | null;
+  column_position?: number | null;
+  tags?: string[] | null;
 }

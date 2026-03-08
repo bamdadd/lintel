@@ -1,6 +1,9 @@
 """Work-item CRUD endpoints."""
 
+import asyncio
+import logging
 from dataclasses import asdict
+from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import uuid4
 
@@ -9,8 +12,20 @@ from pydantic import BaseModel, Field
 
 from lintel.contracts.data_models import WorkItemData
 from lintel.contracts.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
-from lintel.contracts.types import WorkItem, WorkItemStatus, WorkItemType
+from lintel.contracts.types import (
+    PipelineRun,
+    PipelineStatus,
+    Stage,
+    ThreadRef,
+    Trigger,
+    TriggerType,
+    WorkItem,
+    WorkItemStatus,
+    WorkItemType,
+)
 from lintel.domain.event_dispatcher import dispatch_event
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -149,8 +164,133 @@ async def update_work_item(
         WorkItemUpdated(payload={"resource_id": work_item_id, "fields": list(updates.keys())}),
         stream_id=f"work_item:{work_item_id}",
     )
+
+    # Trigger workflow when status transitions to in_progress
+    old_status = item.get("status", "")
+    new_status = updates.get("status", "")
+    if new_status == "in_progress" and old_status != "in_progress":
+        await _trigger_workflow_for_work_item(request, merged, work_item_id)
+
     result = await store.get(work_item_id)
     return result  # type: ignore[return-value]
+
+
+async def _trigger_workflow_for_work_item(
+    request: Request,
+    item: dict[str, Any],
+    work_item_id: str,
+) -> None:
+    """Dispatch a workflow when a work item moves to in_progress."""
+    from lintel.api.routes.pipelines import _stage_names_for_workflow
+    from lintel.contracts.commands import StartWorkflow
+
+    project_id = item.get("project_id", "")
+    if not project_id:
+        return
+
+    work_type = item.get("work_type", "task")
+    workflow_type = {
+        "feature": "feature_to_pr",
+        "bug": "feature_to_pr",
+        "refactor": "feature_to_pr",
+        "task": "feature_to_pr",
+    }.get(work_type, "feature_to_pr")
+
+    # Check if the workflow is enabled
+    from lintel.api.routes.workflow_definitions import get_workflow_defs
+
+    defs = get_workflow_defs(request)
+    wf = defs.get(workflow_type)
+    if wf is not None and not wf.get("enabled", True):
+        logger.info("workflow_disabled_skipping_trigger: %s", workflow_type)
+        return
+
+    run_id = uuid4().hex
+    trigger_id = uuid4().hex
+    thread_ref = ThreadRef(
+        workspace_id="board",
+        channel_id="kanban",
+        thread_ts=work_item_id,
+    )
+
+    # Create trigger
+    trigger_store = getattr(request.app.state, "trigger_store", None)
+    if trigger_store:
+        trigger = Trigger(
+            trigger_id=trigger_id,
+            project_id=project_id,
+            trigger_type=TriggerType.MANUAL,
+            name=f"board:{work_item_id}",
+        )
+        try:
+            await trigger_store.add(trigger)
+        except Exception:
+            logger.warning("trigger_creation_failed", exc_info=True)
+
+    # Create pipeline run
+    pipeline_store = getattr(request.app.state, "pipeline_store", None)
+    if pipeline_store:
+        stage_names = _stage_names_for_workflow(workflow_type)
+        stages = tuple(
+            Stage(stage_id=uuid4().hex, name=name, stage_type=name) for name in stage_names
+        )
+        pipeline_run = PipelineRun(
+            run_id=run_id,
+            project_id=project_id,
+            work_item_id=work_item_id,
+            workflow_definition_id=workflow_type,
+            status=PipelineStatus.RUNNING,
+            trigger_type=f"board:{work_item_id}",
+            trigger_id=trigger_id,
+            stages=stages,
+            created_at=datetime.now(UTC).isoformat(),
+        )
+        try:
+            await pipeline_store.add(pipeline_run)
+        except Exception:
+            logger.warning("pipeline_run_creation_failed", exc_info=True)
+
+    # Resolve repo context from project
+    project_store = getattr(request.app.state, "project_store", None)
+    repo_url = ""
+    repo_urls: tuple[str, ...] = ()
+    repo_branch = "main"
+    credential_ids: tuple[str, ...] = ()
+    if project_store:
+        try:
+            project = await project_store.get(project_id)
+            if project:
+                repo_url = project.get("repo_url", "")
+                repo_urls = tuple(project.get("_repo_urls", ()))
+                repo_branch = project.get("default_branch", "main")
+                credential_ids = tuple(project.get("credential_ids", ()))
+        except Exception:
+            pass
+
+    command = StartWorkflow(
+        thread_ref=thread_ref,
+        workflow_type=workflow_type,
+        sanitized_messages=(item.get("description", item.get("title", "")),),
+        project_id=project_id,
+        work_item_id=work_item_id,
+        run_id=run_id,
+        repo_url=repo_url,
+        repo_urls=repo_urls,
+        repo_branch=repo_branch,
+        credential_ids=credential_ids,
+    )
+
+    dispatcher = getattr(request.app.state, "command_dispatcher", None)
+    if dispatcher:
+        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+        logger.info(
+            "workflow_triggered_from_board",
+            extra={
+                "work_item_id": work_item_id,
+                "workflow_type": workflow_type,
+                "run_id": run_id,
+            },
+        )
 
 
 @router.delete("/work-items/{work_item_id}", status_code=204)

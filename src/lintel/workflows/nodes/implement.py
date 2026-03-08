@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
+
+import structlog
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
@@ -12,16 +13,23 @@ if TYPE_CHECKING:
     from lintel.contracts.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 IMPLEMENT_SYSTEM_PROMPT = """\
 You are a senior software engineer implementing a feature in a codebase.
-You have access to a sandbox with the project cloned at the workspace path provided below.
+You have access to sandbox tools to read, write, and execute commands.
 
-You will be given a plan with tasks. Implement each task by:
-1. Reading relevant files to understand the code
-2. Writing or modifying files to implement the change
-3. Running tests to verify your changes
+IMPORTANT: You MUST use the provided tools to make changes. Do NOT just describe \
+what to do — actually use sandbox_write_file to write code and sandbox_execute_command \
+to run commands.
+
+The workspace is at: {workspace_path}
+
+Follow this workflow:
+1. Use sandbox_list_files to explore the workspace directory
+2. Use sandbox_read_file to understand existing code
+3. Use sandbox_write_file to create or modify files
+4. Use sandbox_execute_command to run tests or verify changes
 
 Work methodically through each task. Write clean, production-quality code.
 """
@@ -45,6 +53,28 @@ async def spawn_implementation(
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
     agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
 
+    # LangGraph strips custom configurable keys on resume after interrupt.
+    # Fall back to the runtime registry which persists across interrupts.
+    run_id = state.get("run_id", "")
+    if (sandbox_manager is None or agent_runtime is None) and run_id:
+        from lintel.workflows.nodes._runtime_registry import (
+            get_runtime,
+            get_sandbox_manager,
+        )
+
+        if sandbox_manager is None:
+            sandbox_manager = get_sandbox_manager(run_id)
+        if agent_runtime is None:
+            agent_runtime = get_runtime(run_id)
+
+    logger.info(
+        "implement_node_started",
+        has_sandbox=sandbox_manager is not None,
+        has_runtime=agent_runtime is not None,
+        sandbox_id=state.get("sandbox_id", ""),
+        config_keys=list(_configurable.keys()),
+    )
+
     await mark_running(_config, "implement", state)
     await append_log(_config, "implement", "Starting implementation node", state)
 
@@ -56,8 +86,8 @@ async def spawn_implementation(
         }
 
     logger.info(
-        "implementation_started phase=implementing thread_ref=%s",
-        state.get("thread_ref", ""),
+        "implementation_started",
+        thread_ref=state.get("thread_ref", ""),
     )
 
     sandbox_id = state.get("sandbox_id")
@@ -78,9 +108,13 @@ async def spawn_implementation(
     )
     plan_summary = plan.get("summary", "Implement the requested feature.")
 
+    research_context = state.get("research_context", "")
+    research_section = f"\n\n## Research Context\n{research_context}" if research_context else ""
+
     user_prompt = (
         f"## Plan\n{plan_summary}\n\n## Tasks\n{task_text}\n\n"
         f"## Original request\n{chr(10).join(messages)}"
+        f"{research_section}"
     )
 
     # Parse thread ref for agent runtime
@@ -103,7 +137,12 @@ async def spawn_implementation(
                 agent_role=AgentRole.CODER,
                 step_name="implement",
                 messages=[
-                    {"role": "system", "content": IMPLEMENT_SYSTEM_PROMPT},
+                    {
+                        "role": "system",
+                        "content": IMPLEMENT_SYSTEM_PROMPT.format(
+                            workspace_path=state.get("workspace_path", "/workspace/repo"),
+                        ),
+                    },
                     {"role": "user", "content": user_prompt},
                 ],
                 tools=sandbox_tool_schemas(),
@@ -112,7 +151,13 @@ async def spawn_implementation(
             )
             agent_output = result.get("content", "Implementation complete.")
             usage = extract_token_usage("implement", result)
-            await append_log(_config, "implement", "Agent completed", state)
+            iterations = result.get("tool_iterations", 0)
+            await append_log(
+                _config,
+                "implement",
+                f"Agent completed — {iterations} tool iteration(s)",
+                state,
+            )
         except Exception:
             logger.exception("agent_implementation_failed")
             await append_log(_config, "implement", "Agent implementation failed", state)
@@ -138,7 +183,8 @@ async def spawn_implementation(
     # Collect git diff as artifacts
     await append_log(_config, "implement", "Collecting artifacts...", state)
     try:
-        artifacts = await sandbox_manager.collect_artifacts(sandbox_id)
+        workspace_path = state.get("workspace_path", "/workspace/repo")
+        artifacts = await sandbox_manager.collect_artifacts(sandbox_id, workdir=workspace_path)
     except Exception:
         from lintel.workflows.nodes._error_handling import handle_node_error
 
@@ -154,7 +200,7 @@ async def spawn_implementation(
         outputs.append({"node": "implement_rebase", "output": rebase_warning})
 
     # Persist code artifact if diff available
-    diff_text = artifacts.get("diff", "") if isinstance(artifacts, dict) else ""
+    diff_text = artifacts.get("content", "") if isinstance(artifacts, dict) else ""
     if diff_text:
         code_artifact_store = _configurable.get("code_artifact_store")
         if code_artifact_store is not None:

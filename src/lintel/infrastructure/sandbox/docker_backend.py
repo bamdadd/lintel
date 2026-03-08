@@ -181,11 +181,24 @@ class DockerSandboxManager:
         )
         return raw.decode("utf-8", errors="replace")
 
-    async def collect_artifacts(self, sandbox_id: str) -> dict[str, Any]:
+    async def collect_artifacts(
+        self, sandbox_id: str, workdir: str = "/workspace"
+    ) -> dict[str, Any]:
         from lintel.contracts.types import SandboxJob
 
+        # Try to find git repos under the workdir
+        find_result = await self.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"find {workdir} -name .git -type d -maxdepth 3 2>/dev/null | head -1",
+                timeout_seconds=10,
+            ),
+        )
+        git_dir = find_result.stdout.strip()
+        repo_dir = git_dir.rsplit("/.git", 1)[0] if git_dir else workdir
+
         result = await self.execute(
-            sandbox_id, SandboxJob(command="git diff", workdir="/workspace")
+            sandbox_id, SandboxJob(command="git diff HEAD", workdir=repo_dir)
         )
         return {"type": "diff", "content": result.stdout, "exit_code": result.exit_code}
 

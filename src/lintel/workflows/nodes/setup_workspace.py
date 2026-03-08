@@ -106,9 +106,50 @@ async def setup_workspace(
     repo_path = f"{workspace_root}/repo"
 
     if not repo_url:
-        await mark_completed(config, "setup_workspace", state, error="No repository URL")
-        msg = "No repository URL configured for this project"
-        raise RuntimeError(msg)
+        # No repo configured — create an empty sandbox so downstream nodes
+        # (research, plan, implement) can still operate on the user's request
+        await append_log(
+            config,
+            "setup_workspace",
+            "No repository URL — creating empty workspace",
+            state,
+        )
+        thread_ref_str = state["thread_ref"]
+        parts = thread_ref_str.replace("thread:", "").split(":")
+        thread_ref = ThreadRef(
+            workspace_id=parts[0] if len(parts) > 0 else "",
+            channel_id=parts[1] if len(parts) > 1 else "",
+            thread_ts=parts[2] if len(parts) > 2 else "",
+        )
+        sandbox_config = SandboxConfig(network_enabled=False)
+        sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command=f"mkdir -p {repo_path}", timeout_seconds=10),
+        )
+        await append_log(
+            config,
+            "setup_workspace",
+            f"Empty sandbox created: `{sandbox_id[:12]}`",
+            state,
+        )
+        await mark_completed(
+            config,
+            "setup_workspace",
+            state,
+            outputs={
+                "sandbox_id": sandbox_id,
+                "repo_url": "",
+                "feature_branch": feature_branch or "lintel/task/work",
+                "workspace_path": repo_path,
+            },
+        )
+        return {
+            "sandbox_id": sandbox_id,
+            "feature_branch": feature_branch or "lintel/task/work",
+            "workspace_path": repo_path,
+            "current_phase": "planning",
+        }
 
     if not feature_branch:
         from lintel.workflows.nodes._branch_naming import generate_branch_name

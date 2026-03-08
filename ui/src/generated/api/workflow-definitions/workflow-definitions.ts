@@ -31,6 +31,7 @@ import type {
   WorkflowDefinitionsGetWorkflowDefinition200,
   WorkflowDefinitionsListTemplates200Item,
   WorkflowDefinitionsListWorkflowDefinitions200Item,
+  WorkflowDefinitionsToggleWorkflowDefinition200,
   WorkflowDefinitionsUpdateWorkflowDefinition200
 } from '../../models';
 
@@ -650,5 +651,94 @@ export const useWorkflowDefinitionsDeleteWorkflowDefinition = <TError = HTTPVali
         TContext
       > => {
       return useMutation(getWorkflowDefinitionsDeleteWorkflowDefinitionMutationOptions(options), queryClient);
+    }
+    /**
+ * Toggle the enabled state of a workflow definition.
+ * @summary Toggle Workflow Definition
+ */
+export type workflowDefinitionsToggleWorkflowDefinitionResponse200 = {
+  data: WorkflowDefinitionsToggleWorkflowDefinition200
+  status: 200
+}
+
+export type workflowDefinitionsToggleWorkflowDefinitionResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type workflowDefinitionsToggleWorkflowDefinitionResponseSuccess = (workflowDefinitionsToggleWorkflowDefinitionResponse200) & {
+  headers: Headers;
+};
+export type workflowDefinitionsToggleWorkflowDefinitionResponseError = (workflowDefinitionsToggleWorkflowDefinitionResponse422) & {
+  headers: Headers;
+};
+
+export type workflowDefinitionsToggleWorkflowDefinitionResponse = (workflowDefinitionsToggleWorkflowDefinitionResponseSuccess | workflowDefinitionsToggleWorkflowDefinitionResponseError)
+
+export const getWorkflowDefinitionsToggleWorkflowDefinitionUrl = (definitionId: string,) => {
+
+
+  
+
+  return `/api/v1/workflow-definitions/${definitionId}/toggle`
+}
+
+export const workflowDefinitionsToggleWorkflowDefinition = async (definitionId: string, options?: RequestInit): Promise<workflowDefinitionsToggleWorkflowDefinitionResponse> => {
+  
+  return customInstance<workflowDefinitionsToggleWorkflowDefinitionResponse>(getWorkflowDefinitionsToggleWorkflowDefinitionUrl(definitionId),
+  {      
+    ...options,
+    method: 'PATCH'
+    
+    
+  }
+);}
+  
+
+
+
+export const getWorkflowDefinitionsToggleWorkflowDefinitionMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowDefinitionsToggleWorkflowDefinition>>, TError,{definitionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof workflowDefinitionsToggleWorkflowDefinition>>, TError,{definitionId: string}, TContext> => {
+
+const mutationKey = ['workflowDefinitionsToggleWorkflowDefinition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof workflowDefinitionsToggleWorkflowDefinition>>, {definitionId: string}> = (props) => {
+          const {definitionId} = props ?? {};
+
+          return  workflowDefinitionsToggleWorkflowDefinition(definitionId,requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WorkflowDefinitionsToggleWorkflowDefinitionMutationResult = NonNullable<Awaited<ReturnType<typeof workflowDefinitionsToggleWorkflowDefinition>>>
+    
+    export type WorkflowDefinitionsToggleWorkflowDefinitionMutationError = HTTPValidationError
+
+    /**
+ * @summary Toggle Workflow Definition
+ */
+export const useWorkflowDefinitionsToggleWorkflowDefinition = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof workflowDefinitionsToggleWorkflowDefinition>>, TError,{definitionId: string}, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof workflowDefinitionsToggleWorkflowDefinition>>,
+        TError,
+        {definitionId: string},
+        TContext
+      > => {
+      return useMutation(getWorkflowDefinitionsToggleWorkflowDefinitionMutationOptions(options), queryClient);
     }
     

@@ -43,6 +43,7 @@ def _wf_to_dict(wf: object) -> dict[str, Any]:
         },
         "stage_names": list(data.get("stage_names", [])),
         "step_configs": [dict(sc) for sc in data.get("step_configs", [])],
+        "enabled": data.get("enabled", True),
         "created_at": now,
         "updated_at": now,
     }
@@ -53,9 +54,14 @@ def get_workflow_defs(request: Request) -> dict[str, dict[str, Any]]:
     if not hasattr(request.app.state, "workflow_definitions"):
         from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
 
-        request.app.state.workflow_definitions = {
-            wf.definition_id: _wf_to_dict(wf) for wf in DEFAULT_WORKFLOW_DEFINITIONS
-        }
+        defs: dict[str, dict[str, Any]] = {}
+        for wf in DEFAULT_WORKFLOW_DEFINITIONS:
+            d = _wf_to_dict(wf)
+            # Only feature_to_pr is enabled by default; others need implementation
+            if wf.definition_id != "feature_to_pr":
+                d["enabled"] = False
+            defs[wf.definition_id] = d
+        request.app.state.workflow_definitions = defs
     return request.app.state.workflow_definitions  # type: ignore[no-any-return]
 
 
@@ -72,6 +78,7 @@ class UpdateWorkflowDefRequest(BaseModel):
     description: str | None = None
     graph: dict[str, Any] | None = None
     is_template: bool | None = None
+    enabled: bool | None = None
 
 
 @router.post("/workflow-definitions", status_code=201)
@@ -135,6 +142,23 @@ async def update_workflow_definition(
     entry = defs[definition_id]
     for key, value in body.model_dump(exclude_none=True).items():
         entry[key] = value
+    entry["updated_at"] = datetime.now(UTC).isoformat()
+    await dispatch_event(
+        request,
+        WorkflowDefinitionUpdated(payload={"resource_id": definition_id}),
+        stream_id=f"workflow_definition:{definition_id}",
+    )
+    return entry
+
+
+@router.patch("/workflow-definitions/{definition_id}/toggle")
+async def toggle_workflow_definition(definition_id: str, request: Request) -> dict[str, Any]:
+    """Toggle the enabled state of a workflow definition."""
+    defs = get_workflow_defs(request)
+    if definition_id not in defs:
+        raise HTTPException(status_code=404, detail="Definition not found")
+    entry = defs[definition_id]
+    entry["enabled"] = not entry.get("enabled", True)
     entry["updated_at"] = datetime.now(UTC).isoformat()
     await dispatch_event(
         request,

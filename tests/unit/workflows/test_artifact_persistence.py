@@ -30,7 +30,7 @@ async def test_implement_persists_code_artifact() -> None:
 
     sandbox = AsyncMock()
     sandbox.execute = AsyncMock(return_value=SandboxResult(exit_code=0, stdout="", stderr=""))
-    sandbox.collect_artifacts = AsyncMock(return_value={"diff": "+new line\n-old line"})
+    sandbox.collect_artifacts = AsyncMock(return_value={"content": "+new line\n-old line"})
 
     artifact_store = AsyncMock()
     added_artifacts: list[Any] = []
@@ -63,7 +63,7 @@ async def test_implement_no_artifact_when_no_diff() -> None:
 
     sandbox = AsyncMock()
     sandbox.execute = AsyncMock(return_value=SandboxResult(exit_code=0, stdout="", stderr=""))
-    sandbox.collect_artifacts = AsyncMock(return_value={"diff": ""})
+    sandbox.collect_artifacts = AsyncMock(return_value={"content": ""})
 
     artifact_store = AsyncMock()
 

@@ -102,8 +102,18 @@ class WorkflowExecutor:
         }
 
     async def execute(self, command: StartWorkflow) -> str:
+        from lintel.workflows.nodes._runtime_registry import register as _register_runtime
+
         run_id = command.run_id or str(uuid4())
         stream_id = f"run:{run_id}"
+
+        # Register services so nodes can look them up after LangGraph interrupts
+        _register_runtime(
+            run_id,
+            agent_runtime=self._agent_runtime,
+            sandbox_manager=getattr(self._app_state, "sandbox_manager", None),
+            app_state=self._app_state,
+        )
 
         start_event = PipelineRunStarted(
             event_type="PipelineRunStarted",
@@ -308,7 +318,10 @@ class WorkflowExecutor:
                 return
 
             # Graph completed normally
+            from lintel.workflows.nodes._runtime_registry import unregister as _unregister_runtime
+
             self._suspended_runs.pop(run_id, None)
+            _unregister_runtime(run_id)
 
             completed_event = PipelineRunCompleted(
                 event_type="PipelineRunCompleted",
@@ -571,6 +584,10 @@ class WorkflowExecutor:
         timestamp_ms: int,
     ) -> None:
         """Mark a pipeline stage as completed in the store."""
+        # Resolve graph node name to pipeline stage name
+        from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+
+        node_name = NODE_TO_STAGE.get(node_name, node_name)
         if self._app_state is None:
             return
         pipeline_store = getattr(self._app_state, "pipeline_store", None)

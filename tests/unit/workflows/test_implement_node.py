@@ -45,7 +45,9 @@ class DummySandboxManager:
     async def get_status(self, sandbox_id: str) -> SandboxStatus:
         return SandboxStatus.RUNNING
 
-    async def collect_artifacts(self, sandbox_id: str) -> dict[str, Any]:
+    async def collect_artifacts(
+        self, sandbox_id: str, workdir: str = "/workspace"
+    ) -> dict[str, Any]:
         return {"type": "diff", "content": "some diff"}
 
     async def destroy(self, sandbox_id: str) -> None:

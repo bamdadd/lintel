@@ -101,6 +101,36 @@ export function useDeleteBoard() {
   });
 }
 
+export interface PipelineRun {
+  run_id: string;
+  project_id: string;
+  work_item_id: string;
+  workflow_definition_id: string;
+  status: string;
+  trigger_type: string;
+  created_at: string;
+}
+
+export function usePipelinesForWorkItem(workItemId: string | undefined) {
+  return useQuery({
+    queryKey: ['/api/v1/pipelines', { work_item_id: workItemId }],
+    queryFn: async () => {
+      const resp = await customInstance<ListResponse<PipelineRun>>('/api/v1/pipelines');
+      // Filter client-side since API doesn't support work_item_id filter
+      const all = (resp?.data ?? resp) as unknown as PipelineRun[];
+      return Array.isArray(all) ? all.filter((r) => r.work_item_id === workItemId) : [];
+    },
+    enabled: !!workItemId,
+  });
+}
+
+export function useDeleteWorkItem() {
+  return useMutation({
+    mutationFn: (workItemId: string) =>
+      customInstance<undefined>(`/api/v1/work-items/${workItemId}`, { method: 'DELETE' }),
+  });
+}
+
 export function useUpdateWorkItem() {
   return useMutation({
     mutationFn: ({

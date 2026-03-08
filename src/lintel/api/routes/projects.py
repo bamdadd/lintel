@@ -68,6 +68,11 @@ class UpdateProjectRequest(BaseModel):
     default_branch: str | None = None
     credential_ids: list[str] | None = None
     status: ProjectStatus | None = None
+    ai_provider_id: str | None = None
+    model_id: str | None = None
+    workflow_definition_id: str | None = None
+    channel_id: str | None = None
+    workspace_id: str | None = None
 
 
 @router.post("/projects", status_code=201)

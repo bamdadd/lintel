@@ -194,6 +194,16 @@ class AgentRuntime:
         total_input_tokens += result.get("usage", {}).get("input_tokens", 0)
         total_output_tokens += result.get("usage", {}).get("output_tokens", 0)
 
+        has_tool_calls = bool(result.get("tool_calls"))
+        logger.info(
+            "model_initial_response",
+            step_name=step_name,
+            has_tool_calls=has_tool_calls,
+            tool_count=len(result.get("tool_calls", [])),
+            content_length=len(result.get("content", "") or ""),
+            tools_provided=len(all_tools),
+        )
+
         # Tool execution loop
         while result.get("tool_calls") and iteration < max_iterations:
             iteration += 1
@@ -210,8 +220,22 @@ class AgentRuntime:
 
             # Execute each tool call and append results
             for tc in tool_calls:
+                func_name = tc.get("function", {}).get("name", "?")
+                logger.info(
+                    "tool_call_executing",
+                    iteration=iteration,
+                    tool=func_name,
+                    step_name=step_name,
+                )
                 tool_result = await self._execute_tool_call(
                     tc, all_tools, sandbox_manager, sandbox_id
+                )
+                logger.info(
+                    "tool_call_completed",
+                    iteration=iteration,
+                    tool=func_name,
+                    result_length=len(tool_result),
+                    step_name=step_name,
                 )
                 loop_messages.append(
                     {
