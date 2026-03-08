@@ -73,7 +73,7 @@ async def setup_workspace(
     Expects project_id, repo_url, repo_branch, work_item_id, and feature_branch
     to be set in state (populated by the chat route before workflow dispatch).
     """
-    from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
+    from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef, Variable
     from lintel.workflows.nodes._stage_tracking import append_log, mark_completed, mark_running
 
     _configurable = config.get("configurable", {})
@@ -135,17 +135,22 @@ async def setup_workspace(
 
     # Resolve environment variables if environment_id is set
     env_vars: frozenset[tuple[str, str]] = frozenset()
+    secret_vars: list[Variable] = []
     environment_id = state.get("environment_id", "")
     if environment_id and variable_store is not None:
         variables = await variable_store.list_all(environment_id=environment_id)
+        plain: list[tuple[str, str]] = []
         for var in variables:
             if var.is_secret:
-                logger.warning(
-                    "injecting_secret_variable_into_sandbox key=%s environment_id=%s",
+                secret_vars.append(var)
+                logger.info(
+                    "secret_variable_deferred key=%s environment_id=%s",
                     var.key,
                     environment_id,
                 )
-        env_vars = frozenset((var.key, var.value) for var in variables)
+            else:
+                plain.append((var.key, var.value))
+        env_vars = frozenset(plain)
 
     # Pick an available sandbox from the user-created pool, or create one as fallback
     sandbox_store = getattr(app_state, "sandbox_store", None)
@@ -190,6 +195,23 @@ async def setup_workspace(
         )
 
     try:
+        # Inject secret variables as files in /run/secrets/
+        if secret_vars:
+            await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(command="mkdir -p /run/secrets", timeout_seconds=10),
+            )
+            for var in secret_vars:
+                await sandbox_manager.write_file(
+                    sandbox_id, f"/run/secrets/{var.key}", var.value
+                )
+            await append_log(
+                config,
+                "setup_workspace",
+                f"Injected {len(secret_vars)} secret(s) into sandbox",
+                state,
+            )
+
         # Create the run-specific workspace directory
         await sandbox_manager.execute(
             sandbox_id,
