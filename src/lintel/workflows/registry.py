@@ -81,7 +81,9 @@ def build_bug_fix_graph() -> StateGraph[Any]:
     g.add_conditional_edges("fix", _check_phase, {"continue": "test", "close": "close"})
     g.add_conditional_edges("test", _check_phase, {"continue": "review", "close": "close"})
     g.add_conditional_edges(
-        "review", _check_phase, {"continue": "approval_gate_merge", "close": "close"},
+        "review",
+        _check_phase,
+        {"continue": "approval_gate_merge", "close": "close"},
     )
     g.add_edge("approval_gate_merge", "close")
     g.add_edge("close", END)
@@ -121,11 +123,15 @@ def build_refactor_graph() -> StateGraph[Any]:
     g.add_edge("plan", "approval_gate_spec")
     g.add_edge("approval_gate_spec", "refactor")
     g.add_conditional_edges(
-        "refactor", _check_phase, {"continue": "test", "close": "close"},
+        "refactor",
+        _check_phase,
+        {"continue": "test", "close": "close"},
     )
     g.add_conditional_edges("test", _check_phase, {"continue": "review", "close": "close"})
     g.add_conditional_edges(
-        "review", _check_phase, {"continue": "approval_gate_merge", "close": "close"},
+        "review",
+        _check_phase,
+        {"continue": "approval_gate_merge", "close": "close"},
     )
     g.add_edge("approval_gate_merge", "close")
     g.add_edge("close", END)
@@ -164,7 +170,9 @@ def build_incident_response_graph() -> StateGraph[Any]:
     g.add_edge("investigate", "hotfix")
     g.add_conditional_edges("hotfix", _check_phase, {"continue": "test", "close": END})
     g.add_conditional_edges(
-        "test", _check_phase, {"continue": "approval_gate_deploy", "close": END},
+        "test",
+        _check_phase,
+        {"continue": "approval_gate_deploy", "close": END},
     )
     g.add_edge("approval_gate_deploy", "deploy")
     g.add_edge("deploy", "post_mortem")
@@ -204,7 +212,9 @@ def build_release_graph() -> StateGraph[Any]:
     g.add_edge("version_bump", "build")
     g.add_conditional_edges("build", _check_phase, {"continue": "test", "close": END})
     g.add_conditional_edges(
-        "test", _check_phase, {"continue": "approval_gate_release", "close": END},
+        "test",
+        _check_phase,
+        {"continue": "approval_gate_release", "close": END},
     )
     g.add_edge("approval_gate_release", "deploy")
     g.add_edge("deploy", "notify")

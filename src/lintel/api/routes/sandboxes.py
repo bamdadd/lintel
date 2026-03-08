@@ -82,7 +82,7 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
         "description": "Sandbox with Claude Code CLI for agentic coding tasks",
         "devcontainer": {
             "name": "claude-code",
-            "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+            "image": "lintel-sandbox:latest",
             "features": [
                 {
                     "id": "ghcr.io/devcontainers/features/node:1",
@@ -116,7 +116,7 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
         "description": "Claude Code with Python, Node, Go, and common dev tools",
         "devcontainer": {
             "name": "claude-code-full",
-            "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+            "image": "lintel-sandbox:latest",
             "features": [
                 {
                     "id": "ghcr.io/devcontainers/features/node:1",
@@ -158,7 +158,7 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
         "description": "Minimal Ubuntu devcontainer",
         "devcontainer": {
             "name": "base",
-            "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+            "image": "lintel-sandbox:latest",
             "features": [],
             "forwardPorts": [],
             "postCreateCommand": "",
@@ -181,7 +181,7 @@ class DevcontainerConfig(BaseModel):
     """Devcontainer-compatible sandbox configuration."""
 
     name: str = "sandbox"
-    image: str = "mcr.microsoft.com/devcontainers/base:ubuntu"
+    image: str = "lintel-sandbox:latest"
     features: list[DevcontainerFeature] = []
     forward_ports: list[int] = []
     post_create_command: str = ""

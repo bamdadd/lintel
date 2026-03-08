@@ -379,10 +379,14 @@ class AgentRuntime:
 
         full_content = "".join(accumulated)
 
-        # No usage info from streaming — estimate from content length
+        # Read usage from the model router (captured from final stream chunk)
+        stream_usage = getattr(self._model_router, "last_stream_usage", None) or {}
         result: dict[str, Any] = {
             "content": full_content,
-            "usage": {"input_tokens": 0, "output_tokens": 0},
+            "usage": {
+                "input_tokens": stream_usage.get("input_tokens", 0),
+                "output_tokens": stream_usage.get("output_tokens", 0),
+            },
             "model": policy.model_name,
         }
 

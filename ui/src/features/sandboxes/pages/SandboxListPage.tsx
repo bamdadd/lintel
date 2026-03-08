@@ -71,7 +71,7 @@ function usePresets() {
 const DEFAULT_DEVCONTAINER = JSON.stringify(
   {
     name: 'sandbox',
-    image: 'mcr.microsoft.com/devcontainers/base:ubuntu',
+    image: 'lintel-sandbox:latest',
     features: [],
     forwardPorts: [],
     postCreateCommand: '',

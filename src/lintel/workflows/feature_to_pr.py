@@ -107,7 +107,8 @@ def _check_phase(state: ThreadWorkflowState) -> str:
     outputs = state.get("agent_outputs", [])
     for output in reversed(outputs):
         if isinstance(output, dict) and output.get("verdict") in (
-            "failed", "request_changes",
+            "failed",
+            "request_changes",
         ):
             _logger.info(
                 "check_phase_stop",

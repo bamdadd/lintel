@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-postgres test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve
+.PHONY: help install test test-unit test-postgres test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -34,6 +34,9 @@ format: ## Auto-fix formatting and lint
 
 serve: ## Start dev server on :8000 (in-memory storage)
 	LINTEL_STORAGE_BACKEND=memory uv run uvicorn lintel.api.app:app --reload --port 8000
+
+sandbox-image: ## Build the lintel-sandbox Docker image
+	docker build -t lintel-sandbox:latest src/lintel/infrastructure/sandbox/
 
 db-up: ## Start PostgreSQL via docker-compose
 	docker compose up -d postgres

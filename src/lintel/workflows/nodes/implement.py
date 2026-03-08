@@ -156,12 +156,15 @@ async def spawn_implementation(
             from lintel.agents.sandbox_tools import sandbox_tool_schemas
 
             async def _on_tool_call(
-                iteration: int, tool_name: str, tool_result: str,
+                iteration: int,
+                tool_name: str,
+                tool_result: str,
             ) -> None:
                 short_name = tool_name.replace("sandbox_", "")
                 preview = tool_result[:120].replace("\n", " ") if tool_result else ""
                 await append_log(
-                    _config, "implement",
+                    _config,
+                    "implement",
                     f"[{iteration}] {short_name}: {preview}",
                     state,
                 )

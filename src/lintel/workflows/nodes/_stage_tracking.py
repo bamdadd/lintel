@@ -176,7 +176,13 @@ async def mark_completed(
         return
     status = "failed" if error else "succeeded"
     await update_stage(
-        config, run_id, stage_name, status, outputs=outputs, error=error, state=state,
+        config,
+        run_id,
+        stage_name,
+        status,
+        outputs=outputs,
+        error=error,
+        state=state,
     )
     await _dispatch_notifications(config, run_id, stage_name, status, state=state)
 

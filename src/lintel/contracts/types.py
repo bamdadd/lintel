@@ -217,7 +217,7 @@ class SkillResult:
 class SandboxConfig:
     """Configuration for creating a sandbox container."""
 
-    image: str = "mcr.microsoft.com/devcontainers/base:ubuntu"
+    image: str = "lintel-sandbox:latest"
     memory_limit: str = "512m"
     cpu_quota: int = 50000
     network_enabled: bool = False

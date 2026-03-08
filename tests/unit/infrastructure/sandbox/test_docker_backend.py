@@ -152,19 +152,23 @@ class TestExecute:
 
 
 class TestReadFile:
-    async def test_reads_via_get_archive(self) -> None:
+    async def test_reads_via_cat(self) -> None:
         manager = DockerSandboxManager()
         container = MagicMock()
-
-        # Build a real tar with known content
-        from lintel.infrastructure.sandbox._tar_helpers import create_tar
-
-        tar_data = create_tar("/workspace/f.txt", "file content")
-        container.get_archive.return_value = ([tar_data.read()], {})
+        container.exec_run.return_value = _make_exec_result(0, b"file content", b"")
         manager._containers["s1"] = container
 
         content = await manager.read_file("s1", "/workspace/f.txt")
         assert content == "file content"
+
+    async def test_error_raises(self) -> None:
+        manager = DockerSandboxManager()
+        container = MagicMock()
+        container.exec_run.return_value = _make_exec_result(1, b"", b"No such file")
+        manager._containers["s1"] = container
+
+        with pytest.raises(SandboxExecutionError):
+            await manager.read_file("s1", "/workspace/f.txt")
 
     async def test_not_found_raises(self) -> None:
         manager = DockerSandboxManager()
@@ -173,16 +177,16 @@ class TestReadFile:
 
 
 class TestWriteFile:
-    async def test_calls_put_archive(self) -> None:
+    async def test_writes_via_base64(self) -> None:
         manager = DockerSandboxManager()
         container = MagicMock()
+        container.exec_run.return_value = _make_exec_result(0, b"", b"")
         manager._containers["s1"] = container
 
         await manager.write_file("s1", "/workspace/f.txt", "content")
 
-        container.put_archive.assert_called_once()
-        call_args = container.put_archive.call_args
-        assert call_args[0][0] == "/workspace"
+        # Should have been called twice: mkdir -p and base64 write
+        assert container.exec_run.call_count == 2
 
     async def test_not_found_raises(self) -> None:
         manager = DockerSandboxManager()

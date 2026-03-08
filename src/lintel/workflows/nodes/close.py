@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from langchain_core.runnables import RunnableConfig
 
     from lintel.contracts.protocols import SandboxManager
@@ -35,7 +37,8 @@ async def close_workflow(
     has_failure = False
     for output in state.get("agent_outputs", []):
         if isinstance(output, dict) and output.get("verdict") in (
-            "failed", "request_changes",
+            "failed",
+            "request_changes",
         ):
             has_failure = True
             break
@@ -220,7 +223,7 @@ async def close_workflow(
 
 
 async def _skip_remaining_stages(
-    config: dict[str, Any],
+    config: Mapping[str, Any],
     state: ThreadWorkflowState,
 ) -> None:
     """Mark all pending/running stages as skipped when pipeline aborts."""

@@ -16,7 +16,7 @@ class TestDockerSandboxManager:
         mock_client.containers.create.return_value = mock_container
         manager._client = mock_client
 
-        config = SandboxConfig(image="mcr.microsoft.com/devcontainers/base:ubuntu")
+        config = SandboxConfig(image="lintel-sandbox:latest")
         thread_ref = ThreadRef("W1", "C1", "t1")
 
         sandbox_id = await manager.create(config, thread_ref)

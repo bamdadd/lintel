@@ -6,6 +6,8 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from langchain_core.runnables import RunnableConfig
 
     from lintel.contracts.protocols import SandboxManager
@@ -72,10 +74,11 @@ async def run_tests(
             SandboxJob(command=detect_cmd, workdir=workdir, timeout_seconds=10),
         )
         files = detect_result.stdout.strip()
-        if "Makefile" in files:
-            test_command = "make test"
-        elif "pyproject.toml" in files or "pytest.ini" in files:
-            test_command = "pytest"
+
+        # Install dependencies if needed
+        if "pyproject.toml" in files:
+            await _ensure_python_deps(sandbox_manager, sandbox_id, workdir, _config, state)
+            test_command = 'export PATH="$HOME/.local/bin:$PATH" && uv run pytest'
         elif "package.json" in files:
             test_command = "npm test"
         elif "Cargo.toml" in files:
@@ -151,3 +154,64 @@ async def run_tests(
             }
         ],
     }
+
+
+async def _ensure_python_deps(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workdir: str,
+    config: Mapping[str, Any],
+    state: ThreadWorkflowState,
+) -> None:
+    """Install uv and project dependencies in the sandbox if needed."""
+    from lintel.contracts.types import SandboxJob
+    from lintel.workflows.nodes._stage_tracking import append_log
+
+    # Check if uv is available
+    check = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command="which uv 2>/dev/null || echo MISSING",
+            workdir=workdir,
+            timeout_seconds=10,
+        ),
+    )
+    if "MISSING" in check.stdout:
+        await append_log(config, "test", "Installing uv...", state)
+        install = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command="curl -LsSf https://astral.sh/uv/install.sh | sh",
+                workdir=workdir,
+                timeout_seconds=60,
+            ),
+        )
+        if install.exit_code != 0:
+            logger.warning("uv_install_failed exit=%d: %s", install.exit_code, install.stderr[:200])
+            await append_log(config, "test", f"uv install failed: {install.stderr[:200]}", state)
+            return
+        # Add uv to PATH for subsequent commands
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command="echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc",
+                workdir=workdir,
+                timeout_seconds=5,
+            ),
+        )
+
+    # Install project dependencies
+    await append_log(config, "test", "Installing Python dependencies...", state)
+    sync = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command='export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -5',
+            workdir=workdir,
+            timeout_seconds=120,
+        ),
+    )
+    if sync.exit_code != 0:
+        logger.warning("uv_sync_failed exit=%d: %s", sync.exit_code, sync.stderr[:200])
+        await append_log(config, "test", f"Dependency install failed: {sync.stderr[:200]}", state)
+    else:
+        await append_log(config, "test", "Dependencies installed", state)

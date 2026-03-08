@@ -317,7 +317,11 @@ class DefaultModelRouter:
         messages: list[dict[str, Any]],
         api_base: str | None = None,
     ) -> AsyncIterator[str]:
-        """Stream model response token by token."""
+        """Stream model response token by token.
+
+        After iteration completes, ``self.last_stream_usage`` contains token
+        counts from the final chunk (if the provider supports it).
+        """
         import litellm
 
         model_string = f"{policy.provider}/{policy.model_name}"
@@ -327,6 +331,7 @@ class DefaultModelRouter:
             "max_tokens": policy.max_tokens,
             "temperature": policy.temperature,
             "stream": True,
+            "stream_options": {"include_usage": True},
         }
         if policy.extra_params:
             kwargs.update(policy.extra_params)
@@ -339,8 +344,16 @@ class DefaultModelRouter:
         if effective_base:
             kwargs["api_base"] = effective_base.rstrip("/")
 
+        self.last_stream_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
         response = await litellm.acompletion(**kwargs)
         async for chunk in response:
-            delta = chunk.choices[0].delta
+            # Capture usage from the final chunk (provider-dependent)
+            if hasattr(chunk, "usage") and chunk.usage:
+                usage = chunk.usage
+                if hasattr(usage, "prompt_tokens") and usage.prompt_tokens:
+                    self.last_stream_usage["input_tokens"] = usage.prompt_tokens
+                if hasattr(usage, "completion_tokens") and usage.completion_tokens:
+                    self.last_stream_usage["output_tokens"] = usage.completion_tokens
+            delta = chunk.choices[0].delta if chunk.choices else None
             if delta and delta.content:
                 yield delta.content
