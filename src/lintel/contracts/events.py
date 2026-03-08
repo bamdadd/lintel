@@ -848,6 +848,24 @@ class DeliveryLoopCompleted(EventEnvelope):
     event_type: str = "DeliveryLoopCompleted"
 
 
+# --- Workflow Hook Events (Layer 7) ---
+
+
+@dataclass(frozen=True)
+class HookTriggered(EventEnvelope):
+    event_type: str = "HookTriggered"
+
+
+@dataclass(frozen=True)
+class HookExecutionFailed(EventEnvelope):
+    event_type: str = "HookExecutionFailed"
+
+
+@dataclass(frozen=True)
+class HookLoopDetected(EventEnvelope):
+    event_type: str = "HookLoopDetected"
+
+
 # --- Event Registry ---
 
 EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
@@ -999,6 +1017,10 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         DeliveryLoopPhaseTransitioned,
         LearningCaptured,
         DeliveryLoopCompleted,
+        # Layer 7 — Workflow Hooks
+        HookTriggered,
+        HookExecutionFailed,
+        HookLoopDetected,
     ]
 }
 

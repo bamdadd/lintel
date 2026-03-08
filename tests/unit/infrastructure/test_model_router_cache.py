@@ -105,3 +105,41 @@ async def test_cache_eviction() -> None:
             await router.call_model(policy, [{"role": "user", "content": f"msg{i}"}])
 
     assert router.cache_stats["size"] == 2
+
+
+async def test_sqlite_cache_persists(tmp_path: object) -> None:
+    """SQLite cache persists responses across router instances."""
+    import pathlib
+
+    db_path = str(pathlib.Path(str(tmp_path)) / "cache.db")
+    policy = _policy(temperature=0.0)
+    messages = _messages()
+
+    with patch("litellm.acompletion", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = _mock_response("persisted")
+        router1 = DefaultModelRouter(enable_cache=True, cache_db_path=db_path)
+        await router1.call_model(policy, messages)
+
+    # New router instance with same DB — should find cached response
+    router2 = DefaultModelRouter(enable_cache=True, cache_db_path=db_path)
+    with patch("litellm.acompletion", new_callable=AsyncMock) as mock_llm2:
+        result = await router2.call_model(policy, messages)
+
+    mock_llm2.assert_not_called()
+    assert result["content"] == "persisted"
+    assert router2.cache_stats["hits"] == 1
+
+
+async def test_ollama_keep_alive_passed() -> None:
+    """Ollama calls include keep_alive parameter."""
+    router = DefaultModelRouter(ollama_keep_alive="45m")
+    policy = _policy()
+
+    with patch("litellm.acompletion", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = _mock_response()
+        # Disable cache so it actually calls litellm
+        router._enable_cache = False
+        await router.call_model(policy, _messages())
+
+    call_kwargs = mock_llm.call_args.kwargs
+    assert call_kwargs["keep_alive"] == "45m"

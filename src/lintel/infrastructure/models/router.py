@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -34,6 +36,8 @@ class DefaultModelRouter:
         model_assignment_store: Any = None,  # noqa: ANN401
         enable_cache: bool = True,
         cache_max_size: int = 256,
+        cache_db_path: str = "",
+        ollama_keep_alive: str = "30m",
     ) -> None:
         self._default = default_policy
         self._routing = routing_table or {}
@@ -49,6 +53,54 @@ class DefaultModelRouter:
         self._response_cache: dict[str, dict[str, Any]] = {}
         self._cache_hits = 0
         self._cache_misses = 0
+        # SQLite persistent cache (Layer 1 from REQ-001)
+        self._sqlite_cache: sqlite3.Connection | None = None
+        if enable_cache and cache_db_path:
+            self._init_sqlite_cache(cache_db_path)
+        # Ollama KV cache warmth (Layer 2 from REQ-001)
+        self._ollama_keep_alive = ollama_keep_alive
+
+    def _init_sqlite_cache(self, db_path: str) -> None:
+        """Initialize SQLite persistent response cache."""
+        try:
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(db_path)
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS llm_cache "
+                "(cache_key TEXT PRIMARY KEY, response TEXT)"
+            )
+            conn.commit()
+            self._sqlite_cache = conn
+            logger.info("sqlite_cache_initialized", path=db_path)
+        except Exception:
+            logger.warning("sqlite_cache_init_failed", path=db_path, exc_info=True)
+
+    def _sqlite_get(self, key: str) -> dict[str, Any] | None:
+        """Look up a cached response from SQLite."""
+        if self._sqlite_cache is None:
+            return None
+        try:
+            row = self._sqlite_cache.execute(
+                "SELECT response FROM llm_cache WHERE cache_key = ?", (key,)
+            ).fetchone()
+            if row:
+                return json.loads(row[0])
+        except Exception:
+            logger.debug("sqlite_cache_read_error", key=key[:12])
+        return None
+
+    def _sqlite_put(self, key: str, value: dict[str, Any]) -> None:
+        """Store a response in the SQLite cache."""
+        if self._sqlite_cache is None:
+            return
+        try:
+            self._sqlite_cache.execute(
+                "INSERT OR REPLACE INTO llm_cache (cache_key, response) VALUES (?, ?)",
+                (key, json.dumps(value, default=str)),
+            )
+            self._sqlite_cache.commit()
+        except Exception:
+            logger.debug("sqlite_cache_write_error", key=key[:12])
 
     async def _model_to_policy(self, model: Any) -> ModelPolicy | None:  # noqa: ANN401
         """Convert a Model dataclass to a ModelPolicy via its provider."""
@@ -192,6 +244,8 @@ class DefaultModelRouter:
         if self._enable_cache and policy.temperature == 0.0 and not tools:
             cache_key = self._cache_key(model_string, messages, tools)
             cached = self._response_cache.get(cache_key)
+            if cached is None:
+                cached = self._sqlite_get(cache_key)
             if cached is not None:
                 self._cache_hits += 1
                 logger.debug("llm_cache_hit", model=model_string, key=cache_key[:12])
@@ -207,6 +261,9 @@ class DefaultModelRouter:
             kwargs["tools"] = tools
         if policy.extra_params:
             kwargs.update(policy.extra_params)
+        # Ollama KV cache warmth — keep model loaded between requests
+        if policy.provider == "ollama" and self._ollama_keep_alive:
+            kwargs["keep_alive"] = self._ollama_keep_alive
 
         effective_base = api_base or (
             self._ollama_api_base if policy.provider == "ollama" else None
@@ -250,6 +307,7 @@ class DefaultModelRouter:
         # Store in cache (after tool_calls extraction)
         if cache_key:
             self._response_cache[cache_key] = result
+            self._sqlite_put(cache_key, result)
 
         return result
 
@@ -272,6 +330,8 @@ class DefaultModelRouter:
         }
         if policy.extra_params:
             kwargs.update(policy.extra_params)
+        if policy.provider == "ollama" and self._ollama_keep_alive:
+            kwargs["keep_alive"] = self._ollama_keep_alive
 
         effective_base = api_base or (
             self._ollama_api_base if policy.provider == "ollama" else None

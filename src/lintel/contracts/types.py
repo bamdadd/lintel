@@ -445,6 +445,28 @@ class Trigger:
     enabled: bool = True
 
 
+class HookType(StrEnum):
+    PRE = "pre"
+    POST = "post"
+    SCHEDULED = "scheduled"
+
+
+@dataclass(frozen=True)
+class WorkflowHook:
+    """Binds an event pattern to a workflow trigger."""
+
+    hook_id: str
+    project_id: str
+    name: str
+    event_pattern: str  # glob-style, e.g. "pipeline.stage.completed", "*.succeeded"
+    hook_type: HookType = HookType.POST
+    workflow_id: str = ""  # workflow definition to trigger
+    conditions: dict[str, object] | None = None  # filter on event payload
+    params_template: dict[str, str] | None = None  # map event fields to workflow params
+    enabled: bool = True
+    max_chain_depth: int = 5  # prevent infinite hook loops
+
+
 # --- Artifacts & Test Results ---
 
 
