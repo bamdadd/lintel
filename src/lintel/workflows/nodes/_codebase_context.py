@@ -26,6 +26,8 @@ CONTEXT_FILES = (
     "docker-compose.yaml",
     ".env.example",
     "CLAUDE.md",
+    "AGENTS.md",
+    "agent.md",
 )
 
 # Max characters per file to include in the prompt
