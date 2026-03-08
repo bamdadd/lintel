@@ -114,3 +114,54 @@ class LLMResponse(BaseModel):
     tool_calls: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="allow")
+
+
+class ProjectData(BaseModel):
+    """Project store representation."""
+
+    project_id: str
+    name: str = ""
+    repo_ids: list[str] = Field(default_factory=list)
+    default_branch: str = "main"
+    credential_ids: list[str] = Field(default_factory=list)
+    status: str = "active"
+
+    model_config = ConfigDict(extra="allow")
+
+
+class WorkItemData(BaseModel):
+    """Work item store representation."""
+
+    work_item_id: str
+    project_id: str = ""
+    title: str = ""
+    description: str = ""
+    work_type: str = "task"
+    status: str = "open"
+    assignee_agent_role: str = ""
+    thread_ref_str: str = ""
+    branch_name: str = ""
+    pr_url: str = ""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ThreadStatusData(BaseModel):
+    """Thread status projection entry."""
+
+    thread_ref: str
+    status: str = "new"
+    event_count: int = 0
+    last_event_type: str = ""
+    last_event_at: str = ""
+
+
+class TaskBacklogEntry(BaseModel):
+    """Task backlog projection entry."""
+
+    correlation_id: str
+    thread_ref: str = "unknown"
+    status: str = "unknown"
+    last_event_at: str = ""
+    agent_role: str = ""
+    step_name: str = ""

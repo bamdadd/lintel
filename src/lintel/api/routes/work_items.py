@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.data_models import WorkItemData
 from lintel.contracts.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
 from lintel.contracts.types import WorkItem, WorkItemStatus, WorkItemType
 from lintel.domain.event_dispatcher import dispatch_event
@@ -21,7 +22,9 @@ class WorkItemStore:
         self._data: dict[str, dict[str, Any]] = {}
 
     async def add(self, work_item: WorkItem) -> None:
-        self._data[work_item.work_item_id] = asdict(work_item)
+        data = asdict(work_item)
+        validated = WorkItemData.model_validate(data)
+        self._data[work_item.work_item_id] = validated.model_dump()
 
     async def get(self, work_item_id: str) -> dict[str, Any] | None:
         return self._data.get(work_item_id)
@@ -33,7 +36,8 @@ class WorkItemStore:
         return items
 
     async def update(self, work_item_id: str, data: dict[str, Any]) -> None:
-        self._data[work_item_id] = data
+        validated = WorkItemData.model_validate(data)
+        self._data[work_item_id] = validated.model_dump()
 
     async def remove(self, work_item_id: str) -> None:
         self._data.pop(work_item_id, None)
@@ -101,7 +105,8 @@ async def create_work_item(
         ),
         stream_id=f"work_item:{body.work_item_id}",
     )
-    return asdict(work_item)
+    result = await store.get(body.work_item_id)
+    return result  # type: ignore[return-value]
 
 
 @router.get("/work-items")
@@ -141,7 +146,8 @@ async def update_work_item(
         WorkItemUpdated(payload={"resource_id": work_item_id, "fields": list(updates.keys())}),
         stream_id=f"work_item:{work_item_id}",
     )
-    return merged
+    result = await store.get(work_item_id)
+    return result  # type: ignore[return-value]
 
 
 @router.delete("/work-items/{work_item_id}", status_code=204)

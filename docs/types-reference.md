@@ -84,6 +84,10 @@
 | ReportVersion | Pydantic BaseModel | 90 |
 | CacheStats | Pydantic BaseModel | 100 |
 | LLMResponse | Pydantic BaseModel | 108 |
+| ProjectData | Pydantic BaseModel | 119 |
+| WorkItemData | Pydantic BaseModel | 133 |
+| ThreadStatusData | Pydantic BaseModel | 149 |
+| TaskBacklogEntry | Pydantic BaseModel | 158 |
 
 ### `src/lintel/contracts/events.py`
 

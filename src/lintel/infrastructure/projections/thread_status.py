@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from lintel.contracts.data_models import ThreadStatusData
+
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope
 
@@ -30,14 +32,11 @@ class ThreadStatusProjection:
 
     async def project(self, event: EventEnvelope) -> None:
         thread_key = str(event.thread_ref) if event.thread_ref else "unknown"
-        current = self._state.get(
-            thread_key,
-            {
-                "thread_ref": thread_key,
-                "status": "new",
-                "event_count": 0,
-            },
-        )
+        current = self._state.get(thread_key)
+        if current is None:
+            entry = ThreadStatusData(thread_ref=thread_key)
+            current = entry.model_dump()
+
         current["last_event_type"] = event.event_type
         current["last_event_at"] = event.occurred_at.isoformat()
         current["event_count"] = current.get("event_count", 0) + 1

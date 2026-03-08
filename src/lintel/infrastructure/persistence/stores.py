@@ -256,8 +256,14 @@ class PostgresProjectStore:
         self._store = PostgresDictStore(pool, "project")
 
     async def add(self, project: Any) -> None:  # noqa: ANN401
+        from lintel.contracts.data_models import ProjectData
+
         data = asdict(project)
-        await self._store.put(data["project_id"], data)
+        for key in ("repo_ids", "credential_ids"):
+            if isinstance(data.get(key), tuple):
+                data[key] = list(data[key])
+        validated = ProjectData.model_validate(data)
+        await self._store.put(data["project_id"], validated.model_dump())
 
     async def get(self, project_id: str) -> dict[str, Any] | None:
         return await self._store.get(project_id)
@@ -266,7 +272,13 @@ class PostgresProjectStore:
         return await self._store.list_all()
 
     async def update(self, project_id: str, data: dict[str, Any]) -> None:
-        await self._store.put(project_id, data)
+        from lintel.contracts.data_models import ProjectData
+
+        for key in ("repo_ids", "credential_ids"):
+            if isinstance(data.get(key), tuple):
+                data[key] = list(data[key])
+        validated = ProjectData.model_validate(data)
+        await self._store.put(project_id, validated.model_dump())
 
     async def remove(self, project_id: str) -> None:
         await self._store.remove(project_id)
@@ -279,8 +291,11 @@ class PostgresWorkItemStore:
         self._store = PostgresDictStore(pool, "work_item")
 
     async def add(self, work_item: Any) -> None:  # noqa: ANN401
+        from lintel.contracts.data_models import WorkItemData
+
         data = asdict(work_item)
-        await self._store.put(data["work_item_id"], data)
+        validated = WorkItemData.model_validate(data)
+        await self._store.put(data["work_item_id"], validated.model_dump())
 
     async def get(self, work_item_id: str) -> dict[str, Any] | None:
         return await self._store.get(work_item_id)
@@ -291,7 +306,10 @@ class PostgresWorkItemStore:
         return await self._store.list_all()
 
     async def update(self, work_item_id: str, data: dict[str, Any]) -> None:
-        await self._store.put(work_item_id, data)
+        from lintel.contracts.data_models import WorkItemData
+
+        validated = WorkItemData.model_validate(data)
+        await self._store.put(work_item_id, validated.model_dump())
 
     async def remove(self, work_item_id: str) -> None:
         await self._store.remove(work_item_id)

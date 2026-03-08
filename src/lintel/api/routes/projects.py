@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.contracts.data_models import ProjectData
 from lintel.contracts.events import ProjectCreated, ProjectRemoved, ProjectUpdated
 from lintel.contracts.types import Project, ProjectStatus
 from lintel.domain.event_dispatcher import dispatch_event
@@ -21,7 +22,13 @@ class ProjectStore:
         self._data: dict[str, dict[str, Any]] = {}
 
     async def add(self, project: Project) -> None:
-        self._data[project.project_id] = asdict(project)
+        data = asdict(project)
+        # Convert tuples to lists for JSON compat
+        for key in ("repo_ids", "credential_ids"):
+            if isinstance(data.get(key), tuple):
+                data[key] = list(data[key])
+        validated = ProjectData.model_validate(data)
+        self._data[project.project_id] = validated.model_dump()
 
     async def get(self, project_id: str) -> dict[str, Any] | None:
         return self._data.get(project_id)
@@ -30,7 +37,12 @@ class ProjectStore:
         return list(self._data.values())
 
     async def update(self, project_id: str, data: dict[str, Any]) -> None:
-        self._data[project_id] = data
+        # Convert tuples to lists before validation
+        for key in ("repo_ids", "credential_ids"):
+            if isinstance(data.get(key), tuple):
+                data[key] = list(data[key])
+        validated = ProjectData.model_validate(data)
+        self._data[project_id] = validated.model_dump()
 
     async def remove(self, project_id: str) -> None:
         self._data.pop(project_id, None)
@@ -39,15 +51,6 @@ class ProjectStore:
 def get_project_store(request: Request) -> ProjectStore:
     """Get project store from app state."""
     return request.app.state.project_store  # type: ignore[no-any-return]
-
-
-def _to_response(data: dict[str, Any]) -> dict[str, Any]:
-    """Convert tuple fields to lists for JSON serialisation."""
-    out = dict(data)
-    for key in ("repo_ids", "credential_ids"):
-        if isinstance(out.get(key), tuple):
-            out[key] = list(out[key])
-    return out
 
 
 class CreateProjectRequest(BaseModel):
@@ -90,15 +93,15 @@ async def create_project(
         ProjectCreated(payload={"resource_id": body.project_id, "name": body.name}),
         stream_id=f"project:{body.project_id}",
     )
-    return _to_response(asdict(project))
+    result = await store.get(body.project_id)
+    return result  # type: ignore[return-value]
 
 
 @router.get("/projects")
 async def list_projects(
     store: Annotated[ProjectStore, Depends(get_project_store)],
 ) -> list[dict[str, Any]]:
-    items = await store.list_all()
-    return [_to_response(item) for item in items]
+    return await store.list_all()
 
 
 @router.get("/projects/{project_id}")
@@ -109,7 +112,7 @@ async def get_project(
     item = await store.get(project_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Project not found")
-    return _to_response(item)
+    return item
 
 
 @router.patch("/projects/{project_id}")
@@ -123,9 +126,6 @@ async def update_project(
     if item is None:
         raise HTTPException(status_code=404, detail="Project not found")
     updates = body.model_dump(exclude_none=True)
-    for key in ("repo_ids", "credential_ids"):
-        if key in updates:
-            updates[key] = tuple(updates[key])
     merged = {**item, **updates}
     await store.update(project_id, merged)
     await dispatch_event(
@@ -133,7 +133,8 @@ async def update_project(
         ProjectUpdated(payload={"resource_id": project_id, "fields": list(updates.keys())}),
         stream_id=f"project:{project_id}",
     )
-    return _to_response(merged)
+    result = await store.get(project_id)
+    return result  # type: ignore[return-value]
 
 
 @router.delete("/projects/{project_id}", status_code=204)
