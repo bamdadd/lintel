@@ -351,3 +351,24 @@ class TestPipelinesAPI:
             json={},
         )
         assert resp.status_code == 409
+
+    # --- REQ-3.3: Pipeline SSE Events ---
+
+    def test_pipeline_events_sse_endpoint(self, client: TestClient) -> None:
+        """SSE endpoint emits stage status changes."""
+        _create_pipeline(client, "sse-run")
+        # Cancel the pipeline so it reaches a terminal state and the SSE stream ends
+        client.post("/api/v1/pipelines/sse-run/cancel")
+
+        with client.stream("GET", "/api/v1/pipelines/sse-run/events") as resp:
+            assert resp.status_code == 200
+            assert "text/event-stream" in resp.headers["content-type"]
+            lines = list(resp.iter_lines())
+            data_lines = [ln for ln in lines if ln.startswith("data:")]
+            # Should emit stage_update for skipped stages + pipeline_status + pipeline_complete
+            assert len(data_lines) >= 2
+
+    def test_pipeline_events_not_found(self, client: TestClient) -> None:
+        """SSE endpoint returns 404 for missing pipeline."""
+        resp = client.get("/api/v1/pipelines/missing/events")
+        assert resp.status_code == 404

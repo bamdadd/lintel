@@ -313,6 +313,58 @@ async def stream_stage_logs(
     )
 
 
+@router.get("/pipelines/{run_id}/events")
+async def stream_pipeline_events(
+    run_id: str,
+    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+) -> StreamingResponse:
+    """Stream pipeline stage status changes via SSE for real-time UI updates."""
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        last_statuses: dict[str, str] = {}
+        last_pipeline_status = ""
+        while True:
+            run = await store.get(run_id)
+            if run is None:
+                return
+
+            # Emit stage status changes
+            for stage in run.stages:
+                status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
+                prev = last_statuses.get(stage.stage_id)
+                if status != prev:
+                    last_statuses[stage.stage_id] = status
+                    payload = {
+                        "type": "stage_update",
+                        "stage_id": stage.stage_id,
+                        "name": stage.name,
+                        "status": status,
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+            # Emit pipeline-level status changes
+            p_status = run.status.value if hasattr(run.status, "value") else str(run.status)
+            if p_status != last_pipeline_status:
+                last_pipeline_status = p_status
+                yield f"data: {json.dumps({'type': 'pipeline_status', 'status': p_status})}\n\n"
+
+            # End stream when pipeline reaches a terminal state
+            if p_status in ("succeeded", "failed", "cancelled"):
+                yield f"data: {json.dumps({'type': 'pipeline_complete', 'status': p_status})}\n\n"
+                return
+
+            await asyncio.sleep(1)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/pipelines/{run_id}/stages/{stage_id}/retry")
 async def retry_stage(
     run_id: str,
@@ -566,9 +618,7 @@ def _report_key(stage_name: str) -> str:
     return "report"
 
 
-def _get_report_versions(
-    request: Request, run_id: str, stage_id: str
-) -> list[dict[str, object]]:
+def _get_report_versions(request: Request, run_id: str, stage_id: str) -> list[dict[str, object]]:
     """Retrieve report version history from app state."""
     versions_store: dict[str, list[dict[str, object]]] = getattr(
         request.app.state, "_report_versions", {}
@@ -631,9 +681,7 @@ async def edit_stage_report(
     outputs = dict(stage.outputs) if stage.outputs else {}
     outputs[rkey] = body.content
 
-    new_stages = [
-        replace(s, outputs=outputs) if s.stage_id == stage_id else s for s in run.stages
-    ]
+    new_stages = [replace(s, outputs=outputs) if s.stage_id == stage_id else s for s in run.stages]
     updated = replace(run, stages=tuple(new_stages))
     await store.update(updated)
 
@@ -756,9 +804,7 @@ async def regenerate_stage(
     executor = getattr(request.app.state, "workflow_executor", None)
     if executor is not None:
         task = asyncio.create_task(executor.resume(run_id))
-        request.app.state._background_tasks = getattr(
-            request.app.state, "_background_tasks", set()
-        )
+        request.app.state._background_tasks = getattr(request.app.state, "_background_tasks", set())
         request.app.state._background_tasks.add(task)
         task.add_done_callback(request.app.state._background_tasks.discard)
 

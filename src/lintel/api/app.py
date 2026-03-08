@@ -271,6 +271,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     agent_runtime = AgentRuntime(event_store=event_store, model_router=model_router)
     app.state.agent_runtime = agent_runtime
+    app.state.model_router = model_router
 
     from langgraph.checkpoint.memory import MemorySaver
 

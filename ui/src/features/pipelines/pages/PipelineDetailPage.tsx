@@ -12,6 +12,7 @@ import {
 } from '@/generated/api/pipelines/pipelines';
 import { PipelineDAG } from '../components/PipelineDAG';
 import { StepTimingBar } from '../components/StepTimingBar';
+import { usePipelineSSE } from '../hooks/usePipelineSSE';
 
 const statusColor: Record<string, string> = {
   pending: 'gray',
@@ -97,12 +98,21 @@ export function Component() {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
 
-  const { data: pipelineResp, isLoading } = usePipelinesGetPipeline(runId ?? '', {
-    query: { refetchInterval: 3000 },
+  const { data: pipelineResp, isLoading, refetch: refetchPipeline } = usePipelinesGetPipeline(runId ?? '', {
+    query: {},
   });
-  const { data: stagesResp } = usePipelinesListStages(runId ?? '', {
-    query: { enabled: !!runId, refetchInterval: 3000 },
+  const { data: stagesResp, refetch: refetchStages } = usePipelinesListStages(runId ?? '', {
+    query: { enabled: !!runId },
   });
+
+  // Real-time updates via SSE — refetch data on every stage/pipeline change
+  const sse = usePipelineSSE(runId ?? null);
+  useEffect(() => {
+    sse.onUpdate(() => {
+      refetchPipeline();
+      refetchStages();
+    });
+  }, [sse.onUpdate, refetchPipeline, refetchStages]);
 
   const pipeline = (pipelineResp?.data ?? {}) as Record<string, unknown>;
   const stages = (stagesResp?.data ?? []) as StageItem[];
