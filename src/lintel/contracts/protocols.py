@@ -174,14 +174,14 @@ class ModelRouter(Protocol):
     async def call_model(
         self,
         policy: ModelPolicy,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]: ...
 
     async def stream_model(
         self,
         policy: ModelPolicy,
-        messages: list[dict[str, str]],
+        messages: list[dict[str, Any]],
         api_base: str | None = None,
     ) -> AsyncIterator[str]:
         yield ""  # pragma: no cover

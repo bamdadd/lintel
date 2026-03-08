@@ -96,6 +96,8 @@ async def spawn_implementation(
     if agent_runtime is not None:
         await append_log(_config, "implement", "Invoking coder agent...", state)
         try:
+            from lintel.agents.sandbox_tools import sandbox_tool_schemas
+
             result = await agent_runtime.execute_step(
                 thread_ref=thread_ref,
                 agent_role=AgentRole.CODER,
@@ -104,6 +106,9 @@ async def spawn_implementation(
                     {"role": "system", "content": IMPLEMENT_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
                 ],
+                tools=sandbox_tool_schemas(),
+                sandbox_manager=sandbox_manager,
+                sandbox_id=sandbox_id,
             )
             agent_output = result.get("content", "Implementation complete.")
             usage = extract_token_usage("implement", result)
