@@ -9,6 +9,19 @@ import pytest
 from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.pii.placeholder_manager import PlaceholderManager
 
+_presidio_available = True
+try:
+    from presidio_analyzer import AnalyzerEngine
+
+    AnalyzerEngine()
+except (ImportError, SystemExit):
+    _presidio_available = False
+
+_skip_presidio = pytest.mark.skipif(
+    not _presidio_available,
+    reason="Presidio AnalyzerEngine unavailable (missing spaCy model?)",
+)
+
 
 @pytest.fixture
 def thread_ref() -> ThreadRef:
@@ -56,6 +69,7 @@ class TestPlaceholderManager:
         assert p2 == "<PERSON_1>"
 
 
+@_skip_presidio
 class TestPresidioFirewall:
     @pytest.fixture
     def vault(self) -> AsyncMock:

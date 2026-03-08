@@ -35,22 +35,30 @@ PLAN_SYSTEM_PROMPT = (
 
 def _parse_plan(content: str) -> dict[str, Any]:
     """Extract JSON plan from LLM response, with fallback."""
-    # Try to find JSON block in response
-    for start, end in [("```json", "```"), ("```", "```"), ("{", None)]:
-        idx = content.find(start)
+    # Strategy 1: Find ```json ... ``` fenced block (use rfind for closing to handle nested fences)
+    for fence in ("```json", "```"):
+        idx = content.find(fence)
         if idx == -1:
             continue
-        json_str = content[idx + len(start) :]
-        if end and end != start:
-            end_idx = json_str.find(end)
-            if end_idx != -1:
-                json_str = json_str[:end_idx]
-        elif start == "{":
-            json_str = start + json_str
+        after = content[idx + len(fence) :]
+        # Use rfind to skip past any nested code fences inside the JSON
+        end_idx = after.rfind("```")
+        json_str = after[:end_idx].strip() if end_idx != -1 else after.strip()
         try:
-            return json.loads(json_str.strip())  # type: ignore[no-any-return]
+            return json.loads(json_str)  # type: ignore[no-any-return]
         except json.JSONDecodeError:
             continue
+
+    # Strategy 2: Find outermost { ... } by matching braces
+    first_brace = content.find("{")
+    if first_brace != -1:
+        last_brace = content.rfind("}")
+        if last_brace > first_brace:
+            try:
+                return json.loads(content[first_brace : last_brace + 1])  # type: ignore[no-any-return]
+            except json.JSONDecodeError:
+                pass
+
     # Fallback: return raw content as single task
     return {
         "tasks": [{"title": "Implement request", "description": content}],

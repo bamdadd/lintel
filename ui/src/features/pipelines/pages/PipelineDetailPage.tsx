@@ -364,35 +364,61 @@ export function Component() {
 
                     {/* Plan output — rendered as task list */}
                     {selectedStage.outputs?.plan && (
-                      <Stack gap={4}>
+                      <Stack gap="sm">
                         <Text size="sm" fw={600}>Plan</Text>
                         {(selectedStage.outputs.plan as { summary?: string })?.summary && (
-                          <Text size="sm" c="dimmed">
+                          <Text size="sm" c="dimmed" mb={4}>
                             {(selectedStage.outputs.plan as { summary: string }).summary}
                           </Text>
                         )}
-                        <Paper withBorder p="sm">
-                          <Stack gap={4}>
-                            {((selectedStage.outputs.plan as { tasks?: Array<{ title?: string; description?: string; complexity?: string }> })?.tasks ?? []).map(
-                              (task, i) => (
-                                <Group key={i} gap="xs" align="flex-start">
-                                  <Text size="sm" fw={500} style={{ minWidth: 20 }}>{i + 1}.</Text>
-                                  <Stack gap={2} style={{ flex: 1 }}>
+                        <Stack gap="xs">
+                          {((selectedStage.outputs.plan as { tasks?: Array<{ title?: string; description?: string; complexity?: string; file_paths?: string[] }> })?.tasks ?? []).map(
+                            (task, i) => (
+                              <Paper key={i} withBorder p="sm" radius="sm">
+                                <Stack gap="xs">
+                                  <Group justify="space-between" align="center">
                                     <Group gap="xs">
-                                      <Text size="sm" fw={500}>{task.title ?? 'Task'}</Text>
-                                      {task.complexity && (
-                                        <Badge size="xs" variant="light">{task.complexity}</Badge>
-                                      )}
+                                      <Badge size="lg" circle variant="light" color="blue">{i + 1}</Badge>
+                                      <Text size="sm" fw={600}>{task.title ?? 'Task'}</Text>
                                     </Group>
-                                    {task.description && (
-                                      <Text size="xs" c="dimmed">{task.description}</Text>
+                                    {task.complexity && (
+                                      <Badge
+                                        size="sm"
+                                        variant="light"
+                                        color={
+                                          task.complexity === 'XL' ? 'red' :
+                                          task.complexity === 'L' ? 'orange' :
+                                          task.complexity === 'M' ? 'yellow' :
+                                          'green'
+                                        }
+                                      >
+                                        {task.complexity}
+                                      </Badge>
                                     )}
-                                  </Stack>
-                                </Group>
-                              ),
-                            )}
-                          </Stack>
-                        </Paper>
+                                  </Group>
+                                  {task.file_paths && task.file_paths.length > 0 && (
+                                    <Group gap={4}>
+                                      {task.file_paths.map((fp, j) => (
+                                        <Badge key={j} size="xs" variant="dot" color="gray" radius="sm">
+                                          {fp}
+                                        </Badge>
+                                      ))}
+                                    </Group>
+                                  )}
+                                  {task.description && (
+                                    <ScrollArea.Autosize mah={300}>
+                                      <div className="chat-markdown" style={{ fontSize: 12 }}>
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                          {task.description}
+                                        </ReactMarkdown>
+                                      </div>
+                                    </ScrollArea.Autosize>
+                                  )}
+                                </Stack>
+                              </Paper>
+                            ),
+                          )}
+                        </Stack>
                       </Stack>
                     )}
 

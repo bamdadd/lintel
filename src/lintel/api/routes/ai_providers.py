@@ -390,7 +390,7 @@ async def _list_bedrock_models(provider: AIProvider) -> list[dict[str, Any]]:
     """List available foundation models from AWS Bedrock."""
     import asyncio
 
-    import boto3
+    import boto3  # type: ignore[import-untyped]
 
     config = provider.config or {}
     region = config.get("aws_region_name", "us-east-1")
