@@ -15,6 +15,8 @@ from lintel.contracts.events import (
     PipelineRunFailed,
     PipelineRunStarted,
     PipelineStageCompleted,
+    WorkItemCompleted,
+    WorkItemUpdated,
 )
 from lintel.infrastructure.observability.step_metrics import (
     record_step_duration,
@@ -726,6 +728,17 @@ class WorkflowExecutor:
                 return
             item["status"] = "failed"
             await work_item_store.update(command.work_item_id, item)
+            # Emit audit event for work item failure
+            stream_id = f"work_item:{command.work_item_id}"
+            event = WorkItemUpdated(
+                event_type="WorkItemUpdated",
+                payload={
+                    "work_item_id": command.work_item_id,
+                    "status": "failed",
+                },
+            )
+            await self._event_store.append(stream_id=stream_id, events=[event])
+            await self._project_events([event])
         except Exception as exc:
             logger.warning(
                 "fail_work_item_failed",
@@ -746,6 +759,17 @@ class WorkflowExecutor:
                 return
             item["status"] = "closed"
             await work_item_store.update(command.work_item_id, item)
+            # Emit audit event for work item completion
+            stream_id = f"work_item:{command.work_item_id}"
+            event = WorkItemCompleted(
+                event_type="WorkItemCompleted",
+                payload={
+                    "work_item_id": command.work_item_id,
+                    "status": "closed",
+                },
+            )
+            await self._event_store.append(stream_id=stream_id, events=[event])
+            await self._project_events([event])
         except Exception as exc:
             logger.warning(
                 "complete_work_item_failed", work_item_id=command.work_item_id, error=str(exc)
