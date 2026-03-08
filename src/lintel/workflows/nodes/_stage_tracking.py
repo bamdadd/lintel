@@ -43,7 +43,10 @@ NODE_TO_STAGE: dict[str, str] = {
 }
 
 
-def _get_pipeline_store(config: Mapping[str, Any]) -> Any:  # noqa: ANN401
+def _get_pipeline_store(
+    config: Mapping[str, Any],
+    state: Mapping[str, Any] | None = None,
+) -> Any:  # noqa: ANN401
     """Extract pipeline_store from LangGraph configurable dict."""
     configurable = config.get("configurable", {})
     # Direct reference takes priority
@@ -52,6 +55,15 @@ def _get_pipeline_store(config: Mapping[str, Any]) -> Any:  # noqa: ANN401
         return store
     # Fall back to app_state attribute
     app_state = configurable.get("app_state")
+    # LangGraph strips configurable keys after interrupt/resume — fall back to registry
+    if app_state is None:
+        run_id = config.get("configurable", {}).get("run_id", "")
+        if not run_id and state:
+            run_id = state.get("run_id", "")
+        if run_id:
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            app_state = get_app_state(str(run_id))
     if app_state is None:
         return None
     return getattr(app_state, "pipeline_store", None)
@@ -77,7 +89,7 @@ async def mark_running(
     run_id = _get_run_id(config, state)
     if not run_id:
         return
-    await update_stage(config, run_id, stage_name, "running")
+    await update_stage(config, run_id, stage_name, "running", state=state)
 
 
 async def append_log(
@@ -96,7 +108,7 @@ async def append_log(
 
     from lintel.contracts.types import Stage
 
-    pipeline_store = _get_pipeline_store(config)
+    pipeline_store = _get_pipeline_store(config, state)
     if pipeline_store is None:
         return
 
@@ -163,8 +175,10 @@ async def mark_completed(
     if not run_id:
         return
     status = "failed" if error else "succeeded"
-    await update_stage(config, run_id, stage_name, status, outputs=outputs, error=error)
-    await _dispatch_notifications(config, run_id, stage_name, status)
+    await update_stage(
+        config, run_id, stage_name, status, outputs=outputs, error=error, state=state,
+    )
+    await _dispatch_notifications(config, run_id, stage_name, status, state=state)
 
 
 async def _dispatch_notifications(
@@ -172,10 +186,20 @@ async def _dispatch_notifications(
     run_id: str,
     stage_name: str,
     status: str,
+    state: Mapping[str, Any] | None = None,
 ) -> None:
     """Evaluate notification rules and dispatch matching ones."""
     configurable = config.get("configurable", {})
     app_state = configurable.get("app_state")
+    # Fall back to runtime registry after interrupt/resume
+    if app_state is None:
+        _run_id = config.get("configurable", {}).get("run_id", "")
+        if not _run_id and state:
+            _run_id = state.get("run_id", "")
+        if _run_id:
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            app_state = get_app_state(str(_run_id))
     if app_state is None:
         return
 
@@ -203,7 +227,7 @@ async def _dispatch_notifications(
         # Get project_id filter — if rule has project_id, only match that project's runs
         rule_project_id = getattr(rule, "project_id", "")
         if rule_project_id:
-            pipeline_store = _get_pipeline_store(config)
+            pipeline_store = _get_pipeline_store(config, state)
             if pipeline_store:
                 run = await pipeline_store.get(run_id)
                 if run and getattr(run, "project_id", "") != rule_project_id:
@@ -253,6 +277,7 @@ async def update_stage(
     status: str,
     outputs: dict[str, object] | None = None,
     error: str = "",
+    state: Mapping[str, Any] | None = None,
 ) -> None:
     """Update a stage's status within a pipeline run.
 
@@ -265,7 +290,7 @@ async def update_stage(
     """
     from lintel.contracts.types import Stage, StageStatus
 
-    pipeline_store = _get_pipeline_store(config)
+    pipeline_store = _get_pipeline_store(config, state)
     if pipeline_store is None:
         return
 
@@ -289,6 +314,10 @@ async def update_stage(
                     outputs=outputs if outputs is not None else s.outputs,
                     error=error or s.error,
                     duration_ms=s.duration_ms,
+                    started_at=s.started_at,
+                    finished_at=s.finished_at,
+                    logs=s.logs,
+                    retry_count=s.retry_count,
                 )
             )
         else:
