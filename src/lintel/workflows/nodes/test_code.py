@@ -197,13 +197,15 @@ async def _build_changed_tests_command(
     """
     from lintel.contracts.types import SandboxJob
 
-    # Find test files changed vs the base branch
+    # Find test files changed vs main branch (covers all implement commits)
     result = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
             command=(
-                "git diff --name-only HEAD~1 -- 'tests/' 2>/dev/null"
-                " | grep -E 'test_.*\\.py$' || true"
+                "{ git diff --name-only origin/main -- 'tests/' 2>/dev/null"
+                " || git diff --name-only main -- 'tests/' 2>/dev/null"
+                " || git diff --name-only HEAD~1 -- 'tests/' 2>/dev/null; }"
+                " | grep -E 'test_.*\\.py$' | sort -u || true"
             ),
             workdir=workdir,
             timeout_seconds=10,
