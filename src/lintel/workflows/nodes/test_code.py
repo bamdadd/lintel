@@ -15,15 +15,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Default test commands to try, in order of preference
-DEFAULT_TEST_COMMANDS = (
-    "make test",
-    "pytest",
-    "npm test",
-    "cargo test",
-    "go test ./...",
-)
-
 
 async def run_tests(
     state: ThreadWorkflowState,
@@ -45,8 +36,6 @@ async def run_tests(
 
     await mark_running(_config, "test", state)
 
-    test_command: str | None = None
-
     sandbox_id = state.get("sandbox_id")
     if not sandbox_id or sandbox_manager is None:
         logger.warning("test_skipped_no_sandbox")
@@ -60,37 +49,20 @@ async def run_tests(
 
     workdir = state.get("workspace_path", "/workspace/repo")
 
-    # Determine which test command to run
-    if test_command is None:
-        # Auto-detect by checking which files exist
-        detect_cmd = (
-            f"ls {workdir}/Makefile {workdir}/pytest.ini "
-            f"{workdir}/pyproject.toml {workdir}/package.json "
-            f"{workdir}/Cargo.toml {workdir}/go.mod "
-            "2>/dev/null || true"
-        )
-        detect_result = await sandbox_manager.execute(
-            sandbox_id,
-            SandboxJob(command=detect_cmd, workdir=workdir, timeout_seconds=10),
-        )
-        files = detect_result.stdout.strip()
+    # Reconnect network for dependency installation and test execution
+    try:
+        await sandbox_manager.reconnect_network(sandbox_id)
+    except Exception:
+        logger.warning("test_reconnect_network_failed")
 
-        # Install dependencies if needed (reconnect network for downloads + test execution)
-        if "pyproject.toml" in files:
-            try:
-                await sandbox_manager.reconnect_network(sandbox_id)
-            except Exception:
-                logger.warning("test_reconnect_network_failed")
-            await _ensure_python_deps(sandbox_manager, sandbox_id, workdir, _config, state)
-            test_command = 'export PATH="$HOME/.local/bin:$PATH" && uv run python -m pytest'
-        elif "package.json" in files:
-            test_command = "npm test"
-        elif "Cargo.toml" in files:
-            test_command = "cargo test"
-        elif "go.mod" in files:
-            test_command = "go test ./..."
-        else:
-            test_command = "echo 'No test runner detected'"
+    # Discover how to run tests
+    test_command = await _discover_test_command(
+        sandbox_manager,
+        sandbox_id,
+        workdir,
+        _config,
+        state,
+    )
 
     await append_log(_config, "test", f"Running: {test_command}", state)
     try:
@@ -164,6 +136,146 @@ async def run_tests(
             }
         ],
     }
+
+
+async def _discover_test_command(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workdir: str,
+    config: Mapping[str, Any],
+    state: ThreadWorkflowState,
+) -> str:
+    """Discover how to run tests by inspecting the project structure.
+
+    Strategy (in priority order):
+    1. Makefile with a test-like target → use `make <target>`
+    2. package.json with "test" script → `npm test`
+    3. pyproject.toml → install deps + `uv run python -m pytest`
+    4. Cargo.toml → `cargo test`
+    5. go.mod → `go test ./...`
+    6. Fallback → echo message
+    """
+    from lintel.contracts.types import SandboxJob
+    from lintel.workflows.nodes._stage_tracking import append_log
+
+    await append_log(config, "test", "Discovering test command...", state)
+
+    # Check what files exist in the project root
+    detect_result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                f"ls {workdir}/Makefile {workdir}/pyproject.toml "
+                f"{workdir}/package.json {workdir}/Cargo.toml {workdir}/go.mod "
+                "2>/dev/null || true"
+            ),
+            workdir=workdir,
+            timeout_seconds=10,
+        ),
+    )
+    files = detect_result.stdout.strip()
+
+    # 1. Makefile — parse targets for test-related ones
+    if "Makefile" in files:
+        test_target = await _find_make_test_target(sandbox_manager, sandbox_id, workdir)
+        if test_target:
+            await append_log(config, "test", f"Found Makefile target: {test_target}", state)
+            # If the project also has pyproject.toml, ensure deps are installed first
+            if "pyproject.toml" in files:
+                await _ensure_python_deps(sandbox_manager, sandbox_id, workdir, config, state)
+            return f"make {test_target}"
+
+    # 2. package.json — check for test script
+    if "package.json" in files:
+        has_test = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"grep -q '\"test\"' {workdir}/package.json && echo HAS_TEST || true",
+                workdir=workdir,
+                timeout_seconds=5,
+            ),
+        )
+        if "HAS_TEST" in has_test.stdout:
+            await append_log(config, "test", "Found npm test script", state)
+            return "npm test"
+
+    # 3. pyproject.toml — Python project
+    if "pyproject.toml" in files:
+        await _ensure_python_deps(sandbox_manager, sandbox_id, workdir, config, state)
+        await append_log(config, "test", "Using pytest for Python project", state)
+        return 'export PATH="$HOME/.local/bin:$PATH" && uv run python -m pytest'
+
+    # 4. Cargo.toml — Rust project
+    if "Cargo.toml" in files:
+        await append_log(config, "test", "Using cargo test for Rust project", state)
+        return "cargo test"
+
+    # 5. go.mod — Go project
+    if "go.mod" in files:
+        await append_log(config, "test", "Using go test for Go project", state)
+        return "go test ./..."
+
+    await append_log(config, "test", "No test runner detected", state)
+    return "echo 'No test runner detected'"
+
+
+async def _find_make_test_target(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workdir: str,
+) -> str | None:
+    """Parse Makefile for a test-related target, preferring `make help` output."""
+    from lintel.contracts.types import SandboxJob
+
+    # Try `make help` first — many projects document their targets
+    help_result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(command="make help 2>/dev/null || true", workdir=workdir, timeout_seconds=10),
+    )
+    help_output = help_result.stdout.lower()
+
+    # Look for test targets in help output (prefer `test` over `test-unit` etc.)
+    # Common patterns: "test", "test-all", "test-unit", "check", "verify"
+    if help_output.strip():
+        return _pick_test_target_from_output(help_output)
+
+    # Fallback: parse Makefile directly for target names
+    targets_result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                f"grep -E '^[a-zA-Z_-]+:' {workdir}/Makefile "
+                "| sed 's/:.*//' | sort -u 2>/dev/null || true"
+            ),
+            workdir=workdir,
+            timeout_seconds=10,
+        ),
+    )
+    targets_output = targets_result.stdout.lower()
+    if targets_output.strip():
+        return _pick_test_target_from_output(targets_output)
+
+    return None
+
+
+def _pick_test_target_from_output(output: str) -> str | None:
+    """Pick the best test target from make help or target list output.
+
+    Priority: 'test' > 'test-all' > 'all' > 'check' > 'test-unit' > 'verify'
+    Only matches the first token on each line (the target name), not descriptions.
+    """
+    # Extract first token from each line — that's the target name
+    targets: set[str] = set()
+    for line in output.lower().strip().split("\n"):
+        tokens = line.split()
+        if tokens:
+            targets.add(tokens[0])
+
+    preferred = ("test", "test-all", "all", "check", "test-unit", "verify")
+    for candidate in preferred:
+        if candidate in targets:
+            return candidate
+    return None
 
 
 async def _ensure_python_deps(

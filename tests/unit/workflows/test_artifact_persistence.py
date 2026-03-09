@@ -85,10 +85,11 @@ async def test_test_node_persists_test_result() -> None:
     from lintel.workflows.nodes.test_code import run_tests
 
     sandbox = AsyncMock()
-    # Auto-detect: Makefile exists
+    # Discovery: detect files → make help → run make test
     sandbox.execute = AsyncMock(
         side_effect=[
             SandboxResult(exit_code=0, stdout="/workspace/repo/Makefile", stderr=""),
+            SandboxResult(exit_code=0, stdout="test         Run tests\n", stderr=""),
             SandboxResult(exit_code=0, stdout="3 passed", stderr=""),
         ]
     )
@@ -119,9 +120,11 @@ async def test_test_node_records_failure() -> None:
     from lintel.workflows.nodes.test_code import run_tests
 
     sandbox = AsyncMock()
+    # Discovery: detect files → make help → run make test (fails)
     sandbox.execute = AsyncMock(
         side_effect=[
             SandboxResult(exit_code=0, stdout="/workspace/repo/Makefile", stderr=""),
+            SandboxResult(exit_code=0, stdout="test         Run tests\n", stderr=""),
             SandboxResult(exit_code=1, stdout="", stderr="FAILED test_foo"),
         ]
     )
