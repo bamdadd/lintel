@@ -77,8 +77,22 @@ async def run_tests(
             SandboxJob(command=cmd, workdir=workdir, timeout_seconds=180),
         )
 
-    # Run the test command
-    await append_log(_config, "test", f"Running: {test_command}", state)
+    # Try to run only changed test files first (much faster than full suite)
+    changed_test_cmd = await _build_changed_tests_command(
+        sandbox_manager,
+        sandbox_id,
+        workdir,
+    )
+    if changed_test_cmd:
+        test_command = changed_test_cmd
+        await append_log(
+            _config,
+            "test",
+            f"Running changed tests: {test_command[:80]}",
+            state,
+        )
+    else:
+        await append_log(_config, "test", f"Running: {test_command}", state)
     try:
         result = await sandbox_manager.execute(
             sandbox_id,
@@ -169,3 +183,40 @@ async def run_tests(
             }
         ],
     }
+
+
+async def _build_changed_tests_command(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workdir: str,
+) -> str | None:
+    """Find test files changed by the implement stage and build a targeted command.
+
+    Returns a pytest command that runs only the changed/new test files,
+    or None if no test files were changed (falls back to full suite).
+    """
+    from lintel.contracts.types import SandboxJob
+
+    # Find test files changed vs the base branch
+    result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                "git diff --name-only HEAD~1 -- 'tests/' 2>/dev/null"
+                " | grep -E 'test_.*\\.py$' || true"
+            ),
+            workdir=workdir,
+            timeout_seconds=10,
+        ),
+    )
+    changed_files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+    if not changed_files:
+        return None
+
+    path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
+    files_arg = " ".join(changed_files)
+    logger.info(
+        "test_discovery: running %d changed test files instead of full suite",
+        len(changed_files),
+    )
+    return f"{path_prefix} && uv run python -m pytest {files_arg} -v 2>&1"

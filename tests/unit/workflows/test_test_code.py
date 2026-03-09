@@ -74,6 +74,7 @@ class TestRunTests:
 
     async def test_uses_discovered_test_command(self) -> None:
         mgr = _mock_sandbox(
+            (0, "", ""),  # git diff (no changed test files)
             (0, "3 passed", ""),  # test execution
         )
         state = _make_state()
@@ -96,6 +97,7 @@ class TestRunTests:
     async def test_runs_setup_commands_before_test(self) -> None:
         mgr = _mock_sandbox(
             (0, "deps installed", ""),  # setup command
+            (0, "", ""),  # git diff
             (0, "3 passed", ""),  # test execution
         )
         state = _make_state()
@@ -110,13 +112,34 @@ class TestRunTests:
             result = await run_tests(state, config)
 
         assert result["agent_outputs"][0]["verdict"] == "passed"
-        # First execute = setup, second = test
-        assert mgr.execute.call_count == 2
+        # First execute = setup, second = git diff, third = test
+        assert mgr.execute.call_count == 3
         assert "uv sync" in mgr.execute.call_args_list[0][0][1].command
-        assert "make test" in mgr.execute.call_args_list[1][0][1].command
+
+    async def test_runs_changed_tests_when_available(self) -> None:
+        mgr = _mock_sandbox(
+            (0, "tests/unit/api/test_health.py\n", ""),  # git diff
+            (0, "1 passed", ""),  # test execution
+        )
+        state = _make_state()
+        config = _make_config(mgr)
+
+        with (
+            patch(f"{_STAGE}.mark_running", new_callable=AsyncMock),
+            patch(f"{_STAGE}.mark_completed", new_callable=AsyncMock),
+            patch(f"{_STAGE}.append_log", new_callable=AsyncMock),
+            _patch_discovery("make test-unit"),
+        ):
+            result = await run_tests(state, config)
+
+        assert result["agent_outputs"][0]["verdict"] == "passed"
+        last_exec = mgr.execute.call_args_list[-1]
+        assert "test_health.py" in last_exec[0][1].command
+        assert "pytest" in last_exec[0][1].command
 
     async def test_failed_tests_report_failure(self) -> None:
         mgr = _mock_sandbox(
+            (0, "", ""),  # git diff
             (1, "", "FAIL src/app.test.js"),
         )
         state = _make_state()
@@ -135,6 +158,7 @@ class TestRunTests:
 
     async def test_reconnects_and_disconnects_network(self) -> None:
         mgr = _mock_sandbox(
+            (0, "", ""),  # git diff
             (0, "ok", ""),
         )
         state = _make_state()
@@ -154,6 +178,7 @@ class TestRunTests:
     async def test_truncates_long_output(self) -> None:
         long_output = "x" * 6000
         mgr = _mock_sandbox(
+            (0, "", ""),  # git diff
             (1, long_output, ""),
         )
         state = _make_state()
@@ -173,6 +198,7 @@ class TestRunTests:
 
     async def test_persists_test_result(self) -> None:
         mgr = _mock_sandbox(
+            (0, "", ""),  # git diff
             (0, "5 passed", ""),
         )
         state = _make_state()
