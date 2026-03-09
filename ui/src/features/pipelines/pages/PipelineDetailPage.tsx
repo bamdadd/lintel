@@ -12,6 +12,7 @@ import {
   usePipelinesListStages,
 } from '@/generated/api/pipelines/pipelines';
 import { PipelineDAG } from '../components/PipelineDAG';
+import { DiffView } from '@/shared/components/DiffView';
 import { StepTimingBar } from '../components/StepTimingBar';
 import { usePipelineSSE } from '../hooks/usePipelineSSE';
 import { TimeAgo } from '@/shared/components/TimeAgo';
@@ -373,13 +374,21 @@ export function Component() {
                       <PlanView plan={selectedStage.outputs.plan as unknown as React.ComponentProps<typeof PlanView>['plan']} />
                     )}
 
-                    {/* Other outputs (non-plan) */}
-                    {selectedStage.outputs && Object.keys(selectedStage.outputs).filter(k => k !== 'plan' && k !== 'research_report').length > 0 && (
+                    {/* Diff output — code changes view */}
+                    {!!selectedStage.outputs?.diff && (
+                      <Stack gap={4}>
+                        <Text size="sm" fw={600}>Code Changes</Text>
+                        <DiffView content={selectedStage.outputs.diff as string} />
+                      </Stack>
+                    )}
+
+                    {/* Other outputs (non-plan, non-diff, non-research) */}
+                    {selectedStage.outputs && Object.keys(selectedStage.outputs).filter(k => !['plan', 'research_report', 'diff'].includes(k)).length > 0 && (
                       <Stack gap={4}>
                         <Text size="sm" fw={600}>Outputs</Text>
                         <Code block style={{ fontSize: 12 }}>
                           {JSON.stringify(
-                            Object.fromEntries(Object.entries(selectedStage.outputs).filter(([k]) => k !== 'plan' && k !== 'research_report')),
+                            Object.fromEntries(Object.entries(selectedStage.outputs).filter(([k]) => !['plan', 'research_report', 'diff'].includes(k))),
                             null, 2,
                           )}
                         </Code>

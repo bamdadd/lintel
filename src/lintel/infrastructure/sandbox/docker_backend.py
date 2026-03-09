@@ -208,8 +208,18 @@ class DockerSandboxManager:
         git_dir = find_result.stdout.strip()
         repo_dir = git_dir.rsplit("/.git", 1)[0] if git_dir else workdir
 
+        # Show all changes vs the base branch (committed + uncommitted)
         result = await self.execute(
-            sandbox_id, SandboxJob(command="git diff HEAD", workdir=repo_dir)
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "{ git diff origin/main...HEAD 2>/dev/null"
+                    " || git diff main...HEAD 2>/dev/null"
+                    " || git diff HEAD; }"
+                    " && git diff HEAD 2>/dev/null"
+                ),
+                workdir=repo_dir,
+            ),
         )
         return {"type": "diff", "content": result.stdout, "exit_code": result.exit_code}
 
