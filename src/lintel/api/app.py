@@ -106,27 +106,29 @@ async def _seed_defaults(stores: dict[str, Any]) -> None:
             await agent_store.create(data)
 
     skill_store = stores["skill_store"]
-    existing_skills = await skill_store.list_skills()
     for skill in DEFAULT_SKILLS:
-        if skill.skill_id not in existing_skills:
-            await skill_store.register(
-                skill_id=skill.skill_id,
-                version=skill.version,
-                name=skill.name,
-                input_schema=skill.input_schema or {},
-                output_schema=skill.output_schema or {},
-                execution_mode=skill.execution_mode.value,
-            )
-            if hasattr(skill_store, "_metadata"):
-                skill_store._metadata[skill.skill_id] = {
-                    "description": skill.description,
-                    "content": skill.system_prompt,
-                    "category": skill.category.value,
-                    "tags": list(skill.tags),
-                    "allowed_agent_roles": list(skill.allowed_agent_roles),
-                    "is_builtin": skill.is_builtin,
-                    "enabled": skill.enabled,
-                }
+        # Always upsert builtins to refresh description, roles, schemas
+        await skill_store.register(
+            skill_id=skill.skill_id,
+            version=skill.version,
+            name=skill.name,
+            input_schema=skill.input_schema or {},
+            output_schema=skill.output_schema or {},
+            execution_mode=skill.execution_mode.value,
+            description=skill.description,
+            allowed_agent_roles=skill.allowed_agent_roles,
+        )
+        # In-memory store: also set extended metadata
+        if hasattr(skill_store, "_metadata"):
+            skill_store._metadata[skill.skill_id] = {
+                "description": skill.description,
+                "content": skill.system_prompt,
+                "category": skill.category.value,
+                "tags": list(skill.tags),
+                "allowed_agent_roles": list(skill.allowed_agent_roles),
+                "is_builtin": skill.is_builtin,
+                "enabled": skill.enabled,
+            }
 
 
 def _create_in_memory_stores() -> dict[str, Any]:

@@ -34,13 +34,17 @@ class InMemorySkillStore:
         input_schema: dict[str, Any],
         output_schema: dict[str, Any],
         execution_mode: str,
+        description: str = "",
+        allowed_agent_roles: tuple[str, ...] | list[str] = (),
     ) -> SkillDescriptor:
         descriptor = SkillDescriptor(
             name=name,
             version=version,
+            description=description,
             input_schema=input_schema,
             output_schema=output_schema,
             execution_mode=SkillExecutionMode(execution_mode),
+            allowed_agent_roles=frozenset(allowed_agent_roles),
         )
         self._skills[skill_id] = descriptor
         return descriptor

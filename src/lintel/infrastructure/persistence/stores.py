@@ -518,15 +518,19 @@ class PostgresSkillStore(PostgresCrudStore):
         input_schema: dict[str, Any],
         output_schema: dict[str, Any],
         execution_mode: str,
+        description: str = "",
+        allowed_agent_roles: tuple[str, ...] | list[str] = (),
     ) -> SkillDescriptor:
         from lintel.contracts.types import SkillDescriptor, SkillExecutionMode
 
         descriptor = SkillDescriptor(
             name=name,
             version=version,
+            description=description,
             input_schema=input_schema,
             output_schema=output_schema,
             execution_mode=SkillExecutionMode(execution_mode),
+            allowed_agent_roles=frozenset(allowed_agent_roles),
         )
         # Store with skill_id as entity_id
         from lintel.infrastructure.persistence.crud_store import _serialize
