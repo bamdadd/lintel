@@ -279,7 +279,7 @@ async def spawn_implementation(
         stage_outputs["token_usage"] = usage
     if diff_text:
         # Truncate diff for stage output (full diff is in the artifact)
-        stage_outputs["diff"] = diff_text[:10000]
+        stage_outputs["diff"] = diff_text[:50000]
     await mark_completed(_config, "implement", state, outputs=stage_outputs or None)
 
     result_dict: dict[str, Any] = {

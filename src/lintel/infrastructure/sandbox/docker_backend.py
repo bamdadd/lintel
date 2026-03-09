@@ -217,15 +217,21 @@ class DockerSandboxManager:
             SandboxJob(command="git add -A", workdir=repo_dir, timeout_seconds=10),
         )
 
-        # Show all changes vs the base branch (committed + staged)
+        # Exclude noisy lock files from the diff
+        exclude = "':!*.lock' ':!package-lock.json' ':!uv.lock' ':!bun.lock'"
+
+        # Show all changes vs the base branch (committed + staged).
+        # After git add -A above, all changes are staged, so we diff
+        # against origin/main to capture everything in one shot.
         result = await self.execute(
             sandbox_id,
             SandboxJob(
                 command=(
-                    "{ git diff origin/main...HEAD 2>/dev/null"
-                    " || git diff main...HEAD 2>/dev/null"
-                    " || git diff --cached; }"
-                    " && git diff --cached 2>/dev/null"
+                    "git diff --cached origin/main"
+                    f" -- . {exclude} 2>/dev/null"
+                    " || git diff --cached main"
+                    f" -- . {exclude} 2>/dev/null"
+                    f" || git diff --cached -- . {exclude}"
                 ),
                 workdir=repo_dir,
             ),

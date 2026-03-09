@@ -101,9 +101,9 @@ async def review_output(
             ],
         }
 
-    # Truncate very large diffs
-    if len(diff_text) > 10000:
-        diff_text = diff_text[:10000] + "\n... (diff truncated)"
+    # Truncate very large diffs for the review prompt
+    if len(diff_text) > 50000:
+        diff_text = diff_text[:50000] + "\n... (diff truncated)"
 
     review_output_text = ""
     usage: dict[str, Any] | None = None
