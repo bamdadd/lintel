@@ -3,6 +3,8 @@ import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center,
 } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
+import { useArtifactsListArtifacts } from '@/generated/api/artifacts/artifacts';
+import { DiffView } from '@/shared/components/DiffView';
 import { useSSEStream } from '../hooks/useSSEStream';
 import { StepPanel } from '../components/StepPanel';
 
@@ -24,6 +26,12 @@ export function Component() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const { events, status } = useSSEStream(runId ?? null);
+  const { data: artifactsResp } = useArtifactsListArtifacts(
+    { run_id: runId },
+    { query: { enabled: !!runId } },
+  );
+  const diffArtifact = ((artifactsResp?.data ?? []) as { artifact_type: string; content: string }[])
+    .find((a) => a.artifact_type === 'diff' && a.content);
 
   // Group events by node_name (step)
   const stepMap = new Map<string, typeof events>();
@@ -79,6 +87,15 @@ export function Component() {
           );
         })}
       </Stack>
+
+      {diffArtifact && (
+        <Paper withBorder p="md">
+          <Stack gap="xs">
+            <Title order={4}>Changes</Title>
+            <DiffView content={diffArtifact.content} />
+          </Stack>
+        </Paper>
+      )}
 
       {status === 'ended' && events.length === 0 && (
         <Paper withBorder p="md">

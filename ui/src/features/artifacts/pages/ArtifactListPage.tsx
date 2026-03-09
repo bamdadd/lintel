@@ -7,6 +7,7 @@ import {
   useArtifactsListArtifacts,
   useArtifactsListTestResults,
 } from '@/generated/api/artifacts/artifacts';
+import { DiffView } from '@/shared/components/DiffView';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
 
@@ -151,7 +152,11 @@ export function Component() {
               <Text size="sm" c="dimmed">Work Item: {viewArtifact.work_item_id}</Text>
             </Group>
             <ScrollArea h={400}>
-              <Code block>{viewArtifact.content || 'No content'}</Code>
+              {viewArtifact.artifact_type === 'diff' ? (
+                <DiffView content={viewArtifact.content} maxHeight={380} />
+              ) : (
+                <Code block>{viewArtifact.content || 'No content'}</Code>
+              )}
             </ScrollArea>
           </Stack>
         )}
