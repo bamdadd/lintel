@@ -492,14 +492,18 @@ async def _install_project_deps(
                 )
                 return
 
+        # Use pre-cached venv from image if available, otherwise sync from scratch
         sync = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
                 command=(
-                    'export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -5'
+                    'export PATH="$HOME/.local/bin:$PATH" && '
+                    "if [ -d /opt/lintel-deps/.venv ]; then "
+                    "cp -a /opt/lintel-deps/.venv . && uv sync --all-extras 2>&1 | tail -5; "
+                    "else uv sync --all-extras 2>&1 | tail -5; fi"
                 ),
                 workdir=workdir,
-                timeout_seconds=180,
+                timeout_seconds=300,
             ),
         )
         if sync.exit_code == 0:
