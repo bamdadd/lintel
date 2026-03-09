@@ -762,3 +762,354 @@ Tags are fully user-defined — Lintel does not enforce a fixed set of keys. Com
 - Time tracking or story points
 - Sub-tasks or parent-child relationships between work items
 - Real-time collaborative editing of work item descriptions
+
+---
+
+## REQ-016: Agent Performance Tracking
+
+### Overview
+
+Track per-agent output quality, task completion rates, error rates, and human override frequency. Automated grading using an LLM-as-judge pattern scores each agent per cycle. Store `AgentPerformanceReviewed` events with grades, reasoning, and flagged issues. Provides the data foundation for the Chief of Staff agent and feedback loops.
+
+### Requirements
+
+1. **Metrics collection** — instrument each agent node in LangGraph workflows to emit performance events (latency, token usage, output quality signals, human overrides)
+2. **Grading system** — LLM-as-judge evaluates agent outputs against acceptance criteria; produces a letter grade (A–F) with reasoning
+3. **Event store integration** — `AgentPerformanceReviewed` events with: agent_id, cycle (weekly), grade, reasoning, flagged_issues, metrics snapshot
+4. **Performance projections** — read-side projection aggregating trends per agent over time (grade history, improvement/regression detection)
+5. **API** — `GET /agents/{id}/performance` (history), `GET /agents/performance/summary` (latest cycle for all agents)
+
+---
+
+## REQ-017: Human-in-the-Loop Approval Gates
+
+### Overview
+
+Replace auto-approve with real approval workflows in LangGraph. Agents flag uncertainty and route decisions to humans via Slack. Human corrections are captured as training signal for the Chief of Staff agent. Escalation routing when confidence is low.
+
+### Requirements
+
+1. **Approval nodes** — LangGraph interrupt-based nodes that pause workflow execution and notify a human via Slack DM or channel thread
+2. **Approval UI** — approve/reject/comment from Slack (reactions or slash commands) and from the web UI
+3. **Escalation** — configurable timeout; if no response within SLA, escalate to next reviewer or auto-approve with warning
+4. **Correction capture** — when a human overrides an agent decision, store the original output, human correction, and reasoning as an `AgentCorrected` event
+5. **Confidence threshold** — agents can set a confidence score; below threshold triggers automatic approval request
+
+---
+
+## REQ-018: Human Worker Nodes
+
+### Overview
+
+A "human agent" node type in LangGraph workflows that routes tasks to real people. Enables mixed human+AI agent teams where some work is done by agents and some by humans, all within the same workflow.
+
+### Requirements
+
+1. **Human node type** — a LangGraph node that pauses execution and assigns work to a person (by role, team, or specific user)
+2. **Task assignment** — notification via Slack DM or work item assignment on the task board
+3. **SLA tracking** — configurable deadline per human node; timeout triggers escalation or reassignment
+4. **Result ingestion** — human submits output (text, code, file, approval) which feeds back into the workflow state like any agent output
+5. **Handoff context** — human receives full context: what the workflow has done so far, what's expected, acceptance criteria
+6. **Events** — `HumanTaskAssigned`, `HumanTaskCompleted`, `HumanTaskEscalated`
+
+---
+
+## REQ-019: Per-Agent Prompt & Memory Store
+
+### Overview
+
+Versioned, mutable prompt and memory store for each agent. The Chief of Staff agent can rewrite prompts, update memory, and adjust parameters. Every change is event-sourced for full auditability and A/B comparison.
+
+### Requirements
+
+1. **Prompt store** — each agent has a versioned system prompt; changes create new versions with diff tracking
+2. **Agent memory** — per-agent persistent context (guidelines, preferences, learned patterns) that the agent reads at invocation
+3. **Adjustable parameters** — per-agent config: creativity (temperature), risk tolerance, autonomy level, focus areas
+4. **API** — `GET/PUT /agents/{id}/prompt`, `GET/PUT /agents/{id}/memory`, `GET/PUT /agents/{id}/config`
+5. **Events** — `AgentPromptUpdated`, `AgentMemoryUpdated`, `AgentConfigUpdated` with before/after snapshots
+6. **Rollback** — revert to any previous prompt/memory/config version
+
+---
+
+## REQ-020: Chief of Staff Agent
+
+### Overview
+
+A meta-agent that aggregates performance data across all agents, generates periodic review reports, presents them to the human lead, takes feedback, and translates it into prompt/memory/priority changes for individual agents. The orchestrator that closes the management loop.
+
+### Requirements
+
+1. **Performance aggregation** — reads from Agent Performance Tracking (REQ-016) projections to build a team-wide report
+2. **Report generation** — weekly report with per-agent grade, trends, flagged issues, and recommendations
+3. **Human review** — delivers report via Slack thread or UI; collects feedback (free text + structured approve/reject per recommendation)
+4. **Feedback execution** — translates human feedback into concrete changes: rewrite prompts (REQ-019), update memory, adjust priorities, modify workflow assignments
+5. **Agent communication** — notifies affected agents of changes (updated prompt/memory is picked up on next invocation)
+6. **Autonomy rules** — high-performing agents get less intervention; low-performing agents get more oversight (configurable thresholds)
+7. **Events** — `PerformanceReportGenerated`, `FeedbackReceived`, `AgentAdjustmentApplied`
+
+---
+
+## REQ-021: Feedback Loop & Self-Improvement
+
+### Overview
+
+Closed feedback loop ensuring that agent adjustments made by the Chief of Staff actually improve performance. A/B tracking, before/after metrics, and automated weekly cycles.
+
+### Requirements
+
+1. **A/B tracking** — when a prompt/config change is applied, track performance before and after with statistical comparison
+2. **Automated cycle** — cron-triggered weekly: collect metrics → generate report → notify human → apply feedback → measure impact
+3. **Regression detection** — if an agent's grade drops after a change, flag it and suggest rollback
+4. **Manual + automated signals** — human corrections (REQ-017), output quality scores (REQ-016), and task completion rates all feed into the loop
+5. **Improvement log** — event-sourced history of all changes and their measured impact, viewable per agent
+
+---
+
+## REQ-022: Spec Workshop
+
+### Overview
+
+Collaborative workspace for defining and refining product specifications. Structured spec types provide a single source of truth for product intent, feeding downstream into Architecture Decisions and Work Items.
+
+### Requirements
+
+1. **Spec types** — Product Overview (strategic context), Feature Specs (individual capability definitions), Technical Constraints (cross-cutting: security, performance, integrations)
+2. **AI agent assistance** — drafting from source material, quality checks (ambiguity, gaps, conflicts, duplication), suggesting feature splits/merges (human-confirmed)
+3. **Versioning** — every edit creates a new version; diff comparison between versions; aggregate project-level comparison
+4. **Source material integration** — agent can draft from Context Attachments (REQ-027): docs, images, transcripts, existing code
+5. **Collaboration** — shared editing, comments, mentions; specs are living documents updated throughout the project lifecycle
+6. **Downstream links** — specs link to Architecture Decisions (REQ-023) and Work Items; changes propagate alerts via Drift Detection (REQ-024)
+7. **Import/export** — markdown import/export; PDF export
+8. **Events** — `SpecCreated`, `SpecUpdated`, `SpecQualityChecked`, `SpecFeatureSplit`, `SpecFeatureMerged`
+
+---
+
+## REQ-023: Architecture Decisions
+
+### Overview
+
+Living architecture layer that captures engineering decisions as events. Foundations, diagrams, and per-feature technical plans linked bidirectionally to specs. Every change is tracked and auditable.
+
+### Requirements
+
+1. **Decision types** — Foundations (project-wide stack, principles, security, deployment), System Diagrams (Mermaid-based architecture and data flow), Feature Plans (per-feature: APIs, data models, UI behavior, testing)
+2. **Template system** — configurable templates for consistent structure; project-level and org-level templates
+3. **AI agent assistance** — drafting, reviewing for gaps/conflicts, generating Mermaid diagrams, detecting inconsistencies across decisions/code/specs
+4. **Bidirectional linking** — Feature Plans link to Feature Specs (REQ-022); renaming propagates
+5. **Codebase awareness** — agent references Codebase Index (REQ-026) when drafting plans; highlights specific files requiring changes
+6. **Sync alerts** — flags when code changes invalidate decisions or spec updates aren't reflected; triggers guided human resolution
+7. **Events** — `ArchitectureDecisionRecorded`, `ArchitectureDecisionUpdated`, `ArchitectureDriftDetected`
+
+---
+
+## REQ-024: Drift Detection
+
+### Overview
+
+Continuous sync engine across specs, architecture decisions, and code. Implemented as a projection over change events from all three layers. Detects when any layer diverges from the others and triggers human-in-the-loop resolution.
+
+### Requirements
+
+1. **Three-layer monitoring** — watches spec changes (REQ-022), architecture changes (REQ-023), and code changes (REQ-026) via event streams
+2. **Drift types** — code invalidates architecture decision, spec update not reflected in technical plan, architecture conflicts with implementation, foundation drift from codebase
+3. **Projection-based** — drift state is a read-side projection over spec/architecture/code change events (natural fit for event sourcing)
+4. **Alerts** — surface in UI with severity level; Slack notifications for high-severity drift
+5. **Guided resolution** — agent explains the drift, suggests remediation steps, human approves/modifies the fix
+6. **Reindexing triggers** — code push webhooks trigger drift re-evaluation against current specs and architecture
+7. **Events** — `DriftDetected`, `DriftResolved`, `DriftEscalated`
+
+---
+
+## REQ-025: Feedback Ingestion
+
+### Overview
+
+API endpoint to capture user and product feedback with technical context. AI categorizes and prioritizes feedback, auto-generates Work Items, and feeds into the Chief of Staff loop. Closes the loop from production usage back into the build process.
+
+### Requirements
+
+1. **Capture API** — lightweight endpoint accepting user feedback with optional technical context (browser, device, session, recent code changes)
+2. **AI categorization** — classify as bug, feature request, performance issue, UX feedback; assign priority score
+3. **Work Item generation** — auto-create Work Items with code context and suggested fixes; link to relevant specs/architecture decisions
+4. **Slack alerts** — critical issues trigger immediate Slack notifications
+5. **Inbox UI** — filterable dashboard showing all feedback with status, priority, and linked Work Items
+6. **Spec feedback** — high-signal feedback can be routed to Spec Workshop (REQ-022) for requirement refinement
+7. **Events** — `FeedbackReceived`, `FeedbackCategorized`, `FeedbackWorkItemCreated`
+
+---
+
+## REQ-026: Codebase Index
+
+### Overview
+
+Ingest, chunk, and embed entire codebases for semantic search and agent consumption. Git integration with webhook-triggered reindexing. Enables reverse-engineering specs from code, codebase-aware work item generation, and legacy migration support.
+
+### Requirements
+
+1. **Ingestion** — connect via Git (local or remote); read files from configured branch
+2. **Chunking & embedding** — split code into semantic chunks; embed for vector search; background processing with progress tracking
+3. **Webhook reindexing** — auto-reindex on push to monitored branch; incremental updates (only changed files)
+4. **Agent skill** — exposed as a skill so all agents can semantically search and reference code during workflows
+5. **Reverse engineering** — generate spec drafts and architecture decisions from existing code (legacy codebase onboarding)
+6. **Migration support** — map legacy codebases for documentation and migration planning
+7. **Drift layer** — feeds code change events into Drift Detection (REQ-024)
+8. **Events** — `CodebaseConnected`, `CodebaseIndexed`, `CodebaseReindexed`
+
+---
+
+## REQ-027: Context Attachments
+
+### Overview
+
+File store for documents, images, audio, and other artifacts that provide context to agents. Attachable to threads, work items, specs, and architecture decisions. Embedded and searchable for agent retrieval.
+
+### Requirements
+
+1. **Upload** — API and UI upload for common file types (docs, images, audio, video, Office formats)
+2. **Attachment points** — attach to threads, work items, specs (REQ-022), architecture decisions (REQ-023)
+3. **Embedding & search** — file contents are embedded for semantic retrieval; agents dynamically pull relevant attachments during workflows
+4. **Document linking** — inline links within specs/decisions that reference attachments for traceability
+5. **Organization** — folder-based organization per project; descriptive naming conventions
+6. **Events** — `AttachmentUploaded`, `AttachmentLinked`, `AttachmentRemoved`
+
+---
+
+## REQ-028: Workflow Templates
+
+### Overview
+
+Reusable LangGraph workflow patterns for common tasks. Define once, instantiate many times with different inputs. Reduces setup time for repetitive workflows and enables teams to share proven patterns.
+
+### Requirements
+
+1. **Template registry** — versioned collection of workflow templates with metadata (name, description, required inputs, expected outputs)
+2. **Common templates** — ship with built-in templates: "review PR", "implement feature from spec", "migrate legacy module", "security audit", "code review", "research task"
+3. **Custom templates** — teams can create, share, and customize templates from existing workflows
+4. **Instantiation** — create a workflow run from a template with specific inputs; template defines the graph structure, user provides the context
+5. **Versioning** — template changes create new versions; existing runs continue on the version they started with
+6. **Events** — `WorkflowTemplateCreated`, `WorkflowTemplateUpdated`, `WorkflowFromTemplateStarted`
+
+---
+
+## REQ-029: Agent Trust Scores
+
+### Overview
+
+Graduated trust/autonomy system for agents based on behavioral tracking. Instead of binary human-in-the-loop, each agent has a dynamic trust score (0–1000) that determines how much oversight it needs. High performers earn autonomy; low performers get restrictions. The Chief of Staff agent (REQ-020) adjusts trust scores based on performance reviews.
+
+### Requirements
+
+1. **Trust score per agent** — dynamic 0–1000 score stored as an event-sourced projection over agent action outcomes
+2. **Score adjustments** — successful task completion: +10; policy violation: up to -100; human override/correction: -20; configurable per action type
+3. **Autonomy tiers** — score ranges determine oversight level:
+   - **900+**: Full autonomy, no approval needed
+   - **700–899**: Normal operation, periodic review
+   - **500–699**: Limited actions, all actions logged with reasoning
+   - **300–499**: Requires human approval before execution (REQ-017)
+   - **0–299**: Suspended, cannot act autonomously
+4. **Scope narrowing** — when trust drops, automatically restrict the agent's available tools and action types (not just oversight level)
+5. **Human sponsor** — each agent has an assigned human sponsor who is accountable and receives escalations
+6. **Trust recovery** — agents can regain trust through successful supervised execution; recovery rate is slower than degradation rate
+7. **API** — `GET /agents/{id}/trust` (current score + history), `POST /agents/{id}/trust/adjust` (manual adjustment with reason)
+8. **Events** — `AgentTrustScoreChanged`, `AgentScopeNarrowed`, `AgentScopeRestored`, `AgentSuspended`, `AgentReinstated`
+
+---
+
+## REQ-030: Agent Action Governance
+
+### Overview
+
+Deterministic policy-based control layer that intercepts every agent action and applies a three-state decision: ALLOW, DENY, or REQUIRE_APPROVAL. Implemented as LangGraph middleware wrapping all tool calls. Policies are declarative (YAML config) so the Chief of Staff agent can modify governance rules without code changes.
+
+### Requirements
+
+1. **Three-state decision model** — every agent tool call is evaluated and receives ALLOW, DENY, or REQUIRE_APPROVAL before execution
+2. **Policy engine** — declarative YAML policies defining rules per agent role, action type, and context:
+   - Allowed/denied tool categories per agent
+   - Rate limiting per action type (e.g., max 60 LLM calls/hour)
+   - Resource limits (token budgets, API call caps, time windows)
+   - Domain restrictions (which repos, channels, or resources an agent can access)
+3. **LangGraph middleware** — governance layer wraps every tool call in the workflow graph; transparent to agent logic
+4. **Layered validation** — defense-in-depth with multiple checkpoint rules; a single DENY at any layer blocks the action
+5. **Trust score integration** — policies reference the agent's trust score (REQ-029) to determine thresholds; lower trust = stricter policies
+6. **CoS-modifiable** — Chief of Staff agent (REQ-020) can update governance policies as part of agent adjustments
+7. **Audit logging** — every action decision is recorded with: timestamp, agent_id, action, arguments, decision (ALLOW/DENY/REQUIRE_APPROVAL), matching policy rule, trust score at time of decision
+8. **Events** — `AgentActionAllowed`, `AgentActionDenied`, `AgentActionApprovalRequested`, `GovernancePolicyUpdated`
+
+---
+
+## REQ-031: Agent Prompt Evolution
+
+### Overview
+
+Automated prompt optimization system that measurably improves agent performance through structured evolution algorithms. When the Chief of Staff agent (REQ-020) or automated cycle (REQ-021) triggers a prompt change, the system applies optimization techniques and measures before/after performance against benchmarks. Applies prompt evolution algorithms with measurable outcomes.
+
+### Requirements
+
+1. **Prompt optimization algorithms** — support multiple evolution strategies:
+   - **Gradient-based** — use LLM-generated feedback signals to iteratively refine prompts
+   - **Structure evolution** — optimize not just prompt text but workflow graph topology
+   - **Instruction refinement** — iterative improvement of instruction-following clarity
+2. **Per-agent benchmarks** — each agent has a benchmark suite defining expected quality (test cases with expected outputs, quality rubrics, task-specific metrics)
+3. **Before/after measurement** — every prompt change triggers a benchmark run; results are compared statistically to the previous version
+4. **Rollback on regression** — if a prompt change degrades benchmark scores beyond a configurable threshold, automatically rollback and flag for human review
+5. **Evolution history** — full event-sourced history of prompt versions, benchmark results, and optimization decisions
+6. **Integration with REQ-019** — operates on the per-agent prompt store; each optimization produces a new prompt version
+7. **Integration with REQ-021** — part of the automated feedback cycle; can be triggered by CoS agent or on schedule
+8. **Events** — `PromptEvolutionStarted`, `PromptBenchmarkCompleted`, `PromptEvolutionAccepted`, `PromptEvolutionRolledBack`
+
+---
+
+## REQ-032: Per-Agent Model Selection
+
+### Overview
+
+Different agents should use different LLM models based on their task complexity, cost constraints, and performance needs. Simple classification tasks use cheaper/faster models; complex reasoning tasks use more capable models. Model selection is part of the agent config (REQ-019) and can be adjusted by the Chief of Staff agent.
+
+### Requirements
+
+1. **Per-agent model config** — each agent has a configured model (provider + model ID) in its config store (REQ-019)
+2. **Model selection rationale** — config includes a reason field documenting why this model was chosen for this agent
+3. **Cost-aware selection** — model config includes cost tier (low/medium/high) and token budget per invocation
+4. **Runtime override** — environment variable overrides per agent for deployment flexibility (e.g., `LINTEL_PLANNER_MODEL=claude-sonnet-4-6`)
+5. **Fallback chain** — ordered list of fallback models if primary is unavailable; enables graceful degradation
+6. **Performance correlation** — track agent performance (REQ-016) alongside model used; surface when a model change improves/degrades quality
+7. **CoS-adjustable** — Chief of Staff can recommend model changes as part of agent adjustments
+8. **Events** — `AgentModelChanged`, `AgentModelFallbackUsed`
+
+---
+
+## REQ-033: Composable Agent Skills
+
+### Overview
+
+Reusable, versioned skill definitions that any agent can load at runtime. Skills are modular capability units (e.g., "code review", "sprint planning", "project estimation") defined as structured markdown with trigger conditions, methodology, and output templates. Keeps agent capabilities composable rather than monolithic.
+
+### Requirements
+
+1. **Skill definition format** — structured markdown with: metadata (name, version, author), trigger conditions (when to activate), methodology/framework, output template, examples
+2. **Skill registry** — versioned collection of available skills; built-in skills ship with Lintel, custom skills can be added per project/org
+3. **Dynamic loading** — agents load relevant skills at runtime based on task context; skills augment the agent's system prompt
+4. **Auto-selection** — agents can auto-select applicable skills based on trigger conditions matching the current task, not just explicit invocation
+5. **Cross-agent reuse** — same skill usable by multiple agents; e.g., "estimation" skill used by both planner and PM agents
+6. **Skill composition** — multiple skills can be active simultaneously; skills don't conflict (isolated namespaces)
+7. **Output standardization** — skills enforce consistent output formats; enables downstream processing and performance grading (REQ-016)
+8. **Events** — `SkillLoaded`, `SkillExecuted`, `SkillRegistered`, `SkillUpdated`
+
+---
+
+## REQ-034: Agent-Utility Separation
+
+### Overview
+
+Enforce a clear boundary between agent nodes (where LLM reasoning adds value) and utility nodes (deterministic operations) in workflows. Not every step needs an agent. Performance tracking aggregation, drift detection scanning, event projection updates, and data normalization should be plain utility functions, not agent-wrapped code. This reduces cost, improves reliability, and makes the system honest about where AI is actually used.
+
+### Requirements
+
+1. **Node type classification** — every LangGraph node is explicitly classified as `agent` (requires LLM) or `utility` (deterministic logic)
+2. **Utility nodes** — no LLM invocation; pure functions with predictable inputs/outputs; no token cost; no latency variance
+3. **Agent nodes** — LLM-backed reasoning; subject to governance (REQ-030), trust scoring (REQ-029), and performance tracking (REQ-016)
+4. **Workflow validation** — lint rule that flags agent nodes doing deterministic work (e.g., data normalization, HTTP fetching, deduplication)
+5. **Cost attribution** — token costs are only attributed to agent nodes; utility nodes have zero LLM cost; enables accurate per-workflow cost tracking
+6. **Graceful degradation** — when LLM APIs are unavailable, agent nodes can fall back to heuristic scoring (degraded mode) while utility nodes continue unaffected
+7. **Documentation** — each workflow template (REQ-028) documents which nodes are agents vs utilities and why

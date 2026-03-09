@@ -12,7 +12,7 @@
 
 Lintel doesn't just measure software delivery — it *executes* it. Teams interact through Slack or the web UI while specialised AI agents plan, code, review, and ship work in isolated sandboxes. Every action is recorded in an append-only event store, giving you a complete audit trail and DORA-grade metrics — all derived from the event stream, not bolted on.
 
-> DX, LinearB, and Minware are mirrors — they show you what happened.
+> Traditional engineering intelligence platforms are mirrors — they show you what happened.
 > Lintel is a flywheel — it measures, acts, and improves automatically.
 
 ---
