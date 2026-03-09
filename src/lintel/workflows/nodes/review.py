@@ -66,11 +66,17 @@ async def review_output(
     # Get the diff from the sandbox
     if sandbox_id and sandbox_manager is not None:
         try:
+            workdir = state.get("workspace_path", "/workspace/repo")
+            # Stage new files so they appear in the diff
+            await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(command="git add -A", workdir=workdir, timeout_seconds=10),
+            )
             result = await sandbox_manager.execute(
                 sandbox_id,
                 SandboxJob(
-                    command="git diff HEAD",
-                    workdir=state.get("workspace_path", "/workspace/repo"),
+                    command="git diff --cached",
+                    workdir=workdir,
                     timeout_seconds=30,
                 ),
             )

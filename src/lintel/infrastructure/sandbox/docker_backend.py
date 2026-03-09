@@ -67,8 +67,7 @@ class DockerSandboxManager:
             "read_only": False,
             "network_mode": "bridge" if config.network_enabled else "none",
             "mem_limit": config.memory_limit,
-            "cpu_period": 100000,
-            "cpu_quota": config.cpu_quota,
+            "nano_cpus": config.cpu_quota * 10000,
             "pids_limit": 256,
             "tmpfs": {"/tmp": "size=200m,exec", "/workspace": "size=4g,exec"},
             "environment": environment,
@@ -208,15 +207,24 @@ class DockerSandboxManager:
         git_dir = find_result.stdout.strip()
         repo_dir = git_dir.rsplit("/.git", 1)[0] if git_dir else workdir
 
-        # Show all changes vs the base branch (committed + uncommitted)
+        # Stage all changes (including new untracked files) so they appear
+        # in the diff.  `git add -N` marks new files as "intent to add"
+        # without staging content, but `git add -A` followed by
+        # `git diff --cached` is more reliable for capturing everything.
+        await self.execute(
+            sandbox_id,
+            SandboxJob(command="git add -A", workdir=repo_dir, timeout_seconds=10),
+        )
+
+        # Show all changes vs the base branch (committed + staged)
         result = await self.execute(
             sandbox_id,
             SandboxJob(
                 command=(
                     "{ git diff origin/main...HEAD 2>/dev/null"
                     " || git diff main...HEAD 2>/dev/null"
-                    " || git diff HEAD; }"
-                    " && git diff HEAD 2>/dev/null"
+                    " || git diff --cached; }"
+                    " && git diff --cached 2>/dev/null"
                 ),
                 workdir=repo_dir,
             ),

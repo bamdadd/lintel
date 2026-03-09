@@ -323,20 +323,27 @@ class WorkflowExecutor:
             self._suspended_runs.pop(run_id, None)
             _unregister_runtime(run_id)
 
+            # Determine final status — if any stage failed/skipped due to
+            # failure, the pipeline should be marked failed, not succeeded.
+            final_status = await self._determine_final_status(run_id)
+
             completed_event = PipelineRunCompleted(
                 event_type="PipelineRunCompleted",
                 payload={
                     "run_id": run_id,
-                    "status": "succeeded",
+                    "status": final_status,
                     "token_usage": total_tokens,
                 },
             )
             await self._event_store.append(stream_id=stream_id, events=[completed_event])
             await self._project_events([completed_event])
-            await self._update_pipeline_status(run_id, "succeeded")
+            await self._update_pipeline_status(run_id, final_status)
             command = suspended.get("command")
             if command:
-                await self._complete_work_item(command)
+                if final_status == "failed":
+                    await self._fail_work_item(command)
+                else:
+                    await self._complete_work_item(command)
             token_summary = ""
             if total_tokens["total_tokens"] > 0:
                 token_summary = (
@@ -344,11 +351,18 @@ class WorkflowExecutor:
                     f"({total_tokens['input_tokens']:,} in / "
                     f"{total_tokens['output_tokens']:,} out)"
                 )
-            await self._notify_chat(
-                run_id,
-                f"🎉 **Workflow completed successfully**{token_summary}\n"
-                f"[View pipeline →](/pipelines/{run_id})",
-            )
+            if final_status == "failed":
+                await self._notify_chat(
+                    run_id,
+                    f"❌ **Workflow completed with failures**{token_summary}\n"
+                    f"[View pipeline →](/pipelines/{run_id})",
+                )
+            else:
+                await self._notify_chat(
+                    run_id,
+                    f"🎉 **Workflow completed successfully**{token_summary}\n"
+                    f"[View pipeline →](/pipelines/{run_id})",
+                )
         except Exception as exc:
             self._suspended_runs.pop(run_id, None)
             await self._mark_running_stages_failed(run_id, str(exc))
@@ -675,6 +689,35 @@ class WorkflowExecutor:
             logger.warning(
                 "update_pipeline_status_failed", run_id=run_id, status=status, error=str(exc)
             )
+
+    async def _determine_final_status(self, run_id: str) -> str:
+        """Check pipeline stages to determine if the run succeeded or failed.
+
+        If any stage has a failed or skipped status, the pipeline is considered
+        failed — even though the graph itself completed without raising.
+        """
+        if self._app_state is None:
+            return "succeeded"
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return "succeeded"
+        try:
+            run = await pipeline_store.get(run_id)
+            if run is None:
+                return "succeeded"
+            from lintel.contracts.types import StageStatus
+
+            for stage in run.stages:
+                s = stage
+                if isinstance(s, dict):
+                    from lintel.contracts.types import Stage
+
+                    s = Stage(**s)
+                if s.status in (StageStatus.FAILED,):
+                    return "failed"
+        except Exception:
+            logger.warning("determine_final_status_failed", run_id=run_id)
+        return "succeeded"
 
     async def _mark_first_stage_running(self, run_id: str) -> None:
         """Mark the first pipeline stage as running."""
