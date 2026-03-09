@@ -60,6 +60,8 @@ class TestRunTests:
             (0, "/root/.local/bin/uv", ""),
             # _ensure_python_deps: uv sync
             (0, "Resolved 10 packages", ""),
+            # _ensure_python_deps: spacy download
+            (0, "en_core_web_sm installed", ""),
             # run pytest
             (0, "3 passed", ""),
         )
@@ -101,6 +103,7 @@ class TestRunTests:
             (0, "/workspace/repo/pyproject.toml", ""),
             (0, "/root/.local/bin/uv", ""),
             (0, "installed", ""),
+            (0, "en_core_web_sm installed", ""),
             (0, "1 passed", ""),
         )
         state = _make_state()
@@ -162,6 +165,7 @@ class TestEnsurePythonDeps:
         mgr = _mock_sandbox(
             (0, "/root/.local/bin/uv", ""),
             (0, "Resolved 5 packages", ""),
+            (0, "en_core_web_sm installed", ""),
         )
         config: dict[str, Any] = {"configurable": {}}
         state = _make_state()
@@ -169,7 +173,7 @@ class TestEnsurePythonDeps:
         with patch(f"{_STAGE}.append_log", new_callable=AsyncMock):
             await _ensure_python_deps(mgr, "sb-1", "/workspace/repo", config, state)
 
-        assert mgr.execute.call_count == 2
+        assert mgr.execute.call_count == 3
 
     async def test_installs_uv_when_missing(self) -> None:
         mgr = _mock_sandbox(
@@ -177,6 +181,7 @@ class TestEnsurePythonDeps:
             (0, "uv installed", ""),
             (0, "", ""),
             (0, "Resolved 5 packages", ""),
+            (0, "en_core_web_sm installed", ""),
         )
         config: dict[str, Any] = {"configurable": {}}
         state = _make_state()
@@ -184,7 +189,7 @@ class TestEnsurePythonDeps:
         with patch(f"{_STAGE}.append_log", new_callable=AsyncMock):
             await _ensure_python_deps(mgr, "sb-1", "/workspace/repo", config, state)
 
-        assert mgr.execute.call_count == 4
+        assert mgr.execute.call_count == 5
 
     async def test_handles_uv_install_failure(self) -> None:
         mgr = _mock_sandbox(

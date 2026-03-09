@@ -225,3 +225,15 @@ async def _ensure_python_deps(
         await append_log(config, "test", f"Dependency install failed: {sync.stderr[:200]}", state)
     else:
         await append_log(config, "test", "Dependencies installed", state)
+        # Download spacy model into venv (presidio needs it at import time)
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    'export PATH="$HOME/.local/bin:$PATH" '
+                    "&& uv run python -m spacy download en_core_web_sm 2>&1 | tail -3"
+                ),
+                workdir=workdir,
+                timeout_seconds=60,
+            ),
+        )

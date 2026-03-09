@@ -504,6 +504,18 @@ async def _install_project_deps(
         )
         if sync.exit_code == 0:
             await append_log(config, "setup_workspace", "Python dependencies installed", state)
+            # Download spacy model into venv (presidio needs it at import time)
+            await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=(
+                        'export PATH="$HOME/.local/bin:$PATH" '
+                        "&& uv run python -m spacy download en_core_web_sm 2>&1 | tail -3"
+                    ),
+                    workdir=workdir,
+                    timeout_seconds=60,
+                ),
+            )
         else:
             await append_log(
                 config,
