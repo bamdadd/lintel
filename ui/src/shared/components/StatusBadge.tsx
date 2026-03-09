@@ -8,6 +8,7 @@ const statusColors: Record<string, string> = {
   succeeded: 'green',
   failed: 'red',
   error: 'red',
+  skipped: 'gray',
   archived: 'gray',
   destroyed: 'gray',
   closed: 'gray',

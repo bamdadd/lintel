@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
+    python3-dev \
     nodejs \
     npm \
     git \
@@ -17,14 +18,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install uv (fast Python package manager)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:$PATH"
+ENV PATH="/root/.local/bin:/home/vscode/.local/bin:$PATH"
 
 # Install Rust toolchain (for cargo test)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:$PATH"
 
-# Install Go
-RUN curl -fsSL https://go.dev/dl/go1.22.5.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+# Install Go (auto-detect architecture)
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL "https://go.dev/dl/go1.22.5.linux-${ARCH}.tar.gz" | tar -C /usr/local -xzf -
 ENV PATH="/usr/local/go/bin:$PATH"
+
+# Pre-install spacy small English model (needed for PII tests at import time)
+RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
+    uv pip install --system spacy && \
+    python3 -m spacy download en_core_web_sm
 
 WORKDIR /workspace

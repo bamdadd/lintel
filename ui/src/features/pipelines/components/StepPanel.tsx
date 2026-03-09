@@ -7,7 +7,7 @@ import type { StreamEvent } from '../hooks/useSSEStream';
 
 interface StepPanelProps {
   stepName: string;
-  status: 'pending' | 'running' | 'started' | 'succeeded' | 'failed' | 'errored';
+  status: 'pending' | 'running' | 'started' | 'succeeded' | 'failed' | 'errored' | 'skipped';
   statusLabel?: string;
   durationMs?: number;
   events: StreamEvent[];
@@ -20,6 +20,7 @@ const statusColor: Record<string, string> = {
   succeeded: 'green',
   failed: 'red',
   errored: 'red',
+  skipped: 'gray',
 };
 
 export function StepPanel({ stepName, status, statusLabel, durationMs, events }: StepPanelProps) {

@@ -726,6 +726,9 @@ class WorkflowExecutor:
                 if stage.status == StageStatus.RUNNING:
                     updated_stages.append(replace(stage, status=StageStatus.FAILED, error=error))
                     changed = True
+                elif stage.status == StageStatus.PENDING:
+                    updated_stages.append(replace(stage, status=StageStatus.SKIPPED))
+                    changed = True
                 else:
                     updated_stages.append(stage)
             if changed:

@@ -114,6 +114,7 @@ class TestRunTests:
             await run_tests(state, config)
 
         mgr.reconnect_network.assert_called_once_with("sb-1")
+        # disconnect_network called after test execution completes
         mgr.disconnect_network.assert_called_once_with("sb-1")
 
     async def test_no_test_runner_detected(self) -> None:

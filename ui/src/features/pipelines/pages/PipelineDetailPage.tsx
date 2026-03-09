@@ -22,6 +22,7 @@ const statusColor: Record<string, string> = {
   succeeded: 'green',
   failed: 'red',
   cancelled: 'orange',
+  skipped: 'gray',
   waiting_approval: 'yellow',
   approved: 'teal',
   rejected: 'red',

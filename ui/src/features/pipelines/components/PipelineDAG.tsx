@@ -26,6 +26,7 @@ const statusColors: Record<string, string> = {
   failed: '#ef4444',
   running: '#3b82f6',
   pending: '#9ca3af',
+  skipped: '#9ca3af',
   waiting_approval: '#eab308',
   approved: '#14b8a6',
   rejected: '#ef4444',
