@@ -82,16 +82,13 @@ async def test_implement_no_artifact_when_no_diff() -> None:
 
 async def test_test_node_persists_test_result() -> None:
     """REQ-2.5: test node stores result as TestResult."""
+    from unittest.mock import patch
+
     from lintel.workflows.nodes.test_code import run_tests
 
     sandbox = AsyncMock()
-    # Discovery: detect files → make help → run make test
     sandbox.execute = AsyncMock(
-        side_effect=[
-            SandboxResult(exit_code=0, stdout="/workspace/repo/Makefile", stderr=""),
-            SandboxResult(exit_code=0, stdout="test         Run tests\n", stderr=""),
-            SandboxResult(exit_code=0, stdout="3 passed", stderr=""),
-        ]
+        return_value=SandboxResult(exit_code=0, stdout="3 passed", stderr=""),
     )
 
     result_store = AsyncMock()
@@ -106,7 +103,13 @@ async def test_test_node_persists_test_result() -> None:
         }
     }
 
-    result = await run_tests(_make_state(), config)
+    discovery = {"test_command": "make test", "setup_commands": []}
+    with patch(
+        "lintel.skills.discover_test_command.discover_test_command",
+        new_callable=AsyncMock,
+        return_value=discovery,
+    ):
+        result = await run_tests(_make_state(), config)
     assert result["agent_outputs"][0]["verdict"] == "passed"
 
     assert len(added_results) == 1
@@ -117,16 +120,13 @@ async def test_test_node_persists_test_result() -> None:
 
 async def test_test_node_records_failure() -> None:
     """Failed tests are stored with FAILED verdict."""
+    from unittest.mock import patch
+
     from lintel.workflows.nodes.test_code import run_tests
 
     sandbox = AsyncMock()
-    # Discovery: detect files → make help → run make test (fails)
     sandbox.execute = AsyncMock(
-        side_effect=[
-            SandboxResult(exit_code=0, stdout="/workspace/repo/Makefile", stderr=""),
-            SandboxResult(exit_code=0, stdout="test         Run tests\n", stderr=""),
-            SandboxResult(exit_code=1, stdout="", stderr="FAILED test_foo"),
-        ]
+        return_value=SandboxResult(exit_code=1, stdout="", stderr="FAILED test_foo"),
     )
 
     result_store = AsyncMock()
@@ -141,7 +141,13 @@ async def test_test_node_records_failure() -> None:
         }
     }
 
-    result = await run_tests(_make_state(), config)
+    discovery = {"test_command": "make test", "setup_commands": []}
+    with patch(
+        "lintel.skills.discover_test_command.discover_test_command",
+        new_callable=AsyncMock,
+        return_value=discovery,
+    ):
+        result = await run_tests(_make_state(), config)
     assert result["agent_outputs"][0]["verdict"] == "failed"
 
     assert len(added_results) == 1

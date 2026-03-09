@@ -373,6 +373,48 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
         is_builtin=True,
     ),
     SkillDefinition(
+        skill_id="skill_discover_test_command",
+        name="Discover Test Command",
+        version="1.0.0",
+        description=(
+            "Inspect a project's structure to discover how to run its test suite. "
+            "Checks Makefile targets (via make help), package.json scripts, "
+            "pyproject.toml, Cargo.toml, and go.mod. Projects can register a "
+            "custom version of this skill to override the default discovery."
+        ),
+        category=SkillCategory.TESTING,
+        execution_mode=SkillExecutionMode.SANDBOX,
+        system_prompt=(
+            "Inspect the project workspace and determine the correct command to "
+            "run the test suite. Prefer Makefile targets (check `make help` first). "
+            "Return a JSON object with `test_command` (str) and `setup_commands` "
+            "(list of shell commands to run before tests, e.g. dep installation)."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {
+                "workdir": {"type": "string"},
+                "sandbox_id": {"type": "string"},
+            },
+            "required": ["workdir", "sandbox_id"],
+        },
+        output_schema={
+            "type": "object",
+            "properties": {
+                "test_command": {"type": "string"},
+                "setup_commands": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["test_command"],
+        },
+        allowed_agent_roles=(
+            AgentRole.QA_ENGINEER,
+            AgentRole.CODER,
+            AgentRole.DEVOPS,
+        ),
+        tags=("testing", "discovery", "project-detection"),
+        is_builtin=True,
+    ),
+    SkillDefinition(
         skill_id="skill_run_tests",
         name="Run Tests",
         version="1.0.0",
