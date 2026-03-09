@@ -42,7 +42,8 @@ def _mock_sandbox(
 
 
 def _patch_discovery(
-    test_command: str, setup_commands: list[str] | None = None,
+    test_command: str,
+    setup_commands: list[str] | None = None,
 ) -> AbstractContextManager[AsyncMock]:
     """Patch the discover_test_command skill to return a fixed result."""
     result: dict[str, Any] = {"test_command": test_command}
