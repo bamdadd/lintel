@@ -7,6 +7,8 @@ import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from langchain_core.runnables import RunnableConfig
 
     from lintel.contracts.protocols import CredentialStore, SandboxManager
@@ -398,7 +400,10 @@ async def setup_workspace(
                 extra_url,
             )
 
-        # Disconnect network now that clone is complete
+        # Install project dependencies while network is still available
+        await _install_project_deps(sandbox_manager, sandbox_id, repo_path, config, state)
+
+        # Disconnect network now that clone and deps are complete
         await sandbox_manager.disconnect_network(sandbox_id)
 
         logger.info(
@@ -434,3 +439,91 @@ async def setup_workspace(
         if created_sandbox:
             await sandbox_manager.destroy(sandbox_id)
         raise
+
+
+async def _install_project_deps(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workdir: str,
+    config: Mapping[str, Any],
+    state: ThreadWorkflowState,
+) -> None:
+    """Detect project type and install dependencies while network is available."""
+    from lintel.contracts.types import SandboxJob
+    from lintel.workflows.nodes._stage_tracking import append_log
+
+    detect = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=f"ls {workdir}/pyproject.toml {workdir}/package.json 2>/dev/null || true",
+            workdir=workdir,
+            timeout_seconds=10,
+        ),
+    )
+    files = detect.stdout.strip()
+
+    if "pyproject.toml" in files:
+        await append_log(config, "setup_workspace", "Installing Python dependencies...", state)
+        # Ensure uv is on PATH
+        uv_check = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command="which uv 2>/dev/null || echo MISSING",
+                workdir=workdir,
+                timeout_seconds=10,
+            ),
+        )
+        if "MISSING" in uv_check.stdout:
+            await append_log(config, "setup_workspace", "Installing uv...", state)
+            install = await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command="curl -LsSf https://astral.sh/uv/install.sh | sh",
+                    workdir=workdir,
+                    timeout_seconds=60,
+                ),
+            )
+            if install.exit_code != 0:
+                await append_log(
+                    config,
+                    "setup_workspace",
+                    f"uv install failed: {install.stderr[:200]}",
+                    state,
+                )
+                return
+
+        sync = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    'export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -5'
+                ),
+                workdir=workdir,
+                timeout_seconds=180,
+            ),
+        )
+        if sync.exit_code == 0:
+            await append_log(config, "setup_workspace", "Python dependencies installed", state)
+        else:
+            await append_log(
+                config,
+                "setup_workspace",
+                f"Dependency install failed (non-fatal): {sync.stderr[:200]}",
+                state,
+            )
+
+    elif "package.json" in files:
+        await append_log(config, "setup_workspace", "Installing Node dependencies...", state)
+        npm = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command="npm install 2>&1 | tail -5", workdir=workdir, timeout_seconds=120),
+        )
+        if npm.exit_code == 0:
+            await append_log(config, "setup_workspace", "Node dependencies installed", state)
+        else:
+            await append_log(
+                config,
+                "setup_workspace",
+                f"npm install failed (non-fatal): {npm.stderr[:200]}",
+                state,
+            )

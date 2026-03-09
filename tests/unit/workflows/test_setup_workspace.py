@@ -189,7 +189,8 @@ class TestSetupWorkspace:
         assert result["current_phase"] == "planning"
         assert "lintel/feat/wi-123" in result["feature_branch"]
         assert len(manager.created) == 1
-        assert len(manager.executed) == 5  # mkdir + repo check + clone + verify + checkout
+        # mkdir + repo check + clone + verify + checkout + dep detect
+        assert len(manager.executed) == 6
         assert "mkdir -p" in manager.executed[0]
         assert "test -d" in manager.executed[1]
         assert "git clone" in manager.executed[2]
@@ -431,8 +432,8 @@ class TestSetupWorkspace:
         )
 
         assert result["sandbox_id"] is not None
-        # mkdir + repo check + clone + verify + checkout + secondary clone = 6 commands
-        assert len(manager.executed) == 6
+        # mkdir + repo check + clone + verify + checkout + secondary clone + dep detect = 7
+        assert len(manager.executed) == 7
         assert "/workspace/test-run-1/repo-1" in manager.executed[5]
         assert "repo2.git" in manager.executed[5]
 

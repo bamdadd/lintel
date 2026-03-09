@@ -8,48 +8,88 @@ All entities are frozen dataclasses in `src/lintel/contracts/types.py`. All stor
 
 ### Entities That Stay As-Is
 
+#### Dataclasses
+
 | Entity | Location | Purpose |
 |---|---|---|
-| `ThreadRef` | types.py:12 | Canonical workflow instance ID (workspace/channel/thread) |
-| `ActorType` | types.py:27 | `human` / `agent` / `system` — reused for TeamMember |
-| `AgentCategory` | types.py:33 | 6 agent categories (engineering, quality, ops, etc.) |
-| `AgentRole` | types.py:42 | 14 agent roles (planner, coder, reviewer, etc.) |
-| `AIProvider` | types.py:100 | Configured AI model provider |
-| `Credential` | types.py:119 | SSH key or API token for repo/tool access |
-| `SandboxJob` | types.py:225 | Command to execute in sandbox |
-| `SandboxResult` | types.py:234 | Sandbox execution output |
-| `ModelPolicy` | types.py:145 | Model selection policy per agent role |
-| `ModelAssignment` | types.py:181 | Binds model to usage context |
-| `SkillDescriptor` | types.py:192 | Runtime skill contract (protocol-level) |
-| `SkillResult` | types.py:204 | Skill invocation result |
-| `Stage` | types.py:322 | Individual step in a workflow run |
-| `WorkflowRun` | types.py:340 | Workflow execution instance with stages (renamed from `PipelineRun`) |
-| `Environment` | types.py:365 | Target deployment context (dev/staging/prod/sandbox) |
-| `Variable` | types.py:375 | Runtime variable scoped to environment |
-| `Trigger` | types.py:397 | What starts a workflow run |
-| `CodeArtifact` | types.py:412 | File changes produced by agents |
-| `TestResult` | types.py:431 | Structured test execution output |
-| `AgentSession` | types.py:477 | Agent execution tracking (messages, tool_calls, token_usage) |
-| `SkillDefinition` | types.py:600 | User-editable skill definition |
-| `AgentDefinitionRecord` | types.py:620 | User-editable agent definition |
-| `WorkflowStepConfig` | types.py:638 | Per-step agent/model/provider binding |
-| `WorkflowDefinitionRecord` | types.py:651 | Workflow template with graph structure |
-| `ResourceVersion` | types.py:675 | Concourse-inspired versioned resource |
-| `PassedConstraint` | types.py:684 | Upstream job requirements |
-| `JobInput` | types.py:691 | Pipeline job input spec |
-| `MCPServer` | types.py:701 | Configured MCP tool server |
-| `ChatSession` | types.py:713 | Chat session linked to project + MCP servers |
-| `ApprovalRequest` | types.py:460 | Human-in-the-loop gate |
-| `AuditEntry` | types.py:569 | Immutable action record |
+| `ThreadRef` | types.py:15 | Canonical workflow instance ID (workspace/channel/thread) |
+| `Repository` | types.py:80 | Git repository configuration |
+| `AIProvider` | types.py:103 | Configured AI model provider |
+| `Credential` | types.py:122 | SSH key or API token for repo/tool access |
+| `ModelPolicy` | types.py:148 | Model selection policy per agent role |
+| `Model` | types.py:159 | Specific AI model available through a provider |
+| `ModelAssignment` | types.py:184 | Binds model to usage context |
+| `SkillDescriptor` | types.py:195 | Runtime skill contract (protocol-level) |
+| `SkillResult` | types.py:208 | Skill invocation result |
+| `SandboxConfig` | types.py:217 | Sandbox resource limits |
+| `SandboxJob` | types.py:229 | Command to execute in sandbox |
+| `SandboxResult` | types.py:238 | Sandbox execution output |
+| `Project` | types.py:256 | Product/project definition |
+| `WorkItem` | types.py:285 | Unit of work (feature, bug, task, etc.) |
 | `Tag` | types.py:307 | Label attached to work items for grouping/filtering |
 | `BoardColumn` | types.py:317 | Column within a board (name, position, status mapping) |
 | `Board` | types.py:327 | Kanban board organising work items into columns |
+| `Stage` | types.py:361 | Individual step in a workflow run |
+| `PipelineRun` | types.py:379 | Workflow execution instance with stages |
+| `Environment` | types.py:405 | Target deployment context (dev/staging/prod/sandbox) |
+| `Variable` | types.py:415 | Runtime variable scoped to environment |
+| `Trigger` | types.py:437 | What starts a workflow run |
+| `WorkflowHook` | types.py:455 | Binds an event pattern to a workflow trigger |
+| `CodeArtifact` | types.py:474 | File changes produced by agents |
+| `TestResult` | types.py:494 | Structured test execution output |
+| `ApprovalRequest` | types.py:522 | Human-in-the-loop gate |
+| `AgentSession` | types.py:539 | Agent execution tracking (messages, tool_calls, token_usage) |
+| `NotificationRule` | types.py:562 | When/how to notify users |
+| `Policy` | types.py:584 | Governance rule for workflow behavior |
+| `User` | types.py:606 | User identity |
+| `Team` | types.py:618 | Group of users with shared permissions |
+| `AuditEntry` | types.py:631 | Immutable action record |
+| `SkillDefinition` | types.py:662 | User-editable skill definition |
+| `AgentDefinitionRecord` | types.py:682 | User-editable agent definition |
+| `WorkflowStepConfig` | types.py:700 | Per-step agent/model/provider binding |
+| `WorkflowDefinitionRecord` | types.py:713 | Workflow template with graph structure |
+| `ResourceVersion` | types.py:737 | Concourse-inspired versioned resource |
+| `PassedConstraint` | types.py:746 | Upstream job requirements |
+| `JobInput` | types.py:754 | Pipeline job input spec |
+| `MCPServer` | types.py:763 | Configured MCP tool server |
+| `ChatSession` | types.py:775 | Chat session linked to project + MCP servers |
+| `PhaseTransitionRecord` | types.py:797 | Records a single phase transition in delivery loop |
+| `DeliveryLoop` | types.py:807 | Tracks the full delivery lifecycle for a work item |
+
+#### Enums
+
+| Enum | Location | Values |
+|---|---|---|
+| `ActorType` | types.py:30 | `human`, `agent`, `system` |
+| `AgentCategory` | types.py:36 | 6 categories (engineering, quality, ops, etc.) |
+| `AgentRole` | types.py:45 | 14 agent roles (planner, coder, reviewer, etc.) |
+| `WorkflowPhase` | types.py:62 | Pipeline execution state (ingesting→closed) |
+| `RepoStatus` | types.py:73 | `active`, `archived`, `error` |
+| `AIProviderType` | types.py:92 | `openai`, `anthropic`, `google`, `aws_bedrock`, `ollama`, `litellm` |
+| `CredentialType` | types.py:115 | `ssh_key`, `github_token`, `ai_provider_api_key` |
+| `SandboxStatus` | types.py:131 | `pending`, `creating`, `running`, `collecting`, `completed`, `failed`, `destroyed` |
+| `SkillExecutionMode` | types.py:141 | `inline`, `async_job`, `sandbox` |
+| `ModelAssignmentContext` | types.py:173 | Where a model can be used |
+| `ProjectStatus` | types.py:249 | `active`, `archived`, `deleted` |
+| `WorkItemStatus` | types.py:267 | Work item lifecycle states |
+| `WorkItemType` | types.py:277 | `feature`, `bug`, `refactor`, `task` |
+| `PipelineStatus` | types.py:339 | Pipeline run lifecycle states |
+| `StageStatus` | types.py:349 | Stage execution states |
+| `EnvironmentType` | types.py:397 | `development`, `staging`, `production`, `sandbox` |
+| `TriggerType` | types.py:428 | `slack_message`, `webhook`, `schedule`, `pr_event`, `manual` |
+| `HookType` | types.py:448 | `pre`, `post`, `scheduled` |
+| `TestVerdict` | types.py:486 | `passed`, `failed`, `error`, `skipped` |
+| `ApprovalStatus` | types.py:514 | `pending`, `approved`, `rejected`, `expired` |
+| `NotificationChannel` | types.py:555 | `slack`, `email`, `webhook` |
+| `PolicyAction` | types.py:576 | `require_approval`, `auto_approve`, `block`, `notify` |
+| `UserRole` | types.py:599 | `admin`, `member`, `viewer` |
+| `SkillCategory` | types.py:647 | Skill categorization |
 
 ### Entities That Need Modification
 
 #### ENT-M1: Team (P0)
 
-**Current** (`types.py:556`):
+**Current** (`types.py:618`):
 ```python
 @dataclass(frozen=True)
 class Team:
@@ -67,7 +107,7 @@ class Team:
 
 #### ENT-M2: WorkItem (P0)
 
-**Current** (`types.py:282`):
+**Current** (`types.py:285`):
 ```python
 assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 ```
@@ -81,7 +121,7 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 
 #### ENT-M3: Model (P0)
 
-**Current** (`types.py:156`): No pricing information.
+**Current** (`types.py:159`): No pricing information.
 
 **Add fields:**
 - `cost_per_1k_input_tokens: float = 0.0`
@@ -91,7 +131,7 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 
 #### ENT-M4: SandboxConfig (P1)
 
-**Current** (`types.py:214`): Basic resource limits only.
+**Current** (`types.py:217`): Basic resource limits only.
 
 **Add fields:**
 - `max_disk_mb: int = 1024`
@@ -102,7 +142,7 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 
 #### ENT-M5: WorkItemType Enum (P1)
 
-**Current** (`types.py:274`): `FEATURE`, `BUG`, `REFACTOR`, `TASK`
+**Current** (`types.py:277`): `FEATURE`, `BUG`, `REFACTOR`, `TASK`
 
 **Add:** `REARCHITECT = "rearchitect"`
 
@@ -110,7 +150,7 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 
 #### ENT-M6: TriggerType Enum (P1)
 
-**Current** (`types.py:388`): `SLACK_MESSAGE`, `WEBHOOK`, `SCHEDULE`, `PR_EVENT`, `MANUAL`
+**Current** (`types.py:428`): `SLACK_MESSAGE`, `WEBHOOK`, `SCHEDULE`, `PR_EVENT`, `MANUAL`
 
 **Add:**
 - `CI_CD_EVENT = "ci_cd_event"`
@@ -119,19 +159,19 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 
 #### ENT-M7: CredentialType Enum (P1)
 
-**Current** (`types.py:112`): `SSH_KEY`, `GITHUB_TOKEN`, `AI_PROVIDER_API_KEY`
+**Current** (`types.py:115`): `SSH_KEY`, `GITHUB_TOKEN`, `AI_PROVIDER_API_KEY`
 
 **Add:** `GITLAB_TOKEN = "gitlab_token"`
 
 #### ENT-M8: NotificationChannel Enum (P1)
 
-**Current** (`types.py:493`): `SLACK`, `EMAIL`, `WEBHOOK`
+**Current** (`types.py:555`): `SLACK`, `EMAIL`, `WEBHOOK`
 
 **Add:** `DISCORD = "discord"`, `TEAMS = "teams"`, `WEB = "web"`
 
 #### ENT-M9: Project (P1)
 
-**Current** (`types.py:253`): No team ownership, no delivery configuration.
+**Current** (`types.py:256`): No team ownership, no delivery configuration.
 
 **Conceptual shift:** Projects are ongoing products, maintained forever. No start/end dates.
 
@@ -142,7 +182,7 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 
 #### ENT-M10: User (P2)
 
-**Current** (`types.py:544`): Basic identity.
+**Current** (`types.py:606`): Basic identity.
 
 **Add fields:**
 - `avatar_url: str = ""`
@@ -150,22 +190,22 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 
 #### ENT-M11: WorkflowDefinitionRecord (P1)
 
-**Current** (`types.py:651`): No delivery phase mapping.
+**Current** (`types.py:713`): No delivery phase mapping.
 
 **Add field:**
 - `delivery_phases: tuple[str, ...] = ()` — which delivery phases this workflow covers
 
 ### Policy vs GuardrailRule
 
-`Policy` (`types.py:522`) stays for simple "on event X, do Y" approval rules. `GuardrailRule` (ENT-8) extends the concept with thresholds, cooldowns, and escalation tiers. Both coexist. Migration path: convert `Policy` rules to `GuardrailRule` over time.
+`Policy` (`types.py:584`) stays for simple "on event X, do Y" approval rules. `GuardrailRule` (ENT-8) extends the concept with thresholds, cooldowns, and escalation tiers. Both coexist. Migration path: convert `Policy` rules to `GuardrailRule` over time.
 
 ### SkillDescriptor vs SkillDefinition
 
-`SkillDescriptor` (`types.py:192`) is the runtime protocol-level contract. `SkillDefinition` (`types.py:600`) is the user-editable persisted version. This is intentional CQRS separation — no change needed.
+`SkillDescriptor` (`types.py:195`) is the runtime protocol-level contract. `SkillDefinition` (`types.py:662`) is the user-editable persisted version. This is intentional CQRS separation — no change needed.
 
 ### WorkflowPhase vs DeliveryPhase
 
-`WorkflowPhase` (`types.py:59`) tracks internal pipeline execution state (ingesting→planning→implementing→closed). Delivery phases (desire→develop→review→deploy→observe→learn) operate at a higher level — they track where the work item is in the product lifecycle. Both coexist at different abstraction levels.
+`WorkflowPhase` (`types.py:62`) tracks internal pipeline execution state (ingesting→planning→implementing→closed). Delivery phases (desire→develop→review→deploy→observe→learn) operate at a higher level — they track where the work item is in the product lifecycle. Both coexist at different abstraction levels.
 
 ---
 
@@ -411,26 +451,33 @@ class GuardrailRule:
 **Store:** `PostgresGuardrailRuleStore` (new)
 **Events:** `GuardrailTriggered`, `GuardrailEscalated`, `GuardrailResolved`
 
-### ENT-9: DeliveryLoop (P1)
+### ENT-9: DeliveryLoop (P1) — IMPLEMENTED
 
-**Problem:** No concept of the full software delivery lifecycle for a work item.
+**Status:** Already in `types.py:807` with `PhaseTransitionRecord` (`types.py:797`).
 
 ```python
 @dataclass(frozen=True)
+class PhaseTransitionRecord:
+    from_phase: str
+    to_phase: str
+    occurred_at: datetime
+    is_rework: bool = False
+
+@dataclass(frozen=True)
 class DeliveryLoop:
     loop_id: str
-    project_id: str
     work_item_id: str
-    phase_sequence: tuple[str, ...]      # fully configurable per project/workflow
+    project_id: str
+    phase_sequence: tuple[str, ...] = DEFAULT_DELIVERY_PHASES
     current_phase: str = ""
-    phase_history: tuple[dict[str, object], ...] = ()   # timestamps and transitions
-    started_at: str = ""
-    completed_at: str = ""
-    learnings: tuple[str, ...] = ()
+    phase_history: tuple[PhaseTransitionRecord, ...] = ()
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    learnings: dict[str, object] | None = None
 ```
 
-**Fully configurable.** `phase_sequence` is defined per project (via `Project.delivery_phase_sequence`) or per workflow definition (via `WorkflowDefinitionRecord.delivery_phases`). Default: `("desire", "develop", "review", "deploy", "observe", "learn")`.
-**Store:** `PostgresDeliveryLoopStore` (new)
+**Note:** Implementation uses `PhaseTransitionRecord` dataclass (not raw dicts) and `datetime` (not strings). `learnings` is a dict (not tuple of strings).
+**Store:** `PostgresDeliveryLoopStore` (new — not yet implemented)
 **Events:** `DeliveryLoopStarted`, `DeliveryLoopPhaseTransitioned`, `LearningCaptured`, `DeliveryLoopCompleted`
 
 ### ENT-10: Portfolio (P2)

@@ -98,6 +98,13 @@ async def spawn_implementation(
             "current_phase": "closed",
         }
 
+    # Reconnect network so the agent can install packages if needed
+    try:
+        await sandbox_manager.reconnect_network(sandbox_id)
+        await append_log(_config, "implement", "Network reconnected for implementation", state)
+    except Exception:
+        logger.warning("implement_reconnect_network_failed")
+
     plan = state.get("plan", {})
     messages = state.get("sanitized_messages", [])
     workspace_path = state.get("workspace_path", "/workspace/repo")
@@ -204,6 +211,12 @@ async def spawn_implementation(
     else:
         # No agent runtime: execute plan tasks as shell commands if possible
         agent_output = "No agent runtime configured — sandbox artifacts collected."
+
+    # Disconnect network after implementation
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        await sandbox_manager.disconnect_network(sandbox_id)
 
     # Attempt rebase on base branch before collecting artifacts
     rebase_warning = ""
