@@ -218,7 +218,7 @@ class SandboxConfig:
     """Configuration for creating a sandbox container."""
 
     image: str = "lintel-sandbox:latest"
-    memory_limit: str = "512m"
+    memory_limit: str = "2g"
     cpu_quota: int = 50000
     network_enabled: bool = False
     timeout_seconds: int = 3600

@@ -70,7 +70,7 @@ class DockerSandboxManager:
             "cpu_period": 100000,
             "cpu_quota": config.cpu_quota,
             "pids_limit": 256,
-            "tmpfs": {"/tmp": "size=100m", "/workspace": "size=500m"},
+            "tmpfs": {"/tmp": "size=200m,exec", "/workspace": "size=2g,exec"},
             "environment": environment,
             "labels": {
                 "lintel.sandbox_id": sandbox_id,

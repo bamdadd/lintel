@@ -75,10 +75,18 @@ async def run_tests(
         )
         files = detect_result.stdout.strip()
 
-        # Install dependencies if needed
+        # Install dependencies if needed (reconnect network for downloads)
         if "pyproject.toml" in files:
+            try:
+                await sandbox_manager.reconnect_network(sandbox_id)
+            except Exception:
+                logger.warning("test_reconnect_network_failed")
             await _ensure_python_deps(sandbox_manager, sandbox_id, workdir, _config, state)
-            test_command = 'export PATH="$HOME/.local/bin:$PATH" && uv run pytest'
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                await sandbox_manager.disconnect_network(sandbox_id)
+            test_command = 'export PATH="$HOME/.local/bin:$PATH" && uv run python -m pytest'
         elif "package.json" in files:
             test_command = "npm test"
         elif "Cargo.toml" in files:
