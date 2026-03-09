@@ -34,4 +34,10 @@ RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
     uv pip install --system spacy && \
     python3 -m spacy download en_core_web_sm
 
+# Pre-install project dependencies so sandbox starts warm
+# uv caches downloaded wheels in ~/.cache/uv — subsequent `uv sync` in the
+# workspace reuses these cached packages instead of downloading from PyPI.
+COPY pyproject.toml uv.lock /opt/lintel-deps/
+RUN cd /opt/lintel-deps && uv sync --all-extras --no-install-project 2>&1 | tail -5
+
 WORKDIR /workspace

@@ -36,7 +36,7 @@ serve: ## Start dev server on :8000 (in-memory storage)
 	LINTEL_STORAGE_BACKEND=memory uv run uvicorn lintel.api.app:app --reload --port 8000
 
 sandbox-image: ## Build the lintel-sandbox Docker image
-	docker build -t lintel-sandbox:latest src/lintel/infrastructure/sandbox/
+	docker build -t lintel-sandbox:latest -f src/lintel/infrastructure/sandbox/Dockerfile .
 
 db-up: ## Start PostgreSQL via docker-compose
 	docker compose up -d postgres
