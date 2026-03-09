@@ -234,12 +234,8 @@ async def _python_setup_commands(
     if "MISSING" in check.stdout:
         commands.append("curl -LsSf https://astral.sh/uv/install.sh | sh")
 
-    # 2. Install project dependencies (skip if venv already exists from setup_workspace)
-    commands.append(
-        f"{path_prefix} && "
-        "if [ ! -d .venv ]; then uv sync --all-extras 2>&1 | tail -5; "
-        "else echo 'venv exists, skipping sync'; fi"
-    )
+    # 2. Install project dependencies (fast if deps are pre-cached in image)
+    commands.append(f"{path_prefix} && uv sync --all-extras 2>&1 | tail -5")
 
     # 3. Detect extra Python dependencies from pyproject.toml
     extras = await _detect_python_extras(
