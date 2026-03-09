@@ -216,11 +216,32 @@ async def _python_setup_commands(
     sandbox_id: str,
     workdir: str,
 ) -> list[str]:
-    """Build the full list of setup commands for a Python project."""
+    """Build the full list of setup commands for a Python project.
+
+    Skips setup entirely if the venv already has the project installed
+    (i.e. setup_workspace already ran).
+    """
     from lintel.contracts.types import SandboxJob
 
-    commands: list[str] = []
     path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
+
+    # Check if deps already installed (setup_workspace already ran)
+    probe = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                "test -f .venv/bin/python && .venv/bin/python -c 'import pytest' "
+                "2>/dev/null && echo INSTALLED || echo MISSING"
+            ),
+            workdir=workdir,
+            timeout_seconds=10,
+        ),
+    )
+    if "INSTALLED" in probe.stdout:
+        logger.info("test_discovery: project already installed, skipping setup")
+        return []
+
+    commands: list[str] = []
 
     # 1. Ensure uv is available
     check = await sandbox_manager.execute(
@@ -234,7 +255,7 @@ async def _python_setup_commands(
     if "MISSING" in check.stdout:
         commands.append("curl -LsSf https://astral.sh/uv/install.sh | sh")
 
-    # 2. Install project dependencies (fast if deps are pre-cached in image)
+    # 2. Install project dependencies
     commands.append(f"{path_prefix} && uv sync --all-extras 2>&1 | tail -5")
 
     # 3. Detect extra Python dependencies from pyproject.toml
