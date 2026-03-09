@@ -68,6 +68,7 @@ class DockerSandboxManager:
             "network_mode": "bridge" if config.network_enabled else "none",
             "mem_limit": config.memory_limit,
             "nano_cpus": config.cpu_quota * 10000,
+            "cpuset_cpus": f"0-{max(0, config.cpu_quota // 100000 - 1)}",
             "pids_limit": 256,
             "tmpfs": {"/tmp": "size=200m,exec", "/workspace": "size=4g,exec"},
             "environment": environment,
