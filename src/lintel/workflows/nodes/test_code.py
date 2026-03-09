@@ -85,7 +85,7 @@ async def run_tests(
             SandboxJob(
                 command=test_command,
                 workdir=workdir,
-                timeout_seconds=300,
+                timeout_seconds=600,
             ),
         )
     except Exception:

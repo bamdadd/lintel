@@ -219,7 +219,7 @@ class SandboxConfig:
 
     image: str = "lintel-sandbox:latest"
     memory_limit: str = "2g"
-    cpu_quota: int = 50000
+    cpu_quota: int = 200000
     network_enabled: bool = False
     timeout_seconds: int = 3600
     environment: frozenset[tuple[str, str]] = frozenset()
