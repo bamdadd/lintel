@@ -44,7 +44,9 @@ class TestAuditAPI:
     ) -> None:
         resp = client.get("/api/v1/audit")
         assert resp.status_code == 200
-        assert resp.json() == []
+        data = resp.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     def test_get_audit_entry_by_id(self, client: TestClient) -> None:
         client.post(

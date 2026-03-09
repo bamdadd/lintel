@@ -9,13 +9,13 @@ install: ## Install all dependencies
 test: ## Run all tests (pass ARGS= for extra pytest flags)
 	uv run pytest $(ARGS)
 
-test-unit: ## Run unit tests (in-memory only)
-	uv run pytest tests/unit -v
+test-unit: ## Run unit tests (in-memory only, parallelised)
+	uv run pytest tests/unit -v -n auto
 
 test-postgres: ## Run unit tests against both memory and postgres backends
 	uv run pytest tests/unit -v --run-postgres
 
-test-integration: ## Run integration tests
+test-integration: migrate ## Run integration tests (requires postgres + migrations)
 	uv run pytest tests/integration -v
 
 test-e2e: ## Run e2e tests
@@ -54,7 +54,7 @@ migrate: ## Run event store migrations
 	LINTEL_DB_DSN=$${LINTEL_DB_DSN:-postgresql://lintel:lintel@localhost:5432/lintel} \
 		uv run python -m lintel.infrastructure.event_store.migrate
 
-all: lint typecheck test-unit test-postgres ui-build ## Run lint, typecheck, tests, and UI build
+all: lint typecheck test-unit test-postgres test-integration ui-build ## Run lint, typecheck, tests, and UI build
 
 ui-install: ## Install UI dependencies
 	cd ui && bun install

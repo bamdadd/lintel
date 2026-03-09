@@ -78,4 +78,5 @@ disallow_untyped_calls = false
 [dependency-groups]
 dev = [
     "anthropic[bedrock]>=0.84.0",
+    "pytest-xdist>=3.8.0",
 ]

@@ -15,10 +15,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: uv sync --all-extras
-      - run: uv run ruff check src/ tests/
-      - run: uv run ruff format --check src/ tests/
-      - run: uv run mypy src/lintel/
+      - run: make install
+      - run: make lint
+      - run: make typecheck
 
   test-unit:
     runs-on: ubuntu-latest
@@ -28,8 +27,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: uv sync --all-extras
-      - run: uv run pytest tests/unit -v --cov=src/lintel
+      - run: make install
+      - run: make test-unit
 
   test-integration:
     runs-on: ubuntu-latest
@@ -53,7 +52,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: uv sync --all-extras
-      - run: uv run pytest tests/integration -v
+      - run: make install
+      - run: make test-integration
         env:
           LINTEL_DB_DSN: postgresql://lintel:lintel@localhost:5432/lintel

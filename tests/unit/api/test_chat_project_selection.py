@@ -279,7 +279,7 @@ class TestAuditEntryEmission:
 
         resp = client.get("/api/v1/audit", params={"resource_type": "work_item"})
         assert resp.status_code == 200
-        entries = resp.json()
+        entries = resp.json()["items"]
         started = [e for e in entries if e["action"] == "workflow_started"]
         assert len(started) >= 1
         assert started[0]["actor_type"] == "system"
@@ -312,7 +312,7 @@ class TestAuditEntryEmission:
             params={"resource_type": "conversation"},
         )
         assert resp.status_code == 200
-        entries = resp.json()
+        entries = resp.json()["items"]
         selected = [e for e in entries if e["action"] == "project_selected"]
         assert len(selected) >= 1
         assert selected[0]["actor_id"] == "user1"
