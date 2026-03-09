@@ -140,7 +140,7 @@ async def review_output(
     elif "APPROVE" in upper_text and "REQUEST_CHANGES" not in upper_text:
         verdict = "approve"
 
-    logger.info("review_verdict_parsed verdict=%s match=%s", verdict, verdict_match)
+    logger.info("review_verdict_parsed verdict=%s", verdict)
 
     stage_outputs: dict[str, object] = {"verdict": verdict}
     if usage:

@@ -54,6 +54,7 @@ class TestGitHubRepoProvider:
         from unittest.mock import MagicMock
 
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {"html_url": "https://github.com/org/repo/pull/1"}
         mock_response.raise_for_status = MagicMock()
 

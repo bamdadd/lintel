@@ -74,16 +74,22 @@ async def close_workflow(
     await append_log(_config, "close", "Committing changes...", state)
     messages = state.get("sanitized_messages", [])
     commit_msg = messages[0][:72] if messages else "lintel: implement feature"
+    # Escape double quotes in commit message for shell safety
+    safe_msg = commit_msg.replace('"', '\\"')
 
     commit_cmds = [
+        f"cd {workdir} && git config user.email 'lintel@lintel.dev'",
+        f"cd {workdir} && git config user.name 'Lintel'",
         f"cd {workdir} && git add -A",
-        f'cd {workdir} && git diff --cached --quiet || git commit -m "{commit_msg}"',
+        f'cd {workdir} && git diff --cached --quiet || git commit -m "{safe_msg}"',
     ]
     for cmd in commit_cmds:
-        await sandbox_manager.execute(
+        result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(command=cmd, timeout_seconds=30),
         )
+        if result.exit_code != 0 and "git diff" not in cmd:
+            logger.warning("close_commit_step_failed", cmd=cmd[:80], error=result.stderr[:200])
 
     pr_url = ""
     push_error = ""

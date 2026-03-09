@@ -94,6 +94,14 @@ class GitHubRepoProvider:
                 headers=self._headers(),
                 json={"title": title, "body": body, "head": head, "base": base},
             )
+            if resp.status_code >= 400:
+                logger.error(
+                    "github_create_pr_failed",
+                    status=resp.status_code,
+                    body=resp.text[:500],
+                    head=head,
+                    base=base,
+                )
             resp.raise_for_status()
             data: dict[str, Any] = resp.json()
             pr_url: str = data["html_url"]

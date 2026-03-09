@@ -105,6 +105,7 @@ class TestCreatePR:
             mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
             mock_resp = MagicMock()
+            mock_resp.status_code = 200
             mock_resp.json.return_value = {"html_url": "https://github.com/org/repo/pull/42"}
             mock_resp.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_resp
