@@ -49,8 +49,8 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_node("test", run_tests)
     graph.add_node("review", review_output)
     graph.add_node(
-        "approval_gate_merge",
-        partial(approval_gate, gate_type="merge_approval"),
+        "approval_gate_pr",
+        partial(approval_gate, gate_type="pr_approval"),
     )
     graph.add_node("close", close_workflow)
 
@@ -82,9 +82,9 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_conditional_edges(
         "review",
         _check_phase,
-        {"continue": "approval_gate_merge", "close": "close"},
+        {"continue": "approval_gate_pr", "close": "close"},
     )
-    graph.add_edge("approval_gate_merge", "close")
+    graph.add_edge("approval_gate_pr", "close")
     graph.add_edge("close", END)
 
     return graph
@@ -145,6 +145,6 @@ async def compile_workflow(db_url: str) -> CompiledStateGraph[Any]:
             interrupt_before=[
                 "approval_gate_research",
                 "approval_gate_spec",
-                "approval_gate_merge",
+                "approval_gate_pr",
             ],
         )

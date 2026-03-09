@@ -20,9 +20,9 @@ class TestApprovalGate:
         state = {"pending_approvals": [], "project_id": "proj-1", "run_id": ""}
         result = await approval_gate(
             state,
-            gate_type="merge_approval",  # type: ignore[arg-type]
+            gate_type="pr_approval",  # type: ignore[arg-type]
         )
-        assert "merge_approval" not in result["pending_approvals"]
+        assert "pr_approval" not in result["pending_approvals"]
 
     async def test_research_auto_approves_without_store(self) -> None:
         state = {"pending_approvals": [], "project_id": "proj-1", "run_id": ""}
@@ -35,7 +35,7 @@ class TestApprovalGate:
     async def test_preserves_other_pending_approvals(self) -> None:
         """Other pending approvals are preserved after auto-approval."""
         state = {
-            "pending_approvals": ["merge_approval"],
+            "pending_approvals": ["pr_approval"],
             "project_id": "proj-1",
             "run_id": "",
         }
@@ -43,5 +43,5 @@ class TestApprovalGate:
             state,
             gate_type="spec_approval",  # type: ignore[arg-type]
         )
-        assert "merge_approval" in result["pending_approvals"]
+        assert "pr_approval" in result["pending_approvals"]
         assert "spec_approval" not in result["pending_approvals"]

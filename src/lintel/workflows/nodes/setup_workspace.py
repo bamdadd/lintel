@@ -498,8 +498,7 @@ async def _install_project_deps(
             sandbox_id,
             SandboxJob(
                 command=(
-                    'export PATH="$HOME/.local/bin:$PATH" && '
-                    "uv sync --all-extras 2>&1 | tail -5"
+                    'export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -5'
                 ),
                 workdir=workdir,
                 timeout_seconds=300,

@@ -37,12 +37,12 @@ class TestEvaluateGatePolicy:
             Policy(
                 policy_id="p1",
                 name="Block merges",
-                event_type="merge_approval",
+                event_type="pr_approval",
                 action=PolicyAction.BLOCK,
                 project_id="proj-1",
             )
         )
-        result = await evaluate_gate_policy(store, "proj-1", "merge_approval")
+        result = await evaluate_gate_policy(store, "proj-1", "pr_approval")
         assert result == PolicyAction.BLOCK
 
     async def test_non_matching_gate_type(self) -> None:
@@ -59,7 +59,7 @@ class TestEvaluateGatePolicy:
         result = await evaluate_gate_policy(
             store,
             "proj-1",
-            "merge_approval",
+            "pr_approval",
         )
         assert result == PolicyAction.REQUIRE_APPROVAL
 

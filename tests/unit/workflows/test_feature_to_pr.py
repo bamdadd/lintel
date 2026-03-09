@@ -103,7 +103,7 @@ class TestGraphStructure:
             "implement",
             "test",
             "review",
-            "approval_gate_merge",
+            "approval_gate_pr",
             "close",
         }
         # LangGraph stores nodes in the graph builder's _nodes dict

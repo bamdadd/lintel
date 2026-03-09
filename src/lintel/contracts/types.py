@@ -65,8 +65,8 @@ class WorkflowPhase(StrEnum):
     AWAITING_SPEC_APPROVAL = "awaiting_spec_approval"
     IMPLEMENTING = "implementing"
     REVIEWING = "reviewing"
-    AWAITING_MERGE_APPROVAL = "awaiting_merge_approval"
-    MERGING = "merging"
+    AWAITING_PR_APPROVAL = "awaiting_pr_approval"
+    RAISING_PR = "raising_pr"
     CLOSED = "closed"
 
 
@@ -524,7 +524,7 @@ class ApprovalRequest:
 
     approval_id: str
     run_id: str
-    gate_type: str  # spec_approval, merge_approval
+    gate_type: str  # spec_approval, pr_approval
     status: ApprovalStatus = ApprovalStatus.PENDING
     requested_by: str = ""
     decided_by: str = ""

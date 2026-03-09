@@ -99,6 +99,8 @@ async def test_close_push_failure_records_error() -> None:
 
 async def test_close_creates_pr_with_github_token() -> None:
     """Close creates a PR when github_token credential is available."""
+    from unittest.mock import patch
+
     sandbox = AsyncMock()
     sandbox.execute = AsyncMock(return_value=_success_result())
     sandbox.reconnect_network = AsyncMock()
@@ -110,34 +112,153 @@ async def test_close_creates_pr_with_github_token() -> None:
     credential_store.get = AsyncMock(return_value=cred)
     credential_store.get_secret = AsyncMock(return_value="ghp_test123")
 
-    # Mock the GitHubRepoProvider
-    import lintel.workflows.nodes.close as close_module
-
-    original_import = close_module.__builtins__  # noqa: F841
+    mock_provider = AsyncMock()
+    mock_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/42")
+    mock_provider.add_comment = AsyncMock()
 
     config = _make_config(sandbox_manager=sandbox, credential_store=credential_store)
     state = _make_state(credential_ids=["cred-1"])
 
-    # The PR creation will fail because we're not mocking httpx,
-    # but the push should succeed and the error should be caught
-    result = await close_workflow(state, config)
+    with patch(
+        "lintel.infrastructure.repos.github_provider.GitHubRepoProvider",
+        return_value=mock_provider,
+    ):
+        result = await close_workflow(state, config)
+
     assert result["current_phase"] == "closed"
+    assert result["pr_url"] == "https://github.com/test/repo/pull/42"
+    mock_provider.create_pr.assert_called_once_with(
+        repo_url="https://github.com/test/repo",
+        head="lintel/feat/dark-mode",
+        base="main",
+        title="add dark mode toggle",
+        body=mock_provider.create_pr.call_args.kwargs["body"],
+    )
+    # Verify the PR body contains key information
+    pr_body = mock_provider.create_pr.call_args.kwargs["body"]
+    assert "Add dark mode" in pr_body
+    assert "Toggle component" in pr_body
+    assert "Lintel" in pr_body
 
 
-async def test_build_pr_body() -> None:
-    """PR body includes request, plan summary, and tasks."""
+async def test_close_creates_pr_with_review_comment() -> None:
+    """Close adds review output as a PR comment."""
+    from unittest.mock import patch
+
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_success_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    cred = MagicMock()
+    cred.credential_type = "github_token"
+    credential_store = AsyncMock()
+    credential_store.get = AsyncMock(return_value=cred)
+    credential_store.get_secret = AsyncMock(return_value="ghp_test123")
+
+    mock_provider = AsyncMock()
+    mock_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/7")
+    mock_provider.add_comment = AsyncMock()
+
+    config = _make_config(sandbox_manager=sandbox, credential_store=credential_store)
+    state = _make_state(
+        credential_ids=["cred-1"],
+        agent_outputs=[{"node": "review", "verdict": "approve", "output": "LGTM, ship it!"}],
+    )
+
+    with patch(
+        "lintel.infrastructure.repos.github_provider.GitHubRepoProvider",
+        return_value=mock_provider,
+    ):
+        result = await close_workflow(state, config)
+
+    assert result["pr_url"] == "https://github.com/test/repo/pull/7"
+    mock_provider.add_comment.assert_called_once_with(
+        "https://github.com/test/repo", 7, "LGTM, ship it!"
+    )
+
+
+async def test_close_injects_token_into_remote_url() -> None:
+    """Close injects the github token into the git remote URL for pushing."""
+    from unittest.mock import patch
+
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_success_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    cred = MagicMock()
+    cred.credential_type = "github_token"
+    credential_store = AsyncMock()
+    credential_store.get = AsyncMock(return_value=cred)
+    credential_store.get_secret = AsyncMock(return_value="ghp_secret_token")
+
+    mock_provider = AsyncMock()
+    mock_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/1")
+    mock_provider.add_comment = AsyncMock()
+
+    config = _make_config(sandbox_manager=sandbox, credential_store=credential_store)
+    state = _make_state(credential_ids=["cred-1"])
+
+    with patch(
+        "lintel.infrastructure.repos.github_provider.GitHubRepoProvider",
+        return_value=mock_provider,
+    ):
+        await close_workflow(state, config)
+
+    # Find the set-url call — should contain the token
+    set_url_calls = [call for call in sandbox.execute.call_args_list if "set-url" in str(call)]
+    assert len(set_url_calls) == 1
+    cmd = str(set_url_calls[0])
+    assert "x-access-token:ghp_secret_token@" in cmd
+
+
+async def test_build_pr_body_with_plan() -> None:
+    """PR body includes summary, tasks, and context."""
     from lintel.workflows.nodes.close import _build_pr_body
 
-    state = {
+    state: dict[str, Any] = {
         "sanitized_messages": ["add dark mode toggle"],
+        "agent_outputs": [],
     }
-    plan = {
+    plan: dict[str, Any] = {
         "summary": "Add dark mode support",
         "tasks": [{"title": "Create toggle"}, {"title": "Add CSS"}],
     }
     body = _build_pr_body(state, plan)
-    assert "add dark mode toggle" in body
     assert "Add dark mode support" in body
     assert "Create toggle" in body
     assert "Add CSS" in body
+    assert "add dark mode toggle" in body  # Context section
+    assert "Raised by" in body
     assert "Lintel" in body
+
+
+async def test_build_pr_body_without_plan() -> None:
+    """PR body falls back to request message when no plan summary."""
+    from lintel.workflows.nodes.close import _build_pr_body
+
+    state: dict[str, Any] = {
+        "sanitized_messages": ["fix the login bug"],
+        "agent_outputs": [],
+    }
+    body = _build_pr_body(state, {})
+    assert "fix the login bug" in body
+    assert "Raised by" in body
+
+
+async def test_build_pr_body_includes_review_and_test_status() -> None:
+    """PR body shows review and test pass status."""
+    from lintel.workflows.nodes.close import _build_pr_body
+
+    state: dict[str, Any] = {
+        "sanitized_messages": ["add feature"],
+        "agent_outputs": [
+            {"node": "test", "verdict": "passed", "output": "all green"},
+            {"node": "review", "verdict": "approve", "output": "looks good"},
+        ],
+    }
+    plan: dict[str, Any] = {"summary": "New feature", "tasks": []}
+    body = _build_pr_body(state, plan)
+    assert "review passed" in body.lower() or "Review" in body
+    assert "tests passing" in body.lower() or "Tests" in body

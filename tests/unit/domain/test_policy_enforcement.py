@@ -72,7 +72,7 @@ class TestPolicyEvaluation:
         policy = Policy(
             policy_id="p1",
             name="Block merges",
-            event_type="approve_merge",
+            event_type="approved_for_pr",
             condition="",
             action=PolicyAction.BLOCK,
             approvers=(),
@@ -83,9 +83,9 @@ class TestPolicyEvaluation:
 
         with patch(
             "lintel.workflows.nodes._stage_tracking.NODE_TO_STAGE",
-            {"approval_gate_merge": "approve_merge"},
+            {"approval_gate_pr": "approved_for_pr"},
         ):
-            result = await executor._evaluate_policy("run-1", "approval_gate_merge")
+            result = await executor._evaluate_policy("run-1", "approval_gate_pr")
         assert result == "block"
 
     async def test_evaluate_policy_handles_exception(

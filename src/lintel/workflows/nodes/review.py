@@ -88,8 +88,8 @@ async def review_output(
     if not diff_text:
         await mark_completed(_config, "review", state)
         return {
-            "current_phase": "awaiting_merge_approval",
-            "pending_approvals": ["merge_approval"],
+            "current_phase": "awaiting_pr_approval",
+            "pending_approvals": ["pr_approval"],
             "agent_outputs": [
                 {"node": "review", "verdict": "approve", "output": "No changes to review."}
             ],
@@ -127,20 +127,29 @@ async def review_output(
     else:
         review_output_text = "No agent runtime configured — manual review required."
 
-    # Parse verdict from review output
+    # Parse verdict from review output — look for explicit VERDICT line first,
+    # then fall back to keyword detection.
     verdict = "request_changes"
     upper_text = review_output_text.upper()
-    if "APPROVE" in upper_text and "REQUEST_CHANGES" not in upper_text:
+
+    import re
+
+    verdict_match = re.search(r"VERDICT\s*:\s*(APPROVE|REQUEST_CHANGES)", upper_text)
+    if verdict_match:
+        verdict = "approve" if verdict_match.group(1) == "APPROVE" else "request_changes"
+    elif "APPROVE" in upper_text and "REQUEST_CHANGES" not in upper_text:
         verdict = "approve"
 
-    stage_outputs: dict[str, object] = {}
+    logger.info("review_verdict_parsed verdict=%s match=%s", verdict, verdict_match)
+
+    stage_outputs: dict[str, object] = {"verdict": verdict}
     if usage:
         stage_outputs["token_usage"] = usage
     await mark_completed(_config, "review", state, outputs=stage_outputs or None)
 
     result_dict: dict[str, Any] = {
-        "current_phase": "awaiting_merge_approval",
-        "pending_approvals": ["merge_approval"],
+        "current_phase": "awaiting_pr_approval",
+        "pending_approvals": ["pr_approval"],
         "agent_outputs": [{"node": "review", "verdict": verdict, "output": review_output_text}],
     }
     if usage:

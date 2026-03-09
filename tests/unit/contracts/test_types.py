@@ -231,9 +231,9 @@ class TestWorkflowStepConfig:
 
     def test_step_config_approval_gate(self) -> None:
         sc = WorkflowStepConfig(
-            node_name="approval_gate_merge",
+            node_name="approval_gate_pr",
             requires_approval=True,
-            label="Approve Merge",
+            label="Approved for PR",
         )
         assert sc.requires_approval is True
 

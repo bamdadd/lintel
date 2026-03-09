@@ -109,7 +109,7 @@ class TestTranslateApprovalAction:
         body = {
             "actions": [
                 {
-                    "action_id": "reject:merge_approval:thread:T11111:C99999:1234567890.000000",
+                    "action_id": "reject:pr_approval:thread:T11111:C99999:1234567890.000000",
                     "value": "needs changes",
                 }
             ],
@@ -117,7 +117,7 @@ class TestTranslateApprovalAction:
         }
         result = translate_approval_action(body)
         assert isinstance(result, RejectApproval)
-        assert result.gate_type == "merge_approval"
+        assert result.gate_type == "pr_approval"
         assert result.rejector_id == "U12345"
         assert result.reason == "needs changes"
 

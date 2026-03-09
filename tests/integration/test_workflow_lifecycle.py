@@ -68,7 +68,7 @@ async def test_workflow_lifecycle(event_store: PostgresEventStore) -> None:
             actor_id="U456",
             thread_ref=thread_ref,
             correlation_id=corr_id,
-            payload={"gate_type": "merge_approval", "approver_id": "U456"},
+            payload={"gate_type": "pr_approval", "approver_id": "U456"},
         ),
     ]
 

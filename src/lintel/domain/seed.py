@@ -696,7 +696,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         definition_id="feature_to_pr",
         name="Feature to PR",
         description=(
-            "End-to-end feature implementation: research, plan, implement, test, review, merge."
+            "End-to-end feature implementation: research, plan, implement, test, review, raise PR."
         ),
         is_template=True,
         stage_names=(
@@ -710,8 +710,8 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "implement",
             "test",
             "review",
-            "approve_merge",
-            "merge",
+            "approved_for_pr",
+            "raise_pr",
         ),
         graph_nodes=(
             "ingest",
@@ -724,7 +724,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "implement",
             "test",
             "review",
-            "approval_gate_merge",
+            "approval_gate_pr",
             "close",
         ),
         graph_edges=(
@@ -736,8 +736,8 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             ("approval_gate_spec", "implement"),
             ("implement", "test"),
             ("test", "review"),
-            ("review", "approval_gate_merge"),
-            ("approval_gate_merge", "close"),
+            ("review", "approval_gate_pr"),
+            ("approval_gate_pr", "close"),
         ),
         conditional_edges=(
             {
@@ -749,7 +749,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         interrupt_before=(
             "approval_gate_research",
             "approval_gate_spec",
-            "approval_gate_merge",
+            "approval_gate_pr",
         ),
         node_metadata=(
             {
@@ -838,18 +838,21 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                 ),
             },
             {
-                "node": "approval_gate_merge",
-                "label": "Approve Merge",
+                "node": "approval_gate_pr",
+                "label": "Approved for PR",
                 "agent": "human",
                 "description": (
-                    "Pauses the workflow for a human to approve the final PR before merging."
+                    "Pauses the workflow for a human to approve before raising a pull request."
                 ),
             },
             {
                 "node": "close",
-                "label": "Close",
+                "label": "Raise PR",
                 "agent": "system",
-                "description": "Marks the workflow as completed and records the final status.",
+                "description": (
+                    "Creates a branch, commits changes, pushes to GitHub,"
+                    " and raises a pull request."
+                ),
             },
         ),
         tags=("feature", "full-pipeline"),
@@ -866,8 +869,8 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "fix",
             "test",
             "review",
-            "approve_merge",
-            "merge",
+            "approved_for_pr",
+            "raise_pr",
         ),
         graph_nodes=(
             "triage",
@@ -875,7 +878,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "fix",
             "test",
             "review",
-            "approval_gate_merge",
+            "approval_gate_pr",
             "close",
         ),
         graph_edges=(
@@ -883,11 +886,11 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             ("reproduce", "fix"),
             ("fix", "test"),
             ("test", "review"),
-            ("review", "approval_gate_merge"),
-            ("approval_gate_merge", "close"),
+            ("review", "approval_gate_pr"),
+            ("approval_gate_pr", "close"),
         ),
         entry_point="triage",
-        interrupt_before=("approval_gate_merge",),
+        interrupt_before=("approval_gate_pr",),
         node_metadata=(
             {
                 "node": "triage",
@@ -937,16 +940,16 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                 ),
             },
             {
-                "node": "approval_gate_merge",
-                "label": "Approve Merge",
+                "node": "approval_gate_pr",
+                "label": "Approved for PR",
                 "agent": "human",
-                "description": "Human approval gate before merging the fix.",
+                "description": "Human approval gate before raising a PR for the fix.",
             },
             {
                 "node": "close",
-                "label": "Close",
+                "label": "Raise PR",
                 "agent": "system",
-                "description": "Marks the bug as resolved and closes the workflow.",
+                "description": "Commits the fix, pushes to GitHub, and raises a pull request.",
             },
         ),
         tags=("bugfix", "hotfix"),
@@ -1024,8 +1027,8 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "refactor",
             "test",
             "review",
-            "approve_merge",
-            "merge",
+            "approved_for_pr",
+            "raise_pr",
         ),
         graph_nodes=(
             "research",
@@ -1034,7 +1037,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "refactor",
             "test",
             "review",
-            "approval_gate_merge",
+            "approval_gate_pr",
             "close",
         ),
         graph_edges=(
@@ -1043,13 +1046,13 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             ("approval_gate_spec", "refactor"),
             ("refactor", "test"),
             ("test", "review"),
-            ("review", "approval_gate_merge"),
-            ("approval_gate_merge", "close"),
+            ("review", "approval_gate_pr"),
+            ("approval_gate_pr", "close"),
         ),
         entry_point="research",
         interrupt_before=(
             "approval_gate_spec",
-            "approval_gate_merge",
+            "approval_gate_pr",
         ),
         node_metadata=(
             {
@@ -1101,16 +1104,18 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                 "description": "Reviews the refactored code for quality and correctness.",
             },
             {
-                "node": "approval_gate_merge",
-                "label": "Approve Merge",
+                "node": "approval_gate_pr",
+                "label": "Approved for PR",
                 "agent": "human",
-                "description": "Human approval before merging the refactored code.",
+                "description": "Human approval before raising a PR for the refactored code.",
             },
             {
                 "node": "close",
-                "label": "Close",
+                "label": "Raise PR",
                 "agent": "system",
-                "description": "Marks the refactoring as complete.",
+                "description": (
+                    "Commits the refactoring, pushes to GitHub, and raises a pull request."
+                ),
             },
         ),
         tags=("refactor", "tech-debt"),

@@ -129,7 +129,7 @@ class TestCommandDefaults:
     def test_reject_approval_defaults(self) -> None:
         cmd = RejectApproval(
             thread_ref=REF,
-            gate_type="merge",
+            gate_type="pr",
             rejector_id="U2",
             reason="needs changes",
         )

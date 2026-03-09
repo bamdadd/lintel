@@ -21,7 +21,7 @@ logger = structlog.get_logger()
 GATE_TO_NODE: dict[str, str] = {
     "research_approval": "approval_gate_research",
     "spec_approval": "approval_gate_spec",
-    "merge_approval": "approval_gate_merge",
+    "pr_approval": "approval_gate_pr",
 }
 
 

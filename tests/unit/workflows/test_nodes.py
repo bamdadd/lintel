@@ -120,10 +120,10 @@ class TestPlanNode:
 
 
 class TestReviewNode:
-    async def test_sets_merge_approval_phase(self) -> None:
+    async def test_sets_pr_approval_phase(self) -> None:
         state: dict[str, Any] = {"sandbox_results": [{"diff": "some changes"}]}
         result = await review_output(state)  # type: ignore[arg-type]
-        assert result["current_phase"] == "awaiting_merge_approval"
+        assert result["current_phase"] == "awaiting_pr_approval"
 
     async def test_produces_agent_output(self) -> None:
         state: dict[str, Any] = {"sandbox_results": [{"diff": "some changes"}]}

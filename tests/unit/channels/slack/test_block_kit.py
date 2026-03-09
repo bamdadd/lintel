@@ -18,8 +18,8 @@ class TestBuildApprovalBlocks:
         assert blocks[3]["type"] == "actions"
 
     def test_header_contains_gate_type(self) -> None:
-        blocks = build_approval_blocks("merge", "summary", "cb-1")
-        assert "merge" in blocks[0]["text"]["text"]
+        blocks = build_approval_blocks("pr", "summary", "cb-1")
+        assert "pr" in blocks[0]["text"]["text"]
 
     def test_actions_contain_approve_and_reject_buttons(self) -> None:
         blocks = build_approval_blocks("spec", "summary", "cb-1")

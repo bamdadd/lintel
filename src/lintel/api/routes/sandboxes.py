@@ -194,7 +194,8 @@ class CreateSandboxRequest(BaseModel):
     workspace_id: str
     channel_id: str
     thread_ts: str
-    image: str = "python:3.12-slim"
+    preset: str | None = None
+    image: str = "lintel-sandbox:latest"
     network_enabled: bool = False
     devcontainer: DevcontainerConfig | None = None
 
@@ -231,7 +232,15 @@ async def create_sandbox(
 ) -> dict[str, str]:
     """Create a new sandbox environment."""
     manager = request.app.state.sandbox_manager
-    config = SandboxConfig(image=body.image, network_enabled=body.network_enabled)
+    # Resolve preset if specified
+    if body.preset:
+        preset = SANDBOX_PRESETS.get(body.preset)
+        if not preset:
+            raise HTTPException(status_code=400, detail=f"Unknown preset: {body.preset}")
+        image = preset["devcontainer"]["image"]
+    else:
+        image = body.image
+    config = SandboxConfig(image=image, network_enabled=body.network_enabled)
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
         channel_id=body.channel_id,
@@ -240,7 +249,7 @@ async def create_sandbox(
     sandbox_id = await manager.create(config, thread_ref)
     entry: dict[str, Any] = {
         "sandbox_id": sandbox_id,
-        "image": body.image,
+        "image": image,
         "network_enabled": body.network_enabled,
         "workspace_id": body.workspace_id,
         "channel_id": body.channel_id,
@@ -251,7 +260,7 @@ async def create_sandbox(
     await store.add(sandbox_id, entry)
     await dispatch_event(
         request,
-        SandboxCreated(payload={"resource_id": sandbox_id, "image": body.image}),
+        SandboxCreated(payload={"resource_id": sandbox_id, "image": image}),
         stream_id=f"sandbox:{sandbox_id}",
     )
     return {"sandbox_id": sandbox_id}

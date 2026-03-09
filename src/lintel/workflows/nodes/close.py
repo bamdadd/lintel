@@ -33,6 +33,13 @@ async def close_workflow(
     _configurable = _config.get("configurable", {})
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
 
+    # Fall back to runtime registry after LangGraph interrupt/resume
+    run_id = state.get("run_id", "")
+    if sandbox_manager is None and run_id:
+        from lintel.workflows.nodes._runtime_registry import get_sandbox_manager
+
+        sandbox_manager = get_sandbox_manager(run_id)
+
     # Check if pipeline is being aborted due to a failed stage
     has_failure = False
     for output in state.get("agent_outputs", []):
@@ -46,12 +53,12 @@ async def close_workflow(
         has_failure = True
 
     if has_failure:
-        await append_log(_config, "merge", "Pipeline aborted due to earlier failure", state)
+        await append_log(_config, "close", "Pipeline aborted due to earlier failure", state)
         # Mark all remaining pending/running stages as skipped
         await _skip_remaining_stages(_config, state)
         return {"current_phase": "closed"}
 
-    await mark_running(_config, "merge", state)
+    await mark_running(_config, "close", state)
 
     sandbox_id = state.get("sandbox_id")
     feature_branch = state.get("feature_branch", "")
@@ -60,11 +67,11 @@ async def close_workflow(
     workdir = state.get("workspace_path", "/workspace/repo")
 
     if not sandbox_id or sandbox_manager is None:
-        await mark_completed(_config, "merge", state)
+        await mark_completed(_config, "close", state)
         return {"current_phase": "closed"}
 
     # Commit any uncommitted changes
-    await append_log(_config, "merge", "Committing changes...", state)
+    await append_log(_config, "close", "Committing changes...", state)
     messages = state.get("sanitized_messages", [])
     commit_msg = messages[0][:72] if messages else "lintel: implement feature"
 
@@ -90,6 +97,12 @@ async def close_workflow(
 
         # Resolve credentials for push
         credential_store = _configurable.get("credential_store")
+        if credential_store is None and run_id:
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            _app_state = get_app_state(run_id)
+            if _app_state is not None:
+                credential_store = getattr(_app_state, "credential_store", None)
         if credential_store is not None:
             credential_ids = state.get("credential_ids", [])
             for cred_id in credential_ids:
@@ -122,7 +135,7 @@ async def close_workflow(
                     logger.warning("close_credential_resolve_failed", cred_id=cred_id)
 
         # Push
-        await append_log(_config, "merge", f"Pushing branch {feature_branch}...", state)
+        await append_log(_config, "close", f"Pushing branch {feature_branch}...", state)
         push_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
@@ -133,9 +146,9 @@ async def close_workflow(
         if push_result.exit_code != 0:
             push_error = push_result.stderr or push_result.stdout
             logger.warning("close_push_failed", error=push_error[:200])
-            await append_log(_config, "merge", f"Push failed: {push_error[:200]}", state)
+            await append_log(_config, "close", f"Push failed: {push_error[:200]}", state)
         else:
-            await append_log(_config, "merge", "Push succeeded", state)
+            await append_log(_config, "close", "Push succeeded", state)
 
             # Create PR via GitHub API
             if credential_store is not None:
@@ -159,7 +172,7 @@ async def close_workflow(
                             pr_title = commit_msg
                             pr_body = _build_pr_body(state, plan)
 
-                            await append_log(_config, "merge", "Creating pull request...", state)
+                            await append_log(_config, "close", "Creating pull request...", state)
                             pr_url = await provider.create_pr(
                                 repo_url=repo_url,
                                 head=feature_branch,
@@ -167,7 +180,7 @@ async def close_workflow(
                                 title=pr_title,
                                 body=pr_body,
                             )
-                            await append_log(_config, "merge", f"PR created: {pr_url}", state)
+                            await append_log(_config, "close", f"PR created: {pr_url}", state)
 
                             # Add review comment if available
                             review_outputs = [
@@ -214,7 +227,7 @@ async def close_workflow(
         stage_outputs["pr_url"] = pr_url
     if push_error:
         stage_outputs["push_error"] = push_error
-    await mark_completed(_config, "merge", state, outputs=stage_outputs or None)
+    await mark_completed(_config, "close", state, outputs=stage_outputs or None)
 
     return {
         "current_phase": "closed",
@@ -270,24 +283,49 @@ async def _skip_remaining_stages(
 
 
 def _build_pr_body(state: ThreadWorkflowState, plan: dict[str, Any]) -> str:
-    """Build a PR description from the workflow state."""
-    lines = ["## Summary\n"]
+    """Build a well-structured PR description from the workflow state."""
+    lines: list[str] = []
 
+    # Summary section
     messages = state.get("sanitized_messages", [])
-    if messages:
-        lines.append(f"**Request:** {messages[0]}\n")
-
     summary = plan.get("summary", "")
     if summary:
-        lines.append(f"**Plan:** {summary}\n")
+        lines.append(f"## Summary\n\n{summary}\n")
+    elif messages:
+        lines.append(f"## Summary\n\n{messages[0]}\n")
 
+    # What changed
     tasks = plan.get("tasks", [])
     if tasks:
-        lines.append("## Tasks\n")
+        lines.append("## Changes\n")
         for task in tasks:
             title = task.get("title", task) if isinstance(task, dict) else str(task)
             lines.append(f"- [x] {title}")
         lines.append("")
 
-    lines.append("---\n*Created by [Lintel](https://github.com/bamdadd/lintel)*")
+    # Context — original request if we have a summary too
+    if summary and messages:
+        lines.append(f"## Context\n\n> {messages[0]}\n")
+
+    # Review findings
+    review_outputs = [
+        o
+        for o in state.get("agent_outputs", [])
+        if isinstance(o, dict) and o.get("node") == "review"
+    ]
+    if review_outputs:
+        verdict = review_outputs[0].get("verdict", "")
+        if verdict == "approve":
+            lines.append("## Review\n\n:white_check_mark: Automated review passed.\n")
+
+    # Test results
+    test_outputs = [
+        o for o in state.get("agent_outputs", []) if isinstance(o, dict) and o.get("node") == "test"
+    ]
+    if test_outputs:
+        test_verdict = test_outputs[0].get("verdict", "")
+        if test_verdict == "passed":
+            lines.append("## Tests\n\n:white_check_mark: All tests passing.\n")
+
+    lines.append("---\n*Raised by [Lintel](https://github.com/bamdadd/lintel)* :robot:")
     return "\n".join(lines)

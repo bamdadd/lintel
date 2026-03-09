@@ -73,7 +73,7 @@ def build_bug_fix_graph() -> StateGraph[Any]:
     g.add_node("fix", fix_bug)
     g.add_node("test", run_tests)
     g.add_node("review", review_output)
-    g.add_node("approval_gate_merge", _gate("approval_gate_merge"))
+    g.add_node("approval_gate_pr", _gate("approval_gate_pr"))
     g.add_node("close", lambda s: {**s, "current_phase": "closed"})
     g.set_entry_point("triage")
     g.add_edge("triage", "reproduce")
@@ -83,9 +83,9 @@ def build_bug_fix_graph() -> StateGraph[Any]:
     g.add_conditional_edges(
         "review",
         _check_phase,
-        {"continue": "approval_gate_merge", "close": "close"},
+        {"continue": "approval_gate_pr", "close": "close"},
     )
-    g.add_edge("approval_gate_merge", "close")
+    g.add_edge("approval_gate_pr", "close")
     g.add_edge("close", END)
     return g
 
@@ -115,7 +115,7 @@ def build_refactor_graph() -> StateGraph[Any]:
     g.add_node("refactor", refactor_code)
     g.add_node("test", run_tests)
     g.add_node("review", review_output)
-    g.add_node("approval_gate_merge", _gate("approval_gate_merge"))
+    g.add_node("approval_gate_pr", _gate("approval_gate_pr"))
     g.add_node("close", lambda s: {**s, "current_phase": "closed"})
     g.set_entry_point("setup_workspace")
     g.add_edge("setup_workspace", "research")
@@ -131,9 +131,9 @@ def build_refactor_graph() -> StateGraph[Any]:
     g.add_conditional_edges(
         "review",
         _check_phase,
-        {"continue": "approval_gate_merge", "close": "close"},
+        {"continue": "approval_gate_pr", "close": "close"},
     )
-    g.add_edge("approval_gate_merge", "close")
+    g.add_edge("approval_gate_pr", "close")
     g.add_edge("close", END)
     return g
 
