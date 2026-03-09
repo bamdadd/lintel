@@ -30,6 +30,13 @@ async def test_health_endpoint(client: AsyncClient) -> None:
     assert data["status"] == "ok"
 
 
+async def test_ping_endpoint(client: AsyncClient) -> None:
+    """Smoke test: GET /ping must return 200 {"status": "pong"}."""
+    response = await client.get("/ping")
+    assert response.status_code == 200
+    assert response.json() == {"status": "pong"}
+
+
 async def test_correlation_id_propagation(client: AsyncClient) -> None:
     corr_id = str(uuid4())
     response = await client.get("/healthz", headers={"X-Correlation-ID": corr_id})

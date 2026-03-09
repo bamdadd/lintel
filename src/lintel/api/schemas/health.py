@@ -5,3 +5,7 @@ from pydantic import BaseModel
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class PingResponse(BaseModel):
+    status: str

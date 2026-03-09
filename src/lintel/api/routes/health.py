@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from lintel.api.schemas.health import HealthResponse
+from lintel.api.schemas.health import HealthResponse, PingResponse
 
 router = APIRouter()
 
@@ -13,3 +13,9 @@ router = APIRouter()
 async def healthz() -> dict[str, str]:
     """Liveness probe."""
     return {"status": "ok"}
+
+
+@router.get("/ping", response_model=PingResponse)
+async def ping() -> dict[str, str]:
+    """Ping / readiness check — returns pong."""
+    return {"status": "pong"}

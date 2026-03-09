@@ -20,7 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  HealthResponse
+  HealthResponse,
+  PingResponse
 } from '../../models';
 
 import { customInstance } from '../../../shared/api/client';
@@ -139,5 +140,113 @@ export function useHealthHealthz<TData = Awaited<ReturnType<typeof healthHealthz
 }
 
 
+
+/**
+ * Ping / readiness check — returns pong.
+ * @summary Ping
+ */
+export type healthPingResponse200 = {
+  data: PingResponse
+  status: 200
+}
+
+export type healthPingResponseSuccess = (healthPingResponse200) & {
+  headers: Headers;
+};
+;
+
+export type healthPingResponse = (healthPingResponseSuccess)
+
+export const getHealthPingUrl = () => {
+
+
+  
+
+  return `/ping`
+}
+
+export const healthPing = async ( options?: RequestInit): Promise<healthPingResponse> => {
+  
+  return customInstance<healthPingResponse>(getHealthPingUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getHealthPingQueryKey = () => {
+    return [
+    `/ping`
+    ] as const;
+    }
+
+    
+export const getHealthPingQueryOptions = <TData = Awaited<ReturnType<typeof healthPing>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthPing>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHealthPingQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof healthPing>>> = ({ signal }) => healthPing({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthPing>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type HealthPingQueryResult = NonNullable<Awaited<ReturnType<typeof healthPing>>>
+export type HealthPingQueryError = unknown
+
+
+export function useHealthPing<TData = Awaited<ReturnType<typeof healthPing>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthPing>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof healthPing>>,
+          TError,
+          Awaited<ReturnType<typeof healthPing>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHealthPing<TData = Awaited<ReturnType<typeof healthPing>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthPing>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof healthPing>>,
+          TError,
+          Awaited<ReturnType<typeof healthPing>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useHealthPing<TData = Awaited<ReturnType<typeof healthPing>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthPing>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Ping
+ */
+
+export function useHealthPing<TData = Awaited<ReturnType<typeof healthPing>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof healthPing>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getHealthPingQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 

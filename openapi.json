@@ -27,6 +27,28 @@
         }
       }
     },
+    "/ping": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Ping",
+        "description": "Ping / readiness check \u2014 returns pong.",
+        "operationId": "health_ping",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/threads": {
       "get": {
         "tags": [
@@ -9268,7 +9290,7 @@
           "image": {
             "type": "string",
             "title": "Image",
-            "default": "mcr.microsoft.com/devcontainers/base:ubuntu"
+            "default": "lintel-sandbox:latest"
           },
           "features": {
             "items": {
@@ -9508,6 +9530,19 @@
           "offset"
         ],
         "title": "PaginatedAuditResponse"
+      },
+      "PingResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "PingResponse"
       },
       "PolicyAction": {
         "type": "string",

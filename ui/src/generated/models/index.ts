@@ -157,6 +157,7 @@ export * from './paginatedAuditResponseItemsItem';
 export * from './piiPiiStats200';
 export * from './piiRevealPii200';
 export * from './piiVaultActivityLog200Item';
+export * from './pingResponse';
 export * from './pipelinesApproveStage200';
 export * from './pipelinesCancelPipeline200';
 export * from './pipelinesCreatePipeline201';
