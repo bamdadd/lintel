@@ -40,29 +40,31 @@ Simple Python package with math utilities and a test suite.
 - Add corresponding tests
 """
 
-PLAN_RESPONSE = json.dumps({
-    "tasks": [
-        {
-            "title": "Add subtract function to math_utils.py",
-            "description": "Add a subtract(a, b) function to src/math_utils.py",
-            "file_paths": ["src/math_utils.py"],
-            "complexity": "S",
-        },
-        {
-            "title": "Add divide function to math_utils.py",
-            "description": "Add a divide(a, b) function with zero-division guard",
-            "file_paths": ["src/math_utils.py"],
-            "complexity": "S",
-        },
-        {
-            "title": "Add tests for new functions",
-            "description": "Add test_subtract and test_divide to tests/test_math_utils.py",
-            "file_paths": ["tests/test_math_utils.py"],
-            "complexity": "S",
-        },
-    ],
-    "summary": "Add subtract and divide functions with tests",
-})
+PLAN_RESPONSE = json.dumps(
+    {
+        "tasks": [
+            {
+                "title": "Add subtract function to math_utils.py",
+                "description": "Add a subtract(a, b) function to src/math_utils.py",
+                "file_paths": ["src/math_utils.py"],
+                "complexity": "S",
+            },
+            {
+                "title": "Add divide function to math_utils.py",
+                "description": "Add a divide(a, b) function with zero-division guard",
+                "file_paths": ["src/math_utils.py"],
+                "complexity": "S",
+            },
+            {
+                "title": "Add tests for new functions",
+                "description": "Add test_subtract and test_divide to tests/test_math_utils.py",
+                "file_paths": ["tests/test_math_utils.py"],
+                "complexity": "S",
+            },
+        ],
+        "summary": "Add subtract and divide functions with tests",
+    }
+)
 
 REVIEW_APPROVE = """\
 ## Code Review
@@ -83,7 +85,7 @@ Both new functions have corresponding tests.
 VERDICT: APPROVE
 """
 
-_MATH_UTILS_CONTENT = '''\
+_MATH_UTILS_CONTENT = """\
 def add(a: int, b: int) -> int:
     return a + b
 
@@ -105,9 +107,9 @@ def is_prime(n: int) -> bool:
         if n % i == 0:
             return False
     return True
-'''
+"""
 
-_TESTS_CONTENT = '''\
+_TESTS_CONTENT = """\
 import sys
 sys.path.insert(0, "src")
 
@@ -137,7 +139,7 @@ def test_is_prime():
     assert is_prime(7)
     assert not is_prime(4)
     assert not is_prime(1)
-'''
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -158,14 +160,20 @@ def _make_tool_call(tool_name: str, arguments: dict[str, str]) -> dict[str, Any]
 
 def _implement_tool_calls(workspace_path: str) -> list[dict[str, Any]]:
     return [
-        _make_tool_call("sandbox_write_file", {
-            "path": f"{workspace_path}/src/math_utils.py",
-            "content": _MATH_UTILS_CONTENT,
-        }),
-        _make_tool_call("sandbox_write_file", {
-            "path": f"{workspace_path}/tests/test_math_utils.py",
-            "content": _TESTS_CONTENT,
-        }),
+        _make_tool_call(
+            "sandbox_write_file",
+            {
+                "path": f"{workspace_path}/src/math_utils.py",
+                "content": _MATH_UTILS_CONTENT,
+            },
+        ),
+        _make_tool_call(
+            "sandbox_write_file",
+            {
+                "path": f"{workspace_path}/tests/test_math_utils.py",
+                "content": _TESTS_CONTENT,
+            },
+        ),
     ]
 
 
@@ -184,7 +192,10 @@ class FakeEventStore:
         self.events.extend(events)
 
     async def read(
-        self, stream_id: str, start: int = 0, limit: int = 100,
+        self,
+        stream_id: str,
+        start: int = 0,
+        limit: int = 100,
     ) -> list[Any]:
         return self.events
 
@@ -200,7 +211,9 @@ class FakeModelRouter:
         }
 
     async def select_model(
-        self, agent_role: AgentRole, step_name: str,
+        self,
+        agent_role: AgentRole,
+        step_name: str,
     ) -> ModelPolicy:
         from lintel.contracts.types import ModelPolicy
 
@@ -234,7 +247,9 @@ class FakeModelRouter:
         return _text_response("OK", 10, 5)
 
     async def stream_model(
-        self, policy: ModelPolicy, messages: list[dict[str, Any]],
+        self,
+        policy: ModelPolicy,
+        messages: list[dict[str, Any]],
     ) -> AsyncIterator[str]:
         system_msg = _system_content(messages)
         if "software planner" in system_msg.lower():
@@ -279,9 +294,58 @@ def _system_content(messages: list[dict[str, Any]]) -> str:
 
 
 def _text_response(
-    text: str, input_tokens: int = 50, output_tokens: int = 30,
+    text: str,
+    input_tokens: int = 50,
+    output_tokens: int = 30,
 ) -> dict[str, Any]:
     return {
         "content": text,
         "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
     }
+
+
+# ---------------------------------------------------------------------------
+# Fake RepoProvider — records PR creation calls
+# ---------------------------------------------------------------------------
+
+
+class FakeRepoProvider:
+    """Records create_pr / add_comment calls without hitting GitHub."""
+
+    def __init__(self, pr_url: str = "https://github.com/test/repo/pull/42") -> None:
+        self._pr_url = pr_url
+        self.created_prs: list[dict[str, str]] = []
+        self.comments: list[dict[str, Any]] = []
+
+    async def create_pr(
+        self,
+        repo_url: str,
+        head: str,
+        base: str,
+        title: str,
+        body: str,
+    ) -> str:
+        self.created_prs.append(
+            {
+                "repo_url": repo_url,
+                "head": head,
+                "base": base,
+                "title": title,
+                "body": body,
+            }
+        )
+        return self._pr_url
+
+    async def add_comment(
+        self,
+        repo_url: str,
+        pr_number: int,
+        body: str,
+    ) -> None:
+        self.comments.append(
+            {
+                "repo_url": repo_url,
+                "pr_number": pr_number,
+                "body": body,
+            }
+        )

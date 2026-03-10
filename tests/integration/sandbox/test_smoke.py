@@ -113,6 +113,4 @@ async def test_security_caps_dropped(
     # All caps dropped = CapEff: 0000000000000000
     if "CapEff" in result.stdout:
         cap_hex = result.stdout.split("CapEff:")[1].strip()
-        assert cap_hex == "0000000000000000", (
-            f"Container has capabilities: {cap_hex}"
-        )
+        assert cap_hex == "0000000000000000", f"Container has capabilities: {cap_hex}"

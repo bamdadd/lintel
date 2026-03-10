@@ -224,13 +224,17 @@ async def spawn_implementation(
     if base_branch:
         from lintel.workflows.nodes._git_helpers import rebase_on_upstream
 
-        rebase_result = await rebase_on_upstream(
-            sandbox_manager,
-            sandbox_id,
-            base_branch,
-        )
-        if not rebase_result["success"]:
-            rebase_warning = rebase_result["message"]
+        try:
+            rebase_result = await rebase_on_upstream(
+                sandbox_manager,
+                sandbox_id,
+                base_branch,
+            )
+            if not rebase_result["success"]:
+                rebase_warning = rebase_result["message"]
+        except Exception:
+            logger.warning("implement_rebase_failed", exc_info=True)
+            rebase_warning = "Rebase failed — sandbox may be unavailable"
 
     # Collect git diff as artifacts
     await append_log(_config, "implement", "Collecting artifacts...", state)

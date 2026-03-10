@@ -156,55 +156,15 @@ async def close_workflow(
         else:
             await append_log(_config, "close", "Push succeeded", state)
 
-            # Create PR via GitHub API
-            if credential_store is not None:
-                credential_ids = state.get("credential_ids", [])
-                for cred_id in credential_ids:
-                    try:
-                        cred = await credential_store.get(cred_id)
-                        if cred is None:
-                            continue
-                        secret = await credential_store.get_secret(cred_id)
-                        cred_type = cred.credential_type
-                        if hasattr(cred_type, "value"):
-                            cred_type = cred_type.value
-                        if cred_type == "github_token" and secret:
-                            from lintel.infrastructure.repos.github_provider import (
-                                GitHubRepoProvider,
-                            )
-
-                            provider = GitHubRepoProvider(token=secret)
-                            plan = state.get("plan", {})
-                            pr_title = commit_msg
-                            pr_body = _build_pr_body(state, plan)
-
-                            await append_log(_config, "close", "Creating pull request...", state)
-                            pr_url = await provider.create_pr(
-                                repo_url=repo_url,
-                                head=feature_branch,
-                                base=base_branch,
-                                title=pr_title,
-                                body=pr_body,
-                            )
-                            await append_log(_config, "close", f"PR created: {pr_url}", state)
-
-                            # Add review comment if available
-                            review_outputs = [
-                                o
-                                for o in state.get("agent_outputs", [])
-                                if isinstance(o, dict) and o.get("node") == "review"
-                            ]
-                            if review_outputs:
-                                review_text = review_outputs[0].get("output", "")
-                                if review_text:
-                                    pr_number = int(pr_url.rstrip("/").split("/")[-1])
-                                    await provider.add_comment(repo_url, pr_number, review_text)
-                            break
-                    except Exception as exc:
-                        logger.warning(
-                            "close_pr_creation_failed",
-                            error=str(exc)[:200],
-                        )
+            # Create PR — use injected repo_provider or resolve from credentials
+            pr_url = await _create_pull_request(
+                _config,
+                state,
+                repo_url=repo_url,
+                feature_branch=feature_branch,
+                base_branch=base_branch,
+                commit_msg=commit_msg,
+            )
 
         # Disconnect network again
         import contextlib
@@ -239,6 +199,115 @@ async def close_workflow(
         "current_phase": "closed",
         "pr_url": pr_url,
     }
+
+
+async def _create_pull_request(
+    config: Mapping[str, Any],
+    state: ThreadWorkflowState,
+    *,
+    repo_url: str,
+    feature_branch: str,
+    base_branch: str,
+    commit_msg: str,
+) -> str:
+    """Create a PR using an injected repo_provider or credentials.
+
+    Returns the PR URL, or empty string if creation is skipped/fails.
+    """
+    from lintel.workflows.nodes._stage_tracking import append_log
+
+    _configurable = config.get("configurable", {})
+    pr_url = ""
+
+    # Prefer injected repo_provider (used by tests)
+    repo_provider = _configurable.get("repo_provider")
+    if repo_provider is not None:
+        plan = state.get("plan", {})
+        pr_body = _build_pr_body(state, plan)
+        try:
+            await append_log(config, "close", "Creating pull request...", state)
+            pr_url = await repo_provider.create_pr(
+                repo_url=repo_url,
+                head=feature_branch,
+                base=base_branch,
+                title=commit_msg,
+                body=pr_body,
+            )
+            await append_log(config, "close", f"PR created: {pr_url}", state)
+
+            # Add review comment if available
+            review_outputs = [
+                o
+                for o in state.get("agent_outputs", [])
+                if isinstance(o, dict) and o.get("node") == "review"
+            ]
+            if review_outputs:
+                review_text = review_outputs[0].get("output", "")
+                if review_text:
+                    pr_number = int(pr_url.rstrip("/").split("/")[-1])
+                    await repo_provider.add_comment(repo_url, pr_number, review_text)
+        except Exception as exc:
+            logger.warning("close_pr_creation_failed", error=str(exc)[:200])
+        return pr_url
+
+    # Fall back to credential-based GitHubRepoProvider
+    credential_store = _configurable.get("credential_store")
+    run_id = state.get("run_id", "")
+    if credential_store is None and run_id:
+        from lintel.workflows.nodes._runtime_registry import get_app_state
+
+        _app_state = get_app_state(run_id)
+        if _app_state is not None:
+            credential_store = getattr(_app_state, "credential_store", None)
+
+    if credential_store is None:
+        return ""
+
+    credential_ids = state.get("credential_ids", [])
+    for cred_id in credential_ids:
+        try:
+            cred = await credential_store.get(cred_id)
+            if cred is None:
+                continue
+            secret = await credential_store.get_secret(cred_id)
+            cred_type = cred.credential_type
+            if hasattr(cred_type, "value"):
+                cred_type = cred_type.value
+            if cred_type == "github_token" and secret:
+                from lintel.infrastructure.repos.github_provider import (
+                    GitHubRepoProvider,
+                )
+
+                provider = GitHubRepoProvider(token=secret)
+                plan = state.get("plan", {})
+                pr_body = _build_pr_body(state, plan)
+
+                await append_log(config, "close", "Creating pull request...", state)
+                pr_url = await provider.create_pr(
+                    repo_url=repo_url,
+                    head=feature_branch,
+                    base=base_branch,
+                    title=commit_msg,
+                    body=pr_body,
+                )
+                await append_log(config, "close", f"PR created: {pr_url}", state)
+
+                # Add review comment if available
+                review_outputs = [
+                    o
+                    for o in state.get("agent_outputs", [])
+                    if isinstance(o, dict) and o.get("node") == "review"
+                ]
+                if review_outputs:
+                    review_text = review_outputs[0].get("output", "")
+                    if review_text:
+                        pr_number = int(pr_url.rstrip("/").split("/")[-1])
+                        await provider.add_comment(repo_url, pr_number, review_text)
+                break
+        except Exception as exc:
+            logger.warning("close_pr_creation_failed", error=str(exc)[:200])
+
+    return pr_url
 
 
 async def _skip_remaining_stages(

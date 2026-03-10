@@ -65,7 +65,18 @@ async def run_tests(
 
     # Discover how to run tests via skill
     await append_log(_config, "test", "Discovering test command...", state)
-    discovery = await discover_test_command(sandbox_manager, sandbox_id, workdir)
+    try:
+        discovery = await discover_test_command(sandbox_manager, sandbox_id, workdir)
+    except Exception:
+        from lintel.workflows.nodes._error_handling import handle_node_error
+
+        logger.exception("test_discovery_failed")
+        await mark_completed(
+            _config, "test", state, error="Test discovery failed — sandbox unavailable"
+        )
+        return await handle_node_error(
+            state, "test", Exception("Test discovery failed — sandbox unavailable")
+        )
     test_command = discovery["test_command"]
     setup_commands: list[str] = discovery.get("setup_commands", [])
 

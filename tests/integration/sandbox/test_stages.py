@@ -87,10 +87,7 @@ async def test_run_tests_with_fixture_project(
     await mgr.execute(
         sandbox_id,
         SandboxJob(
-            command=(
-                'export PATH="$HOME/.local/bin:$PATH"'
-                " && uv sync --all-extras 2>&1 | tail -5"
-            ),
+            command=('export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -5'),
             workdir=workdir,
             timeout_seconds=120,
         ),
@@ -163,10 +160,7 @@ async def test_pytest_parallelism_respects_cpu_limit(
     await mgr.execute(
         sandbox_id,
         SandboxJob(
-            command=(
-                'export PATH="$HOME/.local/bin:$PATH"'
-                " && uv sync --all-extras 2>&1 | tail -3"
-            ),
+            command=('export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -3'),
             workdir=workdir,
             timeout_seconds=120,
         ),
@@ -176,8 +170,7 @@ async def test_pytest_parallelism_respects_cpu_limit(
         sandbox_id,
         SandboxJob(
             command=(
-                'export PATH="$HOME/.local/bin:$PATH"'
-                " && uv run pytest tests/ -v -n auto 2>&1"
+                'export PATH="$HOME/.local/bin:$PATH" && uv run pytest tests/ -v -n auto 2>&1'
             ),
             workdir=workdir,
             timeout_seconds=120,
@@ -190,7 +183,6 @@ async def test_pytest_parallelism_respects_cpu_limit(
             parts = line.split("created:")[1].strip().split("/")
             worker_count = int(parts[0].strip())
             assert worker_count <= 4, (
-                f"pytest -n auto spawned {worker_count} workers, "
-                f"expected <=4 for a 2-CPU sandbox"
+                f"pytest -n auto spawned {worker_count} workers, expected <=4 for a 2-CPU sandbox"
             )
             break

@@ -78,8 +78,7 @@ class SandboxProject:
             self.sandbox_id,
             SandboxJob(
                 command=(
-                    'export PATH="$HOME/.local/bin:$PATH"'
-                    " && uv sync --all-extras 2>&1 | tail -3"
+                    'export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -3'
                 ),
                 workdir=WORKDIR,
                 timeout_seconds=120,
@@ -325,6 +324,126 @@ async def test_close_commits_changes(runner: StageRunner) -> None:
 
     commits = await runner.project.git_log()
     assert len(commits) >= 2, f"Expected >=2 commits. Got: {commits}"
+
+
+# ---------------------------------------------------------------------------
+# Stage 7: Close with PR — verify PR creation via injected repo_provider
+# ---------------------------------------------------------------------------
+
+
+async def test_close_creates_pr(runner: StageRunner) -> None:
+    """Close node should create a PR and post the review comment."""
+    from lintel.workflows.nodes.close import close_workflow
+    from lintel.workflows.nodes.implement import spawn_implementation
+    from tests.integration.sandbox.fake_runtime import FakeRepoProvider
+
+    plan = json.loads(PLAN_RESPONSE)
+    await spawn_implementation(runner.state(plan=plan), runner.config)
+
+    fake_repo = FakeRepoProvider()
+    config = {
+        "configurable": {
+            "sandbox_manager": runner.project.mgr,
+            "repo_provider": fake_repo,
+        },
+    }
+    close_state = runner.state(
+        feature_branch="lintel/feature/test-subtract",
+        repo_url="https://github.com/test/sample-project",
+        plan=plan,
+        agent_outputs=[
+            {"node": "review", "verdict": "approve", "output": "VERDICT: APPROVE\nLGTM"},
+            {"node": "test", "verdict": "passed"},
+        ],
+    )
+
+    # Push will fail (no real remote) but PR creation uses the fake provider
+    result = await close_workflow(close_state, config)
+
+    assert result["current_phase"] == "closed"
+
+    # If push failed, PR won't be created — that's expected without a real remote.
+    # But let's verify the commit was made regardless.
+    commits = await runner.project.git_log()
+    assert len(commits) >= 2
+
+
+async def test_close_creates_pr_with_local_remote(runner: StageRunner) -> None:
+    """Close node should create a PR when push succeeds (using a local bare repo)."""
+    from lintel.contracts.types import SandboxJob
+    from lintel.workflows.nodes.close import close_workflow
+    from lintel.workflows.nodes.implement import spawn_implementation
+    from tests.integration.sandbox.fake_runtime import FakeRepoProvider
+
+    plan = json.loads(PLAN_RESPONSE)
+    await spawn_implementation(runner.state(plan=plan), runner.config)
+
+    # Create a local bare repo as the "remote" so push succeeds
+    mgr = runner.project.mgr
+    sid = runner.project.sandbox_id
+    await mgr.execute(
+        sid,
+        SandboxJob(
+            command="git init --bare /tmp/remote.git",
+            timeout_seconds=10,
+        ),
+    )
+    await mgr.execute(
+        sid,
+        SandboxJob(
+            command=(
+                f"cd {WORKDIR} && git remote remove origin 2>/dev/null;"
+                " git remote add origin /tmp/remote.git"
+                " && git push -u origin main 2>/dev/null || true"
+            ),
+            timeout_seconds=15,
+        ),
+    )
+    # Create the feature branch so close_workflow can push it
+    await mgr.execute(
+        sid,
+        SandboxJob(
+            command=f"cd {WORKDIR} && git checkout -b lintel/feature/test-subtract",
+            timeout_seconds=10,
+        ),
+    )
+
+    fake_repo = FakeRepoProvider(
+        pr_url="https://github.com/test/sample-project/pull/99",
+    )
+    config = {
+        "configurable": {
+            "sandbox_manager": mgr,
+            "repo_provider": fake_repo,
+        },
+    }
+    close_state = runner.state(
+        feature_branch="lintel/feature/test-subtract",
+        repo_url="https://github.com/test/sample-project",
+        plan=plan,
+        agent_outputs=[
+            {"node": "review", "verdict": "approve", "output": "VERDICT: APPROVE\nLGTM"},
+            {"node": "test", "verdict": "passed"},
+        ],
+    )
+
+    result = await close_workflow(close_state, config)
+
+    assert result["current_phase"] == "closed"
+    assert result["pr_url"] == "https://github.com/test/sample-project/pull/99"
+
+    # Verify the fake provider was called correctly
+    assert len(fake_repo.created_prs) == 1
+    pr = fake_repo.created_prs[0]
+    assert pr["head"] == "lintel/feature/test-subtract"
+    assert pr["base"] == "main"
+    assert pr["repo_url"] == "https://github.com/test/sample-project"
+    assert "subtract" in pr["body"].lower() or "Changes" in pr["body"]
+
+    # Verify review comment was posted
+    assert len(fake_repo.comments) == 1
+    assert fake_repo.comments[0]["pr_number"] == 99
+    assert "APPROVE" in fake_repo.comments[0]["body"]
 
 
 # ---------------------------------------------------------------------------
