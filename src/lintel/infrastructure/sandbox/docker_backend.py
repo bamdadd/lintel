@@ -288,14 +288,18 @@ class DockerSandboxManager:
         container = self._containers.pop(sandbox_id, None)
         if container is None:
             # Try to find by label (e.g. after server restart)
-            client = self._get_client()
-            matches = await asyncio.to_thread(
-                client.containers.list,
-                filters={"label": f"lintel.sandbox_id={sandbox_id}"},
-                all=True,
-            )
-            if matches:
-                container = matches[0]
+            try:
+                client = self._get_client()
+                matches = await asyncio.to_thread(
+                    client.containers.list,
+                    filters={"label": f"lintel.sandbox_id={sandbox_id}"},
+                    all=True,
+                )
+                if matches:
+                    container = matches[0]
+            except Exception:
+                # Docker not available (e.g. inside a sandbox container) — nothing to destroy
+                return
         if container:
             await asyncio.to_thread(container.remove, force=True)
 
