@@ -16,7 +16,7 @@ import { theme } from './theme';
 export function App() {
   return (
     <MantineProvider theme={theme} defaultColorScheme="dark">
-      <Notifications position="top-right" />
+      <Notifications position="bottom-right" autoClose={2000} limit={3} />
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <ReactQueryDevtools initialIsOpen={false} />
