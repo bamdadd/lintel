@@ -339,6 +339,11 @@ async def setup_workspace(
     if sandbox_id:
         # Reconnect network — previous run may have disconnected it
         await sandbox_manager.reconnect_network(sandbox_id)
+        # Clean workspace from previous runs to avoid "No space left on device"
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command="rm -rf /workspace/*", workdir="/workspace"),
+        )
         # Inject Claude Code credentials into reused sandbox
         if credentials_json:
             await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)

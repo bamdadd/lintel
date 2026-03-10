@@ -316,7 +316,7 @@ export function Component() {
       return [String(proj.project_id ?? ''), String(proj.name ?? 'Unknown')];
     }),
   );
-  const topTasks = getTopTasks(workItems, projectMap, 5);
+  const topTasks = getTopTasks(workItems, projectMap, 10);
 
   return (
     <Stack gap="lg">
@@ -448,7 +448,7 @@ export function Component() {
       {/* Top Prioritised Tasks */}
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" mb="sm">
-          <Title order={4}>Top Tasks</Title>
+          <Title order={4}>Top Work Items</Title>
           <Anchor component={Link} to="/boards" size="sm">View all</Anchor>
         </Group>
         {topTasks.length > 0 ? (
@@ -493,7 +493,7 @@ export function Component() {
             </Table.Tbody>
           </Table>
         ) : (
-          <Text c="dimmed" size="sm">No tasks yet. Create work items on a board to see them here.</Text>
+          <Text c="dimmed" size="sm">No work items yet. Create work items on a board to see them here.</Text>
         )}
       </Paper>
 
