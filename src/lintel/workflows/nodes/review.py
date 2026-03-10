@@ -148,7 +148,7 @@ async def review_output(
 
     logger.info("review_verdict_parsed verdict=%s", verdict)
 
-    stage_outputs: dict[str, object] = {"verdict": verdict}
+    stage_outputs: dict[str, object] = {"verdict": verdict, "review": review_output_text}
     if usage:
         stage_outputs["token_usage"] = usage
     await mark_completed(_config, "review", state, outputs=stage_outputs or None)

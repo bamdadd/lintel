@@ -21,6 +21,9 @@ import { Collapsible } from '@/shared/components/Collapsible';
 import { PlanView } from './PlanView';
 import { StageReportEditor } from './StageReportEditor';
 import { DiffView } from '@/shared/components/DiffView';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '../../chat/chat-markdown.css';
 import { TimeAgo } from '@/shared/components/TimeAgo';
 import { useNavigate } from 'react-router';
 
@@ -180,11 +183,14 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
   // Research report (editable)
   const hasResearchReport = !!stage.outputs?.research_report;
 
+  // Review text
+  const hasReview = !!stage.outputs?.review;
+
   // Diff / code changes
   const hasDiff = !!stage.outputs?.diff;
 
-  // Other outputs (everything except plan / research_report / diff / sandbox_id)
-  const HIDDEN_OUTPUT_KEYS = new Set(['plan', 'research_report', 'diff', 'sandbox_id']);
+  // Other outputs (everything except plan / research_report / diff / sandbox_id / review)
+  const HIDDEN_OUTPUT_KEYS = new Set(['plan', 'research_report', 'diff', 'sandbox_id', 'review']);
   const otherOutputEntries = stage.outputs
     ? Object.entries(stage.outputs).filter(([k]) => !HIDDEN_OUTPUT_KEYS.has(k))
     : [];
@@ -375,6 +381,25 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
             data-testid="section-diff"
           >
             <DiffView content={stage.outputs!.diff as string} />
+          </Collapsible>
+        )}
+
+        {/* ── Collapsible: Review ──────────────────────────────────────── */}
+        {hasReview && (
+          <Collapsible
+            title={`Review — ${stage.outputs?.verdict === 'approve' ? '✅ Approved' : '⚠️ Changes Requested'}`}
+            defaultOpen={stage.outputs?.verdict !== 'approve'}
+            data-testid="section-review"
+          >
+            <Paper p="sm" withBorder>
+              <ScrollArea.Autosize mah={400}>
+                <div className="chat-markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {stage.outputs!.review as string}
+                  </ReactMarkdown>
+                </div>
+              </ScrollArea.Autosize>
+            </Paper>
           </Collapsible>
         )}
 
