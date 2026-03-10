@@ -165,10 +165,11 @@ async def spawn_implementation(
             async def _on_tool_call(
                 iteration: int,
                 tool_name: str,
+                tool_args: dict[str, Any],
                 tool_result: str,
             ) -> None:
                 short_name = tool_name.replace("sandbox_", "")
-                preview = tool_result[:120].replace("\n", " ") if tool_result else ""
+                preview = _format_tool_preview(short_name, tool_args, tool_result)
                 await append_log(
                     _config,
                     "implement",
@@ -294,3 +295,48 @@ async def spawn_implementation(
     if usage:
         result_dict["token_usage"] = [usage]
     return result_dict
+
+
+def _format_tool_preview(tool: str, args: dict[str, Any], result: str) -> str:
+    """Format a tool result into a concise, readable log line."""
+    if not result:
+        return ""
+
+    if tool == "list_files":
+        path = args.get("path", "")
+        try:
+            import json as _json
+
+            items = _json.loads(result)
+            if isinstance(items, list):
+                count = len(items)
+                names = ", ".join(items[:6])
+                if count > 6:
+                    names += f" (+{count - 6} more)"
+                label = path.split("/")[-1] if path else "."
+                return f"{label}/ ({count} items) {names}"
+        except Exception:
+            pass
+
+    if tool == "read_file":
+        path = args.get("path", "")
+        fname = path.split("/")[-1] if path else "file"
+        lines = result.strip().split("\n")
+        return f"{fname} ({len(lines)} lines)"
+
+    if tool == "write_file":
+        path = args.get("path", "")
+        fname = path.split("/")[-1] if path else "file"
+        lines = args.get("content", "").strip().split("\n")
+        return f"{fname} ({len(lines)} lines written)"
+
+    if tool == "execute_command":
+        cmd = args.get("command", "")
+        # Show command and first output line
+        short_cmd = cmd[:60]
+        out_lines = [ln.strip() for ln in result.strip().split("\n") if ln.strip()]
+        output = out_lines[0][:80] if out_lines else "(no output)"
+        return f"`{short_cmd}` -> {output}"
+
+    # Default: compact single-line preview
+    return result[:120].replace("\n", " ")

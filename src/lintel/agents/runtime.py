@@ -129,7 +129,7 @@ class AgentRuntime:
         sandbox_manager: SandboxManager | None = None,
         sandbox_id: str | None = None,
         max_iterations: int = DEFAULT_MAX_TOOL_ITERATIONS,
-        on_tool_call: Callable[[int, str, str], Awaitable[None]] | None = None,
+        on_tool_call: Callable[[int, str, dict[str, Any], str], Awaitable[None]] | None = None,
     ) -> dict[str, Any]:
         cid = correlation_id or uuid4()
 
@@ -240,7 +240,12 @@ class AgentRuntime:
                     step_name=step_name,
                 )
                 if on_tool_call is not None:
-                    await on_tool_call(iteration, func_name, tool_result)
+                    raw_args = tc.get("function", {}).get("arguments", "{}")
+                    try:
+                        tool_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                    except (json.JSONDecodeError, TypeError):
+                        tool_args = {}
+                    await on_tool_call(iteration, func_name, tool_args, tool_result)
                 loop_messages.append(
                     {
                         "role": "tool",
