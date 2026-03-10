@@ -16,11 +16,16 @@ import {
   Badge,
   SimpleGrid,
   Box,
+  Paper,
+  SegmentedControl,
+  TypographyStylesProvider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconEdit } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useSkillsListSkills,
@@ -36,7 +41,6 @@ interface Skill {
   skill_id: string;
   name: string;
   description: string;
-  content: string;
   category: string;
   version: string;
   execution_mode: string;
@@ -68,12 +72,13 @@ export function Component() {
   const queryClient = useQueryClient();
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
+  const [createDescMode, setCreateDescMode] = useState<'edit' | 'preview'>('edit');
+  const [editDescMode, setEditDescMode] = useState<'edit' | 'preview'>('preview');
 
   const createForm = useForm({
     initialValues: {
       name: '',
       description: '',
-      content: '',
       category: 'custom',
       version: '1.0.0',
       execution_mode: 'inline',
@@ -87,7 +92,6 @@ export function Component() {
     initialValues: {
       name: '',
       description: '',
-      content: '',
       category: 'custom',
       version: '',
       execution_mode: 'inline',
@@ -120,7 +124,6 @@ export function Component() {
     editForm.setValues({
       name: skill.name,
       description: skill.description ?? '',
-      content: skill.content ?? '',
       category: skill.category ?? 'custom',
       version: skill.version,
       execution_mode: skill.execution_mode,
@@ -235,14 +238,42 @@ export function Component() {
         <form onSubmit={handleCreate}>
           <Stack gap="sm">
             <TextInput label="Name" placeholder="My Skill" {...createForm.getInputProps('name')} />
-            <Textarea label="Description" placeholder="What this skill does" autosize minRows={2} {...createForm.getInputProps('description')} />
-            <Textarea
-              label="Content"
-              placeholder="Skill content / prompt template (OpenSkill format)"
-              autosize minRows={6}
-              styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
-              {...createForm.getInputProps('content')}
-            />
+            <Box>
+              <Group justify="space-between" mb={4}>
+                <Text size="sm" fw={500}>Description</Text>
+                <SegmentedControl
+                  size="xs"
+                  value={createDescMode}
+                  onChange={(v) => setCreateDescMode(v as 'edit' | 'preview')}
+                  data={[
+                    { label: 'Edit', value: 'edit' },
+                    { label: 'Preview', value: 'preview' },
+                  ]}
+                />
+              </Group>
+              {createDescMode === 'edit' ? (
+                <Textarea
+                  placeholder="What this skill does (supports Markdown)"
+                  autosize
+                  minRows={6}
+                  maxRows={20}
+                  styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
+                  {...createForm.getInputProps('description')}
+                />
+              ) : (
+                <Paper withBorder p="md" radius="sm" mih={120}>
+                  {createForm.values.description ? (
+                    <TypographyStylesProvider>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {createForm.values.description}
+                      </ReactMarkdown>
+                    </TypographyStylesProvider>
+                  ) : (
+                    <Text c="dimmed" size="sm" fs="italic">No description</Text>
+                  )}
+                </Paper>
+              )}
+            </Box>
             <Select
               label="Category"
               data={CATEGORY_OPTIONS}
@@ -264,13 +295,42 @@ export function Component() {
         <form onSubmit={handleEdit}>
           <Stack gap="sm">
             <TextInput label="Name" {...editForm.getInputProps('name')} />
-            <Textarea label="Description" autosize minRows={2} {...editForm.getInputProps('description')} />
-            <Textarea
-              label="Content"
-              autosize minRows={8}
-              styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
-              {...editForm.getInputProps('content')}
-            />
+            <Box>
+              <Group justify="space-between" mb={4}>
+                <Text size="sm" fw={500}>Description</Text>
+                <SegmentedControl
+                  size="xs"
+                  value={editDescMode}
+                  onChange={(v) => setEditDescMode(v as 'edit' | 'preview')}
+                  data={[
+                    { label: 'Edit', value: 'edit' },
+                    { label: 'Preview', value: 'preview' },
+                  ]}
+                />
+              </Group>
+              {editDescMode === 'edit' ? (
+                <Textarea
+                  placeholder="What this skill does (supports Markdown)"
+                  autosize
+                  minRows={6}
+                  maxRows={20}
+                  styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
+                  {...editForm.getInputProps('description')}
+                />
+              ) : (
+                <Paper withBorder p="md" radius="sm" mih={120}>
+                  {editForm.values.description ? (
+                    <TypographyStylesProvider>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {editForm.values.description}
+                      </ReactMarkdown>
+                    </TypographyStylesProvider>
+                  ) : (
+                    <Text c="dimmed" size="sm" fs="italic">No description</Text>
+                  )}
+                </Paper>
+              )}
+            </Box>
             <Select
               label="Category"
               data={CATEGORY_OPTIONS}

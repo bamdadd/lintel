@@ -465,13 +465,17 @@ class WorkflowExecutor:
                     if diff:
                         diff_lines = diff.strip().split("\n")
                         files_changed = sum(
-                            1 for l in diff_lines if l.startswith("diff --git")
+                            1 for ln in diff_lines if ln.startswith("diff --git")
                         )
                         additions = sum(
-                            1 for l in diff_lines if l.startswith("+") and not l.startswith("+++")
+                            1
+                            for ln in diff_lines
+                            if ln.startswith("+") and not ln.startswith("+++")
                         )
                         deletions = sum(
-                            1 for l in diff_lines if l.startswith("-") and not l.startswith("---")
+                            1
+                            for ln in diff_lines
+                            if ln.startswith("-") and not ln.startswith("---")
                         )
                         lines.append(
                             f"\n**Diff:** {files_changed} files changed, "

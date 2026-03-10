@@ -176,6 +176,18 @@ def _make_state(**overrides: Any) -> dict[str, Any]:  # noqa: ANN401
 
 
 class TestSetupWorkspace:
+    @pytest.fixture(autouse=True)
+    def _no_credentials(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Prevent tests from reading real macOS Keychain credentials."""
+        monkeypatch.setattr(
+            "lintel.workflows.nodes.setup_workspace._get_claude_code_credentials_json",
+            lambda: "",
+        )
+        monkeypatch.setattr(
+            "lintel.workflows.nodes.setup_workspace._get_claude_code_oauth_token",
+            lambda: "",
+        )
+
     async def test_clones_repo_and_creates_branch(self) -> None:
         manager = DummySandboxManager()
         state = _make_state()

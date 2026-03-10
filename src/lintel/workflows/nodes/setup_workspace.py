@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 import re
 from typing import TYPE_CHECKING, Any
+
+import structlog
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -14,21 +15,67 @@ if TYPE_CHECKING:
     from lintel.contracts.protocols import CredentialStore, SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
-def _get_claude_code_mounts() -> tuple[tuple[str, str, str], ...]:
-    """Return host ~/.claude and ~/.claude.json mounts for Claude Code auth."""
-    import os
+def _get_claude_code_credentials_json() -> str:
+    """Extract Claude Code credentials JSON from macOS Keychain.
 
-    mounts: list[tuple[str, str, str]] = []
-    claude_dir = os.path.expanduser("~/.claude")
-    if os.path.isdir(claude_dir):
-        mounts.append((claude_dir, "/root/.claude", "bind"))
-    claude_json = os.path.expanduser("~/.claude.json")
-    if os.path.isfile(claude_json):
-        mounts.append((claude_json, "/root/.claude.json", "bind"))
-    return tuple(mounts)
+    Returns the full credentials JSON string, or empty string if not found.
+    """
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+    return ""
+
+
+async def _inject_claude_credentials(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    credentials_json: str,
+) -> None:
+    """Write Claude Code credentials and settings into the sandbox."""
+    from lintel.contracts.types import SandboxJob
+
+    logger.info(
+        "injecting_claude_credentials",
+        sandbox=sandbox_id[:12],
+        creds_len=len(credentials_json),
+    )
+
+    # Create ~/.claude directory
+    await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(command="mkdir -p /home/vscode/.claude", timeout_seconds=5),
+    )
+
+    # Write credentials file
+    await sandbox_manager.write_file(
+        sandbox_id,
+        "/home/vscode/.claude/.credentials.json",
+        credentials_json,
+    )
+
+    # Write minimal settings that skip interactive permissions
+    settings = (
+        '{"permissions":{"allow":[],"deny":[]},'
+        '"hasCompletedOnboarding":true}'
+    )
+    await sandbox_manager.write_file(
+        sandbox_id,
+        "/home/vscode/.claude/settings.json",
+        settings,
+    )
 
 
 def _get_claude_code_oauth_token() -> str:
@@ -266,6 +313,12 @@ async def setup_workspace(
 
     # Check for Claude Code OAuth token (determines network policy)
     oauth_token = _get_claude_code_oauth_token()
+    credentials_json = _get_claude_code_credentials_json()
+    logger.info(
+        "claude_credentials_fetched",
+        creds_len=len(credentials_json),
+        oauth_len=len(oauth_token),
+    )
 
     if sandbox_id:
         # Verify the sandbox container still exists before using it
@@ -278,6 +331,9 @@ async def setup_workspace(
     if sandbox_id:
         # Reconnect network — previous run may have disconnected it
         await sandbox_manager.reconnect_network(sandbox_id)
+        # Inject Claude Code credentials into reused sandbox
+        if credentials_json:
+            await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
         await append_log(
             config,
             "setup_workspace",
@@ -291,18 +347,15 @@ async def setup_workspace(
             "No sandboxes in pool — creating a new one (fallback)",
             state,
         )
-        # Mount ~/.claude from host and inject OAuth token for Claude Code
-        claude_mounts = _get_claude_code_mounts()
-        claude_env = env_vars
-        if oauth_token:
-            claude_env = claude_env | frozenset({("CLAUDE_CODE_OAUTH_TOKEN", oauth_token)})
         sandbox_config = SandboxConfig(
             network_enabled=True,
-            environment=claude_env,
-            mounts=claude_mounts,
+            environment=env_vars,
         )
         sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
         created_sandbox = True
+        # Inject Claude Code credentials into new sandbox
+        if credentials_json:
+            await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
         await append_log(
             config,
             "setup_workspace",

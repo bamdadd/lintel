@@ -130,6 +130,7 @@ class AgentRuntime:
         sandbox_id: str | None = None,
         max_iterations: int = DEFAULT_MAX_TOOL_ITERATIONS,
         on_tool_call: Callable[[int, str, dict[str, Any], str], Awaitable[None]] | None = None,
+        on_activity: Callable[[str], Awaitable[None]] | None = None,
     ) -> dict[str, Any]:
         cid = correlation_id or uuid4()
 
@@ -196,6 +197,8 @@ class AgentRuntime:
             model_kwargs["sandbox_manager"] = sandbox_manager
         if sandbox_id is not None:
             model_kwargs["sandbox_id"] = sandbox_id
+        if on_activity is not None:
+            model_kwargs["on_activity"] = on_activity
 
         is_claude_code = policy.provider == "claude_code"
 
@@ -351,6 +354,7 @@ class AgentRuntime:
         correlation_id: UUID | None = None,
         sandbox_manager: SandboxManager | None = None,
         sandbox_id: str | None = None,
+        on_activity: Callable[[str], Awaitable[None]] | None = None,
     ) -> dict[str, Any]:
         """Like execute_step but streams content, calling on_chunk for each piece.
 
@@ -398,13 +402,15 @@ class AgentRuntime:
             ],
         )
 
-        # Claude Code doesn't support streaming — fall back to batch call
+        # Claude Code uses invoke_streaming via on_activity callback
         if policy.provider == "claude_code":
             model_kwargs: dict[str, Any] = {}
             if sandbox_manager is not None:
                 model_kwargs["sandbox_manager"] = sandbox_manager
             if sandbox_id is not None:
                 model_kwargs["sandbox_id"] = sandbox_id
+            if on_activity is not None:
+                model_kwargs["on_activity"] = on_activity
             result = await self._model_router.call_model(policy, messages, None, **model_kwargs)
             full_content = result.get("content", "")
             if on_chunk is not None and full_content:

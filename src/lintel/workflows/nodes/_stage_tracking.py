@@ -12,6 +12,43 @@ import structlog
 logger = structlog.get_logger()
 
 
+async def log_llm_context(
+    config: Mapping[str, Any],
+    node_name: str,
+    agent_role: str,
+    step_name: str,
+    state: Mapping[str, Any] | None = None,
+) -> None:
+    """Log which agent, provider, model, and skill is being used for an LLM call.
+
+    Call this at the start of any node that invokes the agent runtime so the
+    stage logs show transparency about the LLM routing decision.
+    """
+    configurable = config.get("configurable", {})
+    agent_runtime = configurable.get("agent_runtime")
+    if agent_runtime is None:
+        run_id = config.get("configurable", {}).get("run_id", "")
+        if not run_id and state:
+            run_id = state.get("run_id", "")
+        if run_id:
+            from lintel.workflows.nodes._runtime_registry import get_runtime
+
+            agent_runtime = get_runtime(str(run_id))
+    if agent_runtime is None:
+        return
+
+    try:
+        router = agent_runtime._model_router
+        from lintel.contracts.types import AgentRole
+
+        role_enum = AgentRole(agent_role) if isinstance(agent_role, str) else agent_role
+        policy = await router.select_model(role_enum, step_name)
+        line = f"Agent: {agent_role} | Provider: {policy.provider} | Model: {policy.model_name}"
+        await append_log(config, node_name, line, state)
+    except Exception:
+        logger.debug("log_llm_context_failed", node_name=node_name)
+
+
 def extract_token_usage(node_name: str, result: dict[str, Any]) -> dict[str, Any]:
     """Extract token usage info from an AgentRuntime.execute_step() result."""
     usage = result.get("usage", {})

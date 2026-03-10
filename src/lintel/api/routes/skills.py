@@ -99,7 +99,6 @@ class RegisterSkillRequest(BaseModel):
     version: str
     name: str
     description: str = ""
-    content: str = ""
     category: SkillCategory = SkillCategory.CUSTOM
     input_schema: dict[str, Any] = {}
     output_schema: dict[str, Any] = {}
@@ -136,7 +135,6 @@ async def register_skill(
     if hasattr(store, "_metadata"):
         store._metadata[body.skill_id] = {
             "description": body.description,
-            "content": body.content,
             "category": body.category.value,
         }
     await dispatch_event(
@@ -172,7 +170,6 @@ async def get_skill(
 class UpdateSkillRequest(BaseModel):
     name: str | None = None
     description: str | None = None
-    content: str | None = None
     category: SkillCategory | None = None
     version: str | None = None
     execution_mode: SkillExecutionMode | None = None
@@ -194,8 +191,6 @@ async def update_skill(
     meta = _get_metadata(store, skill_id)
     if "description" in updates:
         meta["description"] = updates.pop("description")
-    if "content" in updates:
-        meta["content"] = updates.pop("content")
     if "category" in updates:
         meta["category"] = updates.pop("category").value
     if hasattr(store, "_metadata"):

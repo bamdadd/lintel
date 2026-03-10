@@ -35,6 +35,7 @@ async def review_output(
     """Review implementation artifacts using the reviewer agent."""
     from lintel.contracts.types import AgentRole, SandboxJob, ThreadRef
     from lintel.workflows.nodes._stage_tracking import (
+        append_log,
         extract_token_usage,
         mark_completed,
         mark_running,
@@ -105,6 +106,10 @@ async def review_output(
     if len(diff_text) > 50000:
         diff_text = diff_text[:50000] + "\n... (diff truncated)"
 
+    from lintel.workflows.nodes._stage_tracking import log_llm_context
+
+    await log_llm_context(_config, "review", "reviewer", "review", state)
+
     review_output_text = ""
     usage: dict[str, Any] | None = None
     if agent_runtime is not None:
@@ -115,6 +120,10 @@ async def review_output(
             channel_id=parts[1] if len(parts) > 1 else "",
             thread_ts=parts[2] if len(parts) > 2 else "",
         )
+        async def _on_activity(activity: str) -> None:
+            if activity:
+                await append_log(_config, "review", activity, state)
+
         try:
             agent_result = await agent_runtime.execute_step(
                 thread_ref=thread_ref,
@@ -126,6 +135,7 @@ async def review_output(
                 ],
                 sandbox_manager=sandbox_manager,
                 sandbox_id=sandbox_id,
+                on_activity=_on_activity,
             )
             review_output_text = agent_result.get("content", "Review complete.")
             usage = extract_token_usage("review", agent_result)

@@ -47,4 +47,18 @@ RUN cd /opt/lintel-deps && uv sync --all-extras --no-install-project 2>&1 | tail
 # Install Claude Code CLI (baked in for fast sandbox startup)
 RUN npm install -g @anthropic-ai/claude-code
 
+# --- Non-root user setup for Claude Code ---
+# Claude Code refuses --permission-mode bypassPermissions as root.
+# The devcontainer base image already has a 'vscode' user (uid 1000).
+# Give vscode ownership of key directories so Claude Code can run properly.
+RUN mkdir -p /home/vscode/.claude /home/vscode/.local /home/vscode/.cache /workspace \
+    && chown -R vscode:vscode /home/vscode /workspace
+
+# Make tools installed as root accessible to vscode user
+RUN cp -r /root/.bun /home/vscode/.bun 2>/dev/null || true \
+    && cp -r /root/.cargo /home/vscode/.cargo 2>/dev/null || true \
+    && chown -R vscode:vscode /home/vscode/.bun /home/vscode/.cargo 2>/dev/null || true
+
+ENV PATH="/home/vscode/.bun/bin:/home/vscode/.cargo/bin:/home/vscode/.local/bin:$PATH"
+
 WORKDIR /workspace

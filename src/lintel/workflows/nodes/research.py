@@ -137,6 +137,10 @@ async def research_codebase(
         )
 
     # Stream LLM output so partial results appear in stage logs in real-time
+    from lintel.workflows.nodes._stage_tracking import log_llm_context
+
+    await log_llm_context(config, "research", "researcher", "research_codebase", state)
+
     _line_buffer: list[str] = []
 
     async def _on_chunk(chunk: str) -> None:
@@ -152,6 +156,11 @@ async def research_codebase(
         _line_buffer.clear()
         if text:
             _line_buffer.append(text)
+
+    async def _on_activity(activity: str) -> None:
+        """Forward Claude Code streaming activity to stage logs."""
+        if activity:
+            await append_log(config, "research", activity, state)
 
     result = await agent_runtime.execute_step_stream(
         thread_ref=thread_ref,
@@ -171,6 +180,7 @@ async def research_codebase(
             },
         ],
         on_chunk=_on_chunk,
+        on_activity=_on_activity,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
     )

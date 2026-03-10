@@ -522,6 +522,81 @@ class Experiment:
 
 Feature flags separate deployment from release. A/B test agent prompts, models, or workflow configurations.
 
+### ENT-12: EngineeringPrinciple (P2)
+
+**Problem:** Projects have no way to codify engineering principles that guide decision-making. Teams need a shared, queryable set of principles — like [JLP Engineering Principles](https://engineering-principles.jlp.engineering/) — that agents and humans can reference during planning, review, and architecture decisions.
+
+**Structure:** Each principle follows the TOGAF architectural principles format: statement, rationale, and implications.
+
+```python
+class PrincipleCategory(StrEnum):
+    DESIGN = "design"
+    OPERATIONAL = "operational"
+    ORGANISATION = "organisation"
+    PRACTICES = "practices"
+    CUSTOM = "custom"
+
+@dataclass(frozen=True)
+class EngineeringPrinciple:
+    principle_id: str
+    project_id: str                          # scoped to project (empty = org-wide)
+    name: str                                # e.g. "Build Differentiators"
+    category: PrincipleCategory = PrincipleCategory.CUSTOM
+    statement: str = ""                      # the principle itself (1-2 sentences)
+    rationale: str = ""                      # why this principle matters
+    implications: tuple[str, ...] = ()       # actionable consequences of adopting this principle
+    position: int = 0                        # display order within category
+    enabled: bool = True
+    created_by: str = ""                     # user_id who added it
+    created_at: str = ""
+    updated_at: str = ""
+```
+
+**All fields optional except `principle_id`, `project_id`, and `name`.** A principle can be as minimal as a name, or as detailed as a full TOGAF-style entry with rationale and implications.
+
+**Usage:**
+- Agents can query project principles during planning/review to align recommendations with team values
+- Principles surface in workflow context (e.g. reviewer agent checks code against "Secure by Design")
+- UI shows principles as a reference page per project, editable by team members
+
+**Example principles for Lintel itself (placeholders):**
+
+#### Design
+
+| # | Name | Statement | Implications |
+|---|------|-----------|--------------|
+| 1 | **Event-Sourced by Default** | All state changes are recorded as immutable events; current state is derived by replaying them. | Store events, not mutable rows. Projections build read models. Never update an event after append. |
+| 2 | **Contracts Over Implementations** | Domain code depends on Protocol interfaces in `contracts/`, never on infrastructure. | New infrastructure (e.g. swap Postgres for DynamoDB) requires zero domain changes. Import direction is always inward. |
+| 3 | **Agents Are First-Class Actors** | AI agents have the same identity, permissions, and auditability as human users. | Every agent action produces an `AuditEntry`. Agents can be team members, assignees, and reviewers. |
+| 4 | **Small, Composable Workflows** | Workflows are graphs of small, single-responsibility nodes — not monolithic scripts. | Each node does one thing (research, implement, review). Nodes are testable in isolation. New workflows are assembled from existing nodes. |
+
+#### Operational
+
+| # | Name | Statement | Implications |
+|---|------|-----------|--------------|
+| 5 | **Observable by Default** | Every workflow run, agent call, and stage transition emits structured traces and metrics. | OpenTelemetry spans wrap all async operations. Dashboards and alerts derive from trace data, not ad-hoc logging. |
+| 6 | **Sandbox Everything** | Agent-generated code executes in isolated sandboxes with resource limits — never on the host. | Sandbox failures are safe failures. Resource caps (CPU, memory, disk, processes) are configurable per project. |
+
+#### Organisation
+
+| # | Name | Statement | Implications |
+|---|------|-----------|--------------|
+| 7 | **Human-in-the-Loop at Trust Boundaries** | Humans approve at meaningful gates (deploy, merge, escalation) — not at every step. | Approval requests are explicit entities with expiry. Agents operate autonomously within guardrails between gates. |
+| 8 | **Learn from Every Delivery** | Every completed work item feeds back learnings that improve future workflows. | Delivery loops capture phase transitions and rework counts. Metrics projections surface patterns (rework rate, cycle time). |
+
+#### Practices
+
+| # | Name | Statement | Implications |
+|---|------|-----------|--------------|
+| 9 | **Test What You Ship** | Every feature includes tests. Agents write tests before implementation (TDD). | CI gates on test coverage. Agent implement nodes run tests in-sandbox and fix until green. |
+| 10 | **Automate the Toil** | If a human does it more than twice, an agent or workflow should do it. | Slack threads trigger workflows. PR events trigger reviews. Guardrails auto-remediate known patterns. |
+| 11 | **Secure by Design** | Security is built into contracts, not bolted on after. PII is detected and anonymized at ingestion. | Presidio scans all inbound text. Credentials live in vault, never in event payloads. Sandbox seccomp profiles are enforced. |
+| 12 | **MCP-First Integration** | External tools integrate through MCP servers before building custom adapters. | Every UI feature has a corresponding MCP tool. Third-party integrations prefer MCP when available. |
+
+**Store:** `PostgresEngineeringPrincipleStore` (new)
+**Events:** `PrincipleAdded`, `PrincipleUpdated`, `PrincipleRemoved`
+**API:** CRUD routes at `/api/v1/projects/{project_id}/principles`
+
 ---
 
 ## Entity Relationship Summary
@@ -548,6 +623,8 @@ Portfolio ──1:N──> Project (product)
                      ├──1:N──> Deployment ──> Environment
                      │
                      ├──1:N──> GuardrailRule
+                     │
+                     ├──1:N──> EngineeringPrinciple (by category)
                      │
                      └──1:N──> Experiment
 ```

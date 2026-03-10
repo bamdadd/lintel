@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   Title,
@@ -15,7 +15,12 @@ import {
   MultiSelect,
   Tabs,
   Text,
+  TypographyStylesProvider,
+  SegmentedControl,
+  Box,
 } from '@mantine/core';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,6 +47,8 @@ export function Component() {
   const { role: agentId } = useParams<{ role: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const [descMode, setDescMode] = useState<'edit' | 'preview'>('preview');
 
   const { data: defResp, isLoading } = useAgentsGetAgentDefinition(
     agentId ?? '',
@@ -140,13 +147,42 @@ export function Component() {
                   placeholder="Agent name"
                   {...defForm.getInputProps('name')}
                 />
-                <Textarea
-                  label="Description"
-                  placeholder="What this agent does"
-                  autosize
-                  minRows={2}
-                  {...defForm.getInputProps('description')}
-                />
+                <Box>
+                  <Group justify="space-between" mb={4}>
+                    <Text size="sm" fw={500}>Description</Text>
+                    <SegmentedControl
+                      size="xs"
+                      value={descMode}
+                      onChange={(v) => setDescMode(v as 'edit' | 'preview')}
+                      data={[
+                        { label: 'Edit', value: 'edit' },
+                        { label: 'Preview', value: 'preview' },
+                      ]}
+                    />
+                  </Group>
+                  {descMode === 'edit' ? (
+                    <Textarea
+                      placeholder="What this agent does (supports Markdown)"
+                      autosize
+                      minRows={6}
+                      maxRows={20}
+                      styles={{ input: { fontFamily: 'monospace', fontSize: 13 } }}
+                      {...defForm.getInputProps('description')}
+                    />
+                  ) : (
+                    <Paper withBorder p="md" radius="sm" mih={120}>
+                      {defForm.values.description ? (
+                        <TypographyStylesProvider>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {defForm.values.description}
+                          </ReactMarkdown>
+                        </TypographyStylesProvider>
+                      ) : (
+                        <Text c="dimmed" size="sm" fs="italic">No description</Text>
+                      )}
+                    </Paper>
+                  )}
+                </Box>
                 <Textarea
                   label="System Prompt"
                   placeholder="You are a ..."

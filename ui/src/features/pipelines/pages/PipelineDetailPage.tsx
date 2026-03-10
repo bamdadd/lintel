@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, Drawer,
+  Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, ScrollArea, Box,
 } from '@mantine/core';
-import { IconArrowLeft, IconX } from '@tabler/icons-react';
+import { IconArrowLeft } from '@tabler/icons-react';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
 } from '@/generated/api/pipelines/pipelines';
 import { PipelineDAG } from '../components/PipelineDAG';
+import type { DAGNode, DAGEdge } from '../components/PipelineDAG';
 import { StepTimingBar } from '../components/StepTimingBar';
-import { StageCard } from '../components/StageCard';
 import type { StageItem } from '../components/StageCard';
+import { StageListView } from '../components/StageListView';
 import { usePipelineSSE } from '../hooks/usePipelineSSE';
 
 const statusColor: Record<string, string> = {
@@ -65,6 +66,8 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
+  // ── Build DAG nodes & edges ─────────────────────────────────────────────
+
   const mapStageType = (stageType: string | undefined): string => {
     if (!stageType) return 'agentStep';
     if (stageType.includes('approve') || stageType.includes('approval'))
@@ -72,35 +75,83 @@ export function Component() {
     return 'agentStep';
   };
 
-  const dagNodes = stages.map((s) => ({
-    id: s.stage_id,
-    type: mapStageType(s.stage_type),
-    label: s.name,
-    status: s.status,
-  }));
+  const dagNodes: DAGNode[] = [];
+  const dagEdges: DAGEdge[] = [];
 
-  const dagEdges: Array<{ source: string; target: string; constraint?: 'passed' | 'trigger'; label?: string }> =
-    stages.slice(1).map((s, i) => ({
-      source: stages[i]!.stage_id,
-      target: s.stage_id,
-    }));
+  // ── Trigger node (far left) ───────────────────────────────────────────
+  const triggerType = pipeline.trigger_type as string | undefined;
+  const triggerKind = triggerType?.startsWith('chat:')
+    ? 'chat'
+    : triggerType?.startsWith('git:')
+      ? 'git'
+      : triggerType?.startsWith('webhook:')
+        ? 'webhook'
+        : triggerType?.startsWith('schedule:')
+          ? 'schedule'
+          : 'manual';
+  const triggerLabel = triggerKind === 'chat'
+    ? 'Chat'
+    : triggerKind === 'git'
+      ? 'Git Push'
+      : triggerKind === 'webhook'
+        ? 'Webhook'
+        : triggerKind === 'schedule'
+          ? 'Schedule'
+          : 'Manual';
 
-  // Always show review → implement loop edge (dotted when unused, solid when active)
-  const reviewStage = stages.find((s) => s.name === 'review');
-  const implementStage = stages.find((s) => s.name === 'implement');
-  if (
-    reviewStage &&
-    implementStage &&
-    reviewStage.stage_id !== implementStage.stage_id
-  ) {
-    const cycles = implementStage.attempts?.length ?? 0;
-    const hasRetried = reviewStage.outputs?.verdict === 'request_changes' || cycles > 0;
-    dagEdges.push({
-      source: reviewStage.stage_id,
-      target: implementStage.stage_id,
-      constraint: hasRetried ? 'trigger' : 'passed',
-      label: cycles > 1 ? `${cycles} retries` : undefined,
+  const triggerId = '__trigger__';
+  dagNodes.push({
+    id: triggerId,
+    type: 'trigger',
+    label: triggerLabel,
+    meta: { triggerKind },
+  });
+
+  // ── Stage nodes ───────────────────────────────────────────────────────
+  const ARTIFACT_ICONS: Record<string, string> = {
+    research_report: 'report',
+    plan: 'plan',
+    diff: 'diff',
+    review: 'review',
+  };
+
+  for (const s of stages) {
+    const outputs = s.outputs ? Object.keys(s.outputs).filter((k) => k in ARTIFACT_ICONS) : [];
+    dagNodes.push({
+      id: s.stage_id,
+      type: mapStageType(s.stage_type),
+      label: s.name,
+      status: s.status,
+      meta: outputs.length > 0 ? { artifacts: outputs } : undefined,
     });
+  }
+
+  // ── Edges: trigger → first stage ──────────────────────────────────────
+  if (stages.length > 0) {
+    dagEdges.push({ source: triggerId, target: stages[0]!.stage_id });
+  }
+
+  // ── Edges: stage → stage (sequential) ─────────────────────────────────
+  for (let i = 1; i < stages.length; i++) {
+    dagEdges.push({
+      source: stages[i - 1]!.stage_id,
+      target: stages[i]!.stage_id,
+    });
+  }
+
+  // ── Output nodes (terminal outputs from any stage with pr_url) ────────
+  for (const s of stages) {
+    if (s.outputs?.pr_url) {
+      const prUrl = s.outputs.pr_url as string;
+      const outputId = `__output_pr_${s.stage_id}`;
+      dagNodes.push({
+        id: outputId,
+        type: 'output',
+        label: `PR #${prUrl.split('/').pop()}`,
+        meta: { outputKind: 'pr_url' },
+      });
+      dagEdges.push({ source: s.stage_id, target: outputId });
+    }
   }
 
   const timingSteps = stages
@@ -153,67 +204,77 @@ export function Component() {
         </Group>
       </Group>
 
-      <Tabs defaultValue="dag">
-        <Tabs.List>
-          <Tabs.Tab value="dag">Pipeline DAG</Tabs.Tab>
-          <Tabs.Tab value="timing">Step Timing</Tabs.Tab>
-        </Tabs.List>
-
-        <Tabs.Panel value="dag" pt="md">
-          {dagNodes.length > 0 ? (
-            <PipelineDAG
-              nodes={dagNodes}
-              edges={dagEdges}
-              onNodeClick={(nodeId) =>
-                setSelectedStageId(
-                  nodeId === selectedStageId ? null : nodeId,
-                )
-              }
-            />
-          ) : (
-            <Paper withBorder p="md">
-              <Text c="dimmed">No stages to visualize</Text>
-            </Paper>
-          )}
-        </Tabs.Panel>
-
-        <Tabs.Panel value="timing" pt="md">
-          {timingSteps.length > 0 ? (
-            <StepTimingBar steps={timingSteps} />
-          ) : (
-            <Paper withBorder p="md">
-              <Text c="dimmed">No timing data available</Text>
-            </Paper>
-          )}
-        </Tabs.Panel>
-      </Tabs>
-
-      <Drawer
-        opened={!!selectedStage}
-        onClose={() => setSelectedStageId(null)}
-        position="right"
-        size="xl"
-        title={
-          selectedStage ? (
-            <Group gap="xs">
-              <Text fw={600}>{selectedStage.name}</Text>
-              <Badge color={statusColor[selectedStage.status] ?? 'gray'} size="sm">
-                {selectedStage.status}
-              </Badge>
-            </Group>
-          ) : null
-        }
-        overlayProps={{ backgroundOpacity: 0.1 }}
-        closeButtonProps={{ icon: <IconX size={18} /> }}
+      {/* ── Two-column layout: DAG left, Steps right ──────────────────────── */}
+      <Box
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 480px',
+          gap: 'var(--mantine-spacing-md)',
+          minHeight: 0,
+        }}
       >
-        {selectedStage && (
-          <StageCard
-            stage={selectedStage}
-            runId={runId!}
-            onActionComplete={handleActionComplete}
-          />
-        )}
-      </Drawer>
+        {/* ── Left: DAG + Timing tabs ─────────────────────────────────────── */}
+        <Box style={{ minWidth: 0 }}>
+          <Tabs defaultValue="dag">
+            <Tabs.List>
+              <Tabs.Tab value="dag">Pipeline DAG</Tabs.Tab>
+              <Tabs.Tab value="timing">Step Timing</Tabs.Tab>
+            </Tabs.List>
+
+            <Tabs.Panel value="dag" pt="md">
+              {dagNodes.length > 0 ? (
+                <PipelineDAG
+                  nodes={dagNodes}
+                  edges={dagEdges}
+                  maxCols={3}
+                  onNodeClick={(nodeId) =>
+                    setSelectedStageId(
+                      nodeId === selectedStageId ? null : nodeId,
+                    )
+                  }
+                />
+              ) : (
+                <Paper withBorder p="md">
+                  <Text c="dimmed">No stages to visualize</Text>
+                </Paper>
+              )}
+            </Tabs.Panel>
+
+            <Tabs.Panel value="timing" pt="md">
+              {timingSteps.length > 0 ? (
+                <StepTimingBar steps={timingSteps} />
+              ) : (
+                <Paper withBorder p="md">
+                  <Text c="dimmed">No timing data available</Text>
+                </Paper>
+              )}
+            </Tabs.Panel>
+          </Tabs>
+        </Box>
+
+        {/* ── Right: Steps panel (always visible) ─────────────────────────── */}
+        <Paper
+          withBorder
+          radius="md"
+          style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
+        >
+          <Group px="md" py="sm" style={(theme) => ({
+            borderBottom: `1px solid ${theme.colors.dark[5]}`,
+          })}>
+            <Text fw={600} size="sm">Steps</Text>
+            <Badge size="sm" variant="light">{stages.length}</Badge>
+          </Group>
+          <ScrollArea style={{ flex: 1 }} offsetScrollbars>
+            <StageListView
+              stages={stages}
+              runId={runId!}
+              selectedStageId={selectedStageId}
+              onStageSelect={setSelectedStageId}
+              onActionComplete={handleActionComplete}
+            />
+          </ScrollArea>
+        </Paper>
+      </Box>
     </Stack>
   );
 }

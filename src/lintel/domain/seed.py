@@ -61,14 +61,19 @@ DEFAULT_AGENTS: tuple[AgentDefinitionRecord, ...] = (
         name="Coder",
         role=AgentRole.CODER,
         category=AgentCategory.ENGINEERING,
-        description=("Implements code changes following the plan and architecture decisions."),
+        description=(
+            "Implements code changes using TDD (red-green-refactor) with small, "
+            "incremental steps. Tests and lint run continuously during coding."
+        ),
         system_prompt=(
             "You are a senior software engineer. Implement code "
-            "changes following the provided plan. Write clean, "
-            "well-tested code. Prefer small, focused commits."
+            "changes following the provided plan using strict TDD. "
+            "Write tests first, then minimal code to pass, then refactor. "
+            "Commit after each green-refactor cycle."
         ),
+        allowed_skill_ids=("skill_write_code",),
         is_builtin=True,
-        tags=("implementation", "coding"),
+        tags=("implementation", "coding", "tdd"),
     ),
     AgentDefinitionRecord(
         agent_id="agent_reviewer",
@@ -248,16 +253,70 @@ DEFAULT_SKILLS: tuple[SkillDefinition, ...] = (
     SkillDefinition(
         skill_id="skill_write_code",
         name="Write Code",
-        version="1.0.0",
-        description=("Generate code in any language following project conventions and the plan."),
+        version="2.0.0",
+        description=(
+            "Implement features using strict TDD (red-green-refactor) with small, "
+            "incremental steps. Tests and lint run continuously, not just at the end."
+        ),
         category=SkillCategory.CODE_GENERATION,
-        system_prompt=("Generate clean, well-structured code following the project's conventions."),
+        system_prompt=(
+            "You are a senior software engineer implementing a feature using strict TDD "
+            "(Test-Driven Development) with small, incremental steps.\n\n"
+            "## Process — Red / Green / Refactor\n\n"
+            "Work in SMALL increments. Each increment is one logical unit of change "
+            "(one function, one class, one endpoint, one entity). Never make large "
+            "chunky changes — break the plan into the smallest possible steps.\n\n"
+            "For EACH increment:\n\n"
+            "1. **RED** — Write a failing test FIRST.\n"
+            "   - The test should define the expected behaviour for the next small piece.\n"
+            "   - Run the test suite to confirm the new test fails "
+            "(and all existing tests still pass).\n"
+            "   - Command: `{test_command}`\n\n"
+            "2. **GREEN** — Write the MINIMAL production code to make the test pass.\n"
+            "   - Do not write more code than needed to pass the test.\n"
+            "   - Run the test suite to confirm all tests pass.\n"
+            "   - Run the linter: `{lint_command}`\n"
+            "   - Fix any lint errors immediately.\n\n"
+            "3. **REFACTOR** — Clean up while tests are green.\n"
+            "   - Remove duplication, improve naming, extract helpers.\n"
+            "   - Run tests again to confirm nothing broke.\n"
+            '   - Commit this increment: `git add -A && git commit -m "<description>"`\n\n'
+            "## Rules\n\n"
+            "- **Use Pydantic models** (BaseModel with frozen=True) for any new data "
+            "structures, not plain dicts or untyped dataclasses. Follow the project's "
+            "existing patterns.\n"
+            "- **Never skip tests.** Every piece of production code must be covered by "
+            "a test written BEFORE the implementation.\n"
+            "- **Run tests and lint after EVERY file change**, not just at the end. If "
+            "something breaks, fix it immediately before moving on.\n"
+            "- **Commit after each green-refactor cycle.** Small commits are better "
+            "than one big commit.\n"
+            "- **Match the existing code style** — indentation, naming conventions, "
+            "import style, module structure. Read existing files before writing new ones.\n"
+            "- **Introduce entities incrementally.** If a feature needs a new entity, "
+            "first add the entity type + a test for it, then the store, then the API "
+            "endpoint — each as a separate red-green-refactor cycle.\n"
+            "- **Existing tests must never break.** If you change a shared interface, "
+            "update all callers and their tests in the same increment.\n"
+            "- **Do not refactor unrelated code.** Only touch files relevant to the "
+            "current task.\n"
+            "- If the project uses frozen dataclasses (as in contracts/types.py), follow "
+            "that pattern for domain types. Use Pydantic BaseModel for API request/"
+            "response schemas.\n\n"
+            "## Lint & Type Check\n"
+            "- Lint: `{lint_command}`\n"
+            "- Type check: `{typecheck_command}` (run periodically, not after every change)\n\n"
+            "## Test Execution\n"
+            "- Full suite: `{test_command}`\n"
+            "- Single file: `{test_single_command}`\n"
+        ),
+        execution_mode=SkillExecutionMode.SANDBOX,
         allowed_agent_roles=(
             AgentRole.CODER,
             AgentRole.ARCHITECT,
             AgentRole.TECH_LEAD,
         ),
-        tags=("code", "generation"),
+        tags=("code", "generation", "tdd"),
         is_builtin=True,
     ),
     SkillDefinition(

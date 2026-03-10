@@ -242,6 +242,7 @@ class DefaultModelRouter:
                 messages,
                 kwargs.get("sandbox_manager"),
                 kwargs.get("sandbox_id"),
+                on_activity=kwargs.get("on_activity"),
             )
 
         api_base: str | None = kwargs.get("api_base")
@@ -327,6 +328,7 @@ class DefaultModelRouter:
         messages: list[dict[str, Any]],
         sandbox_manager: Any,  # noqa: ANN401
         sandbox_id: str | None,
+        on_activity: Any = None,  # noqa: ANN401
     ) -> dict[str, Any]:
         """Route a call to Claude Code CLI in the sandbox."""
         from lintel.infrastructure.models.claude_code import ClaudeCodeProvider
@@ -346,14 +348,26 @@ class DefaultModelRouter:
             elif msg_item.get("role") == "user":
                 user_prompt += msg_item.get("content", "") + "\n"
 
-        result = await provider.invoke(
-            user_prompt.strip(),
-            sandbox_id=sandbox_id,
-            system_prompt=system_prompt.strip(),
-            max_turns=(
-                int(str(policy.extra_params.get("max_turns", 20))) if policy.extra_params else 20
-            ),
+        max_turns = (
+            int(str(policy.extra_params.get("max_turns", 20))) if policy.extra_params else 20
         )
+
+        # Use streaming invoke if an activity callback is provided
+        if on_activity is not None:
+            result = await provider.invoke_streaming(
+                user_prompt.strip(),
+                sandbox_id=sandbox_id,
+                system_prompt=system_prompt.strip(),
+                max_turns=max_turns,
+                on_activity=on_activity,
+            )
+        else:
+            result = await provider.invoke(
+                user_prompt.strip(),
+                sandbox_id=sandbox_id,
+                system_prompt=system_prompt.strip(),
+                max_turns=max_turns,
+            )
 
         return {
             "content": result.get("content", ""),

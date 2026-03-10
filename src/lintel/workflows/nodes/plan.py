@@ -119,12 +119,23 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             state,
         )
 
+    # Truncate research context to avoid overwhelming the planner
+    max_research_chars = 30000
+    if research_context and len(research_context) > max_research_chars:
+        research_context = research_context[:max_research_chars] + "\n\n...(truncated)"
+        original_len = len(state.get("research_context", ""))
+        logger.info("plan_research_context_truncated", original=original_len)
+
     # Build the user prompt with research context
     user_prompt = user_request
     if research_context:
         user_prompt = f"{research_context}\n\n---\n\n## Request\n{user_request}"
 
     thread_ref = _build_thread_ref(state.get("thread_ref", ""))
+
+    from lintel.workflows.nodes._stage_tracking import log_llm_context
+
+    await log_llm_context(config, "plan", "planner", "plan_work", state)
 
     # Stream LLM output so partial results appear in stage logs in real-time
     _line_buffer: list[str] = []
@@ -142,6 +153,11 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         if text:
             _line_buffer.append(text)
 
+    async def _on_activity(activity: str) -> None:
+        """Forward Claude Code streaming activity to stage logs."""
+        if activity:
+            await append_log(config, "plan", activity, state)
+
     result = await agent_runtime.execute_step_stream(
         thread_ref=thread_ref,
         agent_role=AgentRole.PLANNER,
@@ -151,6 +167,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             {"role": "user", "content": user_prompt},
         ],
         on_chunk=_on_chunk,
+        on_activity=_on_activity,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
     )
