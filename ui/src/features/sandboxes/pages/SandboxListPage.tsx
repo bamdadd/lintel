@@ -146,7 +146,7 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const sandboxes = (resp?.data ?? []) as unknown as SandboxEntry[];
+  const sandboxes = ((resp?.data ?? []) as unknown as SandboxEntry[]).filter((s) => s.sandbox_id);
 
   const handleSubmit = form.onSubmit((values) => {
     const devcontainer = JSON.parse(values.devcontainer_json);
