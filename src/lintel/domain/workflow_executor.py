@@ -406,11 +406,12 @@ class WorkflowExecutor:
         elif node_name == "research" and isinstance(output, dict):
             ctx = output.get("research_context", "")
             if ctx:
-                chars = len(ctx)
-                await self._notify_chat(
-                    run_id,
-                    f"✅ **research** completed ({chars:,} chars of codebase context gathered)",
-                )
+                lines = ["✅ **research** completed\n"]
+                lines.append("---\n")
+                # Include the research report (truncate if very long)
+                report = ctx if len(ctx) <= 4000 else ctx[:4000] + "\n\n…(truncated)"
+                lines.append(report)
+                await self._notify_chat(run_id, "\n".join(lines))
             else:
                 await self._notify_chat(run_id, f"✅ **{node_name}** completed")
         elif node_name == "plan" and isinstance(output, dict):
@@ -422,11 +423,61 @@ class WorkflowExecutor:
                     lines.append(f"**Summary:** {summary}\n")
                 lines.append("**Tasks:**")
                 for i, task in enumerate(plan.get("tasks", []), 1):
-                    title = task.get("title", task) if isinstance(task, dict) else str(task)
-                    lines.append(f"  {i}. {title}")
+                    if isinstance(task, dict):
+                        title = task.get("title", "")
+                        desc = task.get("description", "")
+                        complexity = task.get("complexity", "")
+                        suffix = f" [{complexity}]" if complexity else ""
+                        lines.append(f"  {i}. **{title}**{suffix}")
+                        if desc:
+                            lines.append(f"     {desc}")
+                    else:
+                        lines.append(f"  {i}. {task}")
                 await self._notify_chat(run_id, "\n".join(lines))
             else:
                 await self._notify_chat(run_id, f"✅ **{node_name}** completed")
+        elif node_name == "implement" and isinstance(output, dict):
+            lines = ["✅ **implement** completed\n"]
+            # Show agent output summary
+            for entry in output.get("agent_outputs", []):
+                if isinstance(entry, dict):
+                    node = entry.get("node", "")
+                    if node == "implement":
+                        impl_output = entry.get("output", "")
+                        if impl_output:
+                            # Truncate long output
+                            text = (
+                                impl_output
+                                if len(impl_output) <= 4000
+                                else impl_output[:4000] + "\n\n…(truncated)"
+                            )
+                            lines.append("**Changes:**\n")
+                            lines.append(text)
+                    elif node == "test":
+                        verdict = entry.get("verdict", "")
+                        if verdict:
+                            icon = "✅" if verdict == "passed" else "❌"
+                            lines.append(f"\n**Tests:** {icon} {verdict}")
+            # Show diff stats if available
+            for artifact in output.get("sandbox_results", []):
+                if isinstance(artifact, dict):
+                    diff = artifact.get("content", "")
+                    if diff:
+                        diff_lines = diff.strip().split("\n")
+                        files_changed = sum(
+                            1 for l in diff_lines if l.startswith("diff --git")
+                        )
+                        additions = sum(
+                            1 for l in diff_lines if l.startswith("+") and not l.startswith("+++")
+                        )
+                        deletions = sum(
+                            1 for l in diff_lines if l.startswith("-") and not l.startswith("---")
+                        )
+                        lines.append(
+                            f"\n**Diff:** {files_changed} files changed, "
+                            f"+{additions} -{deletions}"
+                        )
+            await self._notify_chat(run_id, "\n".join(lines))
         else:
             await self._notify_chat(run_id, f"✅ **{node_name}** completed")
 

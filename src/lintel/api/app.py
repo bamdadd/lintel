@@ -469,10 +469,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         if recovered:
             import logging
 
-            logging.getLogger("lintel").info(
-                "Recovered %d sandbox containers",
-                len(recovered),
-            )
+            logger = logging.getLogger("lintel")
+            logger.info("Recovered %d sandbox containers", len(recovered))
+            store = app.state.sandbox_store
+            for meta in recovered:
+                try:
+                    await store.add(meta["sandbox_id"], meta)
+                except Exception:
+                    logger.warning("Failed to restore metadata for %s", meta["sandbox_id"])
     except Exception:
         pass  # Docker may not be available
 

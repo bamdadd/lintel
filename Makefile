@@ -36,7 +36,7 @@ format: ## Auto-fix formatting and lint
 	uv run ruff check --fix src/ tests/
 
 serve: ## Start dev server on :8000 (in-memory storage)
-	LINTEL_STORAGE_BACKEND=memory uv run uvicorn lintel.api.app:app --reload --port 8000
+	LINTEL_STORAGE_BACKEND=memory uv run uvicorn lintel.api.app:app --reload --host 0.0.0.0 --port 8000
 
 sandbox-image: ## Build the lintel-sandbox Docker image
 	docker build -t lintel-sandbox:latest -f src/lintel/infrastructure/sandbox/Dockerfile .
@@ -51,7 +51,7 @@ db-down: ## Stop PostgreSQL
 	docker compose down
 
 serve-db: db-up migrate ## Start dev server with PostgreSQL storage
-	LINTEL_STORAGE_BACKEND=postgres LINTEL_DB_DSN=postgresql://lintel:lintel@localhost:5432/lintel LITELLM_LOG=DEBUG uv run uvicorn lintel.api.app:app --reload --port 8000
+	LINTEL_STORAGE_BACKEND=postgres LINTEL_DB_DSN=postgresql://lintel:lintel@localhost:5432/lintel LITELLM_LOG=DEBUG uv run uvicorn lintel.api.app:app --reload --host 0.0.0.0 --port 8000
 
 migrate: ## Run event store migrations
 	LINTEL_DB_DSN=$${LINTEL_DB_DSN:-postgresql://lintel:lintel@localhost:5432/lintel} \
