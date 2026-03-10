@@ -79,25 +79,27 @@ export function Component() {
     status: s.status,
   }));
 
-  const dagEdges: Array<{ source: string; target: string; constraint?: 'passed' | 'trigger' }> =
+  const dagEdges: Array<{ source: string; target: string; constraint?: 'passed' | 'trigger'; label?: string }> =
     stages.slice(1).map((s, i) => ({
       source: stages[i]!.stage_id,
       target: s.stage_id,
     }));
 
-  // Add review → implement loop edge if review requested changes
+  // Always show review → implement loop edge (dotted when unused, solid when active)
   const reviewStage = stages.find((s) => s.name === 'review');
   const implementStage = stages.find((s) => s.name === 'implement');
   if (
     reviewStage &&
     implementStage &&
-    reviewStage.outputs?.verdict === 'request_changes' &&
     reviewStage.stage_id !== implementStage.stage_id
   ) {
+    const cycles = implementStage.attempts?.length ?? 0;
+    const hasRetried = reviewStage.outputs?.verdict === 'request_changes' || cycles > 0;
     dagEdges.push({
       source: reviewStage.stage_id,
       target: implementStage.stage_id,
-      constraint: 'trigger',
+      constraint: hasRetried ? 'trigger' : 'passed',
+      label: cycles > 1 ? `${cycles} retries` : undefined,
     });
   }
 

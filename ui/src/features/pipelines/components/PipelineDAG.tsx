@@ -17,6 +17,7 @@ interface PipelineDAGProps {
     source: string;
     target: string;
     constraint?: 'passed' | 'trigger'; // Concourse-style edge types
+    label?: string;
   }>;
   onNodeClick?: (nodeId: string) => void;
 }
@@ -61,12 +62,14 @@ export function PipelineDAG({ nodes: inputNodes, edges: inputEdges, onNodeClick 
     id: `e-${i}`,
     source: e.source,
     target: e.target,
+    label: e.label,
     animated: inputNodes.find((n) => n.id === e.source)?.status === 'running',
     markerEnd: { type: MarkerType.ArrowClosed },
     style: {
-      stroke: '#6b7280',
+      stroke: e.constraint === 'trigger' ? '#eab308' : '#6b7280',
       strokeDasharray: e.constraint === 'passed' ? '5 5' : undefined,
     },
+    labelStyle: { fontSize: 11, fill: '#eab308' },
   }));
 
   const handleNodeClick = useCallback(

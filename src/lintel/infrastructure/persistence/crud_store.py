@@ -42,6 +42,17 @@ def _reconstruct_nested(cls: type, data: dict[str, Any]) -> Any:  # noqa: ANN401
         ):
             with contextlib.suppress(ValueError):
                 filtered[k] = h(v)
+        elif isinstance(v, list) and h is not None:
+            hint_str = str(h)
+            if "tuple" in hint_str:
+                inner_type = _extract_tuple_item_type(h)
+                if inner_type is not None and dc.is_dataclass(inner_type):
+                    filtered[k] = tuple(
+                        _reconstruct_nested(inner_type, item) if isinstance(item, dict) else item
+                        for item in v
+                    )
+                else:
+                    filtered[k] = tuple(v)
     return cls(**filtered)
 
 

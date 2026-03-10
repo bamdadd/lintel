@@ -358,6 +358,21 @@ class StageStatus(StrEnum):
 
 
 @dataclass(frozen=True)
+class StageAttempt:
+    """A single execution attempt of a pipeline stage."""
+
+    attempt: int  # 1-based attempt number
+    status: StageStatus = StageStatus.PENDING
+    inputs: dict[str, object] | None = None
+    outputs: dict[str, object] | None = None
+    error: str = ""
+    duration_ms: int = 0
+    started_at: str = ""
+    finished_at: str = ""
+    logs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class Stage:
     """A single step in a pipeline execution."""
 
@@ -373,6 +388,7 @@ class Stage:
     finished_at: str = ""
     logs: tuple[str, ...] = ()
     retry_count: int = 0
+    attempts: tuple[StageAttempt, ...] = ()
 
 
 @dataclass(frozen=True)

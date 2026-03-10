@@ -81,15 +81,21 @@ async def mark_running(
     config: Mapping[str, Any],
     node_name: str,
     state: Mapping[str, Any] | None = None,
+    inputs: dict[str, object] | None = None,
 ) -> None:
-    """Mark a pipeline stage as running. Call at the start of a node."""
+    """Mark a pipeline stage as running. Call at the start of a node.
+
+    If the stage was previously completed (re-entry during a loop), the
+    previous execution is archived as a :class:`StageAttempt` and the
+    stage is reset for a fresh run.
+    """
     stage_name = NODE_TO_STAGE.get(node_name)
     if not stage_name:
         return
     run_id = _get_run_id(config, state)
     if not run_id:
         return
-    await update_stage(config, run_id, stage_name, "running", state=state)
+    await _archive_and_reset(config, run_id, stage_name, state=state, inputs=inputs)
 
 
 async def append_log(
@@ -137,6 +143,7 @@ async def append_log(
                     finished_at=s.finished_at,
                     logs=tuple(existing_logs),
                     retry_count=s.retry_count,
+                    attempts=s.attempts,
                 )
             )
         else:
@@ -276,6 +283,84 @@ def _pattern_matches(pattern: str, event: str) -> bool:
     return all(p == "*" or p == e for p, e in zip(p_parts, e_parts, strict=True))
 
 
+async def _archive_and_reset(
+    config: Mapping[str, Any],
+    run_id: str,
+    stage_name: str,
+    state: Mapping[str, Any] | None = None,
+    inputs: dict[str, object] | None = None,
+) -> None:
+    """If a stage was previously completed, archive its data as an attempt and reset."""
+    from datetime import UTC, datetime
+
+    from lintel.contracts.types import PipelineRun, Stage, StageAttempt, StageStatus
+
+    pipeline_store = _get_pipeline_store(config, state)
+    if pipeline_store is None:
+        return
+
+    run = await pipeline_store.get(run_id)
+    if run is None:
+        return
+
+    now = datetime.now(tz=UTC).isoformat()
+    new_stages: list[Stage] = []
+    for s in run.stages:
+        if s.name == stage_name:
+            attempts = list(s.attempts)
+            # Archive previous execution if stage was already started
+            if s.status not in (StageStatus.PENDING,):
+                attempts.append(
+                    StageAttempt(
+                        attempt=len(attempts) + 1,
+                        status=s.status,
+                        inputs=s.inputs,
+                        outputs=s.outputs,
+                        error=s.error,
+                        duration_ms=s.duration_ms,
+                        started_at=s.started_at,
+                        finished_at=s.finished_at,
+                        logs=s.logs,
+                    )
+                )
+            new_stages.append(
+                Stage(
+                    stage_id=s.stage_id,
+                    name=s.name,
+                    stage_type=s.stage_type,
+                    status=StageStatus.RUNNING,
+                    inputs=inputs,
+                    outputs=None,
+                    error="",
+                    duration_ms=0,
+                    started_at=now,
+                    finished_at="",
+                    logs=(),
+                    retry_count=len(attempts),
+                    attempts=tuple(attempts),
+                )
+            )
+        else:
+            new_stages.append(s)
+
+    updated = PipelineRun(
+        run_id=run.run_id,
+        project_id=run.project_id,
+        work_item_id=run.work_item_id,
+        workflow_definition_id=run.workflow_definition_id,
+        status=run.status,
+        stages=tuple(new_stages),
+        trigger_type=run.trigger_type,
+        trigger_id=run.trigger_id,
+        environment_id=run.environment_id,
+        created_at=run.created_at,
+    )
+    try:
+        await pipeline_store.update(updated)
+    except Exception:
+        logger.warning("archive_and_reset_failed", run_id=run_id, stage_name=stage_name)
+
+
 async def update_stage(
     config: Mapping[str, Any],
     run_id: str,
@@ -324,6 +409,7 @@ async def update_stage(
                     finished_at=s.finished_at,
                     logs=s.logs,
                     retry_count=s.retry_count,
+                    attempts=s.attempts,
                 )
             )
         else:

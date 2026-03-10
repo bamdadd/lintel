@@ -41,6 +41,17 @@ export interface StageItem {
   error?: string;
   logs?: string[];
   retry_count?: number;
+  attempts?: Array<{
+    attempt: number;
+    status: string;
+    inputs?: Record<string, unknown>;
+    outputs?: Record<string, unknown>;
+    error?: string;
+    duration_ms?: number;
+    started_at?: string;
+    finished_at?: string;
+    logs?: string[];
+  }>;
 }
 
 interface StageCardProps {
@@ -407,6 +418,62 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
                 2,
               )}
             </Code>
+          </Collapsible>
+        )}
+
+        {/* ── Collapsible: Previous Attempts ─────────────────────────────── */}
+        {(stage.attempts?.length ?? 0) > 0 && (
+          <Collapsible
+            title={`Previous Attempts (${stage.attempts!.length})`}
+            defaultOpen={false}
+            data-testid="section-attempts"
+          >
+            <Stack gap="xs">
+              {stage.attempts!.map((att) => (
+                <Paper key={att.attempt} withBorder p="xs">
+                  <Group justify="space-between" mb={4}>
+                    <Text size="sm" fw={600}>
+                      Attempt {att.attempt}
+                    </Text>
+                    <Badge
+                      size="sm"
+                      color={statusColor[att.status] ?? 'gray'}
+                    >
+                      {att.status}
+                    </Badge>
+                  </Group>
+                  {att.duration_ms != null && (
+                    <Text size="xs" c="dimmed">
+                      Duration: {(att.duration_ms / 1000).toFixed(1)}s
+                    </Text>
+                  )}
+                  {att.error && (
+                    <Text size="xs" c="red" mt={4}>
+                      {att.error}
+                    </Text>
+                  )}
+                  {att.logs && att.logs.length > 0 && (
+                    <Collapsible title="Logs" defaultOpen={false}>
+                      <ScrollArea h={120}>
+                        <Code
+                          block
+                          style={{ fontSize: 11, backgroundColor: 'var(--mantine-color-dark-8)' }}
+                        >
+                          {att.logs.join('\n')}
+                        </Code>
+                      </ScrollArea>
+                    </Collapsible>
+                  )}
+                  {att.outputs && Object.keys(att.outputs).length > 0 && (
+                    <Collapsible title="Outputs" defaultOpen={false}>
+                      <Code block style={{ fontSize: 11 }}>
+                        {JSON.stringify(att.outputs, null, 2)}
+                      </Code>
+                    </Collapsible>
+                  )}
+                </Paper>
+              ))}
+            </Stack>
           </Collapsible>
         )}
     </Stack>
