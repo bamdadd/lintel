@@ -149,6 +149,7 @@ class StageRunner:
             "research_context": "",
             "token_usage": [],
             "credential_ids": [],
+            "review_cycles": 0,
         }
         base.update(overrides)
         return base

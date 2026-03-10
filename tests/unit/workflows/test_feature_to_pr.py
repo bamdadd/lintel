@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from lintel.workflows.feature_to_pr import (
+    MAX_REVIEW_CYCLES,
+    _review_decision,
     _route_decision,
     build_feature_to_pr_graph,
 )
@@ -116,6 +118,50 @@ class TestGraphStructure:
         start_edges = [e for e in draw.edges if e.source == "__start__"]
         assert len(start_edges) == 1
         assert start_edges[0].target == "ingest"
+
+
+class TestReviewDecision:
+    """Tests for the review → implement loop decision."""
+
+    def test_approve_continues(self) -> None:
+        state: dict[str, Any] = {
+            "agent_outputs": [{"node": "review", "verdict": "approve", "output": "LGTM"}],
+            "review_cycles": 0,
+        }
+        assert _review_decision(state) == "continue"  # type: ignore[arg-type]
+
+    def test_request_changes_revises_when_under_limit(self) -> None:
+        state: dict[str, Any] = {
+            "agent_outputs": [
+                {"node": "review", "verdict": "request_changes", "output": "Fix X"},
+            ],
+            "review_cycles": 0,
+        }
+        assert _review_decision(state) == "revise"  # type: ignore[arg-type]
+
+    def test_request_changes_closes_at_limit(self) -> None:
+        state: dict[str, Any] = {
+            "agent_outputs": [
+                {"node": "review", "verdict": "request_changes", "output": "Fix X"},
+            ],
+            "review_cycles": MAX_REVIEW_CYCLES,
+        }
+        assert _review_decision(state) == "close"  # type: ignore[arg-type]
+
+    def test_error_closes(self) -> None:
+        state: dict[str, Any] = {
+            "error": "something broke",
+            "agent_outputs": [],
+            "review_cycles": 0,
+        }
+        assert _review_decision(state) == "close"  # type: ignore[arg-type]
+
+    def test_no_review_output_continues(self) -> None:
+        state: dict[str, Any] = {
+            "agent_outputs": [],
+            "review_cycles": 0,
+        }
+        assert _review_decision(state) == "continue"  # type: ignore[arg-type]
 
 
 class TestNodeFunctions:

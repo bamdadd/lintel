@@ -43,3 +43,6 @@ class ThreadWorkflowState(TypedDict):
 
     # Token usage tracking (accumulated per node)
     token_usage: Annotated[list[dict[str, Any]], add]
+
+    # Review cycle counter (implement ↔ review loop)
+    review_cycles: int

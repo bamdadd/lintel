@@ -79,10 +79,27 @@ export function Component() {
     status: s.status,
   }));
 
-  const dagEdges = stages.slice(1).map((s, i) => ({
-    source: stages[i]!.stage_id,
-    target: s.stage_id,
-  }));
+  const dagEdges: Array<{ source: string; target: string; constraint?: 'passed' | 'trigger' }> =
+    stages.slice(1).map((s, i) => ({
+      source: stages[i]!.stage_id,
+      target: s.stage_id,
+    }));
+
+  // Add review → implement loop edge if review requested changes
+  const reviewStage = stages.find((s) => s.name === 'review');
+  const implementStage = stages.find((s) => s.name === 'implement');
+  if (
+    reviewStage &&
+    implementStage &&
+    reviewStage.outputs?.verdict === 'request_changes' &&
+    reviewStage.stage_id !== implementStage.stage_id
+  ) {
+    dagEdges.push({
+      source: reviewStage.stage_id,
+      target: implementStage.stage_id,
+      constraint: 'trigger',
+    });
+  }
 
   const timingSteps = stages
     .filter((s) => s.started_at && s.finished_at)

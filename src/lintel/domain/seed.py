@@ -732,14 +732,24 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             ("approval_gate_research", "plan"),
             ("plan", "approval_gate_spec"),
             ("approval_gate_spec", "implement"),
-            ("implement", "review"),
-            ("review", "approval_gate_pr"),
             ("approval_gate_pr", "close"),
         ),
         conditional_edges=(
             {
                 "source": "route",
                 "targets": {"setup_workspace": "setup_workspace", "close": "close"},
+            },
+            {
+                "source": "implement",
+                "targets": {"continue": "review", "close": "close"},
+            },
+            {
+                "source": "review",
+                "targets": {
+                    "continue": "approval_gate_pr",
+                    "revise": "implement",
+                    "close": "close",
+                },
             },
         ),
         entry_point="ingest",

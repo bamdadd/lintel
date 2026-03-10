@@ -153,10 +153,13 @@ async def review_output(
         stage_outputs["token_usage"] = usage
     await mark_completed(_config, "review", state, outputs=stage_outputs or None)
 
+    review_cycles = state.get("review_cycles", 0) + 1
+
     result_dict: dict[str, Any] = {
-        "current_phase": "awaiting_pr_approval",
-        "pending_approvals": ["pr_approval"],
+        "current_phase": "awaiting_pr_approval" if verdict == "approve" else "implementing",
+        "pending_approvals": ["pr_approval"] if verdict == "approve" else [],
         "agent_outputs": [{"node": "review", "verdict": verdict, "output": review_output_text}],
+        "review_cycles": review_cycles,
     }
     if usage:
         result_dict["token_usage"] = [usage]

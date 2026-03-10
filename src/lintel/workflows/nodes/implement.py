@@ -152,10 +152,26 @@ async def spawn_implementation(
     research_section = f"\n\n## Research Context\n{research_context}" if research_context else ""
     guidelines_section = f"\n\n## Project Guidelines\n{guidelines}" if guidelines else ""
 
+    # Check for review feedback from a previous cycle
+    review_feedback = ""
+    review_cycles = state.get("review_cycles", 0)
+    if review_cycles > 0:
+        for output in reversed(state.get("agent_outputs", [])):
+            if isinstance(output, dict) and output.get("node") == "review":
+                review_feedback = output.get("output", "")
+                break
+
+    review_section = (
+        f"\n\n## Review Feedback (cycle {review_cycles})\n"
+        f"The reviewer requested changes. Address ALL issues below:\n{review_feedback}"
+        if review_feedback
+        else ""
+    )
+
     user_prompt = (
         f"## Plan\n{plan_summary}\n\n## Tasks\n{task_text}\n\n"
         f"## Original request\n{chr(10).join(messages)}"
-        f"{file_context}{research_section}{guidelines_section}"
+        f"{file_context}{research_section}{guidelines_section}{review_section}"
     )
 
     # Parse thread ref

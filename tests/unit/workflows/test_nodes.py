@@ -120,8 +120,16 @@ class TestPlanNode:
 
 
 class TestReviewNode:
-    async def test_sets_pr_approval_phase(self) -> None:
+    async def test_request_changes_sets_implementing_phase(self) -> None:
+        """Without agent runtime, verdict defaults to request_changes → implementing."""
         state: dict[str, Any] = {"sandbox_results": [{"diff": "some changes"}]}
+        result = await review_output(state)  # type: ignore[arg-type]
+        assert result["current_phase"] == "implementing"
+        assert result["review_cycles"] == 1
+
+    async def test_approve_sets_pr_approval_phase(self) -> None:
+        """No changes to review → auto-approve → awaiting_pr_approval."""
+        state: dict[str, Any] = {"sandbox_results": []}
         result = await review_output(state)  # type: ignore[arg-type]
         assert result["current_phase"] == "awaiting_pr_approval"
 

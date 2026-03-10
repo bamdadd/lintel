@@ -26,6 +26,8 @@ from lintel.workflows.nodes.route import route_intent
 from lintel.workflows.nodes.setup_workspace import setup_workspace
 from lintel.workflows.state import ThreadWorkflowState
 
+MAX_REVIEW_CYCLES = 2
+
 
 def build_feature_to_pr_graph() -> StateGraph[Any]:
     """Build the feature-to-PR workflow graph."""
@@ -74,8 +76,8 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     )
     graph.add_conditional_edges(
         "review",
-        _check_phase,
-        {"continue": "approval_gate_pr", "close": "close"},
+        _review_decision,
+        {"continue": "approval_gate_pr", "revise": "implement", "close": "close"},
     )
     graph.add_edge("approval_gate_pr", "close")
     graph.add_edge("close", END)
@@ -99,10 +101,7 @@ def _check_phase(state: ThreadWorkflowState) -> str:
     # Check if the last agent output has a failed verdict
     outputs = state.get("agent_outputs", [])
     for output in reversed(outputs):
-        if isinstance(output, dict) and output.get("verdict") in (
-            "failed",
-            "request_changes",
-        ):
+        if isinstance(output, dict) and output.get("verdict") == "failed":
             _logger.info(
                 "check_phase_stop",
                 reason="failed_verdict",
@@ -115,6 +114,44 @@ def _check_phase(state: ThreadWorkflowState) -> str:
         phase=phase,
         output_count=len(outputs),
     )
+    return "continue"
+
+
+def _review_decision(state: ThreadWorkflowState) -> str:
+    """After review: approve → continue, request_changes → revise (with cycle limit)."""
+    import structlog
+
+    _logger = structlog.get_logger()
+
+    if state.get("error"):
+        return "close"
+
+    review_cycles = state.get("review_cycles", 0)
+    outputs = state.get("agent_outputs", [])
+
+    for output in reversed(outputs):
+        if not isinstance(output, dict):
+            continue
+        if output.get("node") != "review":
+            continue
+        if output.get("verdict") == "request_changes":
+            if review_cycles < MAX_REVIEW_CYCLES:
+                _logger.info(
+                    "review_decision_revise",
+                    cycle=review_cycles + 1,
+                    max_cycles=MAX_REVIEW_CYCLES,
+                )
+                return "revise"
+            _logger.info(
+                "review_decision_max_cycles",
+                cycles=review_cycles,
+                max_cycles=MAX_REVIEW_CYCLES,
+            )
+            return "close"
+        if output.get("verdict") == "approve":
+            return "continue"
+        break
+
     return "continue"
 
 
