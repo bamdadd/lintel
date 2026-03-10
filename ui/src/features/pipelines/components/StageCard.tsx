@@ -201,7 +201,7 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
   const hasDiff = !!stage.outputs?.diff;
 
   // Other outputs (everything except plan / research_report / diff / sandbox_id / review)
-  const HIDDEN_OUTPUT_KEYS = new Set(['plan', 'research_report', 'diff', 'sandbox_id', 'review']);
+  const HIDDEN_OUTPUT_KEYS = new Set(['plan', 'research_report', 'diff', 'sandbox_id', 'review', 'pr_url']);
   const otherOutputEntries = stage.outputs
     ? Object.entries(stage.outputs).filter(([k]) => !HIDDEN_OUTPUT_KEYS.has(k))
     : [];
@@ -289,6 +289,24 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
             >
               {(stage.outputs.sandbox_id as string).slice(0, 12)}
             </Badge>
+          </Group>
+        )}
+
+        {/* ── PR link ────────────────────────────────────────────────── */}
+        {!!stage.outputs?.pr_url && (
+          <Group gap="xs">
+            <Text size="sm">Pull Request:</Text>
+            <Button
+              component="a"
+              href={stage.outputs.pr_url as string}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="light"
+              size="compact-sm"
+              data-testid="pr-link"
+            >
+              {(stage.outputs.pr_url as string).replace(/^https?:\/\/github\.com\//, '')}
+            </Button>
           </Group>
         )}
 
