@@ -220,12 +220,23 @@ async def setup_workspace(
             channel_id=parts[1] if len(parts) > 1 else "",
             thread_ts=parts[2] if len(parts) > 2 else "",
         )
-        sandbox_config = SandboxConfig(network_enabled=False)
+        # Claude Code needs network access to reach the Anthropic API
+        credentials_json = _get_claude_code_credentials_json()
+        sandbox_config = SandboxConfig(network_enabled=bool(credentials_json))
         sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
         await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(command=f"mkdir -p {repo_path}", timeout_seconds=10),
         )
+        # Inject Claude Code credentials so downstream nodes can use the CLI
+        if credentials_json:
+            await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
+            await append_log(
+                config,
+                "setup_workspace",
+                "Claude Code credentials injected into sandbox",
+                state,
+            )
         await append_log(
             config,
             "setup_workspace",

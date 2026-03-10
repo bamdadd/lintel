@@ -250,8 +250,9 @@ async def _trigger_workflow_for_work_item(
         except Exception:
             logger.warning("pipeline_run_creation_failed", exc_info=True)
 
-    # Resolve repo context from project
+    # Resolve repo context from project — look up repo_ids to get actual URLs
     project_store = getattr(request.app.state, "project_store", None)
+    repo_store = getattr(request.app.state, "repository_store", None)
     repo_url = ""
     repo_urls: tuple[str, ...] = ()
     repo_branch = "main"
@@ -260,10 +261,26 @@ async def _trigger_workflow_for_work_item(
         try:
             project = await project_store.get(project_id)
             if project:
-                repo_url = project.get("repo_url", "")
-                repo_urls = tuple(project.get("_repo_urls", ()))
                 repo_branch = project.get("default_branch", "main")
                 credential_ids = tuple(project.get("credential_ids", ()))
+                # Resolve repo IDs to URLs (same logic as chat route)
+                repo_ids = project.get("repo_ids", ())
+                if isinstance(repo_ids, (list, tuple)) and repo_ids and repo_store:
+                    first_repo = await repo_store.get(repo_ids[0])
+                    if first_repo is not None:
+                        repo_url = (
+                            first_repo.url
+                            if hasattr(first_repo, "url")
+                            else first_repo.get("url", "")
+                        )
+                        all_urls: list[str] = [repo_url] if repo_url else []
+                        for rid in repo_ids[1:]:
+                            extra = await repo_store.get(rid)
+                            if extra is not None:
+                                u = extra.url if hasattr(extra, "url") else extra.get("url", "")
+                                if u:
+                                    all_urls.append(u)
+                        repo_urls = tuple(all_urls)
         except Exception:
             pass
 
