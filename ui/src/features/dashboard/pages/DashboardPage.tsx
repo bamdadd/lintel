@@ -250,7 +250,7 @@ function getTopTasks(
   workItems: Record<string, unknown>[],
   projectMap: Map<string, string>,
   limit: number,
-): Array<{ title: string; status: string; project: string; workType: string; id: string }> {
+): Array<{ title: string; status: string; project: string; workType: string; id: string; projectId: string }> {
   return [...workItems]
     .sort((a, b) => {
       const pa = STATUS_PRIORITY[String(a.status)] ?? 99;
@@ -264,6 +264,7 @@ function getTopTasks(
       title: String(wi.title ?? ''),
       status: String(wi.status ?? 'unknown'),
       project: projectMap.get(String(wi.project_id ?? '')) ?? 'Unknown',
+      projectId: String(wi.project_id ?? ''),
       workType: String(wi.work_type ?? ''),
     }));
 }
@@ -279,6 +280,7 @@ function countByField(items: unknown[], field: string): Record<string, number> {
 }
 
 export function Component() {
+  const navigate = useNavigate();
   const { data: overviewResp } = useMetricsOverviewMetrics();
   const { data: threadsResp, isLoading: threadsLoading } = useThreadsListThreads();
   const { data: eventsResp } = useEventsListEvents();
@@ -461,7 +463,19 @@ export function Component() {
             </Table.Thead>
             <Table.Tbody>
               {topTasks.map((task) => (
-                <Table.Tr key={task.id}>
+                <Table.Tr
+                  key={task.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={async () => {
+                    try {
+                      const resp = await fetch(`/api/v1/projects/${task.projectId}/boards`);
+                      const boards = await resp.json();
+                      const boardId = boards?.[0]?.board_id;
+                      if (boardId) navigate(`/boards/${boardId}?work_item=${task.id}`);
+                      else navigate('/boards');
+                    } catch { navigate('/boards'); }
+                  }}
+                >
                   <Table.Td>
                     <Text size="sm" fw={500} lineClamp={1}>{task.title}</Text>
                   </Table.Td>
