@@ -22,7 +22,7 @@ import {
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconTrashX } from '@tabler/icons-react';
 import { useNavigate } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -206,7 +206,37 @@ export function Component() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Sandboxes</Title>
-        <Button onClick={open}>Create Sandbox</Button>
+        <Group gap="xs">
+          {sandboxes.length > 0 && (
+            <Button
+              variant="light"
+              color="red"
+              leftSection={<IconTrashX size={16} />}
+              onClick={() => {
+                const ids = sandboxes.map((s) => s.sandbox_id);
+                let completed = 0;
+                for (const id of ids) {
+                  destroyMutation.mutate(
+                    { sandboxId: id },
+                    {
+                      onSuccess: () => {
+                        completed++;
+                        if (completed === ids.length) {
+                          notifications.show({ title: 'Destroyed', message: `Removed ${ids.length} sandboxes`, color: 'orange' });
+                          void queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes'] });
+                          setSelectedSandbox(null);
+                        }
+                      },
+                    },
+                  );
+                }
+              }}
+            >
+              Destroy All
+            </Button>
+          )}
+          <Button onClick={open}>Create Sandbox</Button>
+        </Group>
       </Group>
 
       {sandboxes.length === 0 && !selectedSandbox ? (
