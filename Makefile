@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-postgres test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
+.PHONY: help install test test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -20,6 +20,9 @@ test-integration: migrate ## Run integration tests (requires postgres + migratio
 
 test-e2e: ## Run e2e tests
 	uv run pytest tests/e2e -v
+
+test-sandbox: ## Sandbox smoke + stage tests (requires Docker + sandbox image)
+	uv run pytest tests/integration/sandbox -v --run-sandbox
 
 lint: ## Check linting and formatting
 	uv run ruff check src/ tests/

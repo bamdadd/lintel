@@ -49,6 +49,7 @@ packages = ["src/lintel"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["tests/fixtures"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM", "TCH", "RUF"]
