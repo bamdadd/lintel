@@ -410,7 +410,7 @@ class PostgresSandboxStore:
         self._store = PostgresDictStore(pool, "sandbox")
 
     async def add(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
-        await self._store.put(sandbox_id, metadata)
+        await self._store.put(sandbox_id, {"sandbox_id": sandbox_id, **metadata})
 
     async def get(self, sandbox_id: str) -> dict[str, Any] | None:
         return await self._store.get(sandbox_id)
@@ -419,7 +419,7 @@ class PostgresSandboxStore:
         return await self._store.list_all()
 
     async def update(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
-        await self._store.put(sandbox_id, metadata)
+        await self._store.put(sandbox_id, {"sandbox_id": sandbox_id, **metadata})
 
     async def remove(self, sandbox_id: str) -> None:
         await self._store.remove(sandbox_id)
