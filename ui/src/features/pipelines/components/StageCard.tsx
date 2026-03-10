@@ -199,18 +199,9 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <Paper withBorder p="md" data-testid="stage-card">
-      <Stack gap="sm">
-        {/* ── Header ──────────────────────────────────────────────────── */}
-        <Group justify="space-between">
-          <Group gap="xs">
-            <Text fw={600}>{stage.name}</Text>
-            <Badge color={statusColor[stage.status] ?? 'gray'}>
-              {stage.status}
-            </Badge>
-          </Group>
-
-          <Group gap="xs">
+    <Stack gap="sm" data-testid="stage-card">
+        {/* ── Actions ─────────────────────────────────────────────────── */}
+        <Group justify="flex-end" gap="xs">
             {stage.status === 'waiting_approval' && (
               <>
                 <Button
@@ -252,7 +243,6 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
                   ` (${stage.retry_count}/3)`}
               </Button>
             )}
-          </Group>
         </Group>
 
         {/* ── Meta ────────────────────────────────────────────────────── */}
@@ -312,7 +302,7 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
         {hasLogs && (
           <Collapsible
             title="Logs"
-            defaultOpen={false}
+            defaultOpen
             data-testid="section-logs"
           >
             <ScrollArea
@@ -343,7 +333,7 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
         {hasResearchReport && (
           <Collapsible
             title="Research Report"
-            defaultOpen={false}
+            defaultOpen
             data-testid="section-research"
           >
             <StageReportEditor
@@ -360,7 +350,7 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
         {hasPlan && (
           <Collapsible
             title="Implementation Plan"
-            defaultOpen={false}
+            defaultOpen
             data-testid="section-plan"
           >
             <PlanView
@@ -377,7 +367,7 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
         {hasDiff && (
           <Collapsible
             title="Code Changes"
-            defaultOpen={false}
+            defaultOpen
             data-testid="section-diff"
           >
             <DiffView content={stage.outputs!.diff as string} />
@@ -407,7 +397,7 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
         {hasOtherOutputs && (
           <Collapsible
             title="Outputs"
-            defaultOpen={false}
+            defaultOpen
             data-testid="section-outputs"
           >
             <Code block style={{ fontSize: 12 }}>
@@ -419,7 +409,6 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
             </Code>
           </Collapsible>
         )}
-      </Stack>
-    </Paper>
+    </Stack>
   );
 }

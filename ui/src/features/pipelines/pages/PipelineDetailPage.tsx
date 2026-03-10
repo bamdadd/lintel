@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs,
+  Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, Drawer,
 } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconX } from '@tabler/icons-react';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
@@ -159,25 +159,15 @@ export function Component() {
 
         <Tabs.Panel value="dag" pt="md">
           {dagNodes.length > 0 ? (
-            <>
-              <PipelineDAG
-                nodes={dagNodes}
-                edges={dagEdges}
-                onNodeClick={(nodeId) =>
-                  setSelectedStageId(
-                    nodeId === selectedStageId ? null : nodeId,
-                  )
-                }
-              />
-
-              {selectedStage && (
-                <StageCard
-                  stage={selectedStage}
-                  runId={runId!}
-                  onActionComplete={handleActionComplete}
-                />
-              )}
-            </>
+            <PipelineDAG
+              nodes={dagNodes}
+              edges={dagEdges}
+              onNodeClick={(nodeId) =>
+                setSelectedStageId(
+                  nodeId === selectedStageId ? null : nodeId,
+                )
+              }
+            />
           ) : (
             <Paper withBorder p="md">
               <Text c="dimmed">No stages to visualize</Text>
@@ -195,6 +185,33 @@ export function Component() {
           )}
         </Tabs.Panel>
       </Tabs>
+
+      <Drawer
+        opened={!!selectedStage}
+        onClose={() => setSelectedStageId(null)}
+        position="right"
+        size="xl"
+        title={
+          selectedStage ? (
+            <Group gap="xs">
+              <Text fw={600}>{selectedStage.name}</Text>
+              <Badge color={statusColor[selectedStage.status] ?? 'gray'} size="sm">
+                {selectedStage.status}
+              </Badge>
+            </Group>
+          ) : null
+        }
+        overlayProps={{ backgroundOpacity: 0.1 }}
+        closeButtonProps={{ icon: <IconX size={18} /> }}
+      >
+        {selectedStage && (
+          <StageCard
+            stage={selectedStage}
+            runId={runId!}
+            onActionComplete={handleActionComplete}
+          />
+        )}
+      </Drawer>
     </Stack>
   );
 }
