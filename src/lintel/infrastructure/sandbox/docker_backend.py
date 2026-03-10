@@ -263,15 +263,18 @@ class DockerSandboxManager:
     async def destroy(self, sandbox_id: str) -> None:
         container = self._containers.pop(sandbox_id, None)
         if container is None:
-            # Try to find by label (e.g. after server restart)
-            client = self._get_client()
-            matches = await asyncio.to_thread(
-                client.containers.list,
-                filters={"label": f"lintel.sandbox_id={sandbox_id}"},
-                all=True,
-            )
-            if matches:
-                container = matches[0]
+            # Only attempt a Docker label lookup if a client is already
+            # initialised — avoids connecting to Docker (and failing) when
+            # the sandbox_id is simply unknown (e.g. in tests or after a
+            # clean restart where no containers were ever created).
+            if self._client is not None:
+                matches = await asyncio.to_thread(
+                    self._client.containers.list,
+                    filters={"label": f"lintel.sandbox_id={sandbox_id}"},
+                    all=True,
+                )
+                if matches:
+                    container = matches[0]
         if container:
             await asyncio.to_thread(container.remove, force=True)
 
