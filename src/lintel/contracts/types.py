@@ -457,6 +457,8 @@ class TriggerType(StrEnum):
     SCHEDULE = "schedule"
     PR_EVENT = "pr_event"
     MANUAL = "manual"
+    WORK_ITEM = "work_item"
+    CHAT = "chat"
 
 
 @dataclass(frozen=True)

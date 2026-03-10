@@ -6,6 +6,7 @@ import asyncio
 import json
 import shlex
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import structlog
 
@@ -18,6 +19,16 @@ if TYPE_CHECKING:
     from lintel.contracts.protocols import SandboxManager
 
 logger = structlog.get_logger()
+
+
+def _is_json(text: str) -> bool:
+    """Check if a string is valid JSON."""
+    try:
+        json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return False
+    return True
+
 
 # Timeout for a full Claude Code invocation (10 minutes)
 CLAUDE_CODE_TIMEOUT = 600
@@ -108,12 +119,12 @@ class ClaudeCodeProvider:
         if allowed_tools:
             cmd_parts.extend(["--allowedTools", ",".join(allowed_tools)])
 
-        # Write system prompt to file if provided
+        # Write system prompt to file if provided (unique per invocation to avoid conflicts)
+        invocation_id = uuid4().hex[:10]
         if system_prompt:
-            await self._sandbox.write_file(
-                sandbox_id, "/tmp/lintel-system-prompt.md", system_prompt
-            )
-            cmd_parts.extend(["--system-prompt", "/tmp/lintel-system-prompt.md"])
+            prompt_file = f"/tmp/lintel-sysprompt-{invocation_id}.md"
+            await self._sandbox.write_file(sandbox_id, prompt_file, system_prompt)
+            cmd_parts.extend(["--system-prompt", prompt_file])
 
         # Append the user prompt (quoted)
         cmd_parts.append(shlex.quote(prompt))
@@ -188,7 +199,11 @@ class ClaudeCodeProvider:
             raise ClaudeCodeCredentialError(status)
 
         # Build the claude command with stream-json output to a file
-        output_file = "/tmp/lintel-claude-stream.jsonl"
+        # Use unique file names per invocation to avoid conflicts with concurrent runs
+        invocation_id = uuid4().hex[:10]
+        output_file = f"/tmp/lintel-stream-{invocation_id}.jsonl"
+        exit_file = f"/tmp/lintel-exit-{invocation_id}"
+        script_file = f"/tmp/lintel-run-{invocation_id}.sh"
         cmd_parts = [
             "claude",
             "--print",
@@ -205,10 +220,9 @@ class ClaudeCodeProvider:
             cmd_parts.extend(["--allowedTools", ",".join(allowed_tools)])
 
         if system_prompt:
-            await self._sandbox.write_file(
-                sandbox_id, "/tmp/lintel-system-prompt.md", system_prompt
-            )
-            cmd_parts.extend(["--system-prompt", "/tmp/lintel-system-prompt.md"])
+            prompt_file = f"/tmp/lintel-sysprompt-{invocation_id}.md"
+            await self._sandbox.write_file(sandbox_id, prompt_file, system_prompt)
+            cmd_parts.extend(["--system-prompt", prompt_file])
 
         cmd_parts.append(shlex.quote(prompt))
 
@@ -220,17 +234,18 @@ class ClaudeCodeProvider:
             sandbox_id=sandbox_id[:12],
             prompt_length=len(prompt),
             max_turns=max_turns,
+            invocation_id=invocation_id,
         )
 
         # Write the command to a script to avoid quoting issues with nohup sh -c
-        script = f"#!/bin/sh\n{full_cmd}\necho $? > /tmp/lintel-claude-exit\n"
-        await self._sandbox.write_file(sandbox_id, "/tmp/lintel-run-claude.sh", script)
+        script = f"#!/bin/sh\n{full_cmd}\necho $? > {exit_file}\n"
+        await self._sandbox.write_file(sandbox_id, script_file, script)
 
         # Start Claude Code in background
         await self._sandbox.execute(
             sandbox_id,
             SandboxJob(
-                command="chmod +x /tmp/lintel-run-claude.sh && nohup /tmp/lintel-run-claude.sh &",
+                command=f"chmod +x {script_file} && nohup {script_file} &",
                 workdir=workdir,
                 timeout_seconds=10,
             ),
@@ -255,7 +270,7 @@ class ClaudeCodeProvider:
             exit_check = await self._sandbox.execute(
                 sandbox_id,
                 SandboxJob(
-                    command="cat /tmp/lintel-claude-exit 2>/dev/null || echo running",
+                    command=f"cat {exit_file} 2>/dev/null || echo running",
                     timeout_seconds=5,
                 ),
             )
@@ -316,13 +331,19 @@ class ClaudeCodeProvider:
             exit_code = 1
 
         parsed = self._parse_output(final_result.stdout)
+        # If _parse_output found nothing, use content collected during streaming
+        if not parsed.get("content") and final_content_parts:
+            parsed["content"] = "\n".join(p for p in final_content_parts if p)
         parsed["exit_code"] = exit_code
 
         # Clean up
         await self._sandbox.execute(
             sandbox_id,
             SandboxJob(
-                command=f"rm -f {output_file} /tmp/lintel-claude-exit",
+                command=(
+                    f"rm -f {output_file} {exit_file} {script_file}"
+                    f" /tmp/lintel-sysprompt-{invocation_id}.md"
+                ),
                 timeout_seconds=5,
             ),
         )
@@ -402,22 +423,34 @@ class ClaudeCodeProvider:
                     obj = json.loads(raw_line)
                 except json.JSONDecodeError:
                     continue
-                if obj.get("type") == "result":
-                    content_parts.append(str(obj.get("result", "")))
+                msg_type = obj.get("type", "")
+                # Skip system/init messages — they contain tool lists, not content
+                if msg_type == "system":
+                    continue
+                if msg_type == "result":
+                    result_text = str(obj.get("result", ""))
+                    if result_text:
+                        content_parts.append(result_text)
                     raw_usage = obj.get("usage", {})
                     if raw_usage:
                         usage = {
                             "input_tokens": raw_usage.get("input_tokens", 0),
                             "output_tokens": raw_usage.get("output_tokens", 0),
                         }
-                elif obj.get("type") == "assistant":
+                elif msg_type == "assistant":
                     msg = obj.get("message", {})
                     for block in msg.get("content", []):
                         if isinstance(block, dict) and block.get("type") == "text":
                             content_parts.append(block.get("text", ""))
             if content_parts:
                 return {"content": "\n".join(content_parts), "usage": usage, "model": "claude-code"}
-            return {"content": stdout, "usage": {}, "model": "claude-code"}
+            # Check if stdout is JSONL (every non-empty line parses as JSON) — if so,
+            # return empty since we found no content blocks. If it's plain text, return it.
+            non_empty = [ln for ln in stdout.strip().split("\n") if ln.strip()]
+            all_json = all(_is_json(ln) for ln in non_empty) if non_empty else False
+            if all_json:
+                return {"content": "", "usage": usage, "model": "claude-code"}
+            return {"content": stdout.strip(), "usage": usage, "model": "claude-code"}
 
         # Extract text content from the response
         parts: list[str] = []
@@ -432,8 +465,13 @@ class ClaudeCodeProvider:
                     elif block.get("type") == "result":
                         parts.append(block.get("result", ""))
         elif isinstance(data, dict):
+            # Skip system/init messages
+            if data.get("type") == "system":
+                return {"content": "", "usage": {}, "model": "claude-code"}
             # Single response object
-            parts.append(str(data.get("content", data.get("result", str(data)))))
+            content_val = data.get("content", data.get("result", ""))
+            if content_val:
+                parts.append(str(content_val))
             if "usage" in data:
                 usg = data["usage"]
 

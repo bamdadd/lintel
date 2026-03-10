@@ -86,7 +86,7 @@ class TestClaudeCodeProvider:
         # Verify system prompt was written to file
         manager.write_file.assert_called_once()
         call_args = manager.write_file.call_args
-        assert call_args[0][1] == "/tmp/lintel-system-prompt.md"
+        assert call_args[0][1].startswith("/tmp/lintel-sysprompt-")
 
     async def test_expired_token_raises(self) -> None:
         manager = _make_sandbox(

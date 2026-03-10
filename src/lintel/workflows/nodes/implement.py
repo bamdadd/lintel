@@ -499,7 +499,7 @@ async def _implement_tdd(
         return "Implementation failed.", False, []
 
     # Verify final test state
-    _test_output, test_exit = await _run_tests(
+    test_output, test_exit = await _run_tests(
         config, state, sandbox_manager, sandbox_id, workspace_path
     )
     test_passed = test_exit == 0
@@ -507,6 +507,8 @@ async def _implement_tdd(
         await append_log(config, "implement", "Final tests: PASSED", state)
     else:
         await append_log(config, "implement", "Final tests: FAILED", state)
+        # Log the test output so failures are visible in the pipeline UI
+        await _log_test_output(test_output, config, state)
 
     agent_output = (
         "Implementation complete." if test_passed else "Implementation complete — tests failing."
@@ -707,6 +709,8 @@ async def _implement_structured(
                 f"Tests failed (attempt {attempt + 1}/{MAX_FIX_ATTEMPTS}) — fixing...",
                 state,
             )
+            # Log test output so failures are visible in the pipeline UI
+            await _log_test_output(test_output, config, state)
             try:
                 fix_result = await _fix_failures(
                     agent_runtime,
@@ -727,6 +731,7 @@ async def _implement_structured(
 
     if not test_passed:
         await append_log(config, "implement", "Tests still failing after fix attempts", state)
+        await _log_test_output(test_output, config, state)
 
     agent_output = (
         "Implementation complete." if test_passed else "Implementation complete — tests failing."
@@ -737,6 +742,42 @@ async def _implement_structured(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+async def _log_test_output(
+    test_output: str,
+    config: RunnableConfig | dict[str, Any],
+    state: ThreadWorkflowState,
+) -> None:
+    """Log test output to pipeline stage logs, extracting the failure summary."""
+    from lintel.workflows.nodes._stage_tracking import append_log
+
+    if not test_output.strip():
+        return
+
+    # Extract the most useful part: pytest short summary or last N lines
+    lines = test_output.strip().split("\n")
+
+    # Look for pytest short test summary
+    summary_start = None
+    for i, line in enumerate(lines):
+        if "short test summary" in line.lower() or "FAILED" in line:
+            summary_start = i
+            break
+
+    if summary_start is not None:
+        # Include from summary to end, capped at 30 lines
+        summary_lines = lines[summary_start : summary_start + 30]
+        summary = "\n".join(summary_lines)
+    else:
+        # Just show the last 20 lines
+        summary = "\n".join(lines[-20:])
+
+    # Cap total length for the log entry
+    if len(summary) > 3000:
+        summary = summary[:3000] + "\n...(truncated)"
+
+    await append_log(config, "implement", f"Test output:\n```\n{summary}\n```", state)
 
 
 def _parse_thread_ref(raw: str) -> ThreadRef:

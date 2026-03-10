@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, ScrollArea, Box,
 } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconPlayerStop } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
+  usePipelinesCancelPipeline,
 } from '@/generated/api/pipelines/pipelines';
 import { PipelineDAG } from '../components/PipelineDAG';
 import type { DAGNode, DAGEdge } from '../components/PipelineDAG';
@@ -55,10 +57,27 @@ export function Component() {
 
   const pipeline = (pipelineResp?.data ?? {}) as Record<string, unknown>;
   const stages = (stagesResp?.data ?? []) as StageItem[];
+  const cancelMut = usePipelinesCancelPipeline();
   const handleActionComplete = useCallback(() => {
     refetchPipeline();
     refetchStages();
   }, [refetchPipeline, refetchStages]);
+
+  const handleCancel = () => {
+    cancelMut.mutate(
+      { runId: runId! },
+      {
+        onSuccess: () => {
+          notifications.show({ title: 'Cancelled', message: 'Pipeline cancelled', color: 'orange' });
+          refetchPipeline();
+          refetchStages();
+        },
+        onError: () => {
+          notifications.show({ title: 'Error', message: 'Failed to cancel pipeline', color: 'red' });
+        },
+      },
+    );
+  };
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -78,22 +97,26 @@ export function Component() {
   const triggerType = pipeline.trigger_type as string | undefined;
   const triggerKind = triggerType?.startsWith('chat:')
     ? 'chat'
-    : triggerType?.startsWith('git:')
-      ? 'git'
-      : triggerType?.startsWith('webhook:')
-        ? 'webhook'
-        : triggerType?.startsWith('schedule:')
-          ? 'schedule'
-          : 'manual';
+    : triggerType?.startsWith('work_item:')
+      ? 'work_item'
+      : triggerType?.startsWith('git:')
+        ? 'git'
+        : triggerType?.startsWith('webhook:')
+          ? 'webhook'
+          : triggerType?.startsWith('schedule:')
+            ? 'schedule'
+            : 'manual';
   const triggerLabel = triggerKind === 'chat'
     ? 'Chat'
-    : triggerKind === 'git'
-      ? 'Git Push'
-      : triggerKind === 'webhook'
-        ? 'Webhook'
-        : triggerKind === 'schedule'
-          ? 'Schedule'
-          : 'Manual';
+    : triggerKind === 'work_item'
+      ? 'Work Item'
+      : triggerKind === 'git'
+        ? 'Git Push'
+        : triggerKind === 'webhook'
+          ? 'Webhook'
+          : triggerKind === 'schedule'
+            ? 'Schedule'
+            : 'Manual';
 
   const triggerId = '__trigger__';
   dagNodes.push({
@@ -192,6 +215,41 @@ export function Component() {
               }
             >
               View Chat
+            </Button>
+          )}
+          {(pipeline.work_item_id as string) && (
+            <Button
+              variant="light"
+              size="compact-sm"
+              color="indigo"
+              onClick={async () => {
+                try {
+                  const resp = await fetch(`/api/v1/projects/${pipeline.project_id}/boards`);
+                  const boards = await resp.json();
+                  const boardId = boards?.[0]?.board_id;
+                  if (boardId) {
+                    navigate(`/boards/${boardId}?work_item=${pipeline.work_item_id}`);
+                  } else {
+                    navigate('/boards');
+                  }
+                } catch {
+                  navigate('/boards');
+                }
+              }}
+            >
+              View Work Item
+            </Button>
+          )}
+          {(pipeline.status === 'running' || pipeline.status === 'waiting_approval') && (
+            <Button
+              variant="light"
+              size="compact-sm"
+              color="orange"
+              leftSection={<IconPlayerStop size={14} />}
+              loading={cancelMut.isPending}
+              onClick={handleCancel}
+            >
+              Cancel
             </Button>
           )}
           <Button

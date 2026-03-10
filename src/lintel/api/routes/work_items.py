@@ -219,8 +219,8 @@ async def _trigger_workflow_for_work_item(
         trigger = Trigger(
             trigger_id=trigger_id,
             project_id=project_id,
-            trigger_type=TriggerType.MANUAL,
-            name=f"board:{work_item_id}",
+            trigger_type=TriggerType.WORK_ITEM,
+            name=f"work_item:{work_item_id}",
         )
         try:
             await trigger_store.add(trigger)
@@ -240,7 +240,7 @@ async def _trigger_workflow_for_work_item(
             work_item_id=work_item_id,
             workflow_definition_id=workflow_type,
             status=PipelineStatus.RUNNING,
-            trigger_type=f"board:{work_item_id}",
+            trigger_type=f"work_item:{work_item_id}",
             trigger_id=trigger_id,
             stages=stages,
             created_at=datetime.now(UTC).isoformat(),

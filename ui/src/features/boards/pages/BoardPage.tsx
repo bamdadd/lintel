@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router';
 import { Title, Stack, Group, Loader, Center, Text, ActionIcon, Button } from '@mantine/core';
 import { IconSettings, IconPlus } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
@@ -29,10 +29,27 @@ export function Component() {
   const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
   const [createItemOpened, { open: openCreateItem, close: closeCreateItem }] = useDisclosure(false);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const handleClickItem = (item: WorkItem) => {
     setSelectedItem(item);
     openDetail();
   };
+
+  // Auto-open work item detail when linked via ?work_item=<id>
+  const items = (itemsResp?.data ?? []) as WorkItem[];
+  useEffect(() => {
+    const workItemId = searchParams.get('work_item');
+    if (workItemId && items.length > 0) {
+      const found = items.find((i) => i.work_item_id === workItemId);
+      if (found) {
+        setSelectedItem(found);
+        openDetail();
+        // Clear the query param so it doesn't re-trigger
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, items, openDetail, setSearchParams]);
 
   const columns = useMemo(
     () => [...(board?.columns ?? [])].sort((a, b) => a.position - b.position),

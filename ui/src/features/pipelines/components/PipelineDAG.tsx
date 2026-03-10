@@ -464,7 +464,7 @@ export function PipelineDAG({ nodes: inputNodes, edges: inputEdges, onNodeClick,
         nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
         fitView
-        fitViewOptions={{ padding: 0.3 }}
+        fitViewOptions={{ padding: 0.4, maxZoom: 1 }}
         nodesDraggable={false}
         nodesConnectable={false}
         proOptions={{ hideAttribution: true }}

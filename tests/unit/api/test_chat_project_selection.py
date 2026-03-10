@@ -230,7 +230,7 @@ class TestPipelineAndTriggerCreation:
         assert len(triggers) >= 1
         trigger = triggers[0]
         assert trigger["project_id"] == "proj-trig"
-        assert trigger["trigger_type"] == "manual"
+        assert trigger["trigger_type"] == "chat"
         assert trigger["name"].startswith("chat:")
 
     def test_dispatch_links_trigger_to_pipeline(self, client: TestClient) -> None:

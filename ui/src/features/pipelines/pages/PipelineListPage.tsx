@@ -133,6 +133,24 @@ export function Component() {
                     >
                       chat
                     </Badge>
+                  ) : r.trigger_type?.startsWith('work_item:') ? (
+                    <Badge
+                      variant="light"
+                      color="indigo"
+                      style={{ cursor: 'pointer' }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const resp = await fetch(`/api/v1/projects/${r.project_id}/boards`);
+                          const boards = await resp.json();
+                          const boardId = boards?.[0]?.board_id;
+                          if (boardId) navigate(`/boards/${boardId}?work_item=${r.work_item_id}`);
+                          else navigate('/boards');
+                        } catch { navigate('/boards'); }
+                      }}
+                    >
+                      work item
+                    </Badge>
                   ) : (
                     <Badge variant="light">{r.trigger_type || '—'}</Badge>
                   )}

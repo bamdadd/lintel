@@ -434,7 +434,7 @@ async def _dispatch_workflow(
         trigger = Trigger(
             trigger_id=trigger_id,
             project_id=project_id,
-            trigger_type=TriggerType.MANUAL,
+            trigger_type=TriggerType.CHAT,
             name=f"chat:{conversation_id}",
         )
         try:
