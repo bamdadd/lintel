@@ -96,6 +96,7 @@ class AIProviderType(StrEnum):
     GOOGLE = "google"
     OLLAMA = "ollama"
     BEDROCK = "bedrock"
+    CLAUDE_CODE = "claude_code"
     CUSTOM = "custom"
 
 
@@ -116,6 +117,14 @@ class CredentialType(StrEnum):
     SSH_KEY = "ssh_key"
     GITHUB_TOKEN = "github_token"
     AI_PROVIDER_API_KEY = "ai_provider_api_key"
+    CLAUDE_CODE = "claude_code"
+
+
+class TokenStatus(StrEnum):
+    VALID = "valid"
+    EXPIRED = "expired"
+    INVALID = "invalid"
+    NOT_CONFIGURED = "not_configured"
 
 
 @dataclass(frozen=True)
@@ -223,6 +232,7 @@ class SandboxConfig:
     network_enabled: bool = False
     timeout_seconds: int = 3600
     environment: frozenset[tuple[str, str]] = frozenset()
+    mounts: tuple[tuple[str, str, str], ...] = ()  # (source, target, type) triples
 
 
 @dataclass(frozen=True)

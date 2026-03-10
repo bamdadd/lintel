@@ -161,8 +161,8 @@ class TestDefaultModelRouter:
         policy = await router.select_model(AgentRole.CODER, "coding")
         assert policy == FALLBACK_POLICY
 
-    async def test_store_default_is_cached(self) -> None:
-        """Once resolved, the store default is cached and reused."""
+    async def test_store_default_refreshes_on_change(self) -> None:
+        """Default model is always resolved from store (no stale cache)."""
         from lintel.api.routes.ai_providers import InMemoryAIProviderStore
         from lintel.api.routes.models import InMemoryModelStore
 
@@ -192,10 +192,21 @@ class TestDefaultModelRouter:
         )
         # First call resolves from store
         p1 = await router.select_model(AgentRole.PLANNER, "planning")
-        # Remove model from store — cached value should still be used
+        assert p1.model_name == "qwen2.5-coder:7b"
+
+        # Change default model — router should pick up the new one
         await model_store.remove("m1")
+        await model_store.add(
+            Model(
+                model_id="m2",
+                provider_id="p1",
+                name="New Model",
+                model_name="llama3:8b",
+                is_default=True,
+            )
+        )
         p2 = await router.select_model(AgentRole.CODER, "coding")
-        assert p1 == p2
+        assert p2.model_name == "llama3:8b"
 
     async def test_assignment_takes_precedence_over_default(self) -> None:
         """A model assigned to an agent role overrides the default model."""

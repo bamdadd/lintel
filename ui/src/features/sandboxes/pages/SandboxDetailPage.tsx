@@ -16,6 +16,12 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 
+interface MountEntry {
+  source: string;
+  target: string;
+  type: string;
+}
+
 interface SandboxMetadata {
   sandbox_id: string;
   image: string;
@@ -23,6 +29,7 @@ interface SandboxMetadata {
   workspace_id: string;
   channel_id: string;
   devcontainer?: Record<string, unknown>;
+  mounts?: MountEntry[];
 }
 
 function useSandboxMetadata(sandboxId: string | undefined) {
@@ -471,16 +478,33 @@ export function Component() {
         </Tabs.Panel>
 
         <Tabs.Panel value="config" pt="md">
-          {metadata?.devcontainer ? (
-            <Paper withBorder p="md" radius="md" maw={600}>
-              <Title order={5} mb="sm">devcontainer.json</Title>
-              <Code block style={{ fontSize: 12, maxHeight: 400, overflow: 'auto' }}>
-                {JSON.stringify(metadata.devcontainer, null, 2)}
-              </Code>
-            </Paper>
-          ) : (
-            <Text c="dimmed">No devcontainer configuration available.</Text>
-          )}
+          <Stack gap="md">
+            {metadata?.mounts && metadata.mounts.length > 0 && (
+              <Paper withBorder p="md" radius="md" maw={600}>
+                <Title order={5} mb="sm">Mounts</Title>
+                <Stack gap={4}>
+                  {metadata.mounts.map((m) => (
+                    <Group key={m.target} gap="xs">
+                      <Badge size="xs" variant="light" color="violet">{m.type}</Badge>
+                      <Text size="xs" ff="monospace" c="dimmed">{m.source}</Text>
+                      <Text size="xs" c="dimmed">&rarr;</Text>
+                      <Text size="xs" ff="monospace">{m.target}</Text>
+                    </Group>
+                  ))}
+                </Stack>
+              </Paper>
+            )}
+            {metadata?.devcontainer ? (
+              <Paper withBorder p="md" radius="md" maw={600}>
+                <Title order={5} mb="sm">devcontainer.json</Title>
+                <Code block style={{ fontSize: 12, maxHeight: 400, overflow: 'auto' }}>
+                  {JSON.stringify(metadata.devcontainer, null, 2)}
+                </Code>
+              </Paper>
+            ) : (
+              <Text c="dimmed">No devcontainer configuration available.</Text>
+            )}
+          </Stack>
         </Tabs.Panel>
       </Tabs>
 

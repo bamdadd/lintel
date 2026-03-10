@@ -153,6 +153,7 @@ assignee_agent_role: str = ""  # PROBLEM: role only, no specific assignee
 **Current** (`types.py:428`): `SLACK_MESSAGE`, `WEBHOOK`, `SCHEDULE`, `PR_EVENT`, `MANUAL`
 
 **Add:**
+- `PUSH_EVENT = "push_event"` — commits pushed to a branch (REQ-026)
 - `CI_CD_EVENT = "ci_cd_event"`
 - `TICKET_EVENT = "ticket_event"`
 - `GUARDRAIL_ESCALATION = "guardrail_escalation"`

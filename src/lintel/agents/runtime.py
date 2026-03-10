@@ -190,10 +190,20 @@ class AgentRuntime:
         total_output_tokens = 0
         iteration = 0
 
+        # Pass sandbox context for providers that need it (e.g. claude_code)
+        model_kwargs: dict[str, Any] = {}
+        if sandbox_manager is not None:
+            model_kwargs["sandbox_manager"] = sandbox_manager
+        if sandbox_id is not None:
+            model_kwargs["sandbox_id"] = sandbox_id
+
+        is_claude_code = policy.provider == "claude_code"
+
         result = await self._model_router.call_model(
             policy,
             loop_messages,
             all_tools or None,
+            **model_kwargs,
         )
         total_input_tokens += result.get("usage", {}).get("input_tokens", 0)
         total_output_tokens += result.get("usage", {}).get("output_tokens", 0)
@@ -208,8 +218,13 @@ class AgentRuntime:
             tools_provided=len(all_tools),
         )
 
-        # Tool execution loop
-        while result.get("tool_calls") and iteration < max_iterations:
+        # Claude Code handles its own tool loop — skip ours
+        if is_claude_code:
+            result["tool_iterations"] = 0
+            # Skip to event emission below
+
+        # Tool execution loop (litellm providers only)
+        while not is_claude_code and result.get("tool_calls") and iteration < max_iterations:
             iteration += 1
             tool_calls = result["tool_calls"]
 
@@ -268,6 +283,7 @@ class AgentRuntime:
                 policy,
                 loop_messages,
                 all_tools or None,
+                **model_kwargs,
             )
             total_input_tokens += result.get("usage", {}).get("input_tokens", 0)
             total_output_tokens += result.get("usage", {}).get("output_tokens", 0)
@@ -333,11 +349,16 @@ class AgentRuntime:
         messages: list[dict[str, str]],
         on_chunk: Any | None = None,  # noqa: ANN401 — async callable(str) -> None
         correlation_id: UUID | None = None,
+        sandbox_manager: SandboxManager | None = None,
+        sandbox_id: str | None = None,
     ) -> dict[str, Any]:
         """Like execute_step but streams content, calling on_chunk for each piece.
 
         Returns the same result dict as execute_step, with the full accumulated content.
         The on_chunk callback receives partial text as it arrives from the model.
+
+        For providers that don't support streaming (e.g. claude_code), falls back
+        to a non-streaming call and delivers the full content as a single chunk.
         """
         cid = correlation_id or uuid4()
 
@@ -377,25 +398,36 @@ class AgentRuntime:
             ],
         )
 
-        # Stream content from model
-        accumulated = []
-        async for chunk in self._model_router.stream_model(policy, messages):
-            accumulated.append(chunk)
-            if on_chunk is not None:
-                await on_chunk(chunk)
+        # Claude Code doesn't support streaming — fall back to batch call
+        if policy.provider == "claude_code":
+            model_kwargs: dict[str, Any] = {}
+            if sandbox_manager is not None:
+                model_kwargs["sandbox_manager"] = sandbox_manager
+            if sandbox_id is not None:
+                model_kwargs["sandbox_id"] = sandbox_id
+            result = await self._model_router.call_model(policy, messages, None, **model_kwargs)
+            full_content = result.get("content", "")
+            if on_chunk is not None and full_content:
+                await on_chunk(full_content)
+        else:
+            # Stream content from model
+            accumulated = []
+            async for chunk in self._model_router.stream_model(policy, messages):
+                accumulated.append(chunk)
+                if on_chunk is not None:
+                    await on_chunk(chunk)
+            full_content = "".join(accumulated)
 
-        full_content = "".join(accumulated)
-
-        # Read usage from the model router (captured from final stream chunk)
-        stream_usage = getattr(self._model_router, "last_stream_usage", None) or {}
-        result: dict[str, Any] = {
-            "content": full_content,
-            "usage": {
-                "input_tokens": stream_usage.get("input_tokens", 0),
-                "output_tokens": stream_usage.get("output_tokens", 0),
-            },
-            "model": policy.model_name,
-        }
+            # Read usage from the model router (captured from final stream chunk)
+            stream_usage = getattr(self._model_router, "last_stream_usage", None) or {}
+            result = {
+                "content": full_content,
+                "usage": {
+                    "input_tokens": stream_usage.get("input_tokens", 0),
+                    "output_tokens": stream_usage.get("output_tokens", 0),
+                },
+                "model": policy.model_name,
+            }
 
         await self._event_store.append(
             thread_ref.stream_id,

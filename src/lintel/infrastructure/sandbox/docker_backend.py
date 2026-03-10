@@ -75,8 +75,28 @@ class DockerSandboxManager:
             "labels": {
                 "lintel.sandbox_id": sandbox_id,
                 "lintel.thread_ref": thread_ref.stream_id,
+                "lintel.image": config.image,
+                "lintel.network_enabled": str(config.network_enabled),
+                "lintel.workspace_id": thread_ref.workspace_id,
+                "lintel.channel_id": thread_ref.channel_id,
             },
         }
+
+        # Bind mounts (e.g. ~/.claude for Claude Code credentials)
+        if config.mounts:
+            import docker as docker_lib
+
+            create_kwargs["mounts"] = [
+                docker_lib.types.Mount(
+                    target=target,
+                    source=source,
+                    type=mount_type,
+                    read_only=True,
+                )
+                for source, target, mount_type in config.mounts
+            ]
+            # cap_drop=ALL removes DAC_READ_SEARCH, which blocks reading bind mounts
+            create_kwargs["cap_add"] = ["DAC_READ_SEARCH"]
 
         # Ensure DNS works in bridge mode (Docker Desktop may not propagate host DNS)
         if config.network_enabled:
@@ -275,22 +295,37 @@ class DockerSandboxManager:
         if container:
             await asyncio.to_thread(container.remove, force=True)
 
-    async def recover_containers(self) -> list[str]:
-        """Re-attach to containers from previous runs using Docker labels."""
+    async def recover_containers(self) -> list[dict[str, Any]]:
+        """Re-attach to containers from previous runs using Docker labels.
+
+        Returns a list of metadata dicts for each recovered container,
+        reconstructed from Docker labels.
+        """
         client = self._get_client()
         containers = await asyncio.to_thread(
             client.containers.list,
             filters={"label": "lintel.sandbox_id"},
             all=True,
         )
-        recovered: list[str] = []
+        recovered: list[dict[str, Any]] = []
         for container in containers:
-            sandbox_id = container.labels.get("lintel.sandbox_id", "")
+            labels = container.labels
+            sandbox_id = labels.get("lintel.sandbox_id", "")
             if sandbox_id and sandbox_id not in self._containers:
                 status: str = container.status
                 if status in ("running", "paused", "restarting", "created"):
                     self._containers[sandbox_id] = container
-                    recovered.append(sandbox_id)
+                    recovered.append(
+                        {
+                            "sandbox_id": sandbox_id,
+                            "image": labels.get("lintel.image", ""),
+                            "network_enabled": labels.get("lintel.network_enabled") == "True",
+                            "workspace_id": labels.get("lintel.workspace_id", ""),
+                            "channel_id": labels.get("lintel.channel_id", ""),
+                            "status": status,
+                            "container_id": container.short_id,
+                        }
+                    )
                 else:
                     # Dead/exited containers — clean up
                     await asyncio.to_thread(container.remove, force=True)

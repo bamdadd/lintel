@@ -33,6 +33,7 @@ class DummySandboxManager:
     async def create(self, config: SandboxConfig, thread_ref: ThreadRef) -> str:
         sandbox_id = str(uuid4())
         self._sandboxes[sandbox_id] = {}
+        self.last_config = config
         return sandbox_id
 
     async def execute(self, sandbox_id: str, job: SandboxJob) -> SandboxResult:
@@ -103,6 +104,81 @@ class TestCreateSandbox:
         assert resp.status_code == 201
         data = resp.json()
         assert "sandbox_id" in data
+
+    def test_preset_mounts_resolved(self, client: TestClient) -> None:
+        """Claude-code preset should resolve ${localEnv:HOME} and pass mounts."""
+
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "preset": "claude-code",
+            },
+        )
+        assert resp.status_code == 201
+        sandbox_id = resp.json()["sandbox_id"]
+
+        # Verify mounts were passed to the manager
+        manager: DummySandboxManager = client.app.state.sandbox_manager  # type: ignore[union-attr]
+        config = manager.last_config
+        assert len(config.mounts) == 2
+        targets = {m[1] for m in config.mounts}
+        assert "/root/.claude" in targets
+        assert "/root/.claude.json" in targets
+
+        # Verify mounts in stored metadata
+        meta_resp = client.get("/api/v1/sandboxes")
+        sandboxes = meta_resp.json()
+        entry = next(s for s in sandboxes if s["sandbox_id"] == sandbox_id)
+        assert len(entry["mounts"]) == 2
+        mount_targets = {m["target"] for m in entry["mounts"]}
+        assert "/root/.claude" in mount_targets
+
+    def test_request_level_mounts(self, client: TestClient) -> None:
+        """Mounts passed in request body should be resolved and applied."""
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "mounts": [
+                    {"source": "/tmp/test-mount", "target": "/mnt/data", "type": "bind"},
+                ],
+            },
+        )
+        assert resp.status_code == 201
+
+        manager: DummySandboxManager = client.app.state.sandbox_manager  # type: ignore[union-attr]
+        config = manager.last_config
+        assert len(config.mounts) == 1
+        assert config.mounts[0] == ("/tmp/test-mount", "/mnt/data", "bind")
+
+    def test_preset_and_request_mounts_merged(self, client: TestClient) -> None:
+        """Preset mounts and request mounts should be merged."""
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "preset": "claude-code",
+                "mounts": [
+                    {"source": "/tmp/extra", "target": "/mnt/extra"},
+                ],
+            },
+        )
+        assert resp.status_code == 201
+
+        manager: DummySandboxManager = client.app.state.sandbox_manager  # type: ignore[union-attr]
+        config = manager.last_config
+        assert len(config.mounts) == 3
+        targets = {m[1] for m in config.mounts}
+        assert "/root/.claude" in targets
+        assert "/root/.claude.json" in targets
+        assert "/mnt/extra" in targets
 
 
 class TestGetSandboxStatus:

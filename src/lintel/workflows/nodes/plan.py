@@ -88,7 +88,10 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     await mark_running(config, "plan", state)
     await append_log(config, "plan", "Generating implementation plan...", state)
 
-    agent_runtime: AgentRuntime | None = config.get("configurable", {}).get("agent_runtime")
+    _configurable = config.get("configurable", {})
+    agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
+    sandbox_manager = _configurable.get("sandbox_manager")
+    sandbox_id: str | None = state.get("sandbox_id")
 
     if agent_runtime is None:
         logger.warning("plan_node_no_runtime", msg="AgentRuntime not available, using stub plan")
@@ -148,6 +151,8 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             {"role": "user", "content": user_prompt},
         ],
         on_chunk=_on_chunk,
+        sandbox_manager=sandbox_manager,
+        sandbox_id=sandbox_id,
     )
 
     # Flush remaining buffer

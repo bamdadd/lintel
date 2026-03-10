@@ -83,6 +83,12 @@ const DEFAULT_DEVCONTAINER = JSON.stringify(
   2,
 );
 
+interface MountEntry {
+  source: string;
+  target: string;
+  type: string;
+}
+
 interface SandboxEntry {
   sandbox_id: string;
   image: string;
@@ -90,6 +96,7 @@ interface SandboxEntry {
   workspace_id: string;
   channel_id: string;
   devcontainer?: Record<string, unknown>;
+  mounts?: MountEntry[];
 }
 
 export function Component() {
@@ -225,6 +232,7 @@ export function Component() {
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Image</Table.Th>
                 <Table.Th>Features</Table.Th>
+                <Table.Th>Mounts</Table.Th>
                 <Table.Th>Network</Table.Th>
                 <Table.Th />
               </Table.Tr>
@@ -247,6 +255,15 @@ export function Component() {
                         return <Badge key={f.id} size="xs" variant="light">{short}</Badge>;
                       })}
                       {((s.devcontainer?.features as Array<{ id: string }>) ?? []).length === 0 && <Text size="xs" c="dimmed">—</Text>}
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4} wrap="wrap">
+                      {(s.mounts ?? []).map((m) => {
+                        const short = m.target.split('/').pop() ?? m.target;
+                        return <Badge key={m.target} size="xs" variant="light" color="violet" title={`${m.source} → ${m.target}`}>{short}</Badge>;
+                      })}
+                      {(s.mounts ?? []).length === 0 && <Text size="xs" c="dimmed">—</Text>}
                     </Group>
                   </Table.Td>
                   <Table.Td><Badge color={s.network_enabled ? 'green' : 'gray'}>{s.network_enabled ? 'on' : 'off'}</Badge></Table.Td>
@@ -282,6 +299,19 @@ export function Component() {
               onChange={handlePresetChange}
               searchable
             />
+            {form.values.preset && presets?.[form.values.preset]?.mounts && (
+              <Paper withBorder p="xs" radius="md" bg="dark.8">
+                <Text size="xs" fw={600} mb={4}>Mounts (from preset)</Text>
+                {presets[form.values.preset].mounts!.map((m) => (
+                  <Group key={m.target} gap="xs">
+                    <Badge size="xs" variant="light" color="violet">{m.type}</Badge>
+                    <Text size="xs" ff="monospace" c="dimmed">{m.source}</Text>
+                    <Text size="xs" c="dimmed">→</Text>
+                    <Text size="xs" ff="monospace">{m.target}</Text>
+                  </Group>
+                ))}
+              </Paper>
+            )}
             <Tabs defaultValue="devcontainer">
               <Tabs.List>
                 <Tabs.Tab value="devcontainer">devcontainer.json</Tabs.Tab>

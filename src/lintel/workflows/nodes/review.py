@@ -124,6 +124,8 @@ async def review_output(
                     {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
                     {"role": "user", "content": f"```diff\n{diff_text}\n```"},
                 ],
+                sandbox_manager=sandbox_manager,
+                sandbox_id=sandbox_id,
             )
             review_output_text = agent_result.get("content", "Review complete.")
             usage = extract_token_usage("review", agent_result)

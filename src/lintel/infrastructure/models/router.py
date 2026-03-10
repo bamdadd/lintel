@@ -192,7 +192,7 @@ class DefaultModelRouter:
             policy = self._default
         # 4. User-configured default model from store
         if policy is None:
-            policy = self._cached_default or await self._resolve_default_from_store()
+            policy = await self._resolve_default_from_store()
         # 5. Hardcoded fallback
         if policy is None:
             policy = self._fallback
@@ -233,8 +233,18 @@ class DefaultModelRouter:
         policy: ModelPolicy,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
-        api_base: str | None = None,
+        **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, Any]:
+        # Claude Code provider — delegate to CLI instead of litellm
+        if policy.provider == "claude_code":
+            return await self._call_claude_code(
+                policy,
+                messages,
+                kwargs.get("sandbox_manager"),
+                kwargs.get("sandbox_id"),
+            )
+
+        api_base: str | None = kwargs.get("api_base")
         import litellm
 
         model_string = f"{policy.provider}/{policy.model_name}"
@@ -251,27 +261,27 @@ class DefaultModelRouter:
                 logger.debug("llm_cache_hit", model=model_string, key=cache_key[:12])
                 return cached
 
-        kwargs: dict[str, Any] = {
+        call_kwargs: dict[str, Any] = {
             "model": model_string,
             "messages": messages,
             "max_tokens": policy.max_tokens,
             "temperature": policy.temperature,
         }
         if tools:
-            kwargs["tools"] = tools
+            call_kwargs["tools"] = tools
         if policy.extra_params:
-            kwargs.update(policy.extra_params)
+            call_kwargs.update(policy.extra_params)
         # Ollama KV cache warmth — keep model loaded between requests
         if policy.provider == "ollama" and self._ollama_keep_alive:
-            kwargs["keep_alive"] = self._ollama_keep_alive
+            call_kwargs["keep_alive"] = self._ollama_keep_alive
 
         effective_base = api_base or (
             self._ollama_api_base if policy.provider == "ollama" else None
         )
         if effective_base:
-            kwargs["api_base"] = effective_base.rstrip("/")
+            call_kwargs["api_base"] = effective_base.rstrip("/")
 
-        response = await litellm.acompletion(**kwargs)
+        response = await litellm.acompletion(**call_kwargs)
         result: dict[str, Any] = {
             "content": response.choices[0].message.content,
             "usage": {
@@ -310,6 +320,46 @@ class DefaultModelRouter:
             self._sqlite_put(cache_key, result)
 
         return result
+
+    async def _call_claude_code(
+        self,
+        policy: ModelPolicy,
+        messages: list[dict[str, Any]],
+        sandbox_manager: Any,  # noqa: ANN401
+        sandbox_id: str | None,
+    ) -> dict[str, Any]:
+        """Route a call to Claude Code CLI in the sandbox."""
+        from lintel.infrastructure.models.claude_code import ClaudeCodeProvider
+
+        if sandbox_manager is None or sandbox_id is None:
+            msg = "Claude Code provider requires a sandbox — no sandbox available"
+            raise RuntimeError(msg)
+
+        provider = ClaudeCodeProvider(sandbox_manager)
+
+        # Extract system prompt and user prompt from messages
+        system_prompt = ""
+        user_prompt = ""
+        for msg_item in messages:
+            if msg_item.get("role") == "system":
+                system_prompt += msg_item.get("content", "") + "\n"
+            elif msg_item.get("role") == "user":
+                user_prompt += msg_item.get("content", "") + "\n"
+
+        result = await provider.invoke(
+            user_prompt.strip(),
+            sandbox_id=sandbox_id,
+            system_prompt=system_prompt.strip(),
+            max_turns=(
+                int(str(policy.extra_params.get("max_turns", 20))) if policy.extra_params else 20
+            ),
+        )
+
+        return {
+            "content": result.get("content", ""),
+            "usage": result.get("usage", {}),
+            "model": "claude-code",
+        }
 
     async def stream_model(
         self,

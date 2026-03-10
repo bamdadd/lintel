@@ -176,6 +176,7 @@ class ModelRouter(Protocol):
         policy: ModelPolicy,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
+        **kwargs: Any,  # noqa: ANN401
     ) -> dict[str, Any]: ...
 
     async def stream_model(

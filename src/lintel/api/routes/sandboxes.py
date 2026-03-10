@@ -98,7 +98,7 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
                 },
             ],
             "forwardPorts": [],
-            "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+            "postCreateCommand": "",
             "postStartCommand": "",
             "remoteEnv": {},
             "customizations": {},
@@ -106,7 +106,12 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
         "mounts": [
             {
                 "source": "${localEnv:HOME}/.claude",
-                "target": "/home/vscode/.claude",
+                "target": "/root/.claude",
+                "type": "bind",
+            },
+            {
+                "source": "${localEnv:HOME}/.claude.json",
+                "target": "/root/.claude.json",
                 "type": "bind",
             },
         ],
@@ -140,7 +145,7 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
                 },
             ],
             "forwardPorts": [],
-            "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+            "postCreateCommand": "",
             "postStartCommand": "",
             "remoteEnv": {},
             "customizations": {},
@@ -148,7 +153,12 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
         "mounts": [
             {
                 "source": "${localEnv:HOME}/.claude",
-                "target": "/home/vscode/.claude",
+                "target": "/root/.claude",
+                "type": "bind",
+            },
+            {
+                "source": "${localEnv:HOME}/.claude.json",
+                "target": "/root/.claude.json",
                 "type": "bind",
             },
         ],
@@ -190,6 +200,14 @@ class DevcontainerConfig(BaseModel):
     customizations: dict[str, Any] = {}
 
 
+class MountConfig(BaseModel):
+    """A bind mount for the sandbox container."""
+
+    source: str
+    target: str
+    type: str = "bind"
+
+
 class CreateSandboxRequest(BaseModel):
     workspace_id: str
     channel_id: str
@@ -198,6 +216,7 @@ class CreateSandboxRequest(BaseModel):
     image: str = "lintel-sandbox:latest"
     network_enabled: bool = False
     devcontainer: DevcontainerConfig | None = None
+    mounts: list[MountConfig] = []
 
 
 class ExecuteRequest(BaseModel):
@@ -231,16 +250,45 @@ async def create_sandbox(
     request: Request,
 ) -> dict[str, str]:
     """Create a new sandbox environment."""
+    import os
+
     manager = request.app.state.sandbox_manager
     # Resolve preset if specified
+    mounts_raw: list[dict[str, str]] = []
     if body.preset:
         preset = SANDBOX_PRESETS.get(body.preset)
         if not preset:
             raise HTTPException(status_code=400, detail=f"Unknown preset: {body.preset}")
         image = preset["devcontainer"]["image"]
+        mounts_raw = list(preset.get("mounts", []))
     else:
         image = body.image
-    config = SandboxConfig(image=image, network_enabled=body.network_enabled)
+
+    # Merge request-level mounts (override or append)
+    for m in body.mounts:
+        mounts_raw.append(m.model_dump())
+
+    # Resolve ${localEnv:HOME} and other env vars in mount sources
+    def _resolve_env(s: str) -> str:
+        import re
+
+        return re.sub(
+            r"\$\{localEnv:(\w+)\}",
+            lambda m: os.environ.get(m.group(1), ""),
+            s,
+        )
+
+    resolved_mounts = tuple(
+        (_resolve_env(m["source"]), m["target"], m.get("type", "bind"))
+        for m in mounts_raw
+        if _resolve_env(m["source"])  # skip mounts with unresolvable source
+    )
+
+    config = SandboxConfig(
+        image=image,
+        network_enabled=body.network_enabled,
+        mounts=resolved_mounts,
+    )
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
         channel_id=body.channel_id,
@@ -253,6 +301,7 @@ async def create_sandbox(
         "network_enabled": body.network_enabled,
         "workspace_id": body.workspace_id,
         "channel_id": body.channel_id,
+        "mounts": [{"source": s, "target": t, "type": tp} for s, t, tp in resolved_mounts],
     }
     if body.devcontainer:
         entry["devcontainer"] = body.devcontainer.model_dump()

@@ -108,6 +108,11 @@ PROVIDER_FIELD_REQUIREMENTS: dict[AIProviderType, dict[str, Any]] = {
         "optional": ["api_key", "config"],
         "hidden": [],
     },
+    AIProviderType.CLAUDE_CODE: {
+        "required": [],
+        "optional": ["config"],
+        "hidden": ["api_key", "api_base"],
+    },
 }
 
 

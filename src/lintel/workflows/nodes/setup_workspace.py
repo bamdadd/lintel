@@ -17,6 +17,59 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _get_claude_code_mounts() -> tuple[tuple[str, str, str], ...]:
+    """Return host ~/.claude and ~/.claude.json mounts for Claude Code auth."""
+    import os
+
+    mounts: list[tuple[str, str, str]] = []
+    claude_dir = os.path.expanduser("~/.claude")
+    if os.path.isdir(claude_dir):
+        mounts.append((claude_dir, "/root/.claude", "bind"))
+    claude_json = os.path.expanduser("~/.claude.json")
+    if os.path.isfile(claude_json):
+        mounts.append((claude_json, "/root/.claude.json", "bind"))
+    return tuple(mounts)
+
+
+def _get_claude_code_oauth_token() -> str:
+    """Extract Claude Code OAuth token from macOS Keychain or credentials file.
+
+    Returns the access token string, or empty string if not found.
+    """
+    import json
+    import os
+    import subprocess
+
+    # Try macOS Keychain first (newer Claude Code versions)
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            data = json.loads(result.stdout.strip())
+            token: str = str(data.get("claudeAiOauth", {}).get("accessToken", ""))
+            if token:
+                return token
+    except (json.JSONDecodeError, FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+
+    # Fall back to ~/.claude/.credentials.json (older versions)
+    creds_path = os.path.expanduser("~/.claude/.credentials.json")
+    try:
+        with open(creds_path) as f:
+            data = json.loads(f.read())
+        token = str(data.get("claudeAiOauth", {}).get("accessToken", ""))
+        if token:
+            return token
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
+    return ""
+
+
 def _inject_github_token(repo_url: str, token: str) -> str:
     """Inject a GitHub token into a clone URL for authentication."""
     return re.sub(
@@ -211,6 +264,17 @@ async def setup_workspace(
         if existing:
             sandbox_id = existing[0].get("sandbox_id", "")
 
+    # Check for Claude Code OAuth token (determines network policy)
+    oauth_token = _get_claude_code_oauth_token()
+
+    if sandbox_id:
+        # Verify the sandbox container still exists before using it
+        try:
+            await sandbox_manager.get_status(sandbox_id)
+        except Exception:
+            logger.warning("pool_sandbox_stale id=%s", sandbox_id[:12])
+            sandbox_id = ""
+
     if sandbox_id:
         # Reconnect network — previous run may have disconnected it
         await sandbox_manager.reconnect_network(sandbox_id)
@@ -227,7 +291,16 @@ async def setup_workspace(
             "No sandboxes in pool — creating a new one (fallback)",
             state,
         )
-        sandbox_config = SandboxConfig(network_enabled=True, environment=env_vars)
+        # Mount ~/.claude from host and inject OAuth token for Claude Code
+        claude_mounts = _get_claude_code_mounts()
+        claude_env = env_vars
+        if oauth_token:
+            claude_env = claude_env | frozenset({("CLAUDE_CODE_OAUTH_TOKEN", oauth_token)})
+        sandbox_config = SandboxConfig(
+            network_enabled=True,
+            environment=claude_env,
+            mounts=claude_mounts,
+        )
         sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
         created_sandbox = True
         await append_log(
@@ -404,7 +477,9 @@ async def setup_workspace(
         await _install_project_deps(sandbox_manager, sandbox_id, repo_path, config, state)
 
         # Disconnect network now that clone and deps are complete
-        await sandbox_manager.disconnect_network(sandbox_id)
+        # Keep network active when Claude Code is the provider (needs Anthropic API)
+        if not oauth_token:
+            await sandbox_manager.disconnect_network(sandbox_id)
 
         logger.info(
             "workspace_setup_complete sandbox_id=%s repo_url=%s"

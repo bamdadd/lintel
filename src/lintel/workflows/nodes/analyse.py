@@ -131,6 +131,8 @@ async def analyse_code(
             {"role": "user", "content": user_content},
         ],
         on_chunk=_on_chunk,
+        sandbox_manager=sandbox_manager,
+        sandbox_id=sandbox_id,
     )
 
     remaining = "".join(_line_buffer).strip()

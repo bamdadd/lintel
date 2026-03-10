@@ -171,6 +171,8 @@ async def research_codebase(
             },
         ],
         on_chunk=_on_chunk,
+        sandbox_manager=sandbox_manager,
+        sandbox_id=sandbox_id,
     )
 
     # Flush any remaining buffered content
