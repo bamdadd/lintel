@@ -464,9 +464,7 @@ class WorkflowExecutor:
                     diff = artifact.get("content", "")
                     if diff:
                         diff_lines = diff.strip().split("\n")
-                        files_changed = sum(
-                            1 for ln in diff_lines if ln.startswith("diff --git")
-                        )
+                        files_changed = sum(1 for ln in diff_lines if ln.startswith("diff --git"))
                         additions = sum(
                             1
                             for ln in diff_lines
@@ -478,8 +476,7 @@ class WorkflowExecutor:
                             if ln.startswith("-") and not ln.startswith("---")
                         )
                         lines.append(
-                            f"\n**Diff:** {files_changed} files changed, "
-                            f"+{additions} -{deletions}"
+                            f"\n**Diff:** {files_changed} files changed, +{additions} -{deletions}"
                         )
             await self._notify_chat(run_id, "\n".join(lines))
         else:

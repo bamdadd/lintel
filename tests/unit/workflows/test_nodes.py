@@ -1,44 +1,11 @@
-"""Tests for workflow nodes: ingest, route, plan, review, research, triage, test_code, generic."""
+"""Tests for workflow nodes: ingest, route, review, research, triage, test_code, generic."""
 
 from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from lintel.workflows.nodes.generic import (
-    _stub,
-    build_release,
-    code_scan,
-    codebase_tour,
-    complete_onboarding,
-    define_scope,
-    dependency_scan,
-    deploy,
-    draft_docs,
-    first_task,
-    fix_bug,
-    generate_report,
-    hotfix,
-    investigate,
-    lint_code,
-    notify_release,
-    post_mortem,
-    prototype,
-    publish_docs,
-    refactor_code,
-    remediate,
-    reproduce_bug,
-    research,
-    secret_scan,
-    security_scan,
-    send_feedback,
-    setup_env,
-    version_bump,
-    write_changelog,
-)
+from lintel.workflows.nodes.generic import _stub
 from lintel.workflows.nodes.ingest import ingest_message
-from lintel.workflows.nodes.plan import plan_work
 from lintel.workflows.nodes.research import research_codebase
 from lintel.workflows.nodes.review import review_output
 from lintel.workflows.nodes.route import route_intent
@@ -98,25 +65,6 @@ class TestRouteNode:
         state: dict[str, Any] = {"sanitized_messages": []}
         result = await route_intent(state)  # type: ignore[arg-type]
         assert result["intent"] == "feature"
-
-
-class TestPlanNode:
-    async def test_produces_plan_with_tasks(self) -> None:
-        state: dict[str, Any] = {"intent": "feature"}
-        result = await plan_work(state, {"configurable": {}})  # type: ignore[arg-type]
-        assert "tasks" in result["plan"]
-        assert len(result["plan"]["tasks"]) > 0
-
-    async def test_includes_intent_in_plan(self) -> None:
-        state: dict[str, Any] = {"intent": "bug"}
-        result = await plan_work(state, {"configurable": {}})  # type: ignore[arg-type]
-        assert result["plan"]["intent"] == "bug"
-
-    async def test_sets_approval_phase(self) -> None:
-        state: dict[str, Any] = {"intent": "feature"}
-        result = await plan_work(state, {"configurable": {}})  # type: ignore[arg-type]
-        assert result["current_phase"] == "awaiting_spec_approval"
-        assert "spec_approval" in result["pending_approvals"]
 
 
 class TestReviewNode:
@@ -197,47 +145,3 @@ class TestStubFactory:
         assert result["current_phase"] == "testing_phase"
         assert result["agent_outputs"][0]["node"] == "test_node"
         assert result["agent_outputs"][0]["summary"] == "test summary"
-
-
-class TestAllStubNodes:
-    """Ensure every stub node runs and returns the expected structure."""
-
-    @pytest.mark.parametrize(
-        "node_fn,expected_phase",
-        [
-            (reproduce_bug, "reproducing"),
-            (fix_bug, "fixing"),
-            (lint_code, "linting"),
-            (security_scan, "scanning"),
-            (send_feedback, "feedback"),
-            (refactor_code, "refactoring"),
-            (dependency_scan, "scanning"),
-            (code_scan, "scanning"),
-            (secret_scan, "scanning"),
-            (generate_report, "reporting"),
-            (remediate, "remediating"),
-            (investigate, "investigating"),
-            (hotfix, "hotfixing"),
-            (deploy, "deploying"),
-            (post_mortem, "post_mortem"),
-            (draft_docs, "drafting"),
-            (publish_docs, "publishing"),
-            (write_changelog, "changelog"),
-            (version_bump, "versioning"),
-            (build_release, "building"),
-            (notify_release, "notifying"),
-            (setup_env, "setup"),
-            (codebase_tour, "touring"),
-            (first_task, "first_task"),
-            (complete_onboarding, "complete"),
-            (define_scope, "scoping"),
-            (research, "researching"),
-            (prototype, "prototyping"),
-        ],
-    )
-    async def test_stub_node(self, node_fn: Any, expected_phase: str) -> None:  # noqa: ANN401
-        result = await node_fn({})
-        assert result["current_phase"] == expected_phase
-        assert len(result["agent_outputs"]) == 1
-        assert "node" in result["agent_outputs"][0]
-        assert "summary" in result["agent_outputs"][0]

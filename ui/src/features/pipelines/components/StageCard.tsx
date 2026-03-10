@@ -13,9 +13,10 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import {
   Stack, Group, Text, Badge, Button, Paper, Code, ScrollArea,
+  Modal, ActionIcon, Tooltip, TypographyStylesProvider,
 } from '@mantine/core';
 import {
-  IconCheck, IconX, IconRefresh,
+  IconCheck, IconX, IconRefresh, IconMaximize,
 } from '@tabler/icons-react';
 import { Collapsible } from '@/shared/components/Collapsible';
 import { PlanView } from './PlanView';
@@ -131,6 +132,9 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
   const [retrying, setRetrying] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [fullscreenSection, setFullscreenSection] = useState<
+    'research' | 'plan' | 'review' | null
+  >(null);
 
   const { lines: logLines, scrollRef: logScrollRef } = useStageLogs(
     runId,
@@ -364,6 +368,17 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
             title="Research Report"
             defaultOpen
             data-testid="section-research"
+            badge={
+              <Tooltip label="Fullscreen">
+                <ActionIcon
+                  variant="subtle"
+                  size="xs"
+                  onClick={(e) => { e.stopPropagation(); setFullscreenSection('research'); }}
+                >
+                  <IconMaximize size={14} />
+                </ActionIcon>
+              </Tooltip>
+            }
           >
             <StageReportEditor
               runId={runId}
@@ -381,6 +396,17 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
             title="Implementation Plan"
             defaultOpen
             data-testid="section-plan"
+            badge={
+              <Tooltip label="Fullscreen">
+                <ActionIcon
+                  variant="subtle"
+                  size="xs"
+                  onClick={(e) => { e.stopPropagation(); setFullscreenSection('plan'); }}
+                >
+                  <IconMaximize size={14} />
+                </ActionIcon>
+              </Tooltip>
+            }
           >
             <PlanView
               plan={
@@ -409,6 +435,17 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
             title={`Review — ${stage.outputs?.verdict === 'approve' ? '✅ Approved' : '⚠️ Changes Requested'}`}
             defaultOpen={stage.outputs?.verdict !== 'approve'}
             data-testid="section-review"
+            badge={
+              <Tooltip label="Fullscreen">
+                <ActionIcon
+                  variant="subtle"
+                  size="xs"
+                  onClick={(e) => { e.stopPropagation(); setFullscreenSection('review'); }}
+                >
+                  <IconMaximize size={14} />
+                </ActionIcon>
+              </Tooltip>
+            }
           >
             <Paper p="sm" withBorder>
               <ScrollArea.Autosize mah={400}>
@@ -494,6 +531,94 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
             </Stack>
           </Collapsible>
         )}
+        {/* ── Fullscreen modals ──────────────────────────────────────── */}
+
+        {/* Research Report fullscreen */}
+        <Modal
+          opened={fullscreenSection === 'research'}
+          onClose={() => setFullscreenSection(null)}
+          fullScreen
+          title={
+            <Group gap="sm">
+              <Text fw={600}>Research Report</Text>
+              <Badge variant="light" size="sm">{stage.name}</Badge>
+            </Group>
+          }
+          styles={{
+            body: { padding: 'var(--mantine-spacing-xl)' },
+            header: { borderBottom: '1px solid var(--mantine-color-dark-4)' },
+          }}
+        >
+          <ScrollArea style={{ height: 'calc(100vh - 100px)' }} offsetScrollbars>
+            <TypographyStylesProvider>
+              <div className="chat-markdown">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {(stage.outputs?.research_report as string) ?? ''}
+                </ReactMarkdown>
+              </div>
+            </TypographyStylesProvider>
+          </ScrollArea>
+        </Modal>
+
+        {/* Implementation Plan fullscreen */}
+        <Modal
+          opened={fullscreenSection === 'plan'}
+          onClose={() => setFullscreenSection(null)}
+          fullScreen
+          title={
+            <Group gap="sm">
+              <Text fw={600}>Implementation Plan</Text>
+              <Badge variant="light" size="sm">{stage.name}</Badge>
+            </Group>
+          }
+          styles={{
+            body: { padding: 'var(--mantine-spacing-xl)' },
+            header: { borderBottom: '1px solid var(--mantine-color-dark-4)' },
+          }}
+        >
+          <ScrollArea style={{ height: 'calc(100vh - 100px)' }} offsetScrollbars>
+            <PlanView
+              plan={
+                stage.outputs?.plan as React.ComponentProps<
+                  typeof PlanView
+                >['plan']
+              }
+            />
+          </ScrollArea>
+        </Modal>
+
+        {/* Review fullscreen */}
+        <Modal
+          opened={fullscreenSection === 'review'}
+          onClose={() => setFullscreenSection(null)}
+          fullScreen
+          title={
+            <Group gap="sm">
+              <Text fw={600}>Review</Text>
+              <Badge
+                variant="light"
+                size="sm"
+                color={stage.outputs?.verdict === 'approve' ? 'green' : 'yellow'}
+              >
+                {stage.outputs?.verdict === 'approve' ? 'Approved' : 'Changes Requested'}
+              </Badge>
+            </Group>
+          }
+          styles={{
+            body: { padding: 'var(--mantine-spacing-xl)' },
+            header: { borderBottom: '1px solid var(--mantine-color-dark-4)' },
+          }}
+        >
+          <ScrollArea style={{ height: 'calc(100vh - 100px)' }} offsetScrollbars>
+            <TypographyStylesProvider>
+              <div className="chat-markdown">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {(stage.outputs?.review as string) ?? ''}
+                </ReactMarkdown>
+              </div>
+            </TypographyStylesProvider>
+          </ScrollArea>
+        </Modal>
     </Stack>
   );
 }

@@ -120,6 +120,7 @@ async def review_output(
             channel_id=parts[1] if len(parts) > 1 else "",
             thread_ts=parts[2] if len(parts) > 2 else "",
         )
+
         async def _on_activity(activity: str) -> None:
             if activity:
                 await append_log(_config, "review", activity, state)

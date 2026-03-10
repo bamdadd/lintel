@@ -415,9 +415,12 @@ async def _implement_tdd(
     await append_log(config, "implement", "Using Claude Code TDD mode", state)
 
     # Discover test/lint commands for the project
-    test_command, lint_command, typecheck_command, test_single_command = (
-        await _discover_dev_commands(sandbox_manager, sandbox_id, workspace_path)
-    )
+    (
+        test_command,
+        lint_command,
+        typecheck_command,
+        test_single_command,
+    ) = await _discover_dev_commands(sandbox_manager, sandbox_id, workspace_path)
 
     await append_log(config, "implement", f"Test: {test_command[:60]}", state)
     await append_log(config, "implement", f"Lint: {lint_command[:60]}", state)
@@ -445,8 +448,7 @@ async def _implement_tdd(
         sandbox_id,
         SandboxJob(
             command=(
-                'git config user.email "lintel@lintel.dev" '
-                '&& git config user.name "Lintel Agent"'
+                'git config user.email "lintel@lintel.dev" && git config user.name "Lintel Agent"'
             ),
             workdir=workspace_path,
             timeout_seconds=10,
@@ -456,7 +458,10 @@ async def _implement_tdd(
     # Load the Write Code skill's system prompt from the store (user-editable)
     skill_id = "skill_write_code"
     system_prompt = await _load_skill_system_prompt(
-        config, state, skill_id, workspace_path,
+        config,
+        state,
+        skill_id,
+        workspace_path,
         test_command=test_command,
         lint_command=lint_command,
         typecheck_command=typecheck_command,
@@ -504,9 +509,7 @@ async def _implement_tdd(
         await append_log(config, "implement", "Final tests: FAILED", state)
 
     agent_output = (
-        "Implementation complete."
-        if test_passed
-        else "Implementation complete — tests failing."
+        "Implementation complete." if test_passed else "Implementation complete — tests failing."
     )
     return agent_output, test_passed, [usage]
 
@@ -665,9 +668,7 @@ async def _implement_structured(
 
         files_to_write = _parse_file_output(gen_content)
         if not files_to_write:
-            await append_log(
-                config, "implement", "No files generated — fallback to tools", state
-            )
+            await append_log(config, "implement", "No files generated — fallback to tools", state)
             files_to_write = {}
     except Exception:
         logger.exception("implement_generate_failed")
@@ -678,16 +679,12 @@ async def _implement_structured(
     if files_to_write:
         await append_log(config, "implement", f"Writing {len(files_to_write)} file(s)", state)
         for rel_path, content in files_to_write.items():
-            abs_path = (
-                f"{workspace_path}/{rel_path}" if not rel_path.startswith("/") else rel_path
-            )
+            abs_path = f"{workspace_path}/{rel_path}" if not rel_path.startswith("/") else rel_path
             try:
                 await sandbox_manager.write_file(sandbox_id, abs_path, content)
                 lines = content.count("\n") + 1
                 fname = rel_path.split("/")[-1]
-                await append_log(
-                    config, "implement", f"  wrote {fname} ({lines} lines)", state
-                )
+                await append_log(config, "implement", f"  wrote {fname} ({lines} lines)", state)
             except Exception:
                 logger.warning("implement_write_failed", path=rel_path)
                 await append_log(config, "implement", f"  FAILED: {rel_path}", state)
@@ -732,9 +729,7 @@ async def _implement_structured(
         await append_log(config, "implement", "Tests still failing after fix attempts", state)
 
     agent_output = (
-        "Implementation complete."
-        if test_passed
-        else "Implementation complete — tests failing."
+        "Implementation complete." if test_passed else "Implementation complete — tests failing."
     )
     return agent_output, test_passed, total_usage
 

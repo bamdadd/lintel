@@ -104,7 +104,7 @@ export function Component() {
   });
 
   // ── Stage nodes ───────────────────────────────────────────────────────
-  const ARTIFACT_ICONS: Record<string, string> = {
+  const ARTIFACT_KEY_MAP: Record<string, string> = {
     research_report: 'report',
     plan: 'plan',
     diff: 'diff',
@@ -112,13 +112,17 @@ export function Component() {
   };
 
   for (const s of stages) {
-    const outputs = s.outputs ? Object.keys(s.outputs).filter((k) => k in ARTIFACT_ICONS) : [];
+    const artifacts = s.outputs
+      ? Object.keys(s.outputs)
+          .filter((k) => k in ARTIFACT_KEY_MAP)
+          .map((k) => ARTIFACT_KEY_MAP[k]!)
+      : [];
     dagNodes.push({
       id: s.stage_id,
       type: mapStageType(s.stage_type),
       label: s.name,
       status: s.status,
-      meta: outputs.length > 0 ? { artifacts: outputs } : undefined,
+      meta: artifacts.length > 0 ? { artifacts } : undefined,
     });
   }
 

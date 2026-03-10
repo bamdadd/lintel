@@ -67,10 +67,7 @@ async def _inject_claude_credentials(
     )
 
     # Write minimal settings that skip interactive permissions
-    settings = (
-        '{"permissions":{"allow":[],"deny":[]},'
-        '"hasCompletedOnboarding":true}'
-    )
+    settings = '{"permissions":{"allow":[],"deny":[]},"hasCompletedOnboarding":true}'
     await sandbox_manager.write_file(
         sandbox_id,
         "/home/vscode/.claude/settings.json",
