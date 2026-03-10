@@ -20,10 +20,10 @@ class TestWorkflowRegistry:
         with pytest.raises(KeyError, match="Unknown workflow"):
             get_workflow_builder("nonexistent")
 
-    def test_feature_to_pr_has_test_node(self) -> None:
+    def test_feature_to_pr_has_implement_node(self) -> None:
         builder = get_workflow_builder("feature_to_pr")
         graph = builder()
-        assert "test" in graph.nodes
+        assert "implement" in graph.nodes
 
     def test_bug_fix_has_triage_node(self) -> None:
         builder = get_workflow_builder("bug_fix")

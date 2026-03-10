@@ -113,13 +113,13 @@ class TestMCPToolGathering:
         tools = await runtime._gather_mcp_tools()
         assert tools == []
 
-    async def test_execute_step_merges_mcp_tools(
+    async def test_execute_step_explicit_tools_skip_mcp(
         self,
         mock_event_store: AsyncMock,
         mock_model_router: AsyncMock,
         thread_ref: ThreadRef,
     ) -> None:
-        """MCP tools are merged with explicit tools in execute_step."""
+        """When explicit tools are passed, MCP tools are NOT injected."""
         mcp_client = AsyncMock()
         mcp_client.get_tools_as_litellm_format = AsyncMock(
             return_value=[
@@ -154,10 +154,10 @@ class TestMCPToolGathering:
             tools=[explicit_tool],
         )
 
-        # call_model should have been called with merged tools
+        # call_model should only have the explicit tool (no MCP tools)
         call_args = mock_model_router.call_model.call_args
         tools_passed = call_args[0][2]  # third positional arg
-        assert len(tools_passed) == 2
-        tool_names = [t["function"]["name"] for t in tools_passed]
-        assert "local_tool" in tool_names
-        assert "mcp_tool" in tool_names
+        assert len(tools_passed) == 1
+        assert tools_passed[0]["function"]["name"] == "local_tool"
+        # MCP client should NOT have been called
+        mcp_client.get_tools_as_litellm_format.assert_not_called()

@@ -19,8 +19,20 @@ logger = structlog.get_logger()
 SANDBOX_TOOL_PREFIX = "sandbox_"
 
 
-def sandbox_tool_schemas() -> list[dict[str, Any]]:
-    """Return litellm-format tool schemas for sandbox operations."""
+def sandbox_tool_schemas(
+    exclude: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Return litellm-format tool schemas for sandbox operations.
+
+    Args:
+        exclude: Tool names to omit (e.g. {"sandbox_list_files"}).
+    """
+    _exclude = exclude or set()
+    return [s for s in _all_sandbox_tool_schemas() if s["function"]["name"] not in _exclude]
+
+
+def _all_sandbox_tool_schemas() -> list[dict[str, Any]]:
+    """All available sandbox tool schemas."""
     return [
         {
             "type": "function",

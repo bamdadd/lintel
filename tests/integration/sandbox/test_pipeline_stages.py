@@ -216,19 +216,22 @@ async def test_plan_from_research(runner: StageRunner) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stage 3: Implement — produce file changes (>1 file)
+# Stage 3: Implement — generate code, write files, run tests until green
 # ---------------------------------------------------------------------------
 
 
-async def test_implement_writes_multiple_files(runner: StageRunner) -> None:
-    """Implement node should write changes to multiple files via sandbox tools."""
+async def test_implement_generates_and_tests(runner: StageRunner) -> None:
+    """Implement node should generate code, write files, and run tests."""
     from lintel.workflows.nodes.implement import spawn_implementation
+
+    await runner.project.install_deps()
 
     plan = json.loads(PLAN_RESPONSE)
     state = runner.state(plan=plan, research_context="Simple math utils project")
     result = await spawn_implementation(state, runner.config)
 
-    assert result["current_phase"] == "testing"
+    # Implement now goes directly to reviewing (tests run internally)
+    assert result["current_phase"] == "reviewing"
     assert len(result.get("sandbox_results", [])) > 0
 
     diff = result["sandbox_results"][0].get("content", "")
@@ -244,36 +247,14 @@ async def test_implement_writes_multiple_files(runner: StageRunner) -> None:
     assert "test_subtract" in test_src
     assert "test_divide" in test_src
 
-
-# ---------------------------------------------------------------------------
-# Stage 4: Test — run tests on implemented code, verify they pass
-# ---------------------------------------------------------------------------
-
-
-async def test_tests_pass_after_implement(runner: StageRunner) -> None:
-    """After implementation, all tests should pass in the sandbox."""
-    from lintel.workflows.nodes.implement import spawn_implementation
-    from lintel.workflows.nodes.test_code import run_tests
-
-    await runner.project.install_deps()
-
-    plan = json.loads(PLAN_RESPONSE)
-    impl_result = await spawn_implementation(runner.state(plan=plan), runner.config)
-    assert impl_result["current_phase"] == "testing"
-
-    # Test stage doesn't need agent_runtime
-    no_llm = StageRunner(runner.project)
-    test_result = await run_tests(no_llm.state(), no_llm.config)
-
-    verdict = test_result["agent_outputs"][0]["verdict"]
-    assert verdict == "passed", (
-        f"Expected tests to pass. Verdict: {verdict}\n"
-        f"Output: {test_result['agent_outputs'][0].get('output', '')[:500]}"
-    )
+    # Verify test verdict is in agent_outputs
+    test_outputs = [o for o in result["agent_outputs"] if o.get("node") == "test"]
+    assert len(test_outputs) == 1
+    assert test_outputs[0]["verdict"] == "passed"
 
 
 # ---------------------------------------------------------------------------
-# Stage 5: Review — given diffs, review should approve
+# Stage 4: Review — given diffs, review should approve
 # ---------------------------------------------------------------------------
 
 
@@ -282,6 +263,7 @@ async def test_review_approves_good_diff(runner: StageRunner) -> None:
     from lintel.workflows.nodes.implement import spawn_implementation
     from lintel.workflows.nodes.review import review_output
 
+    await runner.project.install_deps()
     plan = json.loads(PLAN_RESPONSE)
     impl_result = await spawn_implementation(runner.state(plan=plan), runner.config)
 
@@ -296,7 +278,7 @@ async def test_review_approves_good_diff(runner: StageRunner) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stage 6: Close — commit changes and verify git state
+# Stage 5: Close — commit changes and verify git state
 # ---------------------------------------------------------------------------
 
 
@@ -305,6 +287,7 @@ async def test_close_commits_changes(runner: StageRunner) -> None:
     from lintel.workflows.nodes.close import close_workflow
     from lintel.workflows.nodes.implement import spawn_implementation
 
+    await runner.project.install_deps()
     plan = json.loads(PLAN_RESPONSE)
     await spawn_implementation(runner.state(plan=plan), runner.config)
 
@@ -327,7 +310,7 @@ async def test_close_commits_changes(runner: StageRunner) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stage 7: Close with PR — verify PR creation via injected repo_provider
+# Stage 6: Close with PR — verify PR creation via injected repo_provider
 # ---------------------------------------------------------------------------
 
 
@@ -337,6 +320,7 @@ async def test_close_creates_pr(runner: StageRunner) -> None:
     from lintel.workflows.nodes.implement import spawn_implementation
     from tests.integration.sandbox.fake_runtime import FakeRepoProvider
 
+    await runner.project.install_deps()
     plan = json.loads(PLAN_RESPONSE)
     await spawn_implementation(runner.state(plan=plan), runner.config)
 
@@ -375,6 +359,7 @@ async def test_close_creates_pr_with_local_remote(runner: StageRunner) -> None:
     from lintel.workflows.nodes.implement import spawn_implementation
     from tests.integration.sandbox.fake_runtime import FakeRepoProvider
 
+    await runner.project.install_deps()
     plan = json.loads(PLAN_RESPONSE)
     await spawn_implementation(runner.state(plan=plan), runner.config)
 
@@ -447,7 +432,7 @@ async def test_close_creates_pr_with_local_remote(runner: StageRunner) -> None:
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: research -> plan -> implement -> test -> review -> close
+# End-to-end: research -> plan -> implement (with tests) -> review -> close
 # ---------------------------------------------------------------------------
 
 
@@ -458,7 +443,6 @@ async def test_full_pipeline(runner: StageRunner) -> None:
     from lintel.workflows.nodes.plan import plan_work
     from lintel.workflows.nodes.research import research_codebase
     from lintel.workflows.nodes.review import review_output
-    from lintel.workflows.nodes.test_code import run_tests
 
     await runner.project.install_deps()
     no_llm = StageRunner(runner.project)
@@ -475,22 +459,18 @@ async def test_full_pipeline(runner: StageRunner) -> None:
     plan = plan_result["plan"]
     assert len(plan["tasks"]) >= 2
 
-    # 3. Implement
+    # 3. Implement (now includes testing internally)
     impl = await spawn_implementation(runner.state(plan=plan), runner.config)
-    assert impl["current_phase"] == "testing"
+    assert impl["current_phase"] == "reviewing"
 
-    # 4. Test
-    test = await run_tests(no_llm.state(), no_llm.config)
-    assert test["agent_outputs"][0]["verdict"] == "passed"
-
-    # 5. Review
+    # 4. Review
     review = await review_output(
         runner.state(sandbox_results=impl.get("sandbox_results", [])),
         runner.config,
     )
     assert review["agent_outputs"][0]["verdict"] == "approve"
 
-    # 6. Close
+    # 5. Close
     close = await close_workflow(
         no_llm.state(
             plan=plan,

@@ -158,6 +158,18 @@ def _make_tool_call(tool_name: str, arguments: dict[str, str]) -> dict[str, Any]
     }
 
 
+def _generate_files_json(workspace_path: str) -> str:
+    """Return JSON file output for the generate step."""
+    return json.dumps(
+        {
+            "files": {
+                "src/math_utils.py": _MATH_UTILS_CONTENT,
+                "tests/test_math_utils.py": _TESTS_CONTENT,
+            }
+        }
+    )
+
+
 def _implement_tool_calls(workspace_path: str) -> list[dict[str, Any]]:
     return [
         _make_tool_call(
@@ -228,12 +240,26 @@ class FakeModelRouter:
         system_msg = _system_content(messages)
         has_tool_results = any(m.get("role") == "tool" for m in messages)
 
+        # Generate step: return JSON file contents (no tools)
+        if "respond only with a json" in system_msg.lower():
+            return _text_response(_generate_files_json(self._workspace_path), 200, 100)
+
+        # Fix step: return tool calls to fix code (has tools)
+        if "fixing test failures" in system_msg.lower():
+            if has_tool_results:
+                return _text_response("Fix applied.")
+            return {
+                "content": None,
+                "tool_calls": _implement_tool_calls(self._workspace_path),
+                "usage": {"input_tokens": 200, "output_tokens": 100},
+            }
+
+        # Legacy: tool-based implement (for other workflows)
         if has_tool_results:
             return _text_response(
                 "Implementation complete. Updated math_utils.py "
                 "with subtract and divide functions, and added tests."
             )
-
         if "sandbox tools" in system_msg.lower() or "sandbox_write_file" in str(tools):
             return {
                 "content": None,

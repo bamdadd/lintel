@@ -54,10 +54,16 @@ class DummySandboxManager:
         self.destroyed.append(sandbox_id)
         self._sandboxes.pop(sandbox_id, None)
 
+    async def reconnect_network(self, sandbox_id: str) -> None:
+        pass
+
+    async def disconnect_network(self, sandbox_id: str) -> None:
+        pass
+
 
 def _make_state(sandbox_id: str = "sandbox-123") -> dict[str, Any]:
     return {
-        "thread_ref": "thread:W1:C1:1.0",
+        "thread_ref": "test:test:test",
         "correlation_id": str(uuid4()),
         "current_phase": "implementing",
         "sanitized_messages": ["add a button"],
@@ -84,17 +90,15 @@ class TestSpawnImplementation:
 
     async def test_returns_artifacts_with_sandbox(self) -> None:
         manager = DummySandboxManager()
-        # Pre-create a sandbox so it exists in the manager
         sandbox_id = "test-sandbox-1"
         manager._sandboxes[sandbox_id] = {}
         state = _make_state(sandbox_id=sandbox_id)
 
         result = await spawn_implementation(state, {"configurable": {"sandbox_manager": manager}})
 
-        assert result["current_phase"] == "testing"
+        assert result["current_phase"] == "reviewing"
         assert len(result["sandbox_results"]) == 1
         assert result["sandbox_results"][0]["type"] == "diff"
-        assert len(result["agent_outputs"]) == 1
 
     async def test_collects_artifacts_without_agent_runtime(self) -> None:
         manager = DummySandboxManager()

@@ -168,8 +168,10 @@ class AgentRuntime:
         )
 
         # Merge MCP tools with any explicitly passed tools.
+        # Only inject MCP tools when no explicit tools are passed (tools=None).
+        # When tools are explicitly provided (even if non-empty), trust the caller.
         all_tools = list(tools) if tools else []
-        if tools is None or len(tools) > 0:
+        if tools is None:
             mcp_tools = await self._gather_mcp_tools()
         else:
             mcp_tools = []

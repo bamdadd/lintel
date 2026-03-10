@@ -24,7 +24,6 @@ from lintel.workflows.nodes.research import research_codebase
 from lintel.workflows.nodes.review import review_output
 from lintel.workflows.nodes.route import route_intent
 from lintel.workflows.nodes.setup_workspace import setup_workspace
-from lintel.workflows.nodes.test_code import run_tests
 from lintel.workflows.state import ThreadWorkflowState
 
 
@@ -46,7 +45,6 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
         partial(approval_gate, gate_type="spec_approval"),
     )
     graph.add_node("implement", spawn_implementation)
-    graph.add_node("test", run_tests)
     graph.add_node("review", review_output)
     graph.add_node(
         "approval_gate_pr",
@@ -71,11 +69,6 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_edge("approval_gate_spec", "implement")
     graph.add_conditional_edges(
         "implement",
-        _check_phase,
-        {"continue": "test", "close": "close"},
-    )
-    graph.add_conditional_edges(
-        "test",
         _check_phase,
         {"continue": "review", "close": "close"},
     )
