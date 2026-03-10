@@ -43,7 +43,6 @@ def _stage_names_for_workflow(workflow_definition_id: str) -> tuple[str, ...]:
         "plan",
         "approve_spec",
         "implement",
-        "test",
         "review",
         "approved_for_pr",
         "raise_pr",

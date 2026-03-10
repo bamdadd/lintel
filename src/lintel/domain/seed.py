@@ -696,7 +696,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         definition_id="feature_to_pr",
         name="Feature to PR",
         description=(
-            "End-to-end feature implementation: research, plan, implement, test, review, raise PR."
+            "End-to-end feature implementation: research, plan, implement, review, raise PR."
         ),
         is_template=True,
         stage_names=(
@@ -708,7 +708,6 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "plan",
             "approve_spec",
             "implement",
-            "test",
             "review",
             "approved_for_pr",
             "raise_pr",
@@ -722,7 +721,6 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "plan",
             "approval_gate_spec",
             "implement",
-            "test",
             "review",
             "approval_gate_pr",
             "close",
@@ -734,8 +732,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             ("approval_gate_research", "plan"),
             ("plan", "approval_gate_spec"),
             ("approval_gate_spec", "implement"),
-            ("implement", "test"),
-            ("test", "review"),
+            ("implement", "review"),
             ("review", "approval_gate_pr"),
             ("approval_gate_pr", "close"),
         ),
