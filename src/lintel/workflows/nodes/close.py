@@ -351,7 +351,7 @@ async def _skip_remaining_stages(
                 updated_stages.append(replace(s, status=StageStatus.SKIPPED))
             else:
                 updated_stages.append(s)
-        updated = replace(run, stages=tuple(updated_stages))
+        updated = replace(run, stages=tuple(updated_stages), status="failed")
         await pipeline_store.update(updated)
     except Exception:
         logger.warning("skip_remaining_stages_failed", run_id=run_id)

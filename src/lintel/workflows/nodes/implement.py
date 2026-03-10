@@ -348,7 +348,12 @@ async def spawn_implementation(
         stage_outputs["token_usage"] = merged
     if diff_text:
         stage_outputs["diff"] = diff_text[:50000]
-    await mark_completed(_config, "implement", state, outputs=stage_outputs or None)
+    implement_error = "Tests failed" if (agent_runtime is not None and not test_passed) else None
+    await mark_completed(
+        _config, "implement", state,
+        outputs=stage_outputs or None,
+        error=implement_error,
+    )
 
     result_dict: dict[str, Any] = {
         "current_phase": "reviewing",
