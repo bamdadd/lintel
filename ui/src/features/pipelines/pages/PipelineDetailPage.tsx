@@ -55,10 +55,6 @@ export function Component() {
 
   const pipeline = (pipelineResp?.data ?? {}) as Record<string, unknown>;
   const stages = (stagesResp?.data ?? []) as StageItem[];
-  const selectedStage = selectedStageId
-    ? stages.find((s) => s.stage_id === selectedStageId) ?? null
-    : null;
-
   const handleActionComplete = useCallback(() => {
     refetchPipeline();
     refetchStages();

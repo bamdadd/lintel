@@ -283,7 +283,9 @@ class TestRecoverContainers:
 
         recovered = await manager.recover_containers()
 
-        assert recovered == ["orphan-1"]
+        assert len(recovered) == 1
+        assert recovered[0]["sandbox_id"] == "orphan-1"
+        assert recovered[0]["status"] == "running"
         assert manager._containers["orphan-1"] is container
         container.remove.assert_not_called()
 

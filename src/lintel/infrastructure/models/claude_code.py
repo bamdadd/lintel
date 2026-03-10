@@ -29,7 +29,6 @@ CLAUDE_CODE_PROBE_TIMEOUT = 30
 STREAM_POLL_INTERVAL = 3
 
 
-
 async def validate_claude_token(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
@@ -231,8 +230,7 @@ class ClaudeCodeProvider:
         await self._sandbox.execute(
             sandbox_id,
             SandboxJob(
-                command="chmod +x /tmp/lintel-run-claude.sh && "
-                "nohup /tmp/lintel-run-claude.sh &",
+                command="chmod +x /tmp/lintel-run-claude.sh && nohup /tmp/lintel-run-claude.sh &",
                 workdir=workdir,
                 timeout_seconds=10,
             ),
@@ -362,7 +360,7 @@ class ClaudeCodeProvider:
                             return f"🔧 {tool_name}: {desc[:80]}"
                         return f"🔧 {tool_name}"
                     if block.get("type") == "text":
-                        text = block.get("text", "")
+                        text = str(block.get("text", ""))
                         first_line = text.split("\n")[0][:120]
                         if first_line:
                             return first_line
@@ -376,7 +374,7 @@ class ClaudeCodeProvider:
             return ""  # Too noisy
 
         if msg_type == "text":
-            text = obj.get("text", "")
+            text = str(obj.get("text", ""))
             first_line = text.split("\n")[0][:120]
             if first_line:
                 return first_line
@@ -422,25 +420,25 @@ class ClaudeCodeProvider:
             return {"content": stdout, "usage": {}, "model": "claude-code"}
 
         # Extract text content from the response
-        content_parts: list[str] = []
-        usage: dict[str, int] = {}
+        parts: list[str] = []
+        usg: dict[str, int] = {}
 
         if isinstance(data, list):
             # Array of content blocks: [{"type": "text", "text": "..."}, ...]
             for block in data:
                 if isinstance(block, dict):
                     if block.get("type") == "text":
-                        content_parts.append(block.get("text", ""))
+                        parts.append(block.get("text", ""))
                     elif block.get("type") == "result":
-                        content_parts.append(block.get("result", ""))
+                        parts.append(block.get("result", ""))
         elif isinstance(data, dict):
             # Single response object
-            content_parts.append(str(data.get("content", data.get("result", str(data)))))
+            parts.append(str(data.get("content", data.get("result", str(data)))))
             if "usage" in data:
-                usage = data["usage"]
+                usg = data["usage"]
 
         return {
-            "content": "\n".join(content_parts),
-            "usage": usage,
+            "content": "\n".join(parts),
+            "usage": usg,
             "model": "claude-code",
         }

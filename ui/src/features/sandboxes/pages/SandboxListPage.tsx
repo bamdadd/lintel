@@ -302,7 +302,7 @@ export function Component() {
             {form.values.preset && presets?.[form.values.preset]?.mounts && (
               <Paper withBorder p="xs" radius="md" bg="dark.8">
                 <Text size="xs" fw={600} mb={4}>Mounts (from preset)</Text>
-                {presets[form.values.preset].mounts!.map((m) => (
+                {presets[form.values.preset]?.mounts?.map((m) => (
                   <Group key={m.target} gap="xs">
                     <Badge size="xs" variant="light" color="violet">{m.type}</Badge>
                     <Text size="xs" ff="monospace" c="dimmed">{m.source}</Text>
