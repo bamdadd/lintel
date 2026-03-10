@@ -25,6 +25,7 @@ interface PipelineRun {
   status: string;
   trigger_type: string;
   trigger_id: string;
+  work_item_id?: string;
   created_at: string;
   finished_at: string;
 }

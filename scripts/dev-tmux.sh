@@ -48,7 +48,9 @@ tmux send-keys -t "$SESSION:services" "make ollama-serve" Enter
 tmux new-window -t "$SESSION" -n editor
 tmux send-keys -t "$SESSION:editor" "nvim" Enter
 tmux split-window -v -t "$SESSION:editor"
+tmux send-keys -t "$SESSION:editor" "ulimit -n 4096" Enter
 tmux split-window -h -t "$SESSION:editor"
+tmux send-keys -t "$SESSION:editor" "ulimit -n 4096" Enter
 
 # Start on the prompts window
 tmux select-window -t "$SESSION:prompts"

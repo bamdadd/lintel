@@ -74,19 +74,19 @@ async def validate_claude_token(
 def _tool_detail(tool_name: str, tool_input: dict[str, Any]) -> str:
     """Extract a human-readable detail string from a tool_use input."""
     # Description field (Claude Code's own tools use this)
-    desc = tool_input.get("description", "")
+    desc = str(tool_input.get("description", ""))
     if desc:
         return desc
     # Bash/command tools — show the command
-    cmd = tool_input.get("command", "")
+    cmd = str(tool_input.get("command", ""))
     if cmd:
         return cmd.split("\n")[0]
     # Read/Write/Edit — show the file path
-    fp = tool_input.get("file_path", "") or tool_input.get("path", "")
+    fp = str(tool_input.get("file_path", "") or tool_input.get("path", ""))
     if fp:
         return fp
     # Grep/search — show the pattern
-    pattern = tool_input.get("pattern", "")
+    pattern = str(tool_input.get("pattern", ""))
     if pattern:
         return f"/{pattern}/"
     return ""
