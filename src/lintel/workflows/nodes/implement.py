@@ -25,11 +25,17 @@ to run commands.
 
 The workspace is at: {workspace_path}
 
+You have already been given a detailed plan with specific tasks and file paths, \
+plus research context describing the codebase architecture. Use this context — \
+do NOT re-explore the entire codebase.
+
 Follow this workflow:
-1. Use sandbox_list_files to explore the workspace directory
-2. Use sandbox_read_file to understand existing code
-3. Use sandbox_write_file to create or modify files
-4. Use sandbox_execute_command to run tests or verify changes
+1. Read ONLY the specific files listed in the plan tasks (sandbox_read_file)
+2. Implement the changes (sandbox_write_file)
+3. Run tests to verify (sandbox_execute_command)
+
+Do NOT use sandbox_list_files to browse directories unless you need a file not \
+mentioned in the plan. Go straight to implementation.
 
 Work methodically through each task. Write clean, production-quality code.
 """
@@ -130,9 +136,20 @@ async def spawn_implementation(
 
     # Build the implementation prompt from plan
     tasks = plan.get("tasks", [])
-    task_text = "\n".join(
-        f"- {t}" if isinstance(t, str) else f"- {t.get('title', t)}" for t in tasks
-    )
+    task_lines = []
+    for t in tasks:
+        if isinstance(t, str):
+            task_lines.append(f"- {t}")
+        else:
+            line = f"- {t.get('title', t)}"
+            desc = t.get("description", "")
+            if desc:
+                line += f"\n  {desc}"
+            paths = t.get("file_paths", [])
+            if paths:
+                line += f"\n  Files: {', '.join(paths)}"
+            task_lines.append(line)
+    task_text = "\n".join(task_lines)
     plan_summary = plan.get("summary", "Implement the requested feature.")
 
     research_context = state.get("research_context", "")
