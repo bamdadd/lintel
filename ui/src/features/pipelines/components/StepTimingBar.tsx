@@ -11,13 +11,27 @@ interface StepTimingBarProps {
   steps: StepTiming[];
 }
 
-const typeColors: Record<string, string> = {
-  agent: '#3b82f6',
-  tool: '#6b7280',
-  approval: '#eab308',
-  approve: '#eab308',
-  approval_gate: '#eab308',
-};
+/** Color by duration: cool → warm → hot → burning */
+function heatColor(ms: number): string {
+  // < 10s  — cool blue/cyan
+  if (ms < 10_000) return '#38bdf8';
+  // < 30s  — teal
+  if (ms < 30_000) return '#2dd4bf';
+  // < 1m   — green
+  if (ms < 60_000) return '#4ade80';
+  // < 2m   — yellow-green
+  if (ms < 120_000) return '#a3e635';
+  // < 5m   — yellow
+  if (ms < 300_000) return '#facc15';
+  // < 10m  — orange
+  if (ms < 600_000) return '#fb923c';
+  // < 30m  — red-orange
+  if (ms < 1_800_000) return '#f87171';
+  // < 1h   — red
+  if (ms < 3_600_000) return '#ef4444';
+  // 1h+    — deep red / burning
+  return '#dc2626';
+}
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -86,7 +100,7 @@ export function StepTimingBar({ steps }: StepTimingBarProps) {
       {steps.map((step, i) => {
         const offsetPct = ((step.startMs - minStart) / totalMs) * 100;
         const widthPct = Math.max((step.durationMs / totalMs) * 100, 0.5);
-        const color = typeColors[step.stepType] ?? '#3b82f6';
+        const color = heatColor(step.durationMs);
 
         return (
           <Tooltip
