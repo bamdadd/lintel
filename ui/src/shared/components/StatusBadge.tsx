@@ -1,21 +1,60 @@
-import { Badge } from '@mantine/core';
+import { Badge, type BadgeProps } from '@mantine/core';
 
 const statusColors: Record<string, string> = {
-  active: 'green',
-  running: 'blue',
+  // Pipeline / stage statuses
   pending: 'yellow',
-  completed: 'green',
+  running: 'blue',
   succeeded: 'green',
+  completed: 'green',
   failed: 'red',
   error: 'red',
+  errored: 'red',
+  cancelled: 'orange',
   skipped: 'gray',
-  archived: 'gray',
-  destroyed: 'gray',
+  waiting_approval: 'yellow',
+  approved: 'teal',
+  rejected: 'red',
+
+  // Work item statuses
+  open: 'blue',
+  in_progress: 'yellow',
+  in_review: 'orange',
+  merged: 'teal',
   closed: 'gray',
-  paused: 'orange',
+  done: 'green',
+  blocked: 'red',
+
+  // Sandbox statuses
   creating: 'cyan',
+  active: 'green',
+  stopped: 'gray',
+  destroyed: 'gray',
+  archived: 'gray',
+  paused: 'orange',
+
+  // SSE / stream statuses
+  connecting: 'gray',
+  streaming: 'blue',
+  ended: 'green',
+  started: 'teal',
+
+  // Approval statuses
+  expired: 'gray',
+  unknown: 'yellow',
 };
 
-export function StatusBadge({ status }: { status: string }) {
-  return <Badge color={statusColors[status] ?? 'gray'}>{status}</Badge>;
+export function getStatusColor(status: string): string {
+  return statusColors[status] ?? 'gray';
+}
+
+interface StatusBadgeProps extends Omit<BadgeProps, 'color' | 'children'> {
+  status: string;
+}
+
+export function StatusBadge({ status, ...rest }: StatusBadgeProps) {
+  return (
+    <Badge color={getStatusColor(status)} variant="dot" {...rest}>
+      {status?.replace(/_/g, ' ')}
+    </Badge>
+  );
 }

@@ -18,6 +18,7 @@ import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import type { WorkItemType } from '@/generated/models/workItemType';
 import type { WorkItemStatus } from '@/generated/models/workItemStatus';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { StatusBadge } from '@/shared/components/StatusBadge';
 
 interface WorkItem {
   work_item_id: string;
@@ -49,9 +50,6 @@ const STATUSES = [
   { value: 'closed', label: 'Closed' },
 ];
 
-const statusColor: Record<string, string> = {
-  open: 'blue', in_progress: 'yellow', in_review: 'orange', approved: 'green', merged: 'teal', closed: 'gray',
-};
 
 const typeColor: Record<string, string> = { feature: 'violet', bug: 'red', refactor: 'cyan', task: 'gray' };
 
@@ -159,7 +157,7 @@ export function Component() {
                     <Text size="sm" fw={500} truncate>{w.title}</Text>
                   </Group>
                 </Table.Td>
-                <Table.Td><Badge color={statusColor[w.status] ?? 'gray'}>{w.status?.replace('_', ' ')}</Badge></Table.Td>
+                <Table.Td><StatusBadge status={w.status} /></Table.Td>
                 <Table.Td><Text size="sm">{projectName(w.project_id)}</Text></Table.Td>
                 <Table.Td>
                   <Group gap="xs">

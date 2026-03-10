@@ -21,6 +21,7 @@ import { notifications } from '@mantine/notifications';
 import { useUpdateWorkItem, useDeleteWorkItem, usePipelinesForWorkItem } from '../api';
 import type { WorkItem } from '../api';
 import { useQueryClient } from '@tanstack/react-query';
+import { StatusBadge } from '@/shared/components/StatusBadge';
 
 const WORK_TYPES = [
   { value: 'task', label: 'Task' },
@@ -38,13 +39,6 @@ const STATUSES = [
   { value: 'closed', label: 'Closed' },
 ];
 
-const statusColor: Record<string, string> = {
-  running: 'blue',
-  completed: 'green',
-  failed: 'red',
-  cancelled: 'gray',
-  pending: 'yellow',
-};
 
 interface WorkItemDetailModalProps {
   item: WorkItem | null;
@@ -118,9 +112,7 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
           <Badge size="xs" variant="light" color="dimmed">
             {item.work_item_id.slice(0, 8)}
           </Badge>
-          <Badge size="xs" variant="dot" color={statusColor[item.status] ?? 'gray'}>
-            {item.status.replace('_', ' ')}
-          </Badge>
+          <StatusBadge status={item.status} size="xs" />
         </Group>
 
         <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
@@ -239,9 +231,7 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
                     <Text size="xs">{p.workflow_definition_id}</Text>
                   </Table.Td>
                   <Table.Td>
-                    <Badge size="xs" color={statusColor[p.status] ?? 'gray'}>
-                      {p.status}
-                    </Badge>
+                    <StatusBadge status={p.status} size="xs" />
                   </Table.Td>
                   <Table.Td>
                     <Text size="xs" c="dimmed">

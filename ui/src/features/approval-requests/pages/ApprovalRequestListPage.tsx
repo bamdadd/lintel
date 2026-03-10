@@ -16,6 +16,7 @@ import {
 import { usePipelinesGetPipeline, usePipelinesListStages } from '@/generated/api/pipelines/pipelines';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
+import { StatusBadge } from '@/shared/components/StatusBadge';
 
 interface ApprovalItem {
   approval_id: string;
@@ -30,7 +31,6 @@ interface ApprovalItem {
   decided_at: string;
 }
 
-const statusColor: Record<string, string> = { pending: 'yellow', approved: 'green', rejected: 'red', expired: 'gray' };
 
 const GATE_LABELS: Record<string, { label: string; description: string }> = {
   approval_gate_research: { label: 'Research Review', description: 'Review the research findings before planning begins' },
@@ -240,7 +240,7 @@ export function Component() {
                     return (
                       <Table.Tr key={a.approval_id}>
                         <Table.Td><Text size="sm">{gate.label}</Text></Table.Td>
-                        <Table.Td><Badge color={statusColor[a.status] ?? 'gray'}>{a.status}</Badge></Table.Td>
+                        <Table.Td><StatusBadge status={a.status} /></Table.Td>
                         <Table.Td><PipelineLink runId={a.run_id} /></Table.Td>
                         <Table.Td>{a.decided_by || '—'}</Table.Td>
                         <Table.Td><Text size="sm" lineClamp={1}>{a.reason || '—'}</Text></Table.Td>

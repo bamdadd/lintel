@@ -49,7 +49,7 @@ import { useSkillsListSkills } from '@/generated/api/skills/skills';
 import { useMcpServersListMcpServers } from '@/generated/api/mcp-servers/mcp-servers';
 import { useRepositoriesListRepositories } from '@/generated/api/repositories/repositories';
 import { useSandboxesListSandboxes } from '@/generated/api/sandboxes/sandboxes';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { StatusBadge, getStatusColor } from '@/shared/components/StatusBadge';
 import { customInstance } from '@/shared/api/client';
 
 interface OverviewData {
@@ -155,18 +155,6 @@ function OnboardingBanner() {
   );
 }
 
-const statusColors: Record<string, string> = {
-  running: 'blue',
-  pending: 'yellow',
-  completed: 'green',
-  succeeded: 'green',
-  failed: 'red',
-  cancelled: 'gray',
-  open: 'blue',
-  in_progress: 'cyan',
-  done: 'green',
-  blocked: 'red',
-};
 
 function StatusBreakdown({
   title,
@@ -183,7 +171,7 @@ function StatusBreakdown({
 
   const ringData = entries.map(([status, value]) => ({
     value: (value / total) * 100,
-    color: statusColors[status] ?? 'gray',
+    color: getStatusColor(status),
     tooltip: `${status}: ${value}`,
   }));
 
@@ -198,9 +186,7 @@ function StatusBreakdown({
         <Stack gap={4}>
           {entries.map(([status, count]) => (
             <Group key={status} gap="xs">
-              <Badge size="xs" color={statusColors[status] ?? 'gray'} variant="dot">
-                {status}
-              </Badge>
+              <StatusBadge status={status} size="xs" />
               <Text size="sm" fw={500}>{count}</Text>
             </Group>
           ))}

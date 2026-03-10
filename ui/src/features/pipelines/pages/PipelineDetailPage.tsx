@@ -16,18 +16,7 @@ import { StepTimingBar } from '../components/StepTimingBar';
 import type { StageItem } from '../components/StageCard';
 import { StageListView } from '../components/StageListView';
 import { usePipelineSSE } from '../hooks/usePipelineSSE';
-
-const statusColor: Record<string, string> = {
-  pending: 'gray',
-  running: 'blue',
-  succeeded: 'green',
-  failed: 'red',
-  cancelled: 'orange',
-  skipped: 'gray',
-  waiting_approval: 'yellow',
-  approved: 'teal',
-  rejected: 'red',
-};
+import { getStatusColor } from '@/shared/components/StatusBadge';
 
 export function Component() {
   const { runId } = useParams<{ runId: string }>();
@@ -199,7 +188,7 @@ export function Component() {
             Back
           </Button>
           <Title order={2}>Pipeline {runId?.slice(0, 8)}</Title>
-          <Badge color={statusColor[pipeline.status as string] ?? 'gray'}>
+          <Badge color={getStatusColor(pipeline.status as string)}>
             {(pipeline.status as string) ?? 'unknown'}
           </Badge>
         </Group>

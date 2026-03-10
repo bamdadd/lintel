@@ -15,6 +15,7 @@ import {
 } from '@/generated/api/sandboxes/sandboxes';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
+import { getStatusColor } from '@/shared/components/StatusBadge';
 
 interface MountEntry {
   source: string;
@@ -200,13 +201,6 @@ export function Component() {
 
   const status = (statusResp?.data as { status?: string } | undefined)?.status ?? 'unknown';
 
-  const statusColor: Record<string, string> = {
-    running: 'green',
-    stopped: 'gray',
-    unknown: 'yellow',
-    error: 'red',
-  };
-
   const prompt = `root ➜ ${cwd} $`;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -323,7 +317,7 @@ export function Component() {
           <IconArrowLeft size={20} />
         </ActionIcon>
         <Title order={2}>Sandbox {sandboxId?.slice(0, 12)}</Title>
-        <Badge color={statusColor[status] ?? 'gray'} size="lg">{status}</Badge>
+        <Badge color={getStatusColor(status)} size="lg">{status}</Badge>
       </Group>
 
       <Group gap="xl">

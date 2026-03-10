@@ -34,21 +34,14 @@ import {
   useSandboxesGetSandboxStatus,
 } from '@/generated/api/sandboxes/sandboxes';
 import { EmptyState } from '@/shared/components/EmptyState';
-
-const statusColor: Record<string, string> = {
-  running: 'green',
-  creating: 'blue',
-  completed: 'gray',
-  failed: 'red',
-  destroyed: 'orange',
-};
+import { getStatusColor } from '@/shared/components/StatusBadge';
 
 function SandboxStatusBadge({ sandboxId }: { sandboxId: string }) {
   const { data } = useSandboxesGetSandboxStatus(sandboxId, {
     query: { refetchInterval: 5000 },
   });
   const status = (data?.data as { status?: string } | undefined)?.status ?? 'unknown';
-  return <Badge size="sm" color={statusColor[status] ?? 'yellow'}>{status}</Badge>;
+  return <Badge size="sm" color={getStatusColor(status)}>{status}</Badge>;
 }
 
 interface SandboxPreset {

@@ -17,6 +17,7 @@ import {
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
+import { StatusBadge } from '@/shared/components/StatusBadge';
 
 interface PipelineRun {
   run_id: string;
@@ -32,9 +33,6 @@ interface PipelineRun {
 
 interface ProjectItem { project_id: string; name: string; }
 
-const statusColor: Record<string, string> = {
-  pending: 'gray', running: 'blue', succeeded: 'green', failed: 'red', cancelled: 'orange', waiting_approval: 'yellow',
-};
 
 export function Component() {
   const { data: resp, isLoading } = usePipelinesListPipelines();
@@ -156,7 +154,7 @@ export function Component() {
                     <Badge variant="light">{r.trigger_type || '—'}</Badge>
                   )}
                 </Table.Td>
-                <Table.Td><Badge color={statusColor[r.status] ?? 'gray'}>{r.status}</Badge></Table.Td>
+                <Table.Td><StatusBadge status={r.status} /></Table.Td>
                 <Table.Td><TimeAgo date={r.created_at} size="sm" /></Table.Td>
                 <Table.Td>
                   <Group gap={4}>

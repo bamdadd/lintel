@@ -15,6 +15,6 @@ describe('StatusBadge', () => {
 
   it('renders unknown status with gray fallback', () => {
     renderWithMantine(<StatusBadge status="custom_status" />);
-    expect(screen.getByText('custom_status')).toBeInTheDocument();
+    expect(screen.getByText('custom status')).toBeInTheDocument();
   });
 });

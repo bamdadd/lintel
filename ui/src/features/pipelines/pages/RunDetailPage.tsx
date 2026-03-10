@@ -7,13 +7,7 @@ import { useArtifactsListArtifacts } from '@/generated/api/artifacts/artifacts';
 import { DiffView } from '@/shared/components/DiffView';
 import { useSSEStream } from '../hooks/useSSEStream';
 import { StepPanel } from '../components/StepPanel';
-
-const statusColor: Record<string, string> = {
-  connecting: 'gray',
-  streaming: 'blue',
-  ended: 'green',
-  error: 'red',
-};
+import { getStatusColor } from '@/shared/components/StatusBadge';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   PipelineRunStarted: 'Started',
@@ -64,7 +58,7 @@ export function Component() {
             Back
           </Button>
           <Title order={2}>Run {runId?.slice(0, 8)}</Title>
-          <Badge color={statusColor[status] ?? 'gray'}>{status}</Badge>
+          <Badge color={getStatusColor(status)}>{status}</Badge>
         </Group>
         <Text size="sm" c="dimmed">{events.length} events</Text>
       </Group>

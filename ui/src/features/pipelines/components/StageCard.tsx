@@ -26,6 +26,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '../../chat/chat-markdown.css';
 import { TimeAgo } from '@/shared/components/TimeAgo';
+import { getStatusColor } from '@/shared/components/StatusBadge';
 import { useNavigate } from 'react-router';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -61,20 +62,6 @@ interface StageCardProps {
   /** Called after a successful approve/reject/retry so the parent can refetch. */
   onActionComplete?: () => void;
 }
-
-// ── Status colour map ──────────────────────────────────────────────────────
-
-const statusColor: Record<string, string> = {
-  pending: 'gray',
-  running: 'blue',
-  succeeded: 'green',
-  failed: 'red',
-  cancelled: 'orange',
-  skipped: 'gray',
-  waiting_approval: 'yellow',
-  approved: 'teal',
-  rejected: 'red',
-};
 
 // ── Live-log hook (SSE) ────────────────────────────────────────────────────
 
@@ -492,7 +479,7 @@ export function StageCard({ stage, runId, onActionComplete }: StageCardProps) {
                     </Text>
                     <Badge
                       size="sm"
-                      color={statusColor[att.status] ?? 'gray'}
+                      color={getStatusColor(att.status)}
                     >
                       {att.status}
                     </Badge>

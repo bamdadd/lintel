@@ -4,6 +4,7 @@ import {
 } from '@mantine/core';
 import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { StreamEvent } from '../hooks/useSSEStream';
+import { getStatusColor } from '@/shared/components/StatusBadge';
 
 interface StepPanelProps {
   stepName: string;
@@ -12,16 +13,6 @@ interface StepPanelProps {
   durationMs?: number;
   events: StreamEvent[];
 }
-
-const statusColor: Record<string, string> = {
-  pending: 'gray',
-  started: 'teal',
-  running: 'blue',
-  succeeded: 'green',
-  failed: 'red',
-  errored: 'red',
-  skipped: 'gray',
-};
 
 export function StepPanel({ stepName, status, statusLabel, durationMs, events }: StepPanelProps) {
   const [opened, setOpened] = useState(status === 'failed' || status === 'errored');
@@ -53,7 +44,7 @@ export function StepPanel({ stepName, status, statusLabel, durationMs, events }:
             {opened ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
           </ActionIcon>
           <Text fw={500} size="sm">{stepName}</Text>
-          <Badge color={statusColor[status] ?? 'gray'} size="sm">{statusLabel ?? status}</Badge>
+          <Badge color={getStatusColor(status)} size="sm">{statusLabel ?? status}</Badge>
         </Group>
         <Group gap="sm">
           {tokenUsage && (
