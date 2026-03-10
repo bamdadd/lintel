@@ -71,6 +71,27 @@ async def validate_claude_token(
     return TokenStatus.INVALID
 
 
+def _tool_detail(tool_name: str, tool_input: dict[str, Any]) -> str:
+    """Extract a human-readable detail string from a tool_use input."""
+    # Description field (Claude Code's own tools use this)
+    desc = tool_input.get("description", "")
+    if desc:
+        return desc
+    # Bash/command tools — show the command
+    cmd = tool_input.get("command", "")
+    if cmd:
+        return cmd.split("\n")[0]
+    # Read/Write/Edit — show the file path
+    fp = tool_input.get("file_path", "") or tool_input.get("path", "")
+    if fp:
+        return fp
+    # Grep/search — show the pattern
+    pattern = tool_input.get("pattern", "")
+    if pattern:
+        return f"/{pattern}/"
+    return ""
+
+
 class ClaudeCodeProvider:
     """Executes agent prompts via `claude` CLI in a sandbox.
 
@@ -376,9 +397,9 @@ class ClaudeCodeProvider:
                     if block.get("type") == "tool_use":
                         tool_name = block.get("name", "tool")
                         tool_input = block.get("input", {})
-                        desc = tool_input.get("description", "")
-                        if desc:
-                            return f"🔧 {tool_name}: {desc[:80]}"
+                        detail = _tool_detail(tool_name, tool_input)
+                        if detail:
+                            return f"🔧 {tool_name}: {detail[:100]}"
                         return f"🔧 {tool_name}"
                     if block.get("type") == "text":
                         text = str(block.get("text", ""))
@@ -389,6 +410,10 @@ class ClaudeCodeProvider:
 
         if msg_type == "tool_use":
             tool_name = obj.get("name", "tool")
+            tool_input = obj.get("input", {})
+            detail = _tool_detail(tool_name, tool_input)
+            if detail:
+                return f"🔧 {tool_name}: {detail[:100]}"
             return f"🔧 {tool_name}"
 
         if msg_type == "tool_result":
