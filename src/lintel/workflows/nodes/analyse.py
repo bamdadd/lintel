@@ -131,8 +131,7 @@ async def analyse_code(
             {"role": "user", "content": user_content},
         ],
         on_chunk=_on_chunk,
-        sandbox_manager=sandbox_manager,
-        sandbox_id=sandbox_id,
+        # Do NOT pass sandbox access — analyse should only examine, not edit/build.
     )
 
     remaining = "".join(_line_buffer).strip()

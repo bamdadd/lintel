@@ -72,7 +72,6 @@ class DockerSandboxManager:
             "pids_limit": 256,
             "tmpfs": {
                 "/tmp": "size=200m,exec,uid=1000,gid=1000",
-                "/workspace": "size=4g,exec,uid=1000,gid=1000",
             },
             "user": "vscode",
             "environment": environment,
@@ -86,11 +85,22 @@ class DockerSandboxManager:
             },
         }
 
+        # Workspace volume (disk-backed, not tmpfs)
+        import docker as docker_lib
+
+        workspace_vol = f"lintel-workspace-{sandbox_id}"
+        create_kwargs.setdefault("mounts", []).append(
+            docker_lib.types.Mount(
+                target="/workspace",
+                source=workspace_vol,
+                type="volume",
+                read_only=False,
+            )
+        )
+
         # Bind mounts (e.g. ~/.claude for Claude Code credentials)
         if config.mounts:
-            import docker as docker_lib
-
-            create_kwargs["mounts"] = [
+            create_kwargs["mounts"].extend(
                 docker_lib.types.Mount(
                     target=target,
                     source=source,
@@ -98,7 +108,7 @@ class DockerSandboxManager:
                     read_only=True,
                 )
                 for source, target, mount_type in config.mounts
-            ]
+            )
             # cap_drop=ALL removes DAC_READ_SEARCH, which blocks reading bind mounts
             create_kwargs["cap_add"] = ["DAC_READ_SEARCH"]
 
@@ -111,6 +121,8 @@ class DockerSandboxManager:
             **create_kwargs,
         )
         await asyncio.to_thread(container.start)
+        # Fix ownership on the Docker volume (created as root, container runs as vscode)
+        await asyncio.to_thread(container.exec_run, "chown -R vscode:vscode /workspace", user="root")
         self._containers[sandbox_id] = container
 
         return sandbox_id
@@ -302,6 +314,13 @@ class DockerSandboxManager:
                 return
         if container:
             await asyncio.to_thread(container.remove, force=True)
+        # Clean up the disk-backed workspace volume
+        try:
+            client = self._get_client()
+            vol = await asyncio.to_thread(client.volumes.get, f"lintel-workspace-{sandbox_id}")
+            await asyncio.to_thread(vol.remove, force=True)
+        except Exception:
+            pass  # Volume may not exist or Docker unavailable
 
     async def recover_containers(self) -> list[dict[str, Any]]:
         """Re-attach to containers from previous runs using Docker labels.

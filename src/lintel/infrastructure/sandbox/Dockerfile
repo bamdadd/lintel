@@ -44,6 +44,9 @@ RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
 COPY pyproject.toml uv.lock /opt/lintel-deps/
 RUN cd /opt/lintel-deps && uv sync --all-extras --no-install-project 2>&1 | tail -5
 
+# Install rtk (token-optimized CLI proxy for Claude Code)
+RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+
 # Install Claude Code CLI (baked in for fast sandbox startup)
 RUN npm install -g @anthropic-ai/claude-code
 
