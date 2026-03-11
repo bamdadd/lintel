@@ -168,8 +168,8 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         ],
         on_chunk=_on_chunk,
         on_activity=_on_activity,
-        # Do NOT pass sandbox access — planner should only produce a plan, not edit/build.
-        # Research context is already included in the prompt.
+        sandbox_manager=sandbox_manager,
+        sandbox_id=sandbox_id,
     )
 
     # Flush remaining buffer
