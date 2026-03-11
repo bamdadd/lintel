@@ -134,6 +134,7 @@ export function StageListView({
                 <StageCard
                   stage={stage}
                   runId={runId}
+                  allStages={stages}
                   onActionComplete={onActionComplete}
                 />
               </Box>

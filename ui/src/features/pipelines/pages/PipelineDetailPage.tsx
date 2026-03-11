@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, ScrollArea, Box,
 } from '@mantine/core';
-import { IconArrowLeft, IconPlayerStop } from '@tabler/icons-react';
+import { IconArrowLeft, IconPlayerStop, IconLayoutList } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
   usePipelinesGetPipeline,
@@ -14,6 +14,7 @@ import { PipelineDAG } from '../components/PipelineDAG';
 import type { DAGNode, DAGEdge } from '../components/PipelineDAG';
 import { StepTimingBar } from '../components/StepTimingBar';
 import type { StageItem } from '../components/StageCard';
+import { StageFullscreenModal } from '../components/StageCard';
 import { StageListView } from '../components/StageListView';
 import { usePipelineSSE } from '../hooks/usePipelineSSE';
 import { getStatusColor } from '@/shared/components/StatusBadge';
@@ -22,6 +23,7 @@ export function Component() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+  const [artifactsOpen, setArtifactsOpen] = useState(false);
 
   const {
     data: pipelineResp,
@@ -244,6 +246,14 @@ export function Component() {
           <Button
             variant="light"
             size="compact-sm"
+            leftSection={<IconLayoutList size={14} />}
+            onClick={() => setArtifactsOpen(true)}
+          >
+            Artifacts
+          </Button>
+          <Button
+            variant="light"
+            size="compact-sm"
             onClick={() => navigate(`/pipelines/runs/${runId}`)}
           >
             Event Log
@@ -322,6 +332,12 @@ export function Component() {
           </ScrollArea>
         </Paper>
       </Box>
+
+      <StageFullscreenModal
+        opened={artifactsOpen}
+        onClose={() => setArtifactsOpen(false)}
+        allStages={stages}
+      />
     </Stack>
   );
 }
