@@ -122,7 +122,8 @@ class DockerSandboxManager:
         )
         await asyncio.to_thread(container.start)
         # Fix ownership on the Docker volume (created as root, container runs as vscode)
-        await asyncio.to_thread(container.exec_run, "chown -R vscode:vscode /workspace", user="root")
+        chown_cmd = "chown -R vscode:vscode /workspace"
+        await asyncio.to_thread(container.exec_run, chown_cmd, user="root")
         self._containers[sandbox_id] = container
 
         return sandbox_id

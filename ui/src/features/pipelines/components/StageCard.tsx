@@ -148,7 +148,6 @@ interface ArtifactTab {
 function buildArtifactTabs(
   allStages: StageItem[],
   currentStage: StageItem,
-  logLines: string[],
   liveLogsAvailable: boolean,
 ): ArtifactTab[] {
   const tabs: ArtifactTab[] = [];
@@ -258,7 +257,7 @@ export function StageFullscreenModal({
     if (opened && initialTabKey) setActiveKey(initialTabKey);
   }, [initialTabKey, opened]);
 
-  const artifactTabs = buildArtifactTabs(allStages, resolvedCurrentStage, logLines, liveLogsAvailable);
+  const artifactTabs = buildArtifactTabs(allStages, resolvedCurrentStage, liveLogsAvailable);
   const grouped = groupTabsByStage(artifactTabs, allStages);
 
   const activeTab = artifactTabs.find((t) => t.key === activeKey) ?? artifactTabs[0];
@@ -376,7 +375,7 @@ export function StageFullscreenModal({
         {/* Content body */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {activeTab.type === 'logs' && (() => {
-            const isLive = liveLogsAvailable && activeTab.stage.stage_id === currentStage.stage_id;
+            const isLive = liveLogsAvailable && activeTab.stage.stage_id === resolvedCurrentStage.stage_id;
             return (
               <ScrollArea
                 style={{ flex: 1 }}

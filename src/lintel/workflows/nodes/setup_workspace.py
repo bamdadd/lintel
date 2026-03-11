@@ -369,12 +369,15 @@ async def setup_workspace(
         # Register in sandbox store so it appears in the UI
         if sandbox_store is not None:
             try:
-                await sandbox_store.add(sandbox_id, {
-                    "image": sandbox_config.image,
-                    "network_enabled": sandbox_config.network_enabled,
-                    "workspace_id": thread_ref.workspace_id,
-                    "channel_id": thread_ref.channel_id,
-                })
+                await sandbox_store.add(
+                    sandbox_id,
+                    {
+                        "image": sandbox_config.image,
+                        "network_enabled": sandbox_config.network_enabled,
+                        "workspace_id": thread_ref.workspace_id,
+                        "channel_id": thread_ref.channel_id,
+                    },
+                )
             except Exception:
                 logger.warning("sandbox_store_add_failed", sandbox_id=sandbox_id[:12])
         # Inject Claude Code credentials into new sandbox
