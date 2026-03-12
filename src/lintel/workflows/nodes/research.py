@@ -190,7 +190,7 @@ async def research_codebase(
     if remaining:
         await append_log(config, "research", remaining, state)
 
-    research_report = result.get("content", "")
+    research_report = result.content
     usage = extract_token_usage("research", result)
 
     await append_log(
@@ -199,19 +199,19 @@ async def research_codebase(
     await append_log(
         config,
         "research",
-        f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
+        f"Tokens: {usage.input_tokens} in / {usage.output_tokens} out",
         state,
     )
 
     logger.info(
         "research_completed",
         report_chars=len(research_report),
-        input_tokens=usage["input_tokens"],
-        output_tokens=usage["output_tokens"],
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
     )
 
     stage_outputs: dict[str, object] = {
-        "token_usage": usage,
+        "token_usage": usage.model_dump(),
         "research_report": research_report,
     }
     await mark_completed(config, "research", state, outputs=stage_outputs)
@@ -220,5 +220,5 @@ async def research_codebase(
         "research_context": research_report,
         "current_phase": "planning",
         "agent_outputs": [{"node": "research", "agent": "researcher", "content": research_report}],
-        "token_usage": [usage],
+        "token_usage": [usage.model_dump()],
     }

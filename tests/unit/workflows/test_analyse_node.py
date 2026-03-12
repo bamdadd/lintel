@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock
 
+from lintel.contracts.workflow_models import AgentStepResult
 from lintel.workflows.nodes.analyse import analyse_code
 
 
@@ -22,9 +23,9 @@ class TestAnalyseCode:
 
     async def test_calls_agent_runtime_stream(self) -> None:
         runtime = AsyncMock()
-        runtime.execute_step_stream.return_value = {
-            "content": "## Summary\nRefactoring needed for auth module.",
-        }
+        runtime.execute_step_stream.return_value = AgentStepResult(
+            content="## Summary\nRefactoring needed for auth module.",
+        )
 
         state: dict[str, Any] = {
             "sanitized_messages": ["refactor the auth module"],
@@ -39,9 +40,9 @@ class TestAnalyseCode:
 
     async def test_uses_research_context(self) -> None:
         runtime = AsyncMock()
-        runtime.execute_step_stream.return_value = {
-            "content": "Analysis with research context",
-        }
+        runtime.execute_step_stream.return_value = AgentStepResult(
+            content="Analysis with research context",
+        )
 
         state: dict[str, Any] = {
             "sanitized_messages": ["fix the bug"],
@@ -56,7 +57,7 @@ class TestAnalyseCode:
 
     async def test_gathers_sandbox_context(self) -> None:
         runtime = AsyncMock()
-        runtime.execute_step_stream.return_value = {"content": "Analysis done"}
+        runtime.execute_step_stream.return_value = AgentStepResult(content="Analysis done")
         sandbox_mgr = AsyncMock()
 
         state: dict[str, Any] = {

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 from lintel.contracts.types import AgentRole
+from lintel.contracts.workflow_models import TriageResult
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
@@ -30,8 +31,10 @@ TRIAGE_SYSTEM_PROMPT = (
 )
 
 
-def _parse_triage(content: str) -> dict[str, Any]:
+def _parse_triage(content: str) -> TriageResult:
     """Extract JSON triage result from LLM response."""
+    raw: dict[str, Any] | None = None
+
     for fence in ("```json", "```"):
         idx = content.find(fence)
         if idx == -1:
@@ -40,29 +43,36 @@ def _parse_triage(content: str) -> dict[str, Any]:
         end_idx = after.rfind("```")
         json_str = after[:end_idx].strip() if end_idx != -1 else after.strip()
         try:
-            return json.loads(json_str)  # type: ignore[no-any-return]
+            raw = json.loads(json_str)
+            break
         except json.JSONDecodeError:
             continue
 
-    first_brace = content.find("{")
-    if first_brace != -1:
-        last_brace = content.rfind("}")
-        if last_brace > first_brace:
-            try:
-                return json.loads(content[first_brace : last_brace + 1])  # type: ignore[no-any-return]
-            except json.JSONDecodeError:
-                pass
+    if raw is None:
+        first_brace = content.find("{")
+        if first_brace != -1:
+            last_brace = content.rfind("}")
+            if last_brace > first_brace:
+                try:
+                    raw = json.loads(content[first_brace : last_brace + 1])
+                except json.JSONDecodeError:
+                    pass
 
-    return {
-        "type": "feature",
-        "priority": "P2",
-        "severity": "medium",
-        "summary": content[:200],
-        "suggested_agents": ["planner", "coder"],
-    }
+    if raw is not None and isinstance(raw, dict):
+        return TriageResult(
+            type=raw.get("type", "feature"),
+            priority=raw.get("priority", "P2"),
+            severity=raw.get("severity", "medium"),
+            summary=raw.get("summary", ""),
+            suggested_agents=raw.get("suggested_agents", ["planner", "coder"]),
+        )
+
+    return TriageResult(
+        summary=content[:200],
+    )
 
 
-def _build_thread_ref(raw: str) -> Any:  # noqa: ANN401
+def _build_thread_ref(raw: str) -> ThreadRef:
     """Reconstruct ThreadRef from its string representation."""
     from lintel.contracts.types import ThreadRef
 
@@ -113,36 +123,35 @@ async def triage_issue(
         tools=[],
     )
 
-    content = result.get("content", "")
+    content = result.content
     triage = _parse_triage(content)
     usage = extract_token_usage("triage", result)
 
-    issue_type = triage.get("type", "feature")
-    priority = triage.get("priority", "P2")
-    summary = triage.get("summary", "")
-
-    await append_log(config, "triage", f"Type: {issue_type}, Priority: {priority}", state)
-    await append_log(config, "triage", f"Summary: {summary}", state)
+    await append_log(config, "triage", f"Type: {triage.type}, Priority: {triage.priority}", state)
+    await append_log(config, "triage", f"Summary: {triage.summary}", state)
     await append_log(
         config,
         "triage",
-        f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
+        f"Tokens: {usage.input_tokens} in / {usage.output_tokens} out",
         state,
     )
 
     logger.info(
         "triage_completed",
-        issue_type=issue_type,
-        priority=priority,
-        summary=summary,
+        issue_type=triage.type,
+        priority=triage.priority,
+        summary=triage.summary,
     )
 
-    stage_outputs: dict[str, object] = {"token_usage": usage, "triage": triage}
+    stage_outputs: dict[str, object] = {
+        "token_usage": usage.model_dump(),
+        "triage": triage.model_dump(),
+    }
     await mark_completed(config, "triage", state, outputs=stage_outputs)
 
     return {
-        "intent": issue_type,
+        "intent": triage.type,
         "current_phase": "triaging",
         "agent_outputs": [{"node": "triage", "agent": "pm", "content": content}],
-        "token_usage": [usage],
+        "token_usage": [usage.model_dump()],
     }

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 from lintel.contracts.types import AgentRole
+from lintel.contracts.workflow_models import Plan, PlanTask
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
@@ -33,8 +34,10 @@ PLAN_SYSTEM_PROMPT = (
 )
 
 
-def _parse_plan(content: str) -> dict[str, Any]:
+def _parse_plan(content: str) -> Plan:
     """Extract JSON plan from LLM response, with fallback."""
+    raw: dict[str, Any] | None = None
+
     # Strategy 1: Find ```json ... ``` fenced block (use rfind for closing to handle nested fences)
     for fence in ("```json", "```"):
         idx = content.find(fence)
@@ -45,25 +48,38 @@ def _parse_plan(content: str) -> dict[str, Any]:
         end_idx = after.rfind("```")
         json_str = after[:end_idx].strip() if end_idx != -1 else after.strip()
         try:
-            return json.loads(json_str)  # type: ignore[no-any-return]
+            raw = json.loads(json_str)
+            break
         except json.JSONDecodeError:
             continue
 
     # Strategy 2: Find outermost { ... } by matching braces
-    first_brace = content.find("{")
-    if first_brace != -1:
-        last_brace = content.rfind("}")
-        if last_brace > first_brace:
-            try:
-                return json.loads(content[first_brace : last_brace + 1])  # type: ignore[no-any-return]
-            except json.JSONDecodeError:
-                pass
+    if raw is None:
+        first_brace = content.find("{")
+        if first_brace != -1:
+            last_brace = content.rfind("}")
+            if last_brace > first_brace:
+                try:
+                    raw = json.loads(content[first_brace : last_brace + 1])
+                except json.JSONDecodeError:
+                    pass
+
+    if raw is not None and isinstance(raw, dict):
+        raw_tasks = raw.get("tasks", [])
+        tasks = [
+            PlanTask(**t) if isinstance(t, dict) else PlanTask(title=str(t))
+            for t in raw_tasks
+        ]
+        return Plan(
+            tasks=tasks,
+            summary=raw.get("summary", ""),
+        )
 
     # Fallback: return raw content as single task
-    return {
-        "tasks": [{"title": "Implement request", "description": content}],
-        "summary": content[:200],
-    }
+    return Plan(
+        tasks=[PlanTask(title="Implement request", description=content)],
+        summary=content[:200],
+    )
 
 
 def _build_thread_ref(raw: str) -> ThreadRef:
@@ -96,11 +112,16 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     if agent_runtime is None:
         logger.warning("plan_node_no_runtime", msg="AgentRuntime not available, using stub plan")
         await mark_completed(config, "plan", state)
+        stub_plan = Plan(
+            tasks=[
+                PlanTask(title="Implement feature"),
+                PlanTask(title="Write tests"),
+                PlanTask(title="Create PR"),
+            ],
+            intent=state.get("intent", "feature"),
+        )
         return {
-            "plan": {
-                "tasks": [{"title": t} for t in ["Implement feature", "Write tests", "Create PR"]],
-                "intent": state.get("intent", "feature"),
-            },
+            "plan": stub_plan.model_dump(),
             "current_phase": "awaiting_spec_approval",
             "pending_approvals": ["spec_approval"],
         }
@@ -177,45 +198,46 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     if remaining:
         await append_log(config, "plan", remaining, state)
 
-    content = result.get("content", "")
+    content = result.content
     plan = _parse_plan(content)
-    plan["intent"] = state.get("intent", "feature")
+    plan = Plan(
+        tasks=plan.tasks,
+        summary=plan.summary,
+        intent=state.get("intent", "feature"),
+    )
     usage = extract_token_usage("plan", result)
 
     # Log plan tasks for visibility
-    summary = plan.get("summary", "")
-    tasks = plan.get("tasks", [])
-    await append_log(config, "plan", f"Plan: {summary}", state)
-    for i, task in enumerate(tasks, 1):
-        title = task.get("title", task) if isinstance(task, dict) else str(task)
-        complexity = task.get("complexity", "") if isinstance(task, dict) else ""
-        suffix = f" [{complexity}]" if complexity else ""
-        await append_log(config, "plan", f"  {i}. {title}{suffix}", state)
+    await append_log(config, "plan", f"Plan: {plan.summary}", state)
+    for i, task in enumerate(plan.tasks, 1):
+        suffix = f" [{task.complexity}]" if task.complexity else ""
+        await append_log(config, "plan", f"  {i}. {task.title}{suffix}", state)
     await append_log(
         config,
         "plan",
-        f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
+        f"Tokens: {usage.input_tokens} in / {usage.output_tokens} out",
         state,
     )
 
     logger.info(
         "plan_generated",
-        task_count=len(tasks),
-        summary=summary,
-        input_tokens=usage["input_tokens"],
-        output_tokens=usage["output_tokens"],
+        task_count=len(plan.tasks),
+        summary=plan.summary,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
     )
 
     # Store full plan in stage outputs for the detail view
+    plan_dict = plan.model_dump()
     stage_outputs: dict[str, object] = {
-        "token_usage": usage,
-        "plan": plan,
+        "token_usage": usage.model_dump(),
+        "plan": plan_dict,
     }
     await mark_completed(config, "plan", state, outputs=stage_outputs)
     return {
-        "plan": plan,
+        "plan": plan_dict,
         "current_phase": "awaiting_spec_approval",
         "pending_approvals": ["spec_approval"],
         "agent_outputs": [{"node": "plan", "agent": "planner", "content": content}],
-        "token_usage": [usage],
+        "token_usage": [usage.model_dump()],
     }

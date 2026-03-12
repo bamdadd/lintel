@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from lintel.contracts.workflow_models import AgentStepResult
 from lintel.workflows.nodes.plan import _parse_plan, plan_work
 
 
@@ -14,19 +15,21 @@ class TestParsePlan:
     def test_parse_json_block(self) -> None:
         content = '```json\n{"tasks": [{"title": "Do X"}], "summary": "X"}\n```'
         result = _parse_plan(content)
-        assert result["tasks"] == [{"title": "Do X"}]
-        assert result["summary"] == "X"
+        assert len(result.tasks) == 1
+        assert result.tasks[0].title == "Do X"
+        assert result.summary == "X"
 
     def test_parse_raw_json(self) -> None:
         content = '{"tasks": [{"title": "A"}], "summary": "B"}'
         result = _parse_plan(content)
-        assert result["tasks"] == [{"title": "A"}]
+        assert len(result.tasks) == 1
+        assert result.tasks[0].title == "A"
 
     def test_parse_fallback(self) -> None:
         content = "Just do the thing"
         result = _parse_plan(content)
-        assert len(result["tasks"]) == 1
-        assert result["tasks"][0]["description"] == content
+        assert len(result.tasks) == 1
+        assert result.tasks[0].description == content
 
 
 class TestPlanWork:
@@ -64,7 +67,7 @@ class TestPlanWork:
             }
         )
         runtime = AsyncMock()
-        runtime.execute_step_stream.return_value = {"content": plan_json}
+        runtime.execute_step_stream.return_value = AgentStepResult(content=plan_json)
 
         config = {"configurable": {"agent_runtime": runtime}}
         result = await plan_work(state, config)
@@ -83,7 +86,7 @@ class TestPlanWork:
     async def test_empty_messages_fallback(self, state: dict) -> None:
         state["sanitized_messages"] = []
         runtime = AsyncMock()
-        runtime.execute_step_stream.return_value = {"content": '{"tasks": [], "summary": "empty"}'}
+        runtime.execute_step_stream.return_value = AgentStepResult(content='{"tasks": [], "summary": "empty"}')
 
         config = {"configurable": {"agent_runtime": runtime}}
         await plan_work(state, config)

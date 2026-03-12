@@ -20,6 +20,7 @@ from lintel.contracts.types import (
     SkillExecutionMode,
     SkillResult,
 )
+from lintel.contracts.workflow_models import SandboxCapabilities, TestDiscoveryResult
 
 logger = logging.getLogger(__name__)
 
@@ -84,14 +85,14 @@ class DiscoverTestCommandSkill:
             )
 
         result = await discover_test_command(sandbox_manager, sandbox_id, workdir)
-        return SkillResult(success=True, output=result)
+        return SkillResult(success=True, output=result.model_dump())
 
 
 async def discover_test_command(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
     workdir: str,
-) -> dict[str, Any]:
+) -> TestDiscoveryResult:
     """Inspect a project and return the test command and setup commands.
 
     Discovery strategy:
@@ -100,7 +101,7 @@ async def discover_test_command(
     3. Build setup commands for installing dependencies
     4. Choose the best test command, scoped to what's feasible in the sandbox
 
-    Returns ``{"test_command": str, "setup_commands": list[str]}``.
+    Returns a :class:`TestDiscoveryResult` with ``test_command`` and ``setup_commands``.
     """
     from lintel.contracts.types import SandboxJob
 
@@ -142,7 +143,7 @@ async def discover_test_command(
             files,
             capabilities,
         )
-        return {"test_command": test_cmd, "setup_commands": setup}
+        return TestDiscoveryResult(test_command=test_cmd, setup_commands=setup)
 
     # Node project
     if "package.json" in files:
@@ -155,30 +156,30 @@ async def discover_test_command(
             ),
         )
         if "HAS_TEST" in has_test.stdout:
-            return {
-                "test_command": "npm test",
-                "setup_commands": ["npm install"],
-            }
+            return TestDiscoveryResult(
+                test_command="npm test",
+                setup_commands=["npm install"],
+            )
 
     # Rust project
     if "Cargo.toml" in files:
-        return {"test_command": "cargo test", "setup_commands": []}
+        return TestDiscoveryResult(test_command="cargo test", setup_commands=[])
 
     # Go project
     if "go.mod" in files:
-        return {"test_command": "go test ./...", "setup_commands": []}
+        return TestDiscoveryResult(test_command="go test ./...", setup_commands=[])
 
-    return {
-        "test_command": "echo 'No test runner detected'",
-        "setup_commands": [],
-    }
+    return TestDiscoveryResult(
+        test_command="echo 'No test runner detected'",
+        setup_commands=[],
+    )
 
 
 async def _detect_sandbox_capabilities(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
     workdir: str,
-) -> dict[str, bool]:
+) -> SandboxCapabilities:
     """Probe which services/tools are available in the sandbox."""
     from lintel.contracts.types import SandboxJob
 
@@ -202,13 +203,13 @@ async def _detect_sandbox_capabilities(
         ),
     )
     out = probe.stdout
-    return {
-        "postgres": "HAS_POSTGRES" in out,
-        "redis": "HAS_REDIS" in out,
-        "docker": "HAS_DOCKER" in out,
-        "uv": "HAS_UV" in out,
-        "node": "HAS_NODE" in out,
-    }
+    return SandboxCapabilities(
+        postgres="HAS_POSTGRES" in out,
+        redis="HAS_REDIS" in out,
+        docker="HAS_DOCKER" in out,
+        uv="HAS_UV" in out,
+        node="HAS_NODE" in out,
+    )
 
 
 async def _python_setup_commands(
@@ -319,7 +320,7 @@ async def _python_test_command(
     sandbox_id: str,
     workdir: str,
     files: str,
-    capabilities: dict[str, bool],
+    capabilities: SandboxCapabilities,
 ) -> str:
     """Determine the best test command for a Python project.
 
@@ -338,7 +339,7 @@ async def _python_test_command(
         )
         if test_target:
             # In sandbox without postgres, prefer unit-only target
-            if not capabilities.get("postgres"):
+            if not capabilities.postgres:
                 unit_target = await _find_make_unit_target(
                     sandbox_manager,
                     sandbox_id,
@@ -354,7 +355,7 @@ async def _python_test_command(
             return f"make {test_target}"
 
     # Fallback: run pytest directly, unit tests only if no DB
-    if not capabilities.get("postgres"):
+    if not capabilities.postgres:
         return f"{path_prefix} && uv run python -m pytest tests/unit/ -v 2>&1 || true"
     return f"{path_prefix} && uv run python -m pytest"
 

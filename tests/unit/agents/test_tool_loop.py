@@ -64,8 +64,8 @@ class TestToolLoop:
             messages=[{"role": "user", "content": "Write code"}],
         )
 
-        assert result["content"] == "Hello"
-        assert result["tool_iterations"] == 0
+        assert result.content == "Hello"
+        assert result.tool_iterations == 0
         model_router.call_model.assert_awaited_once()
 
     async def test_tool_call_executes_and_loops(self) -> None:
@@ -92,8 +92,8 @@ class TestToolLoop:
             sandbox_id="sandbox-123",
         )
 
-        assert result["content"] == "Implementation complete."
-        assert result["tool_iterations"] == 1
+        assert result.content == "Implementation complete."
+        assert result.tool_iterations == 1
         assert model_router.call_model.await_count == 2
         sandbox_manager.read_file.assert_awaited_once_with("sandbox-123", "/workspace/main.py")
 
@@ -126,8 +126,8 @@ class TestToolLoop:
             sandbox_id="sandbox-456",
         )
 
-        assert result["content"] == "All done."
-        assert result["tool_iterations"] == 2
+        assert result.content == "All done."
+        assert result.tool_iterations == 2
         assert model_router.call_model.await_count == 3
 
     async def test_max_iterations_stops_loop(self) -> None:
@@ -154,7 +154,7 @@ class TestToolLoop:
 
         # 1 initial call + 3 iterations = 4 calls total
         assert model_router.call_model.await_count == 4
-        assert result["tool_iterations"] == 3
+        assert result.tool_iterations == 3
 
     async def test_tool_results_appended_to_messages(self) -> None:
         event_store, model_router = _make_mocks()
@@ -210,8 +210,8 @@ class TestToolLoop:
         )
 
         # 10+15 input, 5+10 output
-        assert result["usage"]["input_tokens"] == 25
-        assert result["usage"]["output_tokens"] == 15
+        assert result.usage.input_tokens == 25
+        assert result.usage.output_tokens == 15
 
     async def test_sandbox_not_available_returns_error_string(self) -> None:
         event_store, model_router = _make_mocks()
@@ -234,7 +234,7 @@ class TestToolLoop:
         )
 
         # Should still complete (error string fed back to model)
-        assert result["content"] == "ok"
+        assert result.content == "ok"
         second_call_messages = model_router.call_model.call_args_list[1][0][1]
         tool_msg = second_call_messages[2]
         assert "Sandbox not available" in tool_msg["content"]
@@ -267,7 +267,7 @@ class TestToolLoop:
             sandbox_id="s1",
         )
 
-        assert result["content"] == "Tests passed."
+        assert result.content == "Tests passed."
         sandbox_manager.execute.assert_awaited_once()
 
 

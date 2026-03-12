@@ -77,8 +77,8 @@ async def run_tests(
         return await handle_node_error(
             state, "test", Exception("Test discovery failed — sandbox unavailable")
         )
-    test_command = discovery["test_command"]
-    setup_commands: list[str] = discovery.get("setup_commands", [])
+    test_command = discovery.test_command
+    setup_commands = discovery.setup_commands
 
     # Run setup commands (dep install, etc.)
     for cmd in setup_commands:

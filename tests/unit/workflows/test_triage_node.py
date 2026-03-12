@@ -6,6 +6,7 @@ import json
 from typing import Any
 from unittest.mock import AsyncMock
 
+from lintel.contracts.workflow_models import AgentStepResult
 from lintel.workflows.nodes.triage import _parse_triage, triage_issue
 
 
@@ -16,22 +17,22 @@ class TestParseTriage:
             ' "severity": "high", "summary": "Fix crash"}\n```'
         )
         result = _parse_triage(content)
-        assert result["type"] == "bug"
-        assert result["priority"] == "P1"
+        assert result.type == "bug"
+        assert result.priority == "P1"
 
     def test_parse_raw_json(self) -> None:
         content = (
             '{"type": "feature", "priority": "P2", "severity": "medium", "summary": "Add widget"}'
         )
         result = _parse_triage(content)
-        assert result["type"] == "feature"
+        assert result.type == "feature"
 
     def test_parse_fallback(self) -> None:
         content = "This is just plain text with no JSON"
         result = _parse_triage(content)
-        assert result["type"] == "feature"
-        assert result["priority"] == "P2"
-        assert "plain text" in result["summary"]
+        assert result.type == "feature"
+        assert result.priority == "P2"
+        assert "plain text" in result.summary
 
 
 class TestTriageIssue:
@@ -57,7 +58,7 @@ class TestTriageIssue:
             }
         )
         runtime = AsyncMock()
-        runtime.execute_step.return_value = {"content": triage_json}
+        runtime.execute_step.return_value = AgentStepResult(content=triage_json)
 
         state: dict[str, Any] = {
             "sanitized_messages": ["fix the login bug"],
@@ -71,11 +72,9 @@ class TestTriageIssue:
 
     async def test_empty_messages_fallback(self) -> None:
         runtime = AsyncMock()
-        runtime.execute_step.return_value = {
-            "content": (
-                '{"type": "chore", "priority": "P3", "severity": "low", "summary": "cleanup"}'
-            ),
-        }
+        runtime.execute_step.return_value = AgentStepResult(
+            content='{"type": "chore", "priority": "P3", "severity": "low", "summary": "cleanup"}'
+        )
 
         state: dict[str, Any] = {
             "sanitized_messages": [],

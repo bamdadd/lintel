@@ -22,8 +22,8 @@ class TestRebaseOnUpstream:
 
         result = await rebase_on_upstream(manager, "sbx-1", "main")
 
-        assert result["success"] is True
-        assert "Rebased successfully" in result["message"]
+        assert result.success is True
+        assert "Rebased successfully" in result.message
         # Should have called execute once (just the rebase)
         manager.execute.assert_called_once()
         job: SandboxJob = manager.execute.call_args[0][1]
@@ -41,8 +41,8 @@ class TestRebaseOnUpstream:
 
         result = await rebase_on_upstream(manager, "sbx-1", "main")
 
-        assert result["success"] is False
-        assert "conflicts" in result["message"].lower()
+        assert result.success is False
+        assert "conflicts" in result.message.lower()
         # Should have called rebase then abort
         assert manager.execute.call_count == 2
         abort_job: SandboxJob = manager.execute.call_args_list[1][0][1]

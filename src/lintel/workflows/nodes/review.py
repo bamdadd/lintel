@@ -110,8 +110,10 @@ async def review_output(
 
     await log_llm_context(_config, "review", "reviewer", "review", state)
 
+    from lintel.contracts.workflow_models import TokenUsage
+
     review_output_text = ""
-    usage: dict[str, Any] | None = None
+    usage: TokenUsage | None = None
     if agent_runtime is not None:
         thread_ref_str = state["thread_ref"]
         parts = thread_ref_str.replace("thread:", "").split(":")
@@ -138,7 +140,7 @@ async def review_output(
                 sandbox_id=sandbox_id,
                 on_activity=_on_activity,
             )
-            review_output_text = agent_result.get("content", "Review complete.")
+            review_output_text = agent_result.content or "Review complete."
             usage = extract_token_usage("review", agent_result)
         except Exception:
             logger.exception("agent_review_failed")
@@ -163,7 +165,7 @@ async def review_output(
 
     stage_outputs: dict[str, object] = {"verdict": verdict, "review": review_output_text}
     if usage:
-        stage_outputs["token_usage"] = usage
+        stage_outputs["token_usage"] = usage.model_dump()
     await mark_completed(_config, "review", state, outputs=stage_outputs or None)
 
     review_cycles = state.get("review_cycles", 0) + 1
@@ -175,5 +177,5 @@ async def review_output(
         "review_cycles": review_cycles,
     }
     if usage:
-        result_dict["token_usage"] = [usage]
+        result_dict["token_usage"] = [usage.model_dump()]
     return result_dict

@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from lintel.agents.runtime import AgentRuntime
     from lintel.contracts.protocols import SandboxManager
     from lintel.contracts.types import ThreadRef
+    from lintel.contracts.workflow_models import AgentStepResult
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()
@@ -242,7 +243,9 @@ async def spawn_implementation(
     # Parse thread ref
     thread_ref = _parse_thread_ref(state["thread_ref"])
 
-    total_usage: list[dict[str, Any]] = []
+    from lintel.contracts.workflow_models import TokenUsage
+
+    total_usage: list[TokenUsage] = []
     agent_output = "No agent runtime configured."
 
     if agent_runtime is not None:
@@ -292,8 +295,8 @@ async def spawn_implementation(
 
         try:
             rebase_result = await rebase_on_upstream(sandbox_manager, sandbox_id, base_branch)
-            if not rebase_result["success"]:
-                rebase_warning = rebase_result["message"]
+            if not rebase_result.success:
+                rebase_warning = rebase_result.message
         except Exception:
             logger.warning("implement_rebase_failed", exc_info=True)
             rebase_warning = "Rebase failed — sandbox may be unavailable"
@@ -341,11 +344,12 @@ async def spawn_implementation(
     stage_outputs: dict[str, object] = {}
     if total_usage:
         # Merge usage across generate + fix attempts
-        merged = {"input_tokens": 0, "output_tokens": 0, "step": "implement"}
-        for u in total_usage:
-            merged["input_tokens"] += u.get("input_tokens", 0)
-            merged["output_tokens"] += u.get("output_tokens", 0)
-        stage_outputs["token_usage"] = merged
+        merged = TokenUsage(
+            step="implement",
+            input_tokens=sum(u.input_tokens for u in total_usage),
+            output_tokens=sum(u.output_tokens for u in total_usage),
+        )
+        stage_outputs["token_usage"] = merged.model_dump()
     if diff_text:
         stage_outputs["diff"] = diff_text[:50000]
     if agent_runtime is not None and not test_passed:
@@ -361,7 +365,7 @@ async def spawn_implementation(
         "sandbox_results": [artifacts],
     }
     if total_usage:
-        result_dict["token_usage"] = total_usage
+        result_dict["token_usage"] = [u.model_dump() for u in total_usage]
     return result_dict
 
 
@@ -409,12 +413,13 @@ async def _implement_tdd(
     user_prompt: str,
     config: RunnableConfig | dict[str, Any],
     state: ThreadWorkflowState,
-) -> tuple[str, bool, list[dict[str, Any]]]:
+) -> tuple[str, bool, list[TokenUsage]]:
     """Run implementation via Claude Code with TDD system prompt.
 
     Returns (agent_output, test_passed, total_usage).
     """
     from lintel.contracts.types import AgentRole
+    from lintel.contracts.workflow_models import TokenUsage
     from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage
 
     await append_log(config, "implement", "Using Claude Code TDD mode", state)
@@ -437,7 +442,7 @@ async def _implement_tdd(
         discovery = await discover_test_command(sandbox_manager, sandbox_id, workspace_path)
         from lintel.contracts.types import SandboxJob
 
-        for cmd in discovery.get("setup_commands", []):
+        for cmd in discovery.setup_commands:
             await append_log(config, "implement", f"Setup: {cmd[:60]}", state)
             await sandbox_manager.execute(
                 sandbox_id,
@@ -494,7 +499,7 @@ async def _implement_tdd(
             on_activity=_on_activity,
         )
         usage = extract_token_usage("implement_tdd", result)
-        content = result.get("content", "")
+        content = result.content
         await append_log(
             config, "implement", f"TDD session complete ({len(content):,} chars)", state
         )
@@ -643,15 +648,16 @@ async def _implement_structured(
     user_prompt: str,
     config: RunnableConfig | dict[str, Any],
     state: ThreadWorkflowState,
-) -> tuple[str, bool, list[dict[str, Any]]]:
+) -> tuple[str, bool, list[TokenUsage]]:
     """Run implementation via structured JSON generation + test + fix loop.
 
     Returns (agent_output, test_passed, total_usage).
     """
     from lintel.contracts.types import AgentRole
+    from lintel.contracts.workflow_models import TokenUsage
     from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage
 
-    total_usage: list[dict[str, Any]] = []
+    total_usage: list[TokenUsage] = []
 
     await append_log(config, "implement", "Skill: structured-generate (JSON)", state)
 
@@ -669,7 +675,7 @@ async def _implement_structured(
             tools=[],  # No tools — single-shot JSON generation
             max_iterations=1,
         )
-        gen_content = gen_result.get("content", "")
+        gen_content = gen_result.content
         usage = extract_token_usage("implement_generate", gen_result)
         total_usage.append(usage)
 
@@ -932,8 +938,8 @@ async def _run_tests(
         logger.warning("implement_test_discovery_failed")
         return "Test discovery failed", 1
 
-    test_command = discovery["test_command"]
-    setup_commands: list[str] = discovery.get("setup_commands", [])
+    test_command = discovery.test_command
+    setup_commands = discovery.setup_commands
 
     # Run setup (dep install)
     for cmd in setup_commands:
@@ -974,7 +980,7 @@ async def _fix_failures(
     sandbox_id: str,
     config: RunnableConfig | dict[str, Any],
     state: ThreadWorkflowState,
-) -> dict[str, Any]:
+) -> AgentStepResult:
     """Give the LLM test failures and let it fix with a focused tool loop."""
     from lintel.agents.sandbox_tools import sandbox_tool_schemas
     from lintel.contracts.types import AgentRole

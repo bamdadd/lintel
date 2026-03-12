@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from lintel.contracts.workflow_models import AgentStepResult, TokenUsage
+
 import structlog
 
 logger = structlog.get_logger()
@@ -49,16 +51,40 @@ async def log_llm_context(
         logger.debug("log_llm_context_failed", node_name=node_name)
 
 
-def extract_token_usage(node_name: str, result: dict[str, Any]) -> dict[str, Any]:
-    """Extract token usage info from an AgentRuntime.execute_step() result."""
+def extract_token_usage(
+    node_name: str, result: AgentStepResult | dict[str, Any]
+) -> TokenUsage:
+    """Extract token usage info from an AgentRuntime.execute_step() result.
+
+    Accepts both ``AgentStepResult`` (preferred) and legacy ``dict`` results.
+    """
+    from lintel.contracts.workflow_models import AgentStepResult as _ASR
+    from lintel.contracts.workflow_models import TokenUsage as _TokenUsage
+
+    if isinstance(result, _ASR):
+        return _TokenUsage(
+            node=node_name,
+            model=result.model,
+            input_tokens=result.usage.input_tokens,
+            output_tokens=result.usage.output_tokens,
+            total_tokens=result.usage.total_tokens,
+        )
+
+    # Legacy dict path
     usage = result.get("usage", {})
-    return {
-        "node": node_name,
-        "model": result.get("model", ""),
-        "input_tokens": usage.get("input_tokens", 0),
-        "output_tokens": usage.get("output_tokens", 0),
-        "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
-    }
+    if isinstance(usage, _TokenUsage):
+        input_tokens = usage.input_tokens
+        output_tokens = usage.output_tokens
+    else:
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+    return _TokenUsage(
+        node=node_name,
+        model=result.get("model", ""),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
+    )
 
 
 # Map LangGraph node names to pipeline stage names.

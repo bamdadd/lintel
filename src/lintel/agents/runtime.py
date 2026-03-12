@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
     from lintel.contracts.protocols import EventStore, ModelRouter, SandboxManager
     from lintel.contracts.types import AgentRole, ThreadRef
+    from lintel.contracts.workflow_models import AgentStepResult
     from lintel.infrastructure.mcp.tool_client import MCPToolClient
 
 logger = structlog.get_logger()
@@ -131,7 +132,7 @@ class AgentRuntime:
         max_iterations: int = DEFAULT_MAX_TOOL_ITERATIONS,
         on_tool_call: Callable[[int, str, dict[str, Any], str], Awaitable[None]] | None = None,
         on_activity: Callable[[str], Awaitable[None]] | None = None,
-    ) -> dict[str, Any]:
+    ) -> AgentStepResult:
         cid = correlation_id or uuid4()
 
         await self._event_store.append(
@@ -342,7 +343,19 @@ class AgentRuntime:
             ],
         )
 
-        return result
+        from lintel.contracts.workflow_models import AgentStepResult, TokenUsage
+
+        return AgentStepResult(
+            content=result.get("content", "") or "",
+            model=result.get("model", policy.model_name),
+            usage=TokenUsage(
+                input_tokens=total_input_tokens,
+                output_tokens=total_output_tokens,
+                total_tokens=total_input_tokens + total_output_tokens,
+            ),
+            tool_calls=result.get("tool_calls", []) or [],
+            tool_iterations=iteration,
+        )
 
     async def execute_step_stream(
         self,
@@ -355,7 +368,7 @@ class AgentRuntime:
         sandbox_manager: SandboxManager | None = None,
         sandbox_id: str | None = None,
         on_activity: Callable[[str], Awaitable[None]] | None = None,
-    ) -> dict[str, Any]:
+    ) -> AgentStepResult:
         """Like execute_step but streams content, calling on_chunk for each piece.
 
         Returns the same result dict as execute_step, with the full accumulated content.
@@ -425,7 +438,9 @@ class AgentRuntime:
             full_content = "".join(accumulated)
 
             # Read usage from the model router (captured from final stream chunk)
-            stream_usage = getattr(self._model_router, "last_stream_usage", None) or {}
+            stream_usage = getattr(self._model_router, "last_stream_usage", None)
+            if not isinstance(stream_usage, dict):
+                stream_usage = {}
             result = {
                 "content": full_content,
                 "usage": {
@@ -452,4 +467,17 @@ class AgentRuntime:
             ],
         )
 
-        return result
+        from lintel.contracts.workflow_models import AgentStepResult, TokenUsage
+
+        usage_data = result.get("usage", {})
+        return AgentStepResult(
+            content=result.get("content", "") or "",
+            model=result.get("model", policy.model_name),
+            usage=TokenUsage(
+                input_tokens=usage_data.get("input_tokens", 0),
+                output_tokens=usage_data.get("output_tokens", 0),
+                total_tokens=usage_data.get("input_tokens", 0) + usage_data.get("output_tokens", 0),
+            ),
+            tool_calls=result.get("tool_calls", []) or [],
+            tool_iterations=result.get("tool_iterations", 0),
+        )

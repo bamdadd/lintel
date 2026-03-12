@@ -40,10 +40,10 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "make test"
-        assert len(result["setup_commands"]) >= 2  # uv sync + spacy
-        assert any("uv sync" in c for c in result["setup_commands"])
-        assert any("spacy" in c for c in result["setup_commands"])
+        assert result.test_command == "make test"
+        assert len(result.setup_commands) >= 2  # uv sync + spacy
+        assert any("uv sync" in c for c in result.setup_commands)
+        assert any("spacy" in c for c in result.setup_commands)
 
     async def test_python_without_postgres_uses_unit_target(self) -> None:
         """Python project, no postgres → falls back to test-unit."""
@@ -61,7 +61,7 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "make test-unit"
+        assert result.test_command == "make test-unit"
 
     async def test_python_without_postgres_no_unit_target_uses_pytest(self) -> None:
         """Python project, no postgres, no unit target → pytest tests/unit/."""
@@ -78,8 +78,8 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert "tests/unit/" in result["test_command"]
-        assert "pytest" in result["test_command"]
+        assert "tests/unit/" in result.test_command
+        assert "pytest" in result.test_command
 
     async def test_python_without_makefile(self) -> None:
         """Python project, no Makefile → pytest directly."""
@@ -92,8 +92,8 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert "pytest" in result["test_command"]
-        assert "tests/unit/" not in result["test_command"]  # postgres is available
+        assert "pytest" in result.test_command
+        assert "tests/unit/" not in result.test_command  # postgres is available
 
     async def test_detects_spacy_dependency(self) -> None:
         """Spacy in pyproject.toml → setup includes model download."""
@@ -106,7 +106,7 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert any("spacy download" in c for c in result["setup_commands"])
+        assert any("spacy download" in c for c in result.setup_commands)
 
     async def test_installs_uv_when_missing(self) -> None:
         """uv not found → setup includes curl install."""
@@ -119,8 +119,8 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert any("install.sh" in c for c in result["setup_commands"])
-        assert any("uv sync" in c for c in result["setup_commands"])
+        assert any("install.sh" in c for c in result.setup_commands)
+        assert any("uv sync" in c for c in result.setup_commands)
 
     async def test_skips_setup_when_already_installed(self) -> None:
         """When venv exists with project installed, skip all setup."""
@@ -136,8 +136,8 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "make test-unit"
-        assert result["setup_commands"] == []
+        assert result.test_command == "make test-unit"
+        assert result.setup_commands == []
 
     async def test_package_json_with_test_script(self) -> None:
         mgr = _mock_sandbox(
@@ -147,8 +147,8 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "npm test"
-        assert "npm install" in result["setup_commands"]
+        assert result.test_command == "npm test"
+        assert "npm install" in result.setup_commands
 
     async def test_cargo_toml(self) -> None:
         mgr = _mock_sandbox(
@@ -157,7 +157,7 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "cargo test"
+        assert result.test_command == "cargo test"
 
     async def test_go_mod(self) -> None:
         mgr = _mock_sandbox(
@@ -166,7 +166,7 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "go test ./..."
+        assert result.test_command == "go test ./..."
 
     async def test_no_recognizable_project(self) -> None:
         mgr = _mock_sandbox(
@@ -175,7 +175,7 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert "No test runner" in result["test_command"]
+        assert "No test runner" in result.test_command
 
     async def test_makefile_no_test_target_falls_through(self) -> None:
         """Makefile exists but no test target → falls through to Cargo."""
@@ -185,7 +185,7 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "cargo test"
+        assert result.test_command == "cargo test"
 
     async def test_package_json_without_test_script(self) -> None:
         mgr = _mock_sandbox(
@@ -195,7 +195,7 @@ class TestDiscoverTestCommand:
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
 
-        assert result["test_command"] == "go test ./..."
+        assert result.test_command == "go test ./..."
 
 
 class TestPickTestTarget:

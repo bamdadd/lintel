@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from contextlib import AbstractContextManager
 
 from lintel.contracts.types import SandboxResult
+from lintel.contracts.workflow_models import TestDiscoveryResult
 from lintel.workflows.nodes.test_code import run_tests
 
 _STAGE = "lintel.workflows.nodes._stage_tracking"
@@ -46,11 +47,10 @@ def _patch_discovery(
     setup_commands: list[str] | None = None,
 ) -> AbstractContextManager[AsyncMock]:
     """Patch the discover_test_command skill to return a fixed result."""
-    result: dict[str, Any] = {"test_command": test_command}
-    if setup_commands is not None:
-        result["setup_commands"] = setup_commands
-    else:
-        result["setup_commands"] = []
+    result = TestDiscoveryResult(
+        test_command=test_command,
+        setup_commands=setup_commands or [],
+    )
     return patch(
         "lintel.skills.discover_test_command.discover_test_command",
         new_callable=AsyncMock,

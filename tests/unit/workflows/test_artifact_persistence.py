@@ -103,7 +103,9 @@ async def test_test_node_persists_test_result() -> None:
         }
     }
 
-    discovery = {"test_command": "make test", "setup_commands": []}
+    from lintel.contracts.workflow_models import TestDiscoveryResult
+
+    discovery = TestDiscoveryResult(test_command="make test", setup_commands=[])
     with patch(
         "lintel.skills.discover_test_command.discover_test_command",
         new_callable=AsyncMock,
@@ -122,6 +124,7 @@ async def test_test_node_records_failure() -> None:
     """Failed tests are stored with FAILED verdict."""
     from unittest.mock import patch
 
+    from lintel.contracts.workflow_models import TestDiscoveryResult
     from lintel.workflows.nodes.test_code import run_tests
 
     sandbox = AsyncMock()
@@ -141,7 +144,7 @@ async def test_test_node_records_failure() -> None:
         }
     }
 
-    discovery = {"test_command": "make test", "setup_commands": []}
+    discovery = TestDiscoveryResult(test_command="make test", setup_commands=[])
     with patch(
         "lintel.skills.discover_test_command.discover_test_command",
         new_callable=AsyncMock,

@@ -43,8 +43,8 @@ class TestAgentRuntime:
             messages=[{"role": "user", "content": "Plan a feature"}],
         )
 
-        assert result["content"] == "Hello, world!"
-        assert result["usage"]["input_tokens"] == 10
+        assert result.content == "Hello, world!"
+        assert result.usage.input_tokens == 10
 
     async def test_execute_step_emits_four_events(self) -> None:
         event_store, model_router = _make_mocks()
@@ -132,7 +132,7 @@ class TestAgentRuntime:
             messages=[{"role": "user", "content": "Plan"}],
         )
 
-        assert result["content"] == "Hello, world!"
+        assert result.content == "Hello, world!"
 
     async def test_execute_step_stream_calls_on_chunk(self) -> None:
         event_store, model_router = _make_mocks()

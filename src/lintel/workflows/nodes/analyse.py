@@ -139,7 +139,7 @@ async def analyse_code(
     if remaining:
         await append_log(config, "analyse", remaining, state)
 
-    analysis = result.get("content", "")
+    analysis = result.content
     usage = extract_token_usage("analyse", result)
 
     await append_log(
@@ -151,23 +151,26 @@ async def analyse_code(
     await append_log(
         config,
         "analyse",
-        f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
+        f"Tokens: {usage.input_tokens} in / {usage.output_tokens} out",
         state,
     )
 
     logger.info(
         "analyse_completed",
         analysis_chars=len(analysis),
-        input_tokens=usage["input_tokens"],
-        output_tokens=usage["output_tokens"],
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
     )
 
-    stage_outputs: dict[str, object] = {"token_usage": usage, "analysis": analysis}
+    stage_outputs: dict[str, object] = {
+        "token_usage": usage.model_dump(),
+        "analysis": analysis,
+    }
     await mark_completed(config, "analyse", state, outputs=stage_outputs)
 
     return {
         "analysis_context": analysis,
         "current_phase": "analysing",
         "agent_outputs": [{"node": "analyse", "agent": "researcher", "content": analysis}],
-        "token_usage": [usage],
+        "token_usage": [usage.model_dump()],
     }
