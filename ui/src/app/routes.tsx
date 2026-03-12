@@ -154,6 +154,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/artifacts/pages/ArtifactListPage'),
       },
       {
+        path: 'test-results',
+        lazy: () => import('@/features/testing/pages/TestResultsPage'),
+      },
+      {
         path: 'approvals',
         lazy: () => import('@/features/approval-requests/pages/ApprovalRequestListPage'),
       },

@@ -43,6 +43,7 @@ import {
   IconPlug,
   IconLayoutKanban,
   IconFingerprint,
+  IconTestPipe2,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -73,6 +74,7 @@ const navSections: NavSection[] = [
       { label: 'Repositories', path: '/repositories', icon: IconFolder },
       { label: 'Sandboxes', path: '/sandboxes', icon: IconBox },
       { label: 'Artifacts', path: '/artifacts', icon: IconPackage },
+      { label: 'Test Results', path: '/test-results', icon: IconTestPipe2 },
     ],
   },
   {
