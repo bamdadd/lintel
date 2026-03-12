@@ -22,7 +22,7 @@ ENV PATH="/root/.bun/bin:$PATH"
 
 # Install uv (fast Python package manager)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:/home/vscode/.local/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
 # Install Rust toolchain (for cargo test)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -54,14 +54,17 @@ RUN npm install -g @anthropic-ai/claude-code
 # Claude Code refuses --permission-mode bypassPermissions as root.
 # The devcontainer base image already has a 'vscode' user (uid 1000).
 # Give vscode ownership of key directories so Claude Code can run properly.
-RUN mkdir -p /home/vscode/.claude /home/vscode/.local /home/vscode/.cache /workspace \
+RUN mkdir -p /home/vscode/.claude /home/vscode/.local/bin /home/vscode/.cache /workspace \
     && chown -R vscode:vscode /home/vscode /workspace
 
 # Make tools installed as root accessible to vscode user
 RUN cp -r /root/.bun /home/vscode/.bun 2>/dev/null || true \
     && cp -r /root/.cargo /home/vscode/.cargo 2>/dev/null || true \
-    && chown -R vscode:vscode /home/vscode/.bun /home/vscode/.cargo 2>/dev/null || true
+    && cp -r /root/.local/bin/* /home/vscode/.local/bin/ 2>/dev/null || true \
+    && cp -r /root/.cache/uv /home/vscode/.cache/uv 2>/dev/null || true \
+    && chown -R vscode:vscode /home/vscode/.bun /home/vscode/.cargo \
+       /home/vscode/.local /home/vscode/.cache 2>/dev/null || true
 
-ENV PATH="/home/vscode/.bun/bin:/home/vscode/.cargo/bin:/home/vscode/.local/bin:$PATH"
+ENV PATH="/home/vscode/.bun/bin:/home/vscode/.cargo/bin:/home/vscode/.local/bin:/usr/local/go/bin:$PATH"
 
 WORKDIR /workspace

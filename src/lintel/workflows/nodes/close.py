@@ -40,6 +40,29 @@ async def close_workflow(
 
         sandbox_manager = get_sandbox_manager(run_id)
 
+    # Release sandbox back to pool (clear pipeline_id allocation)
+    async def _release_sandbox() -> None:
+        sandbox_id = state.get("sandbox_id")
+        if not sandbox_id:
+            return
+        sandbox_store = _configurable.get("sandbox_store")
+        if sandbox_store is None:
+            app_st = _configurable.get("app_state")
+            if app_st is None and run_id:
+                from lintel.workflows.nodes._runtime_registry import get_app_state
+
+                app_st = get_app_state(run_id)
+            if app_st is not None:
+                sandbox_store = getattr(app_st, "sandbox_store", None)
+        if sandbox_store is not None:
+            try:
+                entry = await sandbox_store.get(sandbox_id)
+                if entry is not None:
+                    entry.pop("pipeline_id", None)
+                    await sandbox_store.update(sandbox_id, entry)
+            except Exception:
+                logger.warning("sandbox_release_failed", sandbox_id=sandbox_id[:12])
+
     # Check if pipeline is being aborted due to a failed stage
     has_failure = False
     for output in state.get("agent_outputs", []):
@@ -56,6 +79,7 @@ async def close_workflow(
         await append_log(_config, "close", "Pipeline aborted due to earlier failure", state)
         # Mark all remaining pending/running stages as skipped
         await _skip_remaining_stages(_config, state)
+        await _release_sandbox()
         return {"current_phase": "closed"}
 
     await mark_running(_config, "close", state)
@@ -193,8 +217,19 @@ async def close_workflow(
         stage_outputs["pr_url"] = pr_url
     if push_error:
         stage_outputs["push_error"] = push_error
-    await mark_completed(_config, "close", state, outputs=stage_outputs or None)
 
+    if pr_url:
+        await mark_completed(_config, "close", state, outputs=stage_outputs)
+    else:
+        await mark_completed(
+            _config,
+            "close",
+            state,
+            outputs=stage_outputs or None,
+            error=push_error or "No PR raised",
+        )
+
+    await _release_sandbox()
     return {
         "current_phase": "closed",
         "pr_url": pr_url,

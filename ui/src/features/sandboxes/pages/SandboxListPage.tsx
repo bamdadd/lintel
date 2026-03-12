@@ -88,12 +88,13 @@ interface SandboxEntry {
   network_enabled: boolean;
   workspace_id: string;
   channel_id: string;
+  pipeline_id?: string;
   devcontainer?: Record<string, unknown>;
   mounts?: MountEntry[];
 }
 
 export function Component() {
-  const { data: resp, isLoading } = useSandboxesListSandboxes();
+  const { data: resp, isLoading } = useSandboxesListSandboxes({ query: { refetchInterval: 5000 } });
   const { data: presets } = usePresets();
   const createMutation = useSandboxesCreateSandbox();
   const destroyMutation = useSandboxesDestroySandbox();
@@ -253,9 +254,8 @@ export function Component() {
               <Table.Tr>
                 <Table.Th>ID</Table.Th>
                 <Table.Th>Status</Table.Th>
+                <Table.Th>Allocated To</Table.Th>
                 <Table.Th>Image</Table.Th>
-                <Table.Th>Features</Table.Th>
-                <Table.Th>Mounts</Table.Th>
                 <Table.Th>Network</Table.Th>
                 <Table.Th />
               </Table.Tr>
@@ -270,26 +270,23 @@ export function Component() {
                 >
                   <Table.Td><Code>{s.sandbox_id.slice(0, 12)}</Code></Table.Td>
                   <Table.Td><SandboxStatusBadge sandboxId={s.sandbox_id} /></Table.Td>
-                  <Table.Td>{s.devcontainer?.image as string ?? s.image}</Table.Td>
                   <Table.Td>
-                    <Group gap={4} wrap="wrap">
-                      {((s.devcontainer?.features as Array<{ id: string }>) ?? []).map((f) => {
-                        const short = f.id.split('/').pop()?.replace(/:.*$/, '') ?? f.id;
-                        return <Badge key={f.id} size="xs" variant="light">{short}</Badge>;
-                      })}
-                      {((s.devcontainer?.features as Array<{ id: string }>) ?? []).length === 0 && <Text size="xs" c="dimmed">—</Text>}
-                    </Group>
+                    {s.pipeline_id ? (
+                      <Badge
+                        size="sm"
+                        variant="light"
+                        color="blue"
+                        style={{ cursor: 'pointer' }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/pipelines/${s.pipeline_id}`); }}
+                      >
+                        {s.pipeline_id.slice(0, 8)}…
+                      </Badge>
+                    ) : (
+                      <Badge size="sm" variant="light" color="green">free</Badge>
+                    )}
                   </Table.Td>
-                  <Table.Td>
-                    <Group gap={4} wrap="wrap">
-                      {(s.mounts ?? []).map((m) => {
-                        const short = m.target.split('/').pop() ?? m.target;
-                        return <Badge key={m.target} size="xs" variant="light" color="violet" title={`${m.source} → ${m.target}`}>{short}</Badge>;
-                      })}
-                      {(s.mounts ?? []).length === 0 && <Text size="xs" c="dimmed">—</Text>}
-                    </Group>
-                  </Table.Td>
-                  <Table.Td><Badge color={s.network_enabled ? 'green' : 'gray'}>{s.network_enabled ? 'on' : 'off'}</Badge></Table.Td>
+                  <Table.Td><Text size="xs">{s.devcontainer?.image as string ?? s.image}</Text></Table.Td>
+                  <Table.Td><Badge color={s.network_enabled ? 'green' : 'gray'} size="sm">{s.network_enabled ? 'on' : 'off'}</Badge></Table.Td>
                   <Table.Td>
                     <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDestroy(s.sandbox_id); }}>
                       <IconTrash size={16} />

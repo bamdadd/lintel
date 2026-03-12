@@ -30,8 +30,8 @@ def _is_json(text: str) -> bool:
     return True
 
 
-# Timeout for a full Claude Code invocation (10 minutes)
-CLAUDE_CODE_TIMEOUT = 600
+# Timeout for a full Claude Code invocation (15 minutes)
+CLAUDE_CODE_TIMEOUT = 900
 
 # Timeout for the lightweight auth probe
 CLAUDE_CODE_PROBE_TIMEOUT = 30
@@ -292,7 +292,7 @@ class ClaudeCodeProvider:
                 sandbox_id,
                 SandboxJob(
                     command=f"cat {exit_file} 2>/dev/null || echo running",
-                    timeout_seconds=5,
+                    timeout_seconds=15,
                 ),
             )
             process_done = exit_check.stdout.strip() != "running"
@@ -302,7 +302,7 @@ class ClaudeCodeProvider:
                 sandbox_id,
                 SandboxJob(
                     command=f"wc -l < {output_file}",
-                    timeout_seconds=5,
+                    timeout_seconds=15,
                 ),
             )
             try:
@@ -317,7 +317,7 @@ class ClaudeCodeProvider:
                     sandbox_id,
                     SandboxJob(
                         command=f"sed -n '{skip},{total_lines}p' {output_file}",
-                        timeout_seconds=10,
+                        timeout_seconds=30,
                     ),
                 )
                 for line in new_lines_result.stdout.strip().split("\n"):

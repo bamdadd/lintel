@@ -237,13 +237,26 @@ class DefaultModelRouter:
     ) -> dict[str, Any]:
         # Claude Code provider — delegate to CLI instead of litellm
         if policy.provider == "claude_code":
-            return await self._call_claude_code(
-                policy,
-                messages,
-                kwargs.get("sandbox_manager"),
-                kwargs.get("sandbox_id"),
-                on_activity=kwargs.get("on_activity"),
+            sandbox_mgr = kwargs.get("sandbox_manager")
+            sandbox_id = kwargs.get("sandbox_id")
+            if sandbox_mgr is not None and sandbox_id is not None:
+                return await self._call_claude_code(
+                    policy,
+                    messages,
+                    sandbox_mgr,
+                    sandbox_id,
+                    on_activity=kwargs.get("on_activity"),
+                )
+            # No sandbox available — fall back to litellm with the model name
+            logger.warning(
+                "claude_code_no_sandbox_fallback",
+                model=policy.model_name,
+                msg="No sandbox available for Claude Code, falling back to litellm",
             )
+            # Remap provider to anthropic for litellm
+            from dataclasses import replace as _replace
+
+            policy = _replace(policy, provider="anthropic")
 
         api_base: str | None = kwargs.get("api_base")
         import litellm

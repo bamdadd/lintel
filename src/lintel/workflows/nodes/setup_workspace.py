@@ -310,14 +310,17 @@ async def setup_workspace(
 
     if sandbox_store is not None:
         existing = await sandbox_store.list_all()
+        # Filter to sandboxes not already allocated to a pipeline
+        free = [s for s in existing if not s.get("pipeline_id")]
+        total = len(existing)
         await append_log(
             config,
             "setup_workspace",
-            f"Found {len(existing)} sandbox(es) in pool",
+            f"Found {total} sandbox(es) in pool ({len(free)} free)",
             state,
         )
-        if existing:
-            sandbox_id = existing[0].get("sandbox_id", "")
+        if free:
+            sandbox_id = free[0].get("sandbox_id", "")
 
     # Check for Claude Code OAuth token (determines network policy)
     oauth_token = _get_claude_code_oauth_token()
@@ -337,6 +340,16 @@ async def setup_workspace(
             sandbox_id = ""
 
     if sandbox_id:
+        # Mark sandbox as allocated to this pipeline
+        run_id = state.get("run_id", "")
+        if sandbox_store is not None and run_id:
+            try:
+                entry = await sandbox_store.get(sandbox_id)
+                if entry is not None:
+                    entry["pipeline_id"] = run_id
+                    await sandbox_store.update(sandbox_id, entry)
+            except Exception:
+                logger.warning("sandbox_allocate_failed", sandbox_id=sandbox_id[:12])
         # Reconnect network — previous run may have disconnected it
         await sandbox_manager.reconnect_network(sandbox_id)
         # Clean workspace from previous runs to avoid "No space left on device"

@@ -110,6 +110,13 @@ async def review_output(
 
     await log_llm_context(_config, "review", "reviewer", "review", state)
 
+    # Reconnect network — implement disconnects it, but review needs API access
+    if sandbox_id and sandbox_manager is not None:
+        try:
+            await sandbox_manager.reconnect_network(sandbox_id)
+        except Exception:
+            logger.warning("review_reconnect_network_failed")
+
     review_output_text = ""
     usage: dict[str, Any] | None = None
     if agent_runtime is not None:
@@ -121,12 +128,26 @@ async def review_output(
             thread_ts=parts[2] if len(parts) > 2 else "",
         )
 
+        _line_buffer: list[str] = []
+
+        async def _on_chunk(chunk: str) -> None:
+            _line_buffer.append(chunk)
+            text = "".join(_line_buffer)
+            while "\n" in text:
+                line, text = text.split("\n", 1)
+                stripped = line.strip()
+                if stripped:
+                    await append_log(_config, "review", stripped, state)
+            _line_buffer.clear()
+            if text:
+                _line_buffer.append(text)
+
         async def _on_activity(activity: str) -> None:
             if activity:
                 await append_log(_config, "review", activity, state)
 
         try:
-            agent_result = await agent_runtime.execute_step(
+            agent_result = await agent_runtime.execute_step_stream(
                 thread_ref=thread_ref,
                 agent_role=AgentRole.REVIEWER,
                 step_name="review",
@@ -134,10 +155,14 @@ async def review_output(
                     {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
                     {"role": "user", "content": f"```diff\n{diff_text}\n```"},
                 ],
+                on_chunk=_on_chunk,
+                on_activity=_on_activity,
                 sandbox_manager=sandbox_manager,
                 sandbox_id=sandbox_id,
-                on_activity=_on_activity,
             )
+            remaining = "".join(_line_buffer).strip()
+            if remaining:
+                await append_log(_config, "review", remaining, state)
             review_output_text = agent_result.get("content", "Review complete.")
             usage = extract_token_usage("review", agent_result)
         except Exception:
@@ -164,7 +189,19 @@ async def review_output(
     stage_outputs: dict[str, object] = {"verdict": verdict, "review": review_output_text}
     if usage:
         stage_outputs["token_usage"] = usage
-    await mark_completed(_config, "review", state, outputs=stage_outputs or None)
+    if verdict == "approve":
+        await mark_completed(_config, "review", state, outputs=stage_outputs)
+    else:
+        await mark_completed(
+            _config, "review", state, outputs=stage_outputs, error="Changes requested"
+        )
+
+    # Disconnect network again after review
+    if sandbox_id and sandbox_manager is not None:
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            await sandbox_manager.disconnect_network(sandbox_id)
 
     review_cycles = state.get("review_cycles", 0) + 1
 

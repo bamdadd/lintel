@@ -26,7 +26,7 @@ from lintel.workflows.nodes.route import route_intent
 from lintel.workflows.nodes.setup_workspace import setup_workspace
 from lintel.workflows.state import ThreadWorkflowState
 
-MAX_REVIEW_CYCLES = 2
+MAX_REVIEW_CYCLES = 5
 
 
 def build_feature_to_pr_graph() -> StateGraph[Any]:

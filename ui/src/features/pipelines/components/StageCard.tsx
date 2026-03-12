@@ -238,11 +238,12 @@ function groupTabsByStage(tabs: ArtifactTab[], allStages: StageItem[]) {
 
 export function StageFullscreenModal({
   opened, onClose, initialTabKey, allStages, currentStage,
-  logLines = [], liveLogsAvailable = false, logModalScrollRef,
+  logLines = [], liveLogsAvailable = false, logModalScrollRef, onTabChange,
 }: {
   opened: boolean;
   onClose: () => void;
   initialTabKey?: string;
+  onTabChange?: (tabKey: string) => void;
   allStages: StageItem[];
   currentStage?: StageItem;
   logLines?: string[];
@@ -251,10 +252,14 @@ export function StageFullscreenModal({
 }) {
   const { colorScheme } = useMantineColorScheme();
   const resolvedCurrentStage = currentStage ?? allStages[0]!;
-  const [activeKey, setActiveKey] = useState(initialTabKey ?? '');
+  const [activeKey, setActiveKeyRaw] = useState(initialTabKey ?? '');
+  const setActiveKey = useCallback((key: string) => {
+    setActiveKeyRaw(key);
+    onTabChange?.(key);
+  }, [onTabChange]);
 
   useEffect(() => {
-    if (opened && initialTabKey) setActiveKey(initialTabKey);
+    if (opened && initialTabKey) setActiveKeyRaw(initialTabKey);
   }, [initialTabKey, opened]);
 
   const artifactTabs = buildArtifactTabs(allStages, resolvedCurrentStage, liveLogsAvailable);
@@ -600,13 +605,13 @@ export function StageCard({ stage, runId, allStages, onActionComplete }: StageCa
                 size="compact-sm"
                 leftSection={<IconRefresh size={14} />}
                 loading={retrying}
-                disabled={(stage.retry_count ?? 0) >= 3}
+                disabled={(stage.retry_count ?? 0) >= 5}
                 onClick={handleRetry}
                 data-testid="retry-btn"
               >
                 {stage.status === 'failed' ? 'Retry' : 'Restart'}
                 {(stage.retry_count ?? 0) > 0 &&
-                  ` (${stage.retry_count}/3)`}
+                  ` (${stage.retry_count}/5)`}
               </Button>
             )}
         </Group>

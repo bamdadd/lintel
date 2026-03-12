@@ -289,13 +289,13 @@ describe('StageCard', () => {
     expect(screen.getByTestId('retry-btn')).toHaveTextContent('Restart');
   });
 
-  it('Retry button is disabled after 3 retries', () => {
-    renderCard({ status: 'failed', retry_count: 3 });
+  it('Retry button is disabled after 5 retries', () => {
+    renderCard({ status: 'failed', retry_count: 5 });
     expect(screen.getByTestId('retry-btn')).toBeDisabled();
   });
 
-  it('Retry button is enabled with 2 retries', () => {
-    renderCard({ status: 'failed', retry_count: 2 });
+  it('Retry button is enabled with 4 retries', () => {
+    renderCard({ status: 'failed', retry_count: 4 });
     expect(screen.getByTestId('retry-btn')).not.toBeDisabled();
   });
 
