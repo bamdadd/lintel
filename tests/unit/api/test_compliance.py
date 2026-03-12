@@ -512,3 +512,170 @@ class TestComplianceCascade:
         prac = client.get("/api/v1/practices/prac-cascade").json()
         assert "proc-cascade" in prac["procedure_ids"]
         assert "strat-cascade" in prac["strategy_ids"]
+
+
+# ======================== ARCHITECTURE DECISIONS ========================
+
+
+class TestArchitectureDecisionsAPI:
+    def test_create_adr(self, client: TestClient) -> None:
+        _create_project(client)
+        resp = client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-1",
+                "project_id": "proj-1",
+                "title": "Use PostgreSQL for event store",
+                "context": "Need ACID-compliant persistence",
+                "decision": "Use PostgreSQL with JSONB columns",
+                "consequences": "Must manage schema migrations",
+                "status": "accepted",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["title"] == "Use PostgreSQL for event store"
+        assert data["status"] == "accepted"
+        assert data["context"] == "Need ACID-compliant persistence"
+
+    def test_list_adrs_empty(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/architecture-decisions")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_list_adrs_filter_by_project(self, client: TestClient) -> None:
+        _create_project(client, "proj-a")
+        _create_project(client, "proj-b")
+        client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-a",
+                "project_id": "proj-a",
+                "title": "Use Redis",
+            },
+        )
+        client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-b",
+                "project_id": "proj-b",
+                "title": "Use Kafka",
+            },
+        )
+        resp = client.get("/api/v1/architecture-decisions?project_id=proj-a")
+        assert resp.status_code == 200
+        items = resp.json()
+        assert len(items) == 1
+        assert items[0]["title"] == "Use Redis"
+
+    def test_get_adr(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-2",
+                "project_id": "proj-1",
+                "title": "Event sourcing",
+            },
+        )
+        resp = client.get("/api/v1/architecture-decisions/adr-2")
+        assert resp.status_code == 200
+        assert resp.json()["title"] == "Event sourcing"
+
+    def test_get_adr_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/architecture-decisions/nonexistent")
+        assert resp.status_code == 404
+
+    def test_update_adr(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-3",
+                "project_id": "proj-1",
+                "title": "Use REST",
+                "status": "proposed",
+            },
+        )
+        resp = client.patch(
+            "/api/v1/architecture-decisions/adr-3",
+            json={"status": "accepted", "decision": "REST over gRPC"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "accepted"
+        assert resp.json()["decision"] == "REST over gRPC"
+
+    def test_delete_adr(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-4",
+                "project_id": "proj-1",
+                "title": "To Delete",
+            },
+        )
+        resp = client.delete("/api/v1/architecture-decisions/adr-4")
+        assert resp.status_code == 204
+        assert client.get("/api/v1/architecture-decisions/adr-4").status_code == 404
+
+    def test_create_duplicate_adr_returns_409(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-dup",
+                "project_id": "proj-1",
+                "title": "Dup",
+            },
+        )
+        resp = client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-dup",
+                "project_id": "proj-1",
+                "title": "Dup",
+            },
+        )
+        assert resp.status_code == 409
+
+    def test_adr_with_regulation_links(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/regulations",
+            json={
+                "regulation_id": "reg-link",
+                "project_id": "proj-1",
+                "name": "HIPAA",
+            },
+        )
+        resp = client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-linked",
+                "project_id": "proj-1",
+                "title": "Encrypt PHI at rest",
+                "regulation_ids": ["reg-link"],
+                "deciders": ["alice", "bob"],
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert "reg-link" in data["regulation_ids"]
+        assert "alice" in data["deciders"]
+
+    def test_overview_includes_adrs(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/architecture-decisions",
+            json={
+                "decision_id": "adr-ov",
+                "project_id": "proj-1",
+                "title": "Use CQRS",
+            },
+        )
+        resp = client.get("/api/v1/compliance/overview/proj-1")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["counts"]["architecture_decisions"] == 1
+        assert len(data["architecture_decisions"]) == 1

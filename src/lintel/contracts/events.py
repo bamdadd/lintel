@@ -1019,6 +1019,21 @@ class KnowledgeExtractionFailed(EventEnvelope):
     event_type: str = "KnowledgeExtractionFailed"
 
 
+@dataclass(frozen=True)
+class ArchitectureDecisionCreated(EventEnvelope):
+    event_type: str = "ArchitectureDecisionCreated"
+
+
+@dataclass(frozen=True)
+class ArchitectureDecisionUpdated(EventEnvelope):
+    event_type: str = "ArchitectureDecisionUpdated"
+
+
+@dataclass(frozen=True)
+class ArchitectureDecisionRemoved(EventEnvelope):
+    event_type: str = "ArchitectureDecisionRemoved"
+
+
 # --- Event Registry ---
 
 EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
@@ -1205,6 +1220,9 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         KnowledgeExtractionStarted,
         KnowledgeExtractionCompleted,
         KnowledgeExtractionFailed,
+        ArchitectureDecisionCreated,
+        ArchitectureDecisionUpdated,
+        ArchitectureDecisionRemoved,
     ]
 }
 

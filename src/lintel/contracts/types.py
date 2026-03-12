@@ -823,6 +823,33 @@ class KnowledgeEntry:
     tags: tuple[str, ...] = ()
 
 
+class ADRStatus(StrEnum):
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    DEPRECATED = "deprecated"
+    SUPERSEDED = "superseded"
+
+
+@dataclass(frozen=True)
+class ArchitectureDecision:
+    """Architecture Decision Record (ADR) linked to a project."""
+
+    decision_id: str
+    project_id: str
+    title: str
+    status: ADRStatus = ADRStatus.PROPOSED
+    context: str = ""
+    decision: str = ""
+    consequences: str = ""
+    alternatives: str = ""
+    superseded_by: str = ""
+    regulation_ids: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
+    date_proposed: str = ""
+    date_decided: str = ""
+    deciders: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True)
 class KnowledgeExtractionRun:
     """A run of the knowledge extraction process."""

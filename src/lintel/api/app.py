@@ -175,6 +175,7 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "compliance_metric_store": ComplianceStore("metric_id"),
         "knowledge_entry_store": ComplianceStore("entry_id"),
         "knowledge_extraction_store": ComplianceStore("run_id"),
+        "architecture_decision_store": ComplianceStore("decision_id"),
     }
 
 
@@ -347,6 +348,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "compliance_metric_store": ComplianceStore("metric_id"),
         "knowledge_entry_store": ComplianceStore("entry_id"),
         "knowledge_extraction_store": ComplianceStore("run_id"),
+        "architecture_decision_store": ComplianceStore("decision_id"),
     }
 
 

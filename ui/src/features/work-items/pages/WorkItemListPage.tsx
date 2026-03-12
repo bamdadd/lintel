@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select, Textarea,
-  Loader, Center, ActionIcon, Badge, Text,
+  Loader, Center, ActionIcon, Badge, Text, TypographyStylesProvider, Box,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconExternalLink } from '@tabler/icons-react';
+import { IconTrash, IconExternalLink, IconPencil } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '@/features/chat/chat-markdown.css';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useWorkItemsListWorkItems,
@@ -62,7 +65,7 @@ export function Component() {
   const qc = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<WorkItem | null>(null);
-
+  const [editingDescription, setEditingDescription] = useState(false);
   const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
 
@@ -95,6 +98,7 @@ export function Component() {
 
   const openEdit = (w: WorkItem) => {
     setEditItem(w);
+    setEditingDescription(false);
     editFormState.setValues({
       title: w.title, description: w.description, work_type: w.work_type,
       status: w.status, assignee_agent_role: w.assignee_agent_role ?? '',
@@ -207,7 +211,55 @@ export function Component() {
         <form onSubmit={handleEdit}>
           <Stack gap="sm">
             <TextInput label="Title" {...editFormState.getInputProps('title')} />
-            <Textarea label="Description" minRows={3} {...editFormState.getInputProps('description')} />
+
+            <Box>
+              <Group justify="space-between" mb={4}>
+                <Text size="sm" fw={500}>Description</Text>
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  onClick={() => setEditingDescription((v) => !v)}
+                  title={editingDescription ? 'Preview' : 'Edit'}
+                >
+                  <IconPencil size={14} />
+                </ActionIcon>
+              </Group>
+              {editingDescription ? (
+                <Textarea minRows={6} autosize placeholder="Markdown supported..." {...editFormState.getInputProps('description')} />
+              ) : editFormState.values.description ? (
+                <Box
+                  p="sm"
+                  style={{
+                    border: '1px solid var(--mantine-color-dark-4)',
+                    borderRadius: 'var(--mantine-radius-sm)',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setEditingDescription(true)}
+                >
+                  <TypographyStylesProvider>
+                    <div className="chat-markdown">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {editFormState.values.description}
+                      </ReactMarkdown>
+                    </div>
+                  </TypographyStylesProvider>
+                </Box>
+              ) : (
+                <Text
+                  size="sm"
+                  c="dimmed"
+                  p="sm"
+                  style={{
+                    border: '1px dashed var(--mantine-color-dark-4)',
+                    borderRadius: 'var(--mantine-radius-sm)',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setEditingDescription(true)}
+                >
+                  Click to add a description...
+                </Text>
+              )}
+            </Box>
             <Group grow>
               <Select label="Type" data={WORK_TYPES} {...editFormState.getInputProps('work_type')} />
               <Select label="Status" data={STATUSES} {...editFormState.getInputProps('status')} />

@@ -10,7 +10,14 @@ import {
   Text,
   Badge,
   TagsInput,
+  TypographyStylesProvider,
+  ActionIcon,
+  Box,
 } from '@mantine/core';
+import { IconPencil } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '@/features/chat/chat-markdown.css';
 import { notifications } from '@mantine/notifications';
 import { useUpdateWorkItem } from '../api';
 import type { WorkItem } from '../api';
@@ -46,6 +53,7 @@ export function WorkItemDetailDrawer({ item, opened, onClose }: WorkItemDetailDr
   const [assignee, setAssignee] = useState('');
   const [tags, setTags] = useState<string[]>([]);
 
+  const [editingDescription, setEditingDescription] = useState(false);
   const updateMut = useUpdateWorkItem();
   const qc = useQueryClient();
 
@@ -57,6 +65,7 @@ export function WorkItemDetailDrawer({ item, opened, onClose }: WorkItemDetailDr
       setStatus(item.status);
       setAssignee(item.assignee_agent_role);
       setTags(item.tags ?? []);
+      setEditingDescription(false);
     }
   }, [item]);
 
@@ -102,13 +111,61 @@ export function WorkItemDetailDrawer({ item, opened, onClose }: WorkItemDetailDr
         </Group>
 
         <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
-        <Textarea
-          label="Description"
-          value={description}
-          onChange={(e) => setDescription(e.currentTarget.value)}
-          minRows={3}
-          autosize
-        />
+
+        <Box>
+          <Group justify="space-between" mb={4}>
+            <Text size="sm" fw={500}>Description</Text>
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={() => setEditingDescription((v) => !v)}
+              title={editingDescription ? 'Preview' : 'Edit'}
+            >
+              <IconPencil size={14} />
+            </ActionIcon>
+          </Group>
+          {editingDescription ? (
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.currentTarget.value)}
+              minRows={6}
+              autosize
+              placeholder="Markdown supported..."
+            />
+          ) : description ? (
+            <Box
+              p="sm"
+              style={{
+                border: '1px solid var(--mantine-color-dark-4)',
+                borderRadius: 'var(--mantine-radius-sm)',
+                cursor: 'pointer',
+              }}
+              onClick={() => setEditingDescription(true)}
+            >
+              <TypographyStylesProvider>
+                <div className="chat-markdown">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {description}
+                  </ReactMarkdown>
+                </div>
+              </TypographyStylesProvider>
+            </Box>
+          ) : (
+            <Text
+              size="sm"
+              c="dimmed"
+              p="sm"
+              style={{
+                border: '1px dashed var(--mantine-color-dark-4)',
+                borderRadius: 'var(--mantine-radius-sm)',
+                cursor: 'pointer',
+              }}
+              onClick={() => setEditingDescription(true)}
+            >
+              Click to add a description...
+            </Text>
+          )}
+        </Box>
         <Group grow>
           <Select label="Type" data={WORK_TYPES} value={workType} onChange={(v) => setWorkType(v ?? 'task')} />
           <Select label="Status" data={STATUSES} value={status} onChange={(v) => setStatus(v ?? 'open')} />

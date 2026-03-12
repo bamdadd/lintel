@@ -14,6 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.contracts.events import (
+    ArchitectureDecisionCreated,
+    ArchitectureDecisionRemoved,
+    ArchitectureDecisionUpdated,
     CompliancePolicyCreated,
     CompliancePolicyRemoved,
     CompliancePolicyUpdated,
@@ -35,6 +38,8 @@ from lintel.contracts.events import (
     StrategyUpdated,
 )
 from lintel.contracts.types import (
+    ADRStatus,
+    ArchitectureDecision,
     CompliancePolicy,
     ComplianceStatus,
     ExtractionStatus,
@@ -128,6 +133,10 @@ def get_knowledge_entry_store(request: Request) -> ComplianceStore:
 
 def get_knowledge_extraction_store(request: Request) -> ComplianceStore:
     return request.app.state.knowledge_extraction_store  # type: ignore[no-any-return]
+
+
+def get_architecture_decision_store(request: Request) -> ComplianceStore:
+    return request.app.state.architecture_decision_store  # type: ignore[no-any-return]
 
 
 # ===================== REGULATIONS =====================
@@ -997,6 +1006,143 @@ async def add_regulation_from_template(
     return result
 
 
+# ===================== ARCHITECTURE DECISIONS =====================
+
+
+class CreateArchitectureDecisionRequest(BaseModel):
+    decision_id: str = Field(default_factory=lambda: str(uuid4()))
+    project_id: str
+    title: str
+    status: ADRStatus = ADRStatus.PROPOSED
+    context: str = ""
+    decision: str = ""
+    consequences: str = ""
+    alternatives: str = ""
+    superseded_by: str = ""
+    regulation_ids: list[str] = []
+    tags: list[str] = []
+    date_proposed: str = ""
+    date_decided: str = ""
+    deciders: list[str] = []
+
+
+class UpdateArchitectureDecisionRequest(BaseModel):
+    title: str | None = None
+    status: ADRStatus | None = None
+    context: str | None = None
+    decision: str | None = None
+    consequences: str | None = None
+    alternatives: str | None = None
+    superseded_by: str | None = None
+    regulation_ids: list[str] | None = None
+    tags: list[str] | None = None
+    date_proposed: str | None = None
+    date_decided: str | None = None
+    deciders: list[str] | None = None
+
+
+@router.post("/architecture-decisions", status_code=201)
+async def create_architecture_decision(
+    body: CreateArchitectureDecisionRequest,
+    request: Request,
+    store: Annotated[ComplianceStore, Depends(get_architecture_decision_store)],
+) -> dict[str, Any]:
+    adr = ArchitectureDecision(
+        decision_id=body.decision_id,
+        project_id=body.project_id,
+        title=body.title,
+        status=body.status,
+        context=body.context,
+        decision=body.decision,
+        consequences=body.consequences,
+        alternatives=body.alternatives,
+        superseded_by=body.superseded_by,
+        regulation_ids=tuple(body.regulation_ids),
+        tags=tuple(body.tags),
+        date_proposed=body.date_proposed,
+        date_decided=body.date_decided,
+        deciders=tuple(body.deciders),
+    )
+    existing = await store.get(body.decision_id)
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="Decision already exists")
+    result = await store.add(adr)
+    await dispatch_event(
+        request,
+        ArchitectureDecisionCreated(
+            payload={"resource_id": body.decision_id, "title": body.title},
+        ),
+        stream_id=f"architecture-decision:{body.decision_id}",
+    )
+    return result
+
+
+@router.get("/architecture-decisions")
+async def list_architecture_decisions(
+    store: Annotated[ComplianceStore, Depends(get_architecture_decision_store)],
+    project_id: str | None = None,
+) -> list[dict[str, Any]]:
+    if project_id:
+        return await store.list_by_project(project_id)
+    return await store.list_all()
+
+
+@router.get("/architecture-decisions/{decision_id}")
+async def get_architecture_decision(
+    decision_id: str,
+    store: Annotated[ComplianceStore, Depends(get_architecture_decision_store)],
+) -> dict[str, Any]:
+    result = await store.get(decision_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Decision not found")
+    return result
+
+
+@router.patch("/architecture-decisions/{decision_id}")
+async def update_architecture_decision(
+    decision_id: str,
+    body: UpdateArchitectureDecisionRequest,
+    request: Request,
+    store: Annotated[ComplianceStore, Depends(get_architecture_decision_store)],
+) -> dict[str, Any]:
+    updates = body.model_dump(exclude_none=True)
+    if "regulation_ids" in updates:
+        updates["regulation_ids"] = tuple(updates["regulation_ids"])
+    if "tags" in updates:
+        updates["tags"] = tuple(updates["tags"])
+    if "deciders" in updates:
+        updates["deciders"] = tuple(updates["deciders"])
+    result = await store.update(decision_id, updates)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Decision not found")
+    await dispatch_event(
+        request,
+        ArchitectureDecisionUpdated(
+            payload={"resource_id": decision_id},
+        ),
+        stream_id=f"architecture-decision:{decision_id}",
+    )
+    return result
+
+
+@router.delete("/architecture-decisions/{decision_id}", status_code=204)
+async def delete_architecture_decision(
+    decision_id: str,
+    request: Request,
+    store: Annotated[ComplianceStore, Depends(get_architecture_decision_store)],
+) -> None:
+    removed = await store.remove(decision_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="Decision not found")
+    await dispatch_event(
+        request,
+        ArchitectureDecisionRemoved(
+            payload={"resource_id": decision_id},
+        ),
+        stream_id=f"architecture-decision:{decision_id}",
+    )
+
+
 @router.get("/compliance/overview/{project_id}")
 async def compliance_overview(
     project_id: str,
@@ -1012,6 +1158,7 @@ async def compliance_overview(
     exp_store: ComplianceStore = request.app.state.experiment_store
     met_store: ComplianceStore = request.app.state.compliance_metric_store
     kb_store: ComplianceStore = request.app.state.knowledge_entry_store
+    adr_store: ComplianceStore = request.app.state.architecture_decision_store
 
     regulations = await reg_store.list_by_project(project_id)
     policies = await pol_store.list_by_project(project_id)
@@ -1022,6 +1169,7 @@ async def compliance_overview(
     experiments = await exp_store.list_by_project(project_id)
     metrics = await met_store.list_by_project(project_id)
     knowledge = await kb_store.list_by_project(project_id)
+    adrs = await adr_store.list_by_project(project_id)
 
     # Compute risk distribution
     all_items = regulations + policies + procedures + practices
@@ -1048,6 +1196,7 @@ async def compliance_overview(
             "experiments": len(experiments),
             "metrics": len(metrics),
             "knowledge_entries": len(knowledge),
+            "architecture_decisions": len(adrs),
         },
         "risk_distribution": risk_counts,
         "status_distribution": status_counts,
@@ -1059,4 +1208,5 @@ async def compliance_overview(
         },
         "strategies": strategies,
         "kpis": kpis,
+        "architecture_decisions": adrs,
     }
