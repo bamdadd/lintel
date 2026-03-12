@@ -136,6 +136,12 @@ export const knowledgeExtractionHooks = createCrudHooks({
   idField: 'run_id',
 });
 
+export const architectureDecisionHooks = createCrudHooks({
+  entityName: 'architecture-decision',
+  basePath: '/architecture-decisions',
+  idField: 'decision_id',
+});
+
 // Overview
 export const useComplianceOverview = (projectId: string) =>
   useQuery({

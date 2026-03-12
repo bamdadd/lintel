@@ -51,6 +51,7 @@ import {
   IconTarget,
   IconChartBar,
   IconFlask,
+  IconBulb,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -102,6 +103,7 @@ const navSections: NavSection[] = [
       { label: 'Policies', path: '/compliance/policies', icon: IconFileText },
       { label: 'Procedures', path: '/compliance/procedures', icon: IconListDetails },
       { label: 'Practices', path: '/compliance/practices', icon: IconTool },
+      { label: 'ADRs', path: '/compliance/architecture-decisions', icon: IconBulb },
     ],
   },
   {

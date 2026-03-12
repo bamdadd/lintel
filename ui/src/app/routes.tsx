@@ -198,6 +198,10 @@ export const router = createBrowserRouter([
         path: 'compliance/practices',
         lazy: () => import('@/features/compliance/pages/PracticeListPage'),
       },
+      {
+        path: 'compliance/architecture-decisions',
+        lazy: () => import('@/features/compliance/pages/ArchitectureDecisionListPage'),
+      },
       // --- Experimentation ---
       {
         path: 'experimentation/strategies',
