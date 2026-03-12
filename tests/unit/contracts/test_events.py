@@ -169,7 +169,7 @@ class TestConcreteEvents:
 
 class TestEventTypeMap:
     def test_completeness(self) -> None:
-        assert len(EVENT_TYPE_MAP) == 144
+        assert len(EVENT_TYPE_MAP) == 177
 
     def test_all_keys_match_class_names(self) -> None:
         for key, cls in EVENT_TYPE_MAP.items():

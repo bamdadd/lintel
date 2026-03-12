@@ -177,6 +177,53 @@ export const router = createBrowserRouter([
         path: 'boards/:boardId',
         lazy: () => import('@/features/boards/pages/BoardPage'),
       },
+      // --- Compliance & Governance ---
+      {
+        path: 'compliance',
+        lazy: () => import('@/features/compliance/pages/ComplianceDashboardPage'),
+      },
+      {
+        path: 'compliance/regulations',
+        lazy: () => import('@/features/compliance/pages/RegulationListPage'),
+      },
+      {
+        path: 'compliance/policies',
+        lazy: () => import('@/features/compliance/pages/CompliancePolicyListPage'),
+      },
+      {
+        path: 'compliance/procedures',
+        lazy: () => import('@/features/compliance/pages/ProcedureListPage'),
+      },
+      {
+        path: 'compliance/practices',
+        lazy: () => import('@/features/compliance/pages/PracticeListPage'),
+      },
+      {
+        path: 'compliance/architecture-decisions',
+        lazy: () => import('@/features/compliance/pages/ArchitectureDecisionListPage'),
+      },
+      // --- Experimentation ---
+      {
+        path: 'experimentation/strategies',
+        lazy: () => import('@/features/experimentation/pages/StrategyListPage'),
+      },
+      {
+        path: 'experimentation/kpis',
+        lazy: () => import('@/features/experimentation/pages/KPIListPage'),
+      },
+      {
+        path: 'experimentation/experiments',
+        lazy: () => import('@/features/experimentation/pages/ExperimentListPage'),
+      },
+      {
+        path: 'experimentation/metrics',
+        lazy: () => import('@/features/experimentation/pages/ComplianceMetricListPage'),
+      },
+      // --- Knowledge Base ---
+      {
+        path: 'knowledge',
+        lazy: () => import('@/features/knowledge/pages/KnowledgeBasePage'),
+      },
       {
         path: 'settings',
         lazy: () => import('@/features/settings/pages/SettingsPage'),

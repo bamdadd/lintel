@@ -621,6 +621,251 @@ class Policy:
     project_id: str = ""
 
 
+# --- Compliance & Governance ---
+
+
+class ComplianceStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    UNDER_REVIEW = "under_review"
+    DEPRECATED = "deprecated"
+    NON_COMPLIANT = "non_compliant"
+
+
+class RiskLevel(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+@dataclass(frozen=True)
+class Regulation:
+    """External regulation that applies to a project (e.g. HIPAA, GDPR, IEC 62304)."""
+
+    regulation_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    authority: str = ""  # e.g. "EU", "FDA", "ISO"
+    reference_url: str = ""
+    version: str = ""
+    status: ComplianceStatus = ComplianceStatus.ACTIVE
+    risk_level: RiskLevel = RiskLevel.MEDIUM
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class CompliancePolicy:
+    """Internal policy interpreting a regulation (e.g. ISO 27001 coding standards)."""
+
+    policy_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    regulation_ids: tuple[str, ...] = ()  # links to parent regulations
+    owner: str = ""
+    status: ComplianceStatus = ComplianceStatus.DRAFT
+    risk_level: RiskLevel = RiskLevel.MEDIUM
+    review_date: str = ""
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Procedure:
+    """Step-by-step implementation of a policy (maps to a workflow definition)."""
+
+    procedure_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    policy_ids: tuple[str, ...] = ()  # links to parent policies
+    workflow_definition_id: str = ""  # optional link to a workflow
+    steps: tuple[str, ...] = ()  # ordered step descriptions
+    owner: str = ""
+    status: ComplianceStatus = ComplianceStatus.DRAFT
+    risk_level: RiskLevel = RiskLevel.MEDIUM
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Practice:
+    """Concrete practice implementing a procedure, derived from strategy."""
+
+    practice_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    procedure_ids: tuple[str, ...] = ()  # links to parent procedures
+    strategy_ids: tuple[str, ...] = ()  # links to parent strategies
+    evidence_type: str = ""  # e.g. "test_results", "code_review", "audit_log"
+    automation_status: str = ""  # "manual", "semi_automated", "fully_automated"
+    status: ComplianceStatus = ComplianceStatus.ACTIVE
+    risk_level: RiskLevel = RiskLevel.LOW
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Strategy:
+    """High-level strategy (e.g. testing strategy, security strategy)."""
+
+    strategy_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    objectives: tuple[str, ...] = ()
+    owner: str = ""
+    status: ComplianceStatus = ComplianceStatus.ACTIVE
+    tags: tuple[str, ...] = ()
+
+
+class KPIDirection(StrEnum):
+    INCREASE = "increase"
+    DECREASE = "decrease"
+    MAINTAIN = "maintain"
+
+
+@dataclass(frozen=True)
+class KPI:
+    """Key performance indicator tied to a project."""
+
+    kpi_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    target_value: str = ""
+    current_value: str = ""
+    unit: str = ""
+    direction: KPIDirection = KPIDirection.INCREASE
+    strategy_ids: tuple[str, ...] = ()
+    threshold_warning: str = ""
+    threshold_critical: str = ""
+    status: ComplianceStatus = ComplianceStatus.ACTIVE
+    tags: tuple[str, ...] = ()
+
+
+class ExperimentStatus(StrEnum):
+    PLANNED = "planned"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+@dataclass(frozen=True)
+class Experiment:
+    """Tracked experiment within a project."""
+
+    experiment_id: str
+    project_id: str
+    name: str
+    hypothesis: str = ""
+    description: str = ""
+    strategy_ids: tuple[str, ...] = ()
+    kpi_ids: tuple[str, ...] = ()  # KPIs being measured
+    status: ExperimentStatus = ExperimentStatus.PLANNED
+    start_date: str = ""
+    end_date: str = ""
+    outcome: str = ""
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ComplianceMetric:
+    """Measurable metric for compliance tracking."""
+
+    metric_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    value: str = ""
+    unit: str = ""
+    source: str = ""  # "automated", "manual", "agent"
+    kpi_ids: tuple[str, ...] = ()
+    collected_at: str = ""
+    tags: tuple[str, ...] = ()
+
+
+class KnowledgeEntryType(StrEnum):
+    LOGIC_FLOW = "logic_flow"
+    EVENT_HANDLER = "event_handler"
+    INTEGRATION = "integration"
+    DATA_MODEL = "data_model"
+    API_ENDPOINT = "api_endpoint"
+    BUSINESS_RULE = "business_rule"
+    CONFIGURATION = "configuration"
+    DEPENDENCY = "dependency"
+
+
+class ExtractionStatus(StrEnum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    STALE = "stale"
+
+
+@dataclass(frozen=True)
+class KnowledgeEntry:
+    """Extracted knowledge from a codebase."""
+
+    entry_id: str
+    project_id: str
+    name: str
+    entry_type: KnowledgeEntryType = KnowledgeEntryType.LOGIC_FLOW
+    description: str = ""
+    source_file: str = ""
+    source_repo: str = ""
+    source_lines: str = ""  # e.g. "10-50"
+    dependencies: tuple[str, ...] = ()  # other entry IDs
+    code_snippet: str = ""
+    extracted_at: str = ""
+    status: ExtractionStatus = ExtractionStatus.COMPLETED
+    tags: tuple[str, ...] = ()
+
+
+class ADRStatus(StrEnum):
+    PROPOSED = "proposed"
+    ACCEPTED = "accepted"
+    DEPRECATED = "deprecated"
+    SUPERSEDED = "superseded"
+
+
+@dataclass(frozen=True)
+class ArchitectureDecision:
+    """Architecture Decision Record (ADR) linked to a project."""
+
+    decision_id: str
+    project_id: str
+    title: str
+    status: ADRStatus = ADRStatus.PROPOSED
+    context: str = ""
+    decision: str = ""
+    consequences: str = ""
+    alternatives: str = ""
+    superseded_by: str = ""
+    regulation_ids: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
+    date_proposed: str = ""
+    date_decided: str = ""
+    deciders: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class KnowledgeExtractionRun:
+    """A run of the knowledge extraction process."""
+
+    run_id: str
+    project_id: str
+    repo_id: str = ""
+    status: ExtractionStatus = ExtractionStatus.PENDING
+    total_files: int = 0
+    processed_files: int = 0
+    entries_found: int = 0
+    started_at: str = ""
+    completed_at: str = ""
+    error: str = ""
+
+
 # --- Users & Teams ---
 
 

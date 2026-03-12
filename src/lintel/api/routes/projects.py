@@ -73,6 +73,7 @@ class UpdateProjectRequest(BaseModel):
     workflow_definition_id: str | None = None
     channel_id: str | None = None
     workspace_id: str | None = None
+    compliance_config: dict[str, object] | None = None
 
 
 @router.post("/projects", status_code=201)

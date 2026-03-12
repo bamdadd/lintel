@@ -116,6 +116,21 @@ class LLMResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class ComplianceConfig(BaseModel):
+    """Per-project compliance feature toggles."""
+
+    enabled: bool = False
+    regulations_enabled: bool = True
+    policies_enabled: bool = True
+    procedures_enabled: bool = True
+    practices_enabled: bool = True
+    strategies_enabled: bool = True
+    kpis_enabled: bool = True
+    experiments_enabled: bool = True
+    metrics_enabled: bool = True
+    knowledge_base_enabled: bool = True
+
+
 class ProjectData(BaseModel):
     """Project store representation."""
 
@@ -125,6 +140,7 @@ class ProjectData(BaseModel):
     default_branch: str = "main"
     credential_ids: list[str] = Field(default_factory=list)
     status: str = "active"
+    compliance_config: ComplianceConfig = Field(default_factory=ComplianceConfig)
 
     model_config = ConfigDict(extra="allow")
 
