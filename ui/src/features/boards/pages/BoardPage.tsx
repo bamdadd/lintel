@@ -223,15 +223,19 @@ export function Component() {
               onClickItem={handleClickItem}
             />
           )}
-          {columns.map((col) => (
-            <BoardColumn
-              key={col.column_id}
-              columnId={col.column_id}
-              name={col.name}
-              items={itemsByColumn[col.column_id] ?? []}
-              onClickItem={handleClickItem}
-            />
-          ))}
+          {columns.map((col) => {
+            const colItems = itemsByColumn[col.column_id] ?? [];
+            if (col.name.toLowerCase() === 'backlog' && colItems.length === 0) return null;
+            return (
+              <BoardColumn
+                key={col.column_id}
+                columnId={col.column_id}
+                name={col.name}
+                items={colItems}
+                onClickItem={handleClickItem}
+              />
+            );
+          })}
         </Group>
       </DragDropContext>
 
