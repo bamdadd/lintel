@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
 
-# Lintel
+# 🏗️ Lintel
 
 **The AI-human engineering platform where agents and humans collaborate as teammates.**
 
