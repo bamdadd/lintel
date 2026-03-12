@@ -123,18 +123,17 @@ class TestCreateSandbox:
         # Verify mounts were passed to the manager
         manager: DummySandboxManager = client.app.state.sandbox_manager  # type: ignore[union-attr]
         config = manager.last_config
-        assert len(config.mounts) == 2
+        assert len(config.mounts) == 1
         targets = {m[1] for m in config.mounts}
-        assert "/home/vscode/.claude" in targets
         assert "/home/vscode/.claude.json" in targets
 
         # Verify mounts in stored metadata
         meta_resp = client.get("/api/v1/sandboxes")
         sandboxes = meta_resp.json()
         entry = next(s for s in sandboxes if s["sandbox_id"] == sandbox_id)
-        assert len(entry["mounts"]) == 2
+        assert len(entry["mounts"]) == 1
         mount_targets = {m["target"] for m in entry["mounts"]}
-        assert "/home/vscode/.claude" in mount_targets
+        assert "/home/vscode/.claude.json" in mount_targets
 
     def test_request_level_mounts(self, client: TestClient) -> None:
         """Mounts passed in request body should be resolved and applied."""
@@ -174,9 +173,8 @@ class TestCreateSandbox:
 
         manager: DummySandboxManager = client.app.state.sandbox_manager  # type: ignore[union-attr]
         config = manager.last_config
-        assert len(config.mounts) == 3
+        assert len(config.mounts) == 2
         targets = {m[1] for m in config.mounts}
-        assert "/home/vscode/.claude" in targets
         assert "/home/vscode/.claude.json" in targets
         assert "/mnt/extra" in targets
 

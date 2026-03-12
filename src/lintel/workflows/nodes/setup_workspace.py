@@ -50,13 +50,12 @@ async def _inject_claude_credentials(
     """
     from lintel.contracts.types import SandboxJob
 
-    # Check if credentials already exist (bind-mounted from host)
+    # Check if credentials token file already exists (not just account info)
     check = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
             command=(
-                "test -f /home/vscode/.claude.json"
-                " || test -f /home/vscode/.claude/credentials.json"
+                "test -f /home/vscode/.claude/credentials.json"
                 " || test -f /home/vscode/.claude/.credentials.json"
             ),
             timeout_seconds=5,
