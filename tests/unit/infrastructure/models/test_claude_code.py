@@ -26,7 +26,10 @@ class TestValidateClaudeToken:
     async def test_valid_token(self) -> None:
         manager = _make_sandbox(
             [
-                SandboxResult(exit_code=0, stdout='[{"type":"text","text":"ok"}]'),
+                # claude --version check
+                SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
+                # credentials file check
+                SandboxResult(exit_code=0, stdout="", stderr=""),
             ]
         )
         status = await validate_claude_token(manager, "sandbox-1")
@@ -35,7 +38,10 @@ class TestValidateClaudeToken:
     async def test_expired_token(self) -> None:
         manager = _make_sandbox(
             [
-                SandboxResult(exit_code=1, stderr="authentication_error: OAuth token expired"),
+                # claude --version passes
+                SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
+                # credentials file not found
+                SandboxResult(exit_code=1, stdout="", stderr=""),
             ]
         )
         status = await validate_claude_token(manager, "sandbox-1")
@@ -44,7 +50,7 @@ class TestValidateClaudeToken:
     async def test_not_installed(self) -> None:
         manager = _make_sandbox(
             [
-                SandboxResult(exit_code=127, stderr="claude: command not found"),
+                SandboxResult(exit_code=127, stdout="", stderr="claude: command not found"),
             ]
         )
         status = await validate_claude_token(manager, "sandbox-1")
@@ -53,7 +59,7 @@ class TestValidateClaudeToken:
     async def test_unknown_failure(self) -> None:
         manager = _make_sandbox(
             [
-                SandboxResult(exit_code=1, stderr="some random error"),
+                SandboxResult(exit_code=1, stdout="", stderr="some random error"),
             ]
         )
         status = await validate_claude_token(manager, "sandbox-1")
@@ -64,8 +70,10 @@ class TestClaudeCodeProvider:
     async def test_successful_invocation(self) -> None:
         manager = _make_sandbox(
             [
-                # validate_claude_token probe
-                SandboxResult(exit_code=0, stdout="ok"),
+                # validate_claude_token: version check
+                SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
+                # validate_claude_token: credentials check
+                SandboxResult(exit_code=0, stdout="", stderr=""),
                 # actual claude --print invocation
                 SandboxResult(
                     exit_code=0,
@@ -91,8 +99,10 @@ class TestClaudeCodeProvider:
     async def test_expired_token_raises(self) -> None:
         manager = _make_sandbox(
             [
-                # validate_claude_token probe fails
-                SandboxResult(exit_code=1, stderr="authentication_error"),
+                # validate_claude_token: version check passes
+                SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
+                # validate_claude_token: credentials not found
+                SandboxResult(exit_code=1, stdout="", stderr=""),
             ]
         )
         provider = ClaudeCodeProvider(manager)
@@ -103,8 +113,10 @@ class TestClaudeCodeProvider:
     async def test_auth_error_during_invocation(self) -> None:
         manager = _make_sandbox(
             [
-                # probe passes
-                SandboxResult(exit_code=0, stdout="ok"),
+                # version check
+                SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
+                # credentials check
+                SandboxResult(exit_code=0, stdout="", stderr=""),
                 # invocation fails with auth error
                 SandboxResult(exit_code=1, stderr="authentication_error: token expired"),
             ]
@@ -116,7 +128,8 @@ class TestClaudeCodeProvider:
     async def test_parse_plain_text_output(self) -> None:
         manager = _make_sandbox(
             [
-                SandboxResult(exit_code=0, stdout="ok"),
+                SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
+                SandboxResult(exit_code=0, stdout="", stderr=""),
                 SandboxResult(exit_code=0, stdout="Just plain text response"),
             ]
         )
@@ -127,7 +140,8 @@ class TestClaudeCodeProvider:
     async def test_no_system_prompt(self) -> None:
         manager = _make_sandbox(
             [
-                SandboxResult(exit_code=0, stdout="ok"),
+                SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
+                SandboxResult(exit_code=0, stdout="", stderr=""),
                 SandboxResult(exit_code=0, stdout='[{"type":"text","text":"done"}]'),
             ]
         )
