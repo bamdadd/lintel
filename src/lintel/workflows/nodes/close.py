@@ -169,7 +169,7 @@ async def close_workflow(
         push_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
-                command=f"cd {workdir} && git push -u origin {feature_branch}",
+                command=f"cd {workdir} && git push --force-with-lease -u origin {feature_branch}",
                 timeout_seconds=60,
             ),
         )
