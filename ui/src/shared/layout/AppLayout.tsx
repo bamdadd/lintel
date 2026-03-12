@@ -42,6 +42,7 @@ import {
   IconListCheck,
   IconPlug,
   IconLayoutKanban,
+  IconFingerprint,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -103,6 +104,7 @@ const navSections: NavSection[] = [
       { label: 'Teams', path: '/teams', icon: IconUsersGroup },
       { label: 'Approvals', path: '/approvals', icon: IconCheckbox },
       { label: 'Security', path: '/security', icon: IconShield },
+      { label: 'PII Stats', path: '/pii-stats', icon: IconFingerprint },
       { label: 'Events', path: '/events', icon: IconTimeline },
       { label: 'Audit', path: '/audit', icon: IconHistory },
       { label: 'Settings', path: '/settings', icon: IconSettings },

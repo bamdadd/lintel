@@ -62,6 +62,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/events/pages/EventExplorerPage'),
       },
       {
+        path: 'pii-stats',
+        lazy: () => import('@/features/pii/pages/PiiStatsPage'),
+      },
+      {
         path: 'security',
         lazy: () => import('@/features/security/pages/SecurityDashboardPage'),
       },
