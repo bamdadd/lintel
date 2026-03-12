@@ -28,6 +28,7 @@ from lintel.api.routes import (
     audit,
     boards,
     chat,
+    compliance,
     credentials,
     environments,
     events,
@@ -61,6 +62,7 @@ from lintel.api.routes.approval_requests import InMemoryApprovalRequestStore
 from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
 from lintel.api.routes.audit import AuditEntryStore
 from lintel.api.routes.boards import BoardStore, TagStore
+from lintel.api.routes.compliance import ComplianceStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.credentials import InMemoryCredentialStore
 from lintel.api.routes.environments import InMemoryEnvironmentStore
@@ -161,6 +163,17 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "sandbox_store": sandboxes.SandboxStore(),
         "tag_store": TagStore(),
         "board_store": BoardStore(),
+        # Compliance & Governance stores
+        "regulation_store": ComplianceStore("regulation_id"),
+        "compliance_policy_store": ComplianceStore("policy_id"),
+        "procedure_store": ComplianceStore("procedure_id"),
+        "practice_store": ComplianceStore("practice_id"),
+        "strategy_store": ComplianceStore("strategy_id"),
+        "kpi_store": ComplianceStore("kpi_id"),
+        "experiment_store": ComplianceStore("experiment_id"),
+        "compliance_metric_store": ComplianceStore("metric_id"),
+        "knowledge_entry_store": ComplianceStore("entry_id"),
+        "knowledge_extraction_store": ComplianceStore("run_id"),
     }
 
 
@@ -322,6 +335,17 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "sandbox_store": PostgresSandboxStore(pool),
         "tag_store": _TagStoreAdapter(_PgTagStore(pool)),
         "board_store": _BoardStoreAdapter(_PgBoardStore(pool)),
+        # Compliance & Governance stores (in-memory for now; Postgres CRUD store can be added)
+        "regulation_store": ComplianceStore("regulation_id"),
+        "compliance_policy_store": ComplianceStore("policy_id"),
+        "procedure_store": ComplianceStore("procedure_id"),
+        "practice_store": ComplianceStore("practice_id"),
+        "strategy_store": ComplianceStore("strategy_id"),
+        "kpi_store": ComplianceStore("kpi_id"),
+        "experiment_store": ComplianceStore("experiment_id"),
+        "compliance_metric_store": ComplianceStore("metric_id"),
+        "knowledge_entry_store": ComplianceStore("entry_id"),
+        "knowledge_extraction_store": ComplianceStore("run_id"),
     }
 
 
@@ -543,6 +567,7 @@ def create_app() -> FastAPI:
     app.include_router(mcp_servers.router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(boards.router, prefix="/api/v1", tags=["boards"])
+    app.include_router(compliance.router, prefix="/api/v1", tags=["compliance"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
     # Expose all API endpoints as MCP tools/resources

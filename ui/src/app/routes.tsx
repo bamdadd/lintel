@@ -177,6 +177,47 @@ export const router = createBrowserRouter([
         path: 'boards/:boardId',
         lazy: () => import('@/features/boards/pages/BoardPage'),
       },
+      // --- Compliance & Governance ---
+      {
+        path: 'compliance',
+        lazy: () => import('@/features/compliance/pages/ComplianceDashboardPage'),
+      },
+      {
+        path: 'compliance/regulations',
+        lazy: () => import('@/features/compliance/pages/RegulationListPage'),
+      },
+      {
+        path: 'compliance/policies',
+        lazy: () => import('@/features/compliance/pages/CompliancePolicyListPage'),
+      },
+      {
+        path: 'compliance/procedures',
+        lazy: () => import('@/features/compliance/pages/ProcedureListPage'),
+      },
+      {
+        path: 'compliance/practices',
+        lazy: () => import('@/features/compliance/pages/PracticeListPage'),
+      },
+      {
+        path: 'compliance/strategies',
+        lazy: () => import('@/features/compliance/pages/StrategyListPage'),
+      },
+      {
+        path: 'compliance/kpis',
+        lazy: () => import('@/features/compliance/pages/KPIListPage'),
+      },
+      {
+        path: 'compliance/experiments',
+        lazy: () => import('@/features/compliance/pages/ExperimentListPage'),
+      },
+      {
+        path: 'compliance/metrics',
+        lazy: () => import('@/features/compliance/pages/ComplianceMetricListPage'),
+      },
+      {
+        path: 'compliance/knowledge',
+        lazy: () => import('@/features/compliance/pages/KnowledgeBasePage'),
+      },
       {
         path: 'settings',
         lazy: () => import('@/features/settings/pages/SettingsPage'),

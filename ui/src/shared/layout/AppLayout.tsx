@@ -24,6 +24,7 @@ import {
   IconBox,
   IconTimeline,
   IconShield,
+  IconShieldCheck,
   IconBriefcase,
   IconPlayerPlay,
   IconSettings,
@@ -44,6 +45,12 @@ import {
   IconLayoutKanban,
   IconFingerprint,
   IconTestPipe2,
+  IconFileText,
+  IconListDetails,
+  IconTool,
+  IconTarget,
+  IconChartBar,
+  IconFlask,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -85,6 +92,21 @@ const navSections: NavSection[] = [
       { label: 'AI Providers', path: '/ai-providers', icon: IconBrain },
       { label: 'Models', path: '/models', icon: IconCpu },
       { label: 'MCP Servers', path: '/mcp-servers', icon: IconPlug },
+    ],
+  },
+  {
+    label: 'Compliance',
+    items: [
+      { label: 'Overview', path: '/compliance', icon: IconShieldCheck },
+      { label: 'Regulations', path: '/compliance/regulations', icon: IconShieldCheck },
+      { label: 'Policies', path: '/compliance/policies', icon: IconFileText },
+      { label: 'Procedures', path: '/compliance/procedures', icon: IconListDetails },
+      { label: 'Practices', path: '/compliance/practices', icon: IconTool },
+      { label: 'Strategies', path: '/compliance/strategies', icon: IconTarget },
+      { label: 'KPIs', path: '/compliance/kpis', icon: IconChartBar },
+      { label: 'Experiments', path: '/compliance/experiments', icon: IconFlask },
+      { label: 'Metrics', path: '/compliance/metrics', icon: IconChartBar },
+      { label: 'Knowledge Base', path: '/compliance/knowledge', icon: IconBrain },
     ],
   },
   {

@@ -866,6 +866,159 @@ class HookLoopDetected(EventEnvelope):
     event_type: str = "HookLoopDetected"
 
 
+# --- Compliance Governance Events ---
+
+
+@dataclass(frozen=True)
+class RegulationCreated(EventEnvelope):
+    event_type: str = "RegulationCreated"
+
+
+@dataclass(frozen=True)
+class RegulationUpdated(EventEnvelope):
+    event_type: str = "RegulationUpdated"
+
+
+@dataclass(frozen=True)
+class RegulationRemoved(EventEnvelope):
+    event_type: str = "RegulationRemoved"
+
+
+@dataclass(frozen=True)
+class CompliancePolicyCreated(EventEnvelope):
+    event_type: str = "CompliancePolicyCreated"
+
+
+@dataclass(frozen=True)
+class CompliancePolicyUpdated(EventEnvelope):
+    event_type: str = "CompliancePolicyUpdated"
+
+
+@dataclass(frozen=True)
+class CompliancePolicyRemoved(EventEnvelope):
+    event_type: str = "CompliancePolicyRemoved"
+
+
+@dataclass(frozen=True)
+class ProcedureCreated(EventEnvelope):
+    event_type: str = "ProcedureCreated"
+
+
+@dataclass(frozen=True)
+class ProcedureUpdated(EventEnvelope):
+    event_type: str = "ProcedureUpdated"
+
+
+@dataclass(frozen=True)
+class ProcedureRemoved(EventEnvelope):
+    event_type: str = "ProcedureRemoved"
+
+
+@dataclass(frozen=True)
+class PracticeCreated(EventEnvelope):
+    event_type: str = "PracticeCreated"
+
+
+@dataclass(frozen=True)
+class PracticeUpdated(EventEnvelope):
+    event_type: str = "PracticeUpdated"
+
+
+@dataclass(frozen=True)
+class PracticeRemoved(EventEnvelope):
+    event_type: str = "PracticeRemoved"
+
+
+@dataclass(frozen=True)
+class StrategyCreated(EventEnvelope):
+    event_type: str = "StrategyCreated"
+
+
+@dataclass(frozen=True)
+class StrategyUpdated(EventEnvelope):
+    event_type: str = "StrategyUpdated"
+
+
+@dataclass(frozen=True)
+class StrategyRemoved(EventEnvelope):
+    event_type: str = "StrategyRemoved"
+
+
+@dataclass(frozen=True)
+class KPICreated(EventEnvelope):
+    event_type: str = "KPICreated"
+
+
+@dataclass(frozen=True)
+class KPIUpdated(EventEnvelope):
+    event_type: str = "KPIUpdated"
+
+
+@dataclass(frozen=True)
+class KPIRemoved(EventEnvelope):
+    event_type: str = "KPIRemoved"
+
+
+@dataclass(frozen=True)
+class ComplianceExperimentCreated(EventEnvelope):
+    event_type: str = "ComplianceExperimentCreated"
+
+
+@dataclass(frozen=True)
+class ComplianceExperimentUpdated(EventEnvelope):
+    event_type: str = "ComplianceExperimentUpdated"
+
+
+@dataclass(frozen=True)
+class ComplianceExperimentRemoved(EventEnvelope):
+    event_type: str = "ComplianceExperimentRemoved"
+
+
+@dataclass(frozen=True)
+class ComplianceMetricCreated(EventEnvelope):
+    event_type: str = "ComplianceMetricCreated"
+
+
+@dataclass(frozen=True)
+class ComplianceMetricUpdated(EventEnvelope):
+    event_type: str = "ComplianceMetricUpdated"
+
+
+@dataclass(frozen=True)
+class ComplianceMetricRemoved(EventEnvelope):
+    event_type: str = "ComplianceMetricRemoved"
+
+
+@dataclass(frozen=True)
+class KnowledgeEntryCreated(EventEnvelope):
+    event_type: str = "KnowledgeEntryCreated"
+
+
+@dataclass(frozen=True)
+class KnowledgeEntryUpdated(EventEnvelope):
+    event_type: str = "KnowledgeEntryUpdated"
+
+
+@dataclass(frozen=True)
+class KnowledgeEntryRemoved(EventEnvelope):
+    event_type: str = "KnowledgeEntryRemoved"
+
+
+@dataclass(frozen=True)
+class KnowledgeExtractionStarted(EventEnvelope):
+    event_type: str = "KnowledgeExtractionStarted"
+
+
+@dataclass(frozen=True)
+class KnowledgeExtractionCompleted(EventEnvelope):
+    event_type: str = "KnowledgeExtractionCompleted"
+
+
+@dataclass(frozen=True)
+class KnowledgeExtractionFailed(EventEnvelope):
+    event_type: str = "KnowledgeExtractionFailed"
+
+
 # --- Event Registry ---
 
 EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
@@ -1021,6 +1174,37 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         HookTriggered,
         HookExecutionFailed,
         HookLoopDetected,
+        # Layer 8 — Compliance Governance
+        RegulationCreated,
+        RegulationUpdated,
+        RegulationRemoved,
+        CompliancePolicyCreated,
+        CompliancePolicyUpdated,
+        CompliancePolicyRemoved,
+        ProcedureCreated,
+        ProcedureUpdated,
+        ProcedureRemoved,
+        PracticeCreated,
+        PracticeUpdated,
+        PracticeRemoved,
+        StrategyCreated,
+        StrategyUpdated,
+        StrategyRemoved,
+        KPICreated,
+        KPIUpdated,
+        KPIRemoved,
+        ComplianceExperimentCreated,
+        ComplianceExperimentUpdated,
+        ComplianceExperimentRemoved,
+        ComplianceMetricCreated,
+        ComplianceMetricUpdated,
+        ComplianceMetricRemoved,
+        KnowledgeEntryCreated,
+        KnowledgeEntryUpdated,
+        KnowledgeEntryRemoved,
+        KnowledgeExtractionStarted,
+        KnowledgeExtractionCompleted,
+        KnowledgeExtractionFailed,
     ]
 }
 
