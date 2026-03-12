@@ -103,13 +103,7 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
             "remoteEnv": {},
             "customizations": {},
         },
-        "mounts": [
-            {
-                "source": "${localEnv:HOME}/.claude.json",
-                "target": "/home/vscode/.claude.json",
-                "type": "bind",
-            },
-        ],
+        "mounts": [],
     },
     "claude-code-full": {
         "label": "Claude Code (Full Stack)",
@@ -145,13 +139,7 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
             "remoteEnv": {},
             "customizations": {},
         },
-        "mounts": [
-            {
-                "source": "${localEnv:HOME}/.claude.json",
-                "target": "/home/vscode/.claude.json",
-                "type": "bind",
-            },
-        ],
+        "mounts": [],
     },
     "base": {
         "label": "Base (Ubuntu)",

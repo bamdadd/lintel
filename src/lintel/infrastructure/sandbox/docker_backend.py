@@ -189,7 +189,8 @@ class DockerSandboxManager:
         return result.stdout
 
     async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
-        import base64
+        import io
+        import tarfile
 
         from lintel.contracts.types import SandboxJob
 
@@ -198,17 +199,24 @@ class DockerSandboxManager:
             sandbox_id,
             SandboxJob(command=f"mkdir -p {dest_dir}", timeout_seconds=10),
         )
-        # Use base64 to safely transfer content (avoids shell escaping issues)
-        encoded = base64.b64encode(content.encode("utf-8")).decode("ascii")
-        result = await self.execute(
-            sandbox_id,
-            SandboxJob(
-                command=f"echo '{encoded}' | base64 -d > {path}",
-                timeout_seconds=30,
-            ),
-        )
-        if result.exit_code != 0:
-            raise SandboxExecutionError(f"Failed to write {path}: {result.stderr}")
+
+        # Use Docker put_archive API to write files of any size (avoids ARG_MAX
+        # shell limits that break exec-based writes for files > ~100KB).
+        client = self._get_client()
+        container = await asyncio.to_thread(client.containers.get, sandbox_id)
+        file_bytes = content.encode("utf-8")
+        filename = os.path.basename(path)
+
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tar:
+            info = tarfile.TarInfo(name=filename)
+            info.size = len(file_bytes)
+            info.uid = 1000
+            info.gid = 1000
+            tar.addfile(info, io.BytesIO(file_bytes))
+        buf.seek(0)
+
+        await asyncio.to_thread(container.put_archive, dest_dir, buf)
 
     async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
         from lintel.contracts.types import SandboxJob

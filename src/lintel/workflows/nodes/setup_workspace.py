@@ -95,6 +95,22 @@ async def _inject_claude_credentials(
         settings,
     )
 
+    # Copy ~/.claude.json (account config) into sandbox as a writable file
+    # instead of bind-mounting it read-only (which Claude Code tries to update,
+    # causing "corrupted config" errors).
+    import os
+
+    host_claude_json = os.path.expanduser("~/.claude.json")
+    if os.path.isfile(host_claude_json):
+        with open(host_claude_json) as f:
+            claude_json_content = f.read()
+        await sandbox_manager.write_file(
+            sandbox_id,
+            "/home/vscode/.claude.json",
+            claude_json_content,
+        )
+        logger.info("claude_json_copied_to_sandbox", sandbox=sandbox_id[:12])
+
 
 def _get_claude_code_oauth_token() -> str:
     """Extract Claude Code OAuth token from macOS Keychain or credentials file.
