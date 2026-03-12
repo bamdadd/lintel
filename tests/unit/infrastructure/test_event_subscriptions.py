@@ -201,9 +201,7 @@ class TestCatchUpSubscribe:
         await asyncio.sleep(0.01)
 
         handler = _RecordingHandler()
-        sub = await catch_up_subscribe(
-            store, bus, frozenset({"TypeA", "TypeB"}), handler
-        )
+        sub = await catch_up_subscribe(store, bus, frozenset({"TypeA", "TypeB"}), handler)
 
         # Should only replay TypeA and TypeB, not TypeC
         replayed_types = {e.event_type for e in handler.events}
@@ -221,9 +219,7 @@ class TestCatchUpSubscribe:
 
         handler = _RecordingHandler()
         # Skip first 3 events (positions 0, 1, 2)
-        sub = await catch_up_subscribe(
-            store, bus, frozenset({"TypeA"}), handler, from_position=3
-        )
+        sub = await catch_up_subscribe(store, bus, frozenset({"TypeA"}), handler, from_position=3)
 
         assert len(handler.events) == 2
         assert handler.events[0].event_id == events[3].event_id
