@@ -15,6 +15,22 @@ Lintel doesn't just measure software delivery — it *executes* it. Teams intera
 > Traditional engineering intelligence platforms are mirrors — they show you what happened.
 > Lintel is a flywheel — it measures, acts, and improves automatically.
 
+<p align="center">
+  <img src="docs/images/pipeline-dag.png" alt="Pipeline DAG with real-time stage tracking" width="100%">
+  <br><em>Pipeline DAG — visual workflow execution with real-time stage progress</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/skills.png" alt="Agent skills registry" width="48%">
+  <img src="docs/images/ai-providers.png" alt="Multi-provider AI configuration" width="48%">
+  <br><em>Left: Composable agent skills — Right: Multi-provider AI routing (Anthropic, OpenAI, Ollama, Bedrock, Azure, Google)</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/regulation-templates.png" alt="Compliance regulation templates" width="80%">
+  <br><em>Built-in compliance regulation templates (FCA, PSD2, SM&CR, MiFID II, DORA, AML)</em>
+</p>
+
 ---
 
 ## How it works
