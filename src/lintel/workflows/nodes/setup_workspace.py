@@ -44,8 +44,30 @@ async def _inject_claude_credentials(
     sandbox_id: str,
     credentials_json: str,
 ) -> None:
-    """Write Claude Code credentials and settings into the sandbox."""
+    """Write Claude Code credentials and settings into the sandbox.
+
+    Skips writing if credentials already exist (e.g. via bind mount from host).
+    """
     from lintel.contracts.types import SandboxJob
+
+    # Check if credentials already exist (bind-mounted from host)
+    check = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                "test -f /home/vscode/.claude.json"
+                " || test -f /home/vscode/.claude/credentials.json"
+                " || test -f /home/vscode/.claude/.credentials.json"
+            ),
+            timeout_seconds=5,
+        ),
+    )
+    if check.exit_code == 0:
+        logger.info(
+            "claude_credentials_already_present",
+            sandbox=sandbox_id[:12],
+        )
+        return
 
     logger.info(
         "injecting_claude_credentials",
