@@ -16,8 +16,12 @@ export function Component() {
   const { data: eventsResp, isLoading: eventsLoading } = useEventsListEvents();
   const { data: typesResp } = useEventsListEventTypes();
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
-  const events = eventsResp?.data;
+  const allEvents = eventsResp?.data;
+  const events = selectedType
+    ? allEvents?.filter((e) => String(e.event_type) === selectedType)
+    : allEvents;
   const eventTypes = typesResp?.data ?? [];
 
   if (eventsLoading) return <Center py="xl"><Loader /></Center>;
@@ -30,6 +34,8 @@ export function Component() {
           placeholder="Filter by type"
           clearable
           data={eventTypes.map((t: string) => t)}
+          value={selectedType}
+          onChange={setSelectedType}
           w={250}
         />
       </Group>
