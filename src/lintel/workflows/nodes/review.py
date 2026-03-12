@@ -15,16 +15,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 REVIEW_SYSTEM_PROMPT = """\
-You are a senior code reviewer. Review the following git diff for:
+You are a pragmatic senior code reviewer. Review the following git diff for:
 1. Correctness — does the code do what it should?
-2. Security — any vulnerabilities (injection, secrets, etc.)?
-3. Quality — clean code, naming, structure?
-4. Tests — are changes covered by tests?
+2. Security — any obvious vulnerabilities (injection, secrets, etc.)?
+3. Quality — reasonable code structure and naming?
+
+IMPORTANT: Be pragmatic. Only REQUEST_CHANGES for genuine bugs, security issues, \
+or broken functionality. Do NOT request changes for:
+- Style preferences or minor naming choices
+- Missing tests for simple UI pages
+- Unbounded retries or minor edge cases that don't affect correctness
+- Suggestions that are "nice to have" but not required
 
 Provide a concise review with:
 - VERDICT: APPROVE or REQUEST_CHANGES
 - Summary of findings
 - Specific issues (if any)
+
+Default to APPROVE unless there is a real problem.
 """
 
 
