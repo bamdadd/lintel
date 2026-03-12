@@ -106,12 +106,12 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
         "mounts": [
             {
                 "source": "${localEnv:HOME}/.claude",
-                "target": "/root/.claude",
+                "target": "/home/vscode/.claude",
                 "type": "bind",
             },
             {
                 "source": "${localEnv:HOME}/.claude.json",
-                "target": "/root/.claude.json",
+                "target": "/home/vscode/.claude.json",
                 "type": "bind",
             },
         ],
@@ -153,12 +153,12 @@ SANDBOX_PRESETS: dict[str, dict[str, Any]] = {
         "mounts": [
             {
                 "source": "${localEnv:HOME}/.claude",
-                "target": "/root/.claude",
+                "target": "/home/vscode/.claude",
                 "type": "bind",
             },
             {
                 "source": "${localEnv:HOME}/.claude.json",
-                "target": "/root/.claude.json",
+                "target": "/home/vscode/.claude.json",
                 "type": "bind",
             },
         ],
