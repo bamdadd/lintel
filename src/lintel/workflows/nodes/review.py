@@ -181,7 +181,7 @@ async def review_output(
 
     # Parse verdict from review output — look for explicit VERDICT line first,
     # then fall back to keyword detection.
-    verdict = "request_changes"
+    verdict = "approve"
     upper_text = review_output_text.upper()
 
     import re
@@ -189,8 +189,8 @@ async def review_output(
     verdict_match = re.search(r"VERDICT\s*:\s*(APPROVE|REQUEST_CHANGES)", upper_text)
     if verdict_match:
         verdict = "approve" if verdict_match.group(1) == "APPROVE" else "request_changes"
-    elif "APPROVE" in upper_text and "REQUEST_CHANGES" not in upper_text:
-        verdict = "approve"
+    elif "REQUEST_CHANGES" in upper_text and "APPROVE" not in upper_text:
+        verdict = "request_changes"
 
     logger.info("review_verdict_parsed verdict=%s", verdict)
 

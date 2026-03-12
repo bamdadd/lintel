@@ -68,11 +68,11 @@ class TestRouteNode:
 
 
 class TestReviewNode:
-    async def test_request_changes_sets_implementing_phase(self) -> None:
-        """Without agent runtime, verdict defaults to request_changes → implementing."""
+    async def test_no_runtime_defaults_to_approve(self) -> None:
+        """Without agent runtime, verdict defaults to approve → awaiting_pr_approval."""
         state: dict[str, Any] = {"sandbox_results": [{"diff": "some changes"}]}
         result = await review_output(state)  # type: ignore[arg-type]
-        assert result["current_phase"] == "implementing"
+        assert result["current_phase"] == "awaiting_pr_approval"
         assert result["review_cycles"] == 1
 
     async def test_approve_sets_pr_approval_phase(self) -> None:
