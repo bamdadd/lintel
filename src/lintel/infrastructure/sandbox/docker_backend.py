@@ -120,10 +120,23 @@ class DockerSandboxManager:
             client.containers.create,
             **create_kwargs,
         )
-        await asyncio.to_thread(container.start)
-        # Fix ownership on the Docker volume (created as root, container runs as vscode)
-        chown_cmd = "chown -R vscode:vscode /workspace"
-        await asyncio.to_thread(container.exec_run, chown_cmd, user="root")
+        try:
+            await asyncio.to_thread(container.start)
+            # Fix ownership on the Docker volume (created as root, container runs as vscode)
+            chown_cmd = "chown -R vscode:vscode /workspace"
+            await asyncio.to_thread(container.exec_run, chown_cmd, user="root")
+        except Exception:
+            # Clean up the container and volume on failure to avoid zombies
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                await asyncio.to_thread(container.remove, force=True)
+            with contextlib.suppress(Exception):
+                vol = await asyncio.to_thread(
+                    client.volumes.get, f"lintel-workspace-{sandbox_id}"
+                )
+                await asyncio.to_thread(vol.remove, force=True)
+            raise
         self._containers[sandbox_id] = container
 
         return sandbox_id
@@ -157,6 +170,13 @@ class DockerSandboxManager:
             raise SandboxTimeoutError(
                 f"Command timed out after {job.timeout_seconds}s: {job.command}"
             ) from exc
+        except Exception as exc:
+            err_msg = str(exc)
+            if "is not running" in err_msg or "is restarting" in err_msg:
+                raise SandboxExecutionError(
+                    f"Sandbox {sandbox_id[:12]} is not running: {err_msg}"
+                ) from exc
+            raise
 
     async def read_file(self, sandbox_id: str, path: str) -> str:
         # Use cat via execute — more reliable than get_archive on mounted volumes
@@ -341,7 +361,26 @@ class DockerSandboxManager:
             sandbox_id = labels.get("lintel.sandbox_id", "")
             if sandbox_id and sandbox_id not in self._containers:
                 status: str = container.status
-                if status in ("running", "paused", "restarting", "created"):
+                if status == "created":
+                    # Container was never started — try to start it
+                    import contextlib
+                    import structlog
+
+                    _logger = structlog.get_logger()
+                    try:
+                        await asyncio.to_thread(container.start)
+                        chown_cmd = "chown -R vscode:vscode /workspace"
+                        await asyncio.to_thread(container.exec_run, chown_cmd, user="root")
+                        status = "running"
+                    except Exception:
+                        _logger.warning(
+                            "recover_created_container_failed",
+                            sandbox_id=sandbox_id[:12],
+                        )
+                        with contextlib.suppress(Exception):
+                            await asyncio.to_thread(container.remove, force=True)
+                        continue
+                if status in ("running", "paused", "restarting"):
                     self._containers[sandbox_id] = container
                     recovered.append(
                         {

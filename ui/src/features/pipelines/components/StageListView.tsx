@@ -5,6 +5,7 @@
  * Expanding a row reveals the StageCard detail view inline.
  */
 
+import { useRef } from 'react';
 import {
   UnstyledButton, Group, Text, Collapse, Box, Loader,
 } from '@mantine/core';
@@ -66,7 +67,11 @@ export function StageListView({
   onStageSelect,
   onActionComplete,
 }: StageListViewProps) {
+  // Track whether user has interacted — skip Collapse animation for URL-driven initial state
+  const hasInteracted = useRef(false);
+
   const toggle = (stageId: string) => {
+    hasInteracted.current = true;
     if (onStageSelect) {
       onStageSelect(selectedStageId === stageId ? null : stageId);
     }
@@ -122,7 +127,7 @@ export function StageListView({
               </Group>
             </UnstyledButton>
 
-            <Collapse in={isExpanded}>
+            <Collapse in={isExpanded} transitionDuration={hasInteracted.current ? 200 : 0}>
               <Box
                 py="md"
                 px="lg"

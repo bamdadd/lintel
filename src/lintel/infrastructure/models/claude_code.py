@@ -33,8 +33,8 @@ def _is_json(text: str) -> bool:
 # Timeout for a full Claude Code invocation (15 minutes)
 CLAUDE_CODE_TIMEOUT = 900
 
-# Timeout for the lightweight auth probe
-CLAUDE_CODE_PROBE_TIMEOUT = 30
+# Timeout for the lightweight auth probe (just checks CLI + credentials exist)
+CLAUDE_CODE_PROBE_TIMEOUT = 10
 
 # How often to poll the output file for new lines (seconds)
 STREAM_POLL_INTERVAL = 3
@@ -44,31 +44,37 @@ async def validate_claude_token(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
 ) -> TokenStatus:
-    """Validate Claude Code credentials with a lightweight CLI probe."""
+    """Validate Claude Code is installed and credentials exist (no API call)."""
+    # Check CLI is installed
     result = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
-            command="claude --print --output-format json 'respond with ok' 2>&1 | head -20",
+            command="claude --version 2>&1",
             timeout_seconds=CLAUDE_CODE_PROBE_TIMEOUT,
         ),
     )
-    if result.exit_code == 0:
-        return TokenStatus.VALID
-
     combined = result.stdout + result.stderr
-    if "authentication_error" in combined or "OAuth token" in combined:
-        return TokenStatus.EXPIRED
-
-    if "command not found" in combined or "not found" in combined:
+    if result.exit_code != 0 or "command not found" in combined or "not found" in combined:
         logger.warning("claude_code_not_installed", output=combined[:200])
         return TokenStatus.INVALID
 
-    logger.warning(
-        "claude_code_validation_failed",
-        exit_code=result.exit_code,
-        output=combined[:300],
+    # Check credentials file exists (written by _inject_claude_credentials)
+    cred_check = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                "test -f /home/vscode/.claude/credentials.json"
+                " || test -f /home/vscode/.claude.json"
+                " || test -f /root/.claude/credentials.json"
+            ),
+            timeout_seconds=CLAUDE_CODE_PROBE_TIMEOUT,
+        ),
     )
-    return TokenStatus.INVALID
+    if cred_check.exit_code != 0:
+        logger.warning("claude_code_no_credentials", sandbox_id=sandbox_id[:12])
+        return TokenStatus.EXPIRED
+
+    return TokenStatus.VALID
 
 
 def _tool_detail(tool_name: str, tool_input: dict[str, Any]) -> str:

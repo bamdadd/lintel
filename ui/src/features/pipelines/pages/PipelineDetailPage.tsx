@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, ScrollArea, Box,
 } from '@mantine/core';
@@ -22,8 +22,36 @@ import { getStatusColor } from '@/shared/components/StatusBadge';
 export function Component() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
-  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
-  const [artifactsOpen, setArtifactsOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Sync expanded stage and artifacts modal with URL search params
+  const selectedStageId = searchParams.get('stage') ?? null;
+  const artifactParam = searchParams.get('artifact');
+  const artifactsOpen = artifactParam !== null;
+
+  const setSelectedStageId = useCallback((stageId: string | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (stageId) {
+        next.set('stage', stageId);
+      } else {
+        next.delete('stage');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setArtifactsOpen = useCallback((open: boolean, tabKey?: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (open) {
+        next.set('artifact', tabKey ?? '');
+      } else {
+        next.delete('artifact');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   const {
     data: pipelineResp,
@@ -336,6 +364,8 @@ export function Component() {
       <StageFullscreenModal
         opened={artifactsOpen}
         onClose={() => setArtifactsOpen(false)}
+        initialTabKey={artifactParam ?? undefined}
+        onTabChange={(tabKey) => setArtifactsOpen(true, tabKey)}
         allStages={stages}
       />
     </Stack>
