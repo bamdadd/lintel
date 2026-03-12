@@ -63,7 +63,8 @@ async def validate_claude_token(
         sandbox_id,
         SandboxJob(
             command=(
-                "test -f /home/vscode/.claude/credentials.json"
+                "test -f /home/vscode/.claude/.credentials.json"
+                " || test -f /home/vscode/.claude/credentials.json"
                 " || test -f /home/vscode/.claude.json"
                 " || test -f /root/.claude/credentials.json"
             ),
