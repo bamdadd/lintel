@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
-  Loader, Center, ActionIcon, Badge, Textarea, MultiSelect, Progress, Text,
+  Loader, Center, ActionIcon, Badge, Textarea, MultiSelect, Progress,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconTrash } from '@tabler/icons-react';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
-import { kpiHooks, strategyHooks } from '../api';
+import { kpiHooks, strategyHooks } from '@/features/compliance/api';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface KPIItem {
@@ -29,7 +29,6 @@ function kpiProgress(kpi: KPIItem): { value: number; color: string } {
   if (target === 0) return { value: 0, color: 'gray' };
   const pct = Math.min((current / target) * 100, 100);
   const warn = parseFloat(kpi.threshold_warning) || target * 0.7;
-  const crit = parseFloat(kpi.threshold_critical) || target * 0.4;
   let color = 'green';
   if (kpi.direction === 'decrease') {
     color = current <= target ? 'green' : current <= warn ? 'yellow' : 'red';

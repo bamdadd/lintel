@@ -3,14 +3,14 @@ import { useState } from 'react';
 import {
   Title, Stack, Paper, Text, Group, Button, Badge, Loader, Center,
   TextInput, MultiSelect, Select, Modal, Tabs, SimpleGrid, ThemeIcon,
-  RingProgress, Card, Tooltip,
+  RingProgress, Card,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   IconShieldCheck, IconFileText, IconListDetails, IconTool,
-  IconTarget, IconChartBar, IconFlask, IconBrain, IconArrowRight,
+  IconTarget, IconChartBar, IconFlask, IconBrain,
 } from '@tabler/icons-react';
 import {
   useProjectsGetProject,
@@ -37,8 +37,6 @@ interface RepoItem { repo_id: string; name: string; }
 interface ProviderItem { provider_id: string; name: string; }
 
 const riskColors: Record<string, string> = { low: 'green', medium: 'yellow', high: 'orange', critical: 'red' };
-const statusColors: Record<string, string> = { draft: 'gray', active: 'green', under_review: 'yellow', deprecated: 'orange', non_compliant: 'red' };
-
 export function Component() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -230,7 +228,7 @@ export function Component() {
                 const colors: Record<string, string> = {
                   regulations: 'blue', policies: 'violet', procedures: 'indigo', practices: 'teal',
                 };
-                const Icon = icons[key];
+                const Icon = icons[key] ?? IconShieldCheck;
                 return (
                   <Stack key={key} gap="xs">
                     <Group gap="xs">
@@ -241,12 +239,12 @@ export function Component() {
                     {items.slice(0, 3).map((item) => (
                       <Card key={item.name as string} withBorder padding="xs" radius="sm">
                         <Group justify="space-between" wrap="nowrap">
-                          <Text size="sm" truncate>{item.name as string}</Text>
-                          {item.risk_level && (
+                          <Text size="sm" truncate>{String(item.name ?? '')}</Text>
+                          {item.risk_level ? (
                             <Badge size="xs" color={riskColors[(item.risk_level as string)]} variant="dot">
-                              {item.risk_level as string}
+                              {String(item.risk_level)}
                             </Badge>
-                          )}
+                          ) : null}
                         </Group>
                       </Card>
                     ))}

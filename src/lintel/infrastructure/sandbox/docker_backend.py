@@ -132,9 +132,7 @@ class DockerSandboxManager:
             with contextlib.suppress(Exception):
                 await asyncio.to_thread(container.remove, force=True)
             with contextlib.suppress(Exception):
-                vol = await asyncio.to_thread(
-                    client.volumes.get, f"lintel-workspace-{sandbox_id}"
-                )
+                vol = await asyncio.to_thread(client.volumes.get, f"lintel-workspace-{sandbox_id}")
                 await asyncio.to_thread(vol.remove, force=True)
             raise
         self._containers[sandbox_id] = container
@@ -364,6 +362,7 @@ class DockerSandboxManager:
                 if status == "created":
                     # Container was never started — try to start it
                     import contextlib
+
                     import structlog
 
                     _logger = structlog.get_logger()

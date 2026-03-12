@@ -17,7 +17,7 @@ interface CrudHooksOptions {
   idField: string;
 }
 
-function createCrudHooks<TCreate, TUpdate>({ entityName, basePath, idField }: CrudHooksOptions) {
+function createCrudHooks<TCreate, TUpdate>({ basePath }: CrudHooksOptions) {
   const queryKey = [basePath];
 
   const useList = (projectId?: string) =>

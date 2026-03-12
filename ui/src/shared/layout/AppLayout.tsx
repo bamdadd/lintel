@@ -102,11 +102,21 @@ const navSections: NavSection[] = [
       { label: 'Policies', path: '/compliance/policies', icon: IconFileText },
       { label: 'Procedures', path: '/compliance/procedures', icon: IconListDetails },
       { label: 'Practices', path: '/compliance/practices', icon: IconTool },
-      { label: 'Strategies', path: '/compliance/strategies', icon: IconTarget },
-      { label: 'KPIs', path: '/compliance/kpis', icon: IconChartBar },
-      { label: 'Experiments', path: '/compliance/experiments', icon: IconFlask },
-      { label: 'Metrics', path: '/compliance/metrics', icon: IconChartBar },
-      { label: 'Knowledge Base', path: '/compliance/knowledge', icon: IconBrain },
+    ],
+  },
+  {
+    label: 'Experimentation',
+    items: [
+      { label: 'Strategies', path: '/experimentation/strategies', icon: IconTarget },
+      { label: 'KPIs', path: '/experimentation/kpis', icon: IconChartBar },
+      { label: 'Experiments', path: '/experimentation/experiments', icon: IconFlask },
+      { label: 'Metrics', path: '/experimentation/metrics', icon: IconChartBar },
+    ],
+  },
+  {
+    label: 'Knowledge',
+    items: [
+      { label: 'Knowledge Base', path: '/knowledge', icon: IconBrain },
     ],
   },
   {

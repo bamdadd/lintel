@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import {
   Title, Stack, Paper, Text, Group, Badge, Loader, Center,
-  SimpleGrid, Select, ThemeIcon, RingProgress, Tabs, Divider,
-  Timeline, Card, Tooltip, Progress,
+  SimpleGrid, Select, ThemeIcon, RingProgress, Tabs,
+  Card, Tooltip,
 } from '@mantine/core';
 import {
   IconShieldCheck, IconFileText, IconListDetails, IconTool,
   IconTarget, IconChartBar, IconFlask, IconBrain,
-  IconArrowRight, IconAlertTriangle,
+  IconArrowRight,
 } from '@tabler/icons-react';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { useComplianceOverview } from '../api';
@@ -196,31 +196,31 @@ function ComplianceCascade({ cascade }: { cascade: Record<string, Record<string,
                 layer.items.map((item) => (
                   <Card key={item[layer.idField] as string} withBorder padding="xs" radius="sm">
                     <Group justify="space-between" wrap="nowrap">
-                      <Text size="sm" truncate>{item[layer.nameField] as string}</Text>
+                      <Text size="sm" truncate>{String(item[layer.nameField] ?? '')}</Text>
                       <Group gap={4}>
-                        {item.risk_level && (
+                        {item.risk_level ? (
                           <Badge
                             size="xs"
                             color={riskColors[(item.risk_level as string) ?? 'medium']}
                             variant="dot"
                           >
-                            {item.risk_level as string}
+                            {String(item.risk_level)}
                           </Badge>
-                        )}
-                        {item.status && (
+                        ) : null}
+                        {item.status ? (
                           <Badge
                             size="xs"
                             color={statusColors[(item.status as string) ?? 'draft']}
                             variant="light"
                           >
-                            {item.status as string}
+                            {String(item.status)}
                           </Badge>
-                        )}
+                        ) : null}
                       </Group>
                     </Group>
-                    {item.description && (
-                      <Text size="xs" c="dimmed" lineClamp={2} mt={2}>{item.description as string}</Text>
-                    )}
+                    {item.description ? (
+                      <Text size="xs" c="dimmed" lineClamp={2} mt={2}>{String(item.description)}</Text>
+                    ) : null}
                   </Card>
                 ))
               )}
@@ -283,7 +283,7 @@ function RiskMatrix({ cascade }: { cascade: Record<string, Record<string, unknow
                   <Badge color={riskColors[risk]} variant="filled" size="sm">{risk}</Badge>
                 </td>
                 {statuses.map((status) => {
-                  const items = matrix[risk][status];
+                  const items = matrix[risk]?.[status] ?? [];
                   const isHot = (risk === 'critical' || risk === 'high') &&
                     (status === 'non_compliant' || status === 'under_review' || status === 'draft');
                   return (

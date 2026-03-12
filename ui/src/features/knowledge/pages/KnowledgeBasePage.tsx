@@ -11,7 +11,7 @@ import {
   IconDatabase, IconApi, IconSettings, IconGitBranch,
 } from '@tabler/icons-react';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
-import { knowledgeEntryHooks, knowledgeExtractionHooks } from '../api';
+import { knowledgeEntryHooks, knowledgeExtractionHooks } from '@/features/compliance/api';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface KnowledgeItem {

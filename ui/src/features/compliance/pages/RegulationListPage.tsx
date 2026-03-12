@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
-  Loader, Center, ActionIcon, Badge, Textarea, MultiSelect,
-  Card, Text, SimpleGrid, ThemeIcon, Checkbox,
+  Loader, Center, ActionIcon, Badge, Textarea, Collapse, Anchor,
+  Card, Text, SimpleGrid, ThemeIcon, Box, UnstyledButton,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconShieldCheck, IconPlus } from '@tabler/icons-react';
+import { IconTrash, IconShieldCheck, IconPlus, IconChevronDown, IconChevronRight, IconPencil, IconExternalLink } from '@tabler/icons-react';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { regulationHooks, useRegulationTemplates, useAddRegulationFromTemplate } from '../api';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -44,11 +44,40 @@ const RISK_OPTIONS = [
 const riskColor: Record<string, string> = { low: 'green', medium: 'yellow', high: 'orange', critical: 'red' };
 const statusColor: Record<string, string> = { draft: 'gray', active: 'green', under_review: 'yellow', deprecated: 'orange', non_compliant: 'red' };
 
-const WELL_KNOWN_REGULATIONS = [
-  'HIPAA', 'GDPR', 'IEC 62304', 'ISO 14971', 'ISO 13485',
-  'FDA 21 CFR Part 11', 'FDA 21 CFR Part 820', 'SOC 2', 'ISO 27001',
-  'IEC 62443', 'MDR 2017/745', 'IVDR 2017/746',
+const CATEGORIES: { label: string; matchTags: string[] }[] = [
+  { label: 'Healthcare & Medical Device', matchTags: ['medical-device', 'health', 'samd', 'diagnostics'] },
+  { label: 'Data Protection & Privacy', matchTags: ['data-protection', 'privacy'] },
+  { label: 'Financial', matchTags: ['financial', 'payments', 'aml', 'kyc'] },
+  { label: 'Information Security', matchTags: ['security'] },
+  { label: 'AI Regulation', matchTags: ['ai'] },
 ];
+
+function categorise(items: RegulationItem[]): { label: string; items: RegulationItem[] }[] {
+  const assigned = new Set<string>();
+  const groups: { label: string; items: RegulationItem[] }[] = [];
+
+  for (const cat of CATEGORIES) {
+    const matched = items.filter(
+      (item) => (item.tags ?? []).some((tag) => cat.matchTags.includes(tag)),
+    );
+    for (const m of matched) assigned.add(m.regulation_id);
+    if (matched.length > 0) groups.push({ label: cat.label, items: matched });
+  }
+
+  const uncategorised = items.filter((item) => !assigned.has(item.regulation_id));
+  if (uncategorised.length > 0) groups.push({ label: 'Other', items: uncategorised });
+
+  return groups;
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Group gap="xs" align="flex-start">
+      <Text size="sm" fw={600} w={120} style={{ flexShrink: 0 }}>{label}</Text>
+      <Box style={{ flex: 1 }}>{children}</Box>
+    </Group>
+  );
+}
 
 export function Component() {
   const { data: projectsResp } = useProjectsListProjects();
@@ -63,6 +92,8 @@ export function Component() {
   const addFromTemplate = useAddRegulationFromTemplate();
   const [creating, setCreating] = useState(false);
   const [editItem, setEditItem] = useState<RegulationItem | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [browsingTemplates, setBrowsingTemplates] = useState(false);
   const [templateProject, setTemplateProject] = useState<string>('');
 
@@ -89,6 +120,7 @@ export function Component() {
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   const items = (resp?.data ?? []) as unknown as RegulationItem[];
+  const groups = categorise(items);
 
   const handleCreate = form.onSubmit((values) => {
     createMut.mutate(values as any, {
@@ -125,9 +157,25 @@ export function Component() {
       onSuccess: () => {
         notifications.show({ title: 'Deleted', message: 'Regulation removed', color: 'orange' });
         if (editItem?.regulation_id === id) setEditItem(null);
+        if (expandedId === id) setExpandedId(null);
       },
     });
   };
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
+  const toggleCategory = (label: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const projectName = (projectId: string) => projects.find((p) => p.project_id === projectId)?.name ?? projectId;
 
   return (
     <Stack gap="md">
@@ -143,41 +191,125 @@ export function Component() {
       {items.length === 0 ? (
         <EmptyState title="No regulations" description="Add regulations like HIPAA, GDPR, or IEC 62304 to track compliance" actionLabel="Add Regulation" onAction={() => setCreating(true)} />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Authority</Table.Th>
-              <Table.Th>Risk</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Version</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {items.map((item) => (
-              <Table.Tr key={item.regulation_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(item)}>
-                <Table.Td fw={500}>{item.name}</Table.Td>
-                <Table.Td>{item.authority || '—'}</Table.Td>
-                <Table.Td><Badge color={riskColor[item.risk_level]} variant="dot" size="sm">{item.risk_level}</Badge></Table.Td>
-                <Table.Td><Badge color={statusColor[item.status]} variant="light" size="sm">{item.status}</Badge></Table.Td>
-                <Table.Td>{item.version || '—'}</Table.Td>
-                <Table.Td>
-                  <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(item.regulation_id); }}>
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <Stack gap="sm">
+          {groups.map((group) => {
+            const isCategoryCollapsed = collapsedCategories.has(group.label);
+            return (
+              <Box key={group.label}>
+                <UnstyledButton onClick={() => toggleCategory(group.label)} w="100%">
+                  <Group gap="xs" py="xs" px="sm" style={{ borderRadius: 'var(--mantine-radius-sm)' }} bg="var(--mantine-color-dark-6)">
+                    {isCategoryCollapsed ? <IconChevronRight size={16} /> : <IconChevronDown size={16} />}
+                    <Text fw={700} size="sm" tt="uppercase">{group.label}</Text>
+                    <Badge size="xs" variant="filled" color="gray" circle>{group.items.length}</Badge>
+                  </Group>
+                </UnstyledButton>
+                <Collapse in={!isCategoryCollapsed}>
+                  <Table striped highlightOnHover mt={4}>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th w={30} />
+                        <Table.Th>Name</Table.Th>
+                        <Table.Th>Authority</Table.Th>
+                        <Table.Th>Risk</Table.Th>
+                        <Table.Th>Status</Table.Th>
+                        <Table.Th>Version</Table.Th>
+                        <Table.Th />
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {group.items.map((item) => {
+                        const isExpanded = expandedId === item.regulation_id;
+                        return (
+                          <>
+                            <Table.Tr key={item.regulation_id} style={{ cursor: 'pointer' }} onClick={() => toggleExpand(item.regulation_id)}>
+                              <Table.Td>
+                                {isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                              </Table.Td>
+                              <Table.Td fw={500}>{item.name}</Table.Td>
+                              <Table.Td>{item.authority || '—'}</Table.Td>
+                              <Table.Td><Badge color={riskColor[item.risk_level]} variant="dot" size="sm">{item.risk_level}</Badge></Table.Td>
+                              <Table.Td><Badge color={statusColor[item.status]} variant="light" size="sm">{item.status}</Badge></Table.Td>
+                              <Table.Td>{item.version || '—'}</Table.Td>
+                              <Table.Td>
+                                <Group gap={4}>
+                                  <ActionIcon variant="subtle" onClick={(e) => { e.stopPropagation(); openEdit(item); }}>
+                                    <IconPencil size={16} />
+                                  </ActionIcon>
+                                  <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(item.regulation_id); }}>
+                                    <IconTrash size={16} />
+                                  </ActionIcon>
+                                </Group>
+                              </Table.Td>
+                            </Table.Tr>
+                            {isExpanded && (
+                              <Table.Tr key={`${item.regulation_id}-detail`}>
+                                <Table.Td colSpan={7} p={0}>
+                                  <Box px="lg" py="md" bg="var(--mantine-color-dark-7)">
+                                    <Stack gap="xs">
+                                      {item.description && (
+                                        <DetailRow label="Description">
+                                          <Text size="sm">{item.description}</Text>
+                                        </DetailRow>
+                                      )}
+                                      <DetailRow label="Project">
+                                        <Text size="sm">{projectName(item.project_id)}</Text>
+                                      </DetailRow>
+                                      <DetailRow label="Authority">
+                                        <Text size="sm">{item.authority || '—'}</Text>
+                                      </DetailRow>
+                                      <DetailRow label="Version">
+                                        <Text size="sm">{item.version || '—'}</Text>
+                                      </DetailRow>
+                                      <DetailRow label="Risk Level">
+                                        <Badge color={riskColor[item.risk_level]} variant="filled" size="sm">{item.risk_level}</Badge>
+                                      </DetailRow>
+                                      <DetailRow label="Status">
+                                        <Badge color={statusColor[item.status]} variant="light" size="sm">{item.status}</Badge>
+                                      </DetailRow>
+                                      {item.reference_url && (
+                                        <DetailRow label="Reference">
+                                          <Anchor href={item.reference_url} target="_blank" size="sm">
+                                            <Group gap={4}>
+                                              {item.reference_url}
+                                              <IconExternalLink size={14} />
+                                            </Group>
+                                          </Anchor>
+                                        </DetailRow>
+                                      )}
+                                      {item.tags && item.tags.length > 0 && (
+                                        <DetailRow label="Tags">
+                                          <Group gap={4}>
+                                            {item.tags.map((tag) => (
+                                              <Badge key={tag} variant="outline" size="xs">{tag}</Badge>
+                                            ))}
+                                          </Group>
+                                        </DetailRow>
+                                      )}
+                                      <DetailRow label="ID">
+                                        <Text size="xs" c="dimmed" ff="monospace">{item.regulation_id}</Text>
+                                      </DetailRow>
+                                    </Stack>
+                                  </Box>
+                                </Table.Td>
+                              </Table.Tr>
+                            )}
+                          </>
+                        );
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </Collapse>
+              </Box>
+            );
+          })}
+        </Stack>
       )}
 
       {/* Create modal */}
       <Modal opened={creating} onClose={() => setCreating(false)} title="Add Regulation" size="lg">
         <form onSubmit={handleCreate}>
           <Stack gap="sm">
-            <Select label="Name" data={WELL_KNOWN_REGULATIONS.map((r) => ({ value: r, label: r }))} searchable creatable getCreateLabel={(v) => `Custom: ${v}`} onCreate={(v) => { form.setFieldValue('name', v); return v; }} {...form.getInputProps('name')} />
+            <TextInput label="Name" placeholder="e.g. HIPAA, GDPR, IEC 62304" {...form.getInputProps('name')} />
             <Select label="Project" data={projectRequired} searchable {...form.getInputProps('project_id')} />
             <Textarea label="Description" autosize minRows={2} {...form.getInputProps('description')} />
             <TextInput label="Authority" placeholder="e.g. EU, FDA, ISO" {...form.getInputProps('authority')} />
@@ -204,7 +336,7 @@ export function Component() {
               'Information Security': ['security'],
               'AI Regulation': ['ai'],
             };
-            const catTags = tagMap[category];
+            const catTags = tagMap[category] ?? [];
             const catTemplates = templates.filter((t) => (t.tags ?? []).some((tag) => catTags.includes(tag)));
             if (catTemplates.length === 0) return null;
             const existingNames = new Set(items.map((i) => i.name));

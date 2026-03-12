@@ -7,7 +7,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconTrash } from '@tabler/icons-react';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
-import { strategyHooks } from '../api';
+import { strategyHooks } from '@/features/compliance/api';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface StrategyItem {

@@ -198,25 +198,27 @@ export const router = createBrowserRouter([
         path: 'compliance/practices',
         lazy: () => import('@/features/compliance/pages/PracticeListPage'),
       },
+      // --- Experimentation ---
       {
-        path: 'compliance/strategies',
-        lazy: () => import('@/features/compliance/pages/StrategyListPage'),
+        path: 'experimentation/strategies',
+        lazy: () => import('@/features/experimentation/pages/StrategyListPage'),
       },
       {
-        path: 'compliance/kpis',
-        lazy: () => import('@/features/compliance/pages/KPIListPage'),
+        path: 'experimentation/kpis',
+        lazy: () => import('@/features/experimentation/pages/KPIListPage'),
       },
       {
-        path: 'compliance/experiments',
-        lazy: () => import('@/features/compliance/pages/ExperimentListPage'),
+        path: 'experimentation/experiments',
+        lazy: () => import('@/features/experimentation/pages/ExperimentListPage'),
       },
       {
-        path: 'compliance/metrics',
-        lazy: () => import('@/features/compliance/pages/ComplianceMetricListPage'),
+        path: 'experimentation/metrics',
+        lazy: () => import('@/features/experimentation/pages/ComplianceMetricListPage'),
       },
+      // --- Knowledge Base ---
       {
-        path: 'compliance/knowledge',
-        lazy: () => import('@/features/compliance/pages/KnowledgeBasePage'),
+        path: 'knowledge',
+        lazy: () => import('@/features/knowledge/pages/KnowledgeBasePage'),
       },
       {
         path: 'settings',
