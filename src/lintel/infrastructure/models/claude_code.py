@@ -236,7 +236,8 @@ async def validate_claude_token(
                 )
                 # Try to re-inject fresh credentials from host Keychain
                 refreshed = await _refresh_token_from_keychain(
-                    sandbox_manager, sandbox_id,
+                    sandbox_manager,
+                    sandbox_id,
                 )
                 if refreshed:
                     logger.info(
@@ -588,8 +589,7 @@ class ClaudeCodeProvider:
                         )
                         if on_activity:
                             await on_activity(
-                                "AUTH_EXPIRED: OAuth token expired"
-                                " — re-authenticate in sandbox"
+                                "AUTH_EXPIRED: OAuth token expired — re-authenticate in sandbox"
                             )
                         return
 

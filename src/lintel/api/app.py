@@ -84,8 +84,8 @@ from lintel.infrastructure.event_bus.in_memory import InMemoryEventBus
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
 from lintel.infrastructure.projections.audit import AuditProjection
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
-from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
+from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
