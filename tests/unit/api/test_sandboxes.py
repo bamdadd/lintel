@@ -106,7 +106,7 @@ class TestCreateSandbox:
         assert "sandbox_id" in data
 
     def test_preset_mounts_resolved(self, client: TestClient) -> None:
-        """Claude-code preset should resolve ${localEnv:HOME} and pass mounts."""
+        """Claude-code preset has no mounts (credentials injected at runtime)."""
 
         resp = client.post(
             "/api/v1/sandboxes",
@@ -120,20 +120,16 @@ class TestCreateSandbox:
         assert resp.status_code == 201
         sandbox_id = resp.json()["sandbox_id"]
 
-        # Verify mounts were passed to the manager
+        # Verify no mounts (preset has empty mounts list)
         manager: DummySandboxManager = client.app.state.sandbox_manager  # type: ignore[union-attr]
         config = manager.last_config
-        assert len(config.mounts) == 1
-        targets = {m[1] for m in config.mounts}
-        assert "/home/vscode/.claude.json" in targets
+        assert len(config.mounts) == 0
 
-        # Verify mounts in stored metadata
+        # Verify no mounts in stored metadata
         meta_resp = client.get("/api/v1/sandboxes")
         sandboxes = meta_resp.json()
         entry = next(s for s in sandboxes if s["sandbox_id"] == sandbox_id)
-        assert len(entry["mounts"]) == 1
-        mount_targets = {m["target"] for m in entry["mounts"]}
-        assert "/home/vscode/.claude.json" in mount_targets
+        assert len(entry["mounts"]) == 0
 
     def test_request_level_mounts(self, client: TestClient) -> None:
         """Mounts passed in request body should be resolved and applied."""
@@ -156,7 +152,7 @@ class TestCreateSandbox:
         assert config.mounts[0] == ("/tmp/test-mount", "/mnt/data", "bind")
 
     def test_preset_and_request_mounts_merged(self, client: TestClient) -> None:
-        """Preset mounts and request mounts should be merged."""
+        """Request mounts should be applied even with a preset that has no mounts."""
         resp = client.post(
             "/api/v1/sandboxes",
             json={
@@ -173,9 +169,8 @@ class TestCreateSandbox:
 
         manager: DummySandboxManager = client.app.state.sandbox_manager  # type: ignore[union-attr]
         config = manager.last_config
-        assert len(config.mounts) == 2
+        assert len(config.mounts) == 1
         targets = {m[1] for m in config.mounts}
-        assert "/home/vscode/.claude.json" in targets
         assert "/mnt/extra" in targets
 
 

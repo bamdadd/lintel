@@ -177,16 +177,18 @@ class TestReadFile:
 
 
 class TestWriteFile:
-    async def test_writes_via_base64(self) -> None:
+    async def test_writes_via_put_archive(self) -> None:
         manager = DockerSandboxManager()
         container = MagicMock()
         container.exec_run.return_value = _make_exec_result(0, b"", b"")
+        container.put_archive.return_value = True
         manager._containers["s1"] = container
 
         await manager.write_file("s1", "/workspace/f.txt", "content")
 
-        # Should have been called twice: mkdir -p and base64 write
-        assert container.exec_run.call_count == 2
+        # mkdir -p via exec_run, then put_archive for the file
+        assert container.exec_run.call_count == 1
+        container.put_archive.assert_called_once()
 
     async def test_not_found_raises(self) -> None:
         manager = DockerSandboxManager()
