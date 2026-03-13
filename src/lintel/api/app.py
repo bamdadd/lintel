@@ -445,11 +445,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             interrupt_before=approval_nodes or None,
         )
 
+    from lintel.infrastructure.observability.step_metrics import OtelStepMetricsRecorder
+
     executor = WorkflowExecutor(
         event_store=event_store,
         graph_factory=_graph_factory,
         agent_runtime=agent_runtime,
         app_state=app.state,
+        step_metrics=OtelStepMetricsRecorder(),
     )
 
     app.state.workflow_executor = executor

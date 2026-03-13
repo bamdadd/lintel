@@ -18,14 +18,10 @@ from lintel.contracts.events import (
     WorkItemCompleted,
     WorkItemUpdated,
 )
-from lintel.infrastructure.observability.step_metrics import (
-    record_step_duration,
-    record_step_tokens,
-)
 
 if TYPE_CHECKING:
     from lintel.contracts.commands import StartWorkflow
-    from lintel.contracts.protocols import EventStore
+    from lintel.contracts.protocols import EventStore, StepMetricsRecorder
     from lintel.contracts.types import Stage
 
 logger = structlog.get_logger()
@@ -67,6 +63,7 @@ class WorkflowExecutor:
         on_stage_complete: StageCallback | None = None,
         app_state: Any = None,  # noqa: ANN401
         graph_factory: Callable[[str], Any] | None = None,
+        step_metrics: StepMetricsRecorder | None = None,
     ) -> None:
         self._event_store = event_store
         self._graph = graph
@@ -74,6 +71,7 @@ class WorkflowExecutor:
         self._on_stage_complete = on_stage_complete
         self._app_state = app_state
         self._graph_factory = graph_factory
+        self._step_metrics = step_metrics
         # Store compiled graphs and configs per run_id for resumption
         self._suspended_runs: dict[str, dict[str, Any]] = {}
 
@@ -206,20 +204,21 @@ class WorkflowExecutor:
                     # Record step metrics
                     step_start = total_tokens.get("_step_start", time.time())
                     duration = time.time() - step_start
-                    record_step_duration(
-                        run_id,
-                        node_name,
-                        node_name,
-                        "completed",
-                        duration,
-                    )
+                    if self._step_metrics is not None:
+                        self._step_metrics.record_step_duration(
+                            run_id,
+                            node_name,
+                            node_name,
+                            "completed",
+                            duration,
+                        )
                     if isinstance(output, dict):
                         for entry in output.get("token_usage", []):
                             if isinstance(entry, dict):
                                 step_total = entry.get("total_tokens", 0)
                                 model_id = entry.get("model", "unknown")
-                                if step_total:
-                                    record_step_tokens(
+                                if step_total and self._step_metrics is not None:
+                                    self._step_metrics.record_step_tokens(
                                         run_id,
                                         node_name,
                                         model_id,

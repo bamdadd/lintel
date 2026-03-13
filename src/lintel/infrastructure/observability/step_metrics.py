@@ -38,6 +38,29 @@ def record_step_duration(
     )
 
 
+class OtelStepMetricsRecorder:
+    """Concrete StepMetricsRecorder backed by OpenTelemetry."""
+
+    def record_step_duration(
+        self,
+        workflow_id: str,
+        step_type: str,
+        tool_name: str,
+        status: str,
+        duration_s: float,
+    ) -> None:
+        record_step_duration(workflow_id, step_type, tool_name, status, duration_s)
+
+    def record_step_tokens(
+        self,
+        workflow_id: str,
+        step_type: str,
+        model_id: str,
+        tokens: int,
+    ) -> None:
+        record_step_tokens(workflow_id, step_type, model_id, tokens)
+
+
 def record_step_tokens(
     workflow_id: str,
     step_type: str,
