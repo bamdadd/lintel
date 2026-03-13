@@ -962,6 +962,24 @@ async def _run_tests(
     from lintel.workflows.nodes._stage_tracking import append_log
     from lintel.workflows.nodes.test_code import _build_changed_tests_command
 
+    # Pull latest from origin before running tests so we pick up any
+    # fixes that landed on the base branch after the sandbox was created.
+    base_branch = state.get("repo_branch", "main")
+    try:
+        pull_result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"git pull --rebase origin {base_branch} 2>&1 || true",
+                workdir=workspace_path,
+                timeout_seconds=60,
+            ),
+        )
+        await append_log(
+            config, "implement", f"git pull: {pull_result.stdout[:80]}", state
+        )
+    except Exception:
+        logger.warning("implement_git_pull_failed")
+
     # Discover test command
     try:
         discovery = await discover_test_command(sandbox_manager, sandbox_id, workspace_path)
