@@ -170,5 +170,5 @@ class TestInvokeStreamingCredentialFailure:
             ]
         )
         provider = ClaudeCodeProvider(manager)
-        with pytest.raises(Exception, match="(?i)credential|expired"):
+        with pytest.raises(Exception, match=r"(?i)credential|expired"):
             await provider.invoke_streaming("test", sandbox_id="sb-1")

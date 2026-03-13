@@ -512,13 +512,31 @@ async def _implement_tdd(
         await append_log(config, "implement", "Final tests: PASSED", state)
     else:
         await append_log(config, "implement", "Final tests: FAILED", state)
-        # Log the test output so failures are visible in the pipeline UI
         await _log_test_output(test_output, config, state)
 
-    agent_output = (
-        "Implementation complete." if test_passed else "Implementation complete — tests failing."
+    # Verify lint
+    lint_output, lint_exit = await _run_lint(
+        config, state, sandbox_manager, sandbox_id, workspace_path
     )
-    return agent_output, test_passed, [usage]
+    lint_passed = lint_exit == 0
+    if lint_passed:
+        await append_log(config, "implement", "Final lint: PASSED", state)
+    else:
+        await append_log(config, "implement", "Final lint: FAILED", state)
+        await append_log(
+            config, "implement", lint_output[-2000:] if lint_output else "No output", state
+        )
+
+    all_passed = test_passed and lint_passed
+    if all_passed:
+        agent_output = "Implementation complete."
+    elif not test_passed and not lint_passed:
+        agent_output = "Implementation complete — tests and lint failing."
+    elif not test_passed:
+        agent_output = "Implementation complete — tests failing."
+    else:
+        agent_output = "Implementation complete — lint failing."
+    return agent_output, all_passed, [usage]
 
 
 async def _discover_dev_commands(
@@ -738,10 +756,29 @@ async def _implement_structured(
         await append_log(config, "implement", "Tests still failing after fix attempts", state)
         await _log_test_output(test_output, config, state)
 
-    agent_output = (
-        "Implementation complete." if test_passed else "Implementation complete — tests failing."
+    # Verify lint
+    lint_output, lint_exit = await _run_lint(
+        config, state, sandbox_manager, sandbox_id, workspace_path
     )
-    return agent_output, test_passed, total_usage
+    lint_passed = lint_exit == 0
+    if lint_passed:
+        await append_log(config, "implement", "Final lint: PASSED", state)
+    else:
+        await append_log(config, "implement", "Final lint: FAILED", state)
+        await append_log(
+            config, "implement", lint_output[-2000:] if lint_output else "No output", state
+        )
+
+    all_passed = test_passed and lint_passed
+    if all_passed:
+        agent_output = "Implementation complete."
+    elif not test_passed and not lint_passed:
+        agent_output = "Implementation complete — tests and lint failing."
+    elif not test_passed:
+        agent_output = "Implementation complete — tests failing."
+    else:
+        agent_output = "Implementation complete — lint failing."
+    return agent_output, all_passed, total_usage
 
 
 # ---------------------------------------------------------------------------
@@ -957,6 +994,41 @@ async def _run_tests(
     except Exception:
         logger.warning("implement_test_execute_failed")
         return "Test execution failed", 1
+
+    output = result.stdout + result.stderr
+    if len(output) > 5000:
+        output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
+
+    return output, result.exit_code
+
+
+async def _run_lint(
+    config: RunnableConfig | dict[str, Any],
+    state: ThreadWorkflowState,
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workspace_path: str,
+) -> tuple[str, int]:
+    """Run lint in the sandbox. Returns (output, exit_code)."""
+    from lintel.contracts.types import SandboxJob
+    from lintel.workflows.nodes._stage_tracking import append_log
+
+    (
+        _test_command,
+        lint_command,
+        _typecheck_command,
+        _test_single_command,
+    ) = await _discover_dev_commands(sandbox_manager, sandbox_id, workspace_path)
+
+    await append_log(config, "implement", f"Running lint: {lint_command[:80]}", state)
+    try:
+        result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command=lint_command, workdir=workspace_path, timeout_seconds=120),
+        )
+    except Exception:
+        logger.warning("implement_lint_execute_failed")
+        return "Lint execution failed", 1
 
     output = result.stdout + result.stderr
     if len(output) > 5000:

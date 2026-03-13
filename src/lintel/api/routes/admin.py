@@ -49,9 +49,9 @@ async def refresh_claude_credentials(request: Request) -> dict[str, Any]:
     On macOS reads from Keychain, on Linux reads from ~/.claude/.credentials.json.
     """
     from lintel.infrastructure.models.claude_code import (
+        _inject_credentials_into_sandbox,
         _read_host_credentials,
         _validate_credentials_json,
-        _inject_credentials_into_sandbox,
     )
 
     sandbox_manager = getattr(request.app.state, "sandbox_manager", None)

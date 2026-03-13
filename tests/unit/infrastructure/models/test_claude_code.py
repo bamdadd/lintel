@@ -77,7 +77,11 @@ class TestClaudeCodeProvider:
                 # validate_claude_token: version check
                 SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
                 # validate_claude_token: credentials check
-                SandboxResult(exit_code=0, stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}', stderr=""),
+                SandboxResult(
+                    exit_code=0,
+                    stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}',
+                    stderr="",
+                ),
                 # _write_tmpfs_file: system prompt write via exec
                 SandboxResult(exit_code=0, stdout="", stderr=""),
                 # actual claude --print invocation
@@ -117,7 +121,11 @@ class TestClaudeCodeProvider:
                 # version check
                 SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
                 # credentials check
-                SandboxResult(exit_code=0, stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}', stderr=""),
+                SandboxResult(
+                    exit_code=0,
+                    stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}',
+                    stderr="",
+                ),
                 # invocation fails with auth error
                 SandboxResult(exit_code=1, stderr="authentication_error: token expired"),
             ]
@@ -130,7 +138,11 @@ class TestClaudeCodeProvider:
         manager = _make_sandbox(
             [
                 SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
-                SandboxResult(exit_code=0, stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}', stderr=""),
+                SandboxResult(
+                    exit_code=0,
+                    stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}',
+                    stderr="",
+                ),
                 SandboxResult(exit_code=0, stdout="Just plain text response"),
             ]
         )
@@ -142,7 +154,11 @@ class TestClaudeCodeProvider:
         manager = _make_sandbox(
             [
                 SandboxResult(exit_code=0, stdout="claude 1.0.0", stderr=""),
-                SandboxResult(exit_code=0, stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}', stderr=""),
+                SandboxResult(
+                    exit_code=0,
+                    stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}',
+                    stderr="",
+                ),
                 SandboxResult(exit_code=0, stdout='[{"type":"text","text":"done"}]'),
             ]
         )
