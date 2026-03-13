@@ -40,8 +40,33 @@ class DockerSandboxManager:
     def _get_container(self, sandbox_id: str) -> Any:  # noqa: ANN401
         container = self._containers.get(sandbox_id)
         if container is None:
+            # Recovery: look up by label in Docker (survives server restarts)
+            container = self._recover_container(sandbox_id)
+        if container is None:
             raise SandboxNotFoundError(sandbox_id)
         return container
+
+    def _recover_container(self, sandbox_id: str) -> Any | None:  # noqa: ANN401
+        """Try to find a running container by its lintel.sandbox_id label."""
+        import structlog
+
+        log = structlog.get_logger()
+        client = self._get_client()
+        containers = client.containers.list(
+            all=True,
+            filters={"label": f"lintel.sandbox_id={sandbox_id}"},
+        )
+        if containers:
+            container = containers[0]
+            self._containers[sandbox_id] = container
+            log.info(
+                "sandbox_recovered_from_docker",
+                sandbox_id=sandbox_id[:12],
+                container_id=container.short_id,
+            )
+            return container
+        log.warning("sandbox_recovery_failed", sandbox_id=sandbox_id[:12])
+        return None
 
     async def create(
         self,
@@ -202,8 +227,7 @@ class DockerSandboxManager:
 
         # Use Docker put_archive API to write files of any size (avoids ARG_MAX
         # shell limits that break exec-based writes for files > ~100KB).
-        client = self._get_client()
-        container = await asyncio.to_thread(client.containers.get, sandbox_id)
+        container = self._get_container(sandbox_id)
         file_bytes = content.encode("utf-8")
         filename = os.path.basename(path)
 
