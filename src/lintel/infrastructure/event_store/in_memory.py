@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import structlog
@@ -18,11 +19,17 @@ logger = structlog.get_logger()
 
 
 class InMemoryEventStore:
-    """Implements EventStore protocol with a plain dict."""
+    """Implements EventStore protocol with a plain dict.
+
+    Assigns a monotonically increasing ``global_position`` to every appended
+    event so that ``read_all`` and ``read_by_event_type`` can use position-based
+    filtering (consistent with the Postgres implementation).
+    """
 
     def __init__(self, event_bus: EventBus | None = None) -> None:
         self._streams: dict[str, list[EventEnvelope]] = {}
         self._event_bus = event_bus
+        self._global_counter: int = 0
 
     def set_event_bus(self, event_bus: EventBus) -> None:
         """Attach an event bus after construction (for circular-dep wiring)."""
@@ -39,11 +46,17 @@ class InMemoryEventStore:
         if expected_version is not None and current_version != expected_version:
             msg = f"Expected version {expected_version}, got {current_version}"
             raise ValueError(msg)
-        stream.extend(events)
+
+        stamped: list[EventEnvelope] = []
+        for event in events:
+            self._global_counter += 1
+            stamped.append(replace(event, global_position=self._global_counter))
+
+        stream.extend(stamped)
 
         # Publish to event bus after successful persist
         if self._event_bus is not None:
-            for event in events:
+            for event in stamped:
                 try:
                     await self._event_bus.publish(event)
                 except Exception:
@@ -69,8 +82,9 @@ class InMemoryEventStore:
         all_events: list[EventEnvelope] = []
         for stream in self._streams.values():
             all_events.extend(stream)
-        all_events.sort(key=lambda e: e.occurred_at)
-        return all_events[from_position : from_position + limit]
+        all_events.sort(key=lambda e: (e.global_position or 0))
+        filtered = [e for e in all_events if (e.global_position or 0) >= from_position]
+        return filtered[:limit]
 
     async def read_by_correlation(
         self,
@@ -95,8 +109,9 @@ class InMemoryEventStore:
             for event in stream:
                 if event.event_type == event_type:
                     all_events.append(event)
-        all_events.sort(key=lambda e: e.occurred_at)
-        return all_events[from_position : from_position + limit]
+        all_events.sort(key=lambda e: (e.global_position or 0))
+        filtered = [e for e in all_events if (e.global_position or 0) >= from_position]
+        return filtered[:limit]
 
     async def read_by_time_range(
         self,

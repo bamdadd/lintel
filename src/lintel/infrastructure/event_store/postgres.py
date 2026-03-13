@@ -173,7 +173,10 @@ class PostgresEventStore:
     ) -> list[EventEnvelope]:
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM events ORDER BY occurred_at, stream_version OFFSET $1 LIMIT $2",
+                "SELECT * FROM events "
+                "WHERE global_position >= $1 "
+                "ORDER BY global_position "
+                "LIMIT $2",
                 from_position,
                 limit,
             )
@@ -198,8 +201,10 @@ class PostgresEventStore:
     ) -> list[EventEnvelope]:
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM events WHERE event_type = $1 "
-                "ORDER BY occurred_at OFFSET $2 LIMIT $3",
+                "SELECT * FROM events "
+                "WHERE event_type = $1 AND global_position >= $2 "
+                "ORDER BY global_position "
+                "LIMIT $3",
                 event_type,
                 from_position,
                 limit,
@@ -274,4 +279,5 @@ def _row_to_event(row: Mapping[str, object] | RecordLike) -> EventEnvelope:
         causation_id=row["causation_id"],  # type: ignore[arg-type]
         payload=payload,
         idempotency_key=row.get("idempotency_key"),  # type: ignore[arg-type]
+        global_position=row.get("global_position"),  # type: ignore[arg-type]
     )

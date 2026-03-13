@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import asyncpg
 import pytest
 
-from lintel.contracts.events import ThreadMessageReceived
+from lintel.contracts.events import ThreadMessageReceived, WorkflowStarted
 from lintel.contracts.types import ActorType, ThreadRef
 from lintel.infrastructure.event_store.postgres import (
     IdempotencyViolationError,
@@ -27,7 +28,11 @@ async def event_store(postgres_url: str) -> AsyncGenerator[PostgresEventStore]:
     async with pool.acquire() as conn:
         with open("migrations/001_create_event_store.sql") as f:
             await conn.execute(f.read())
+        with open("migrations/006_add_global_position.sql") as f:
+            await conn.execute(f.read())
         await conn.execute("DELETE FROM events")
+        # Reset the global_position sequence so tests get predictable positions
+        await conn.execute("ALTER SEQUENCE events_global_position_seq RESTART WITH 1")
     store = PostgresEventStore(pool)
     yield store
     await pool.close()
@@ -236,3 +241,202 @@ async def test_idempotency(event_store: PostgresEventStore) -> None:
             idempotency_key=key,
         )
         await event_store.append(stream_id, [event2])
+
+
+# ---------------------------------------------------------------------------
+# EVT-3.1: read_by_event_type
+# ---------------------------------------------------------------------------
+
+
+async def test_read_by_event_type(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    msg = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "typed"},
+    )
+    wf = WorkflowStarted(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"workflow": "test"},
+    )
+    await event_store.append(stream_id, [msg, wf])
+
+    results = await event_store.read_by_event_type("ThreadMessageReceived")
+    assert len(results) >= 1
+    assert all(e.event_type == "ThreadMessageReceived" for e in results)
+
+
+async def test_read_by_event_type_with_limit(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(5)
+    ]
+    await event_store.append(stream_id, events)
+
+    results = await event_store.read_by_event_type("ThreadMessageReceived", limit=3)
+    assert len(results) == 3
+
+
+async def test_read_by_event_type_from_position(event_store: PostgresEventStore) -> None:
+    """from_position filters by global_position, not by offset."""
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(5)
+    ]
+    await event_store.append(stream_id, events)
+
+    # Get all events to find their global_positions
+    all_events = await event_store.read_by_event_type("ThreadMessageReceived")
+    assert len(all_events) >= 5
+    # Each event should have a global_position
+    for e in all_events:
+        assert e.global_position is not None
+
+    # Read from a position midway through
+    mid_pos = all_events[2].global_position
+    assert mid_pos is not None
+    from_mid = await event_store.read_by_event_type("ThreadMessageReceived", from_position=mid_pos)
+    assert len(from_mid) >= 3
+    assert all(
+        e.global_position is not None and e.global_position >= mid_pos for e in from_mid
+    )
+
+
+# ---------------------------------------------------------------------------
+# EVT-3.2: read_by_time_range
+# ---------------------------------------------------------------------------
+
+
+async def test_read_by_time_range(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    now = datetime.now(UTC)
+    event = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "time-range"},
+    )
+    await event_store.append(stream_id, [event])
+
+    results = await event_store.read_by_time_range(
+        from_time=now - timedelta(seconds=10),
+        to_time=now + timedelta(seconds=10),
+    )
+    assert len(results) >= 1
+
+
+async def test_read_by_time_range_with_event_types(event_store: PostgresEventStore) -> None:
+    stream_id = f"test:{uuid4()}"
+    now = datetime.now(UTC)
+    msg = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "typed-range"},
+    )
+    wf = WorkflowStarted(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"workflow": "test"},
+    )
+    await event_store.append(stream_id, [msg, wf])
+
+    results = await event_store.read_by_time_range(
+        from_time=now - timedelta(seconds=10),
+        to_time=now + timedelta(seconds=10),
+        event_types=frozenset({"ThreadMessageReceived"}),
+    )
+    assert len(results) >= 1
+    assert all(e.event_type == "ThreadMessageReceived" for e in results)
+
+
+async def test_read_by_time_range_empty_window(event_store: PostgresEventStore) -> None:
+    far_past = datetime(2020, 1, 1, tzinfo=UTC)
+    results = await event_store.read_by_time_range(
+        from_time=far_past,
+        to_time=far_past + timedelta(seconds=1),
+    )
+    assert results == []
+
+
+# ---------------------------------------------------------------------------
+# EVT-3.3: global_position
+# ---------------------------------------------------------------------------
+
+
+async def test_global_position_assigned(event_store: PostgresEventStore) -> None:
+    """Every persisted event gets a monotonically increasing global_position."""
+    stream_a = f"test:{uuid4()}"
+    stream_b = f"test:{uuid4()}"
+
+    e1 = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "a1"},
+    )
+    e2 = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "b1"},
+    )
+    e3 = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "a2"},
+    )
+
+    await event_store.append(stream_a, [e1])
+    await event_store.append(stream_b, [e2])
+    await event_store.append(stream_a, [e3], expected_version=0)
+
+    all_events = await event_store.read_all()
+    positions = [e.global_position for e in all_events]
+    # All positions should be non-None
+    assert all(p is not None for p in positions)
+    # Positions should be strictly increasing
+    for i in range(1, len(positions)):
+        assert positions[i] > positions[i - 1]  # type: ignore[operator]
+
+
+async def test_read_all_uses_global_position(event_store: PostgresEventStore) -> None:
+    """read_all(from_position=N) returns events with global_position >= N."""
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(5)
+    ]
+    await event_store.append(stream_id, events)
+
+    all_events = await event_store.read_all()
+    assert len(all_events) >= 5
+    mid_pos = all_events[2].global_position
+    assert mid_pos is not None
+
+    from_mid = await event_store.read_all(from_position=mid_pos)
+    assert all(
+        e.global_position is not None and e.global_position >= mid_pos for e in from_mid
+    )

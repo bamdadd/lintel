@@ -29,6 +29,7 @@ class EventEnvelope:
     causation_id: UUID | None = None
     payload: dict[str, Any] = field(default_factory=dict)
     idempotency_key: str | None = None
+    global_position: int | None = None
 
 
 # --- Channel & Ingestion Events ---
