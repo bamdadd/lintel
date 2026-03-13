@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 router = APIRouter()
 
@@ -160,3 +160,32 @@ async def overview_metrics(request: Request) -> dict[str, Any]:
         "work_items_by_status": wi_by_status,
         "recent_events": recent_events,
     }
+
+
+@router.get("/metrics/quality")
+async def quality_metrics(
+    request: Request,
+    project_id: str = Query("", description="Filter by project ID (empty = all projects)"),
+    days: int = Query(30, description="Rolling window in days (e.g. 30, 60, 90)"),
+) -> dict[str, Any]:
+    """Quality metrics: test coverage delta, defect density, rework ratio (MET-5)."""
+    proj = getattr(request.app.state, "quality_metrics_projection", None)
+    if proj is None:
+        return {
+            "coverage_deltas": [],
+            "defect_density": {
+                "bug_count": 0,
+                "lines_changed": 0,
+                "density": 0.0,
+                "window_days": days,
+            },
+            "rework_ratio": {
+                "rework_loc": 0,
+                "total_loc": 0,
+                "ratio": 0.0,
+                "window_days": days,
+            },
+            "window_days": days,
+        }
+    result: dict[str, Any] = proj.get_quality_summary(project_id=project_id, days=days)
+    return result

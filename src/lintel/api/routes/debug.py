@@ -211,8 +211,13 @@ async def run_node(body: DebugRunNodeRequest, request: Request) -> DebugRunNodeR
     # Launch the node in the background
     task = asyncio.create_task(
         _run_node_background(
-            body.node_name, run_id, stage_id, state, config,
-            pipeline_store, body.timeout_seconds,
+            body.node_name,
+            run_id,
+            stage_id,
+            state,
+            config,
+            pipeline_store,
+            body.timeout_seconds,
         )
     )
     _background_tasks.add(task)
@@ -274,9 +279,7 @@ async def _run_node_background(
                 workspace_path=state.get("workspace_path"),
             )
         except Exception as exc:
-            logger.exception(
-                "debug_auto_setup_workspace_failed", run_id=run_id, error=str(exc)
-            )
+            logger.exception("debug_auto_setup_workspace_failed", run_id=run_id, error=str(exc))
             # Continue anyway — the node will fail with a clear error
 
     module_path, func_name = NODE_REGISTRY[node_name]
@@ -328,9 +331,7 @@ async def _run_node_background(
                     )
                 updated_stages.append(s)
             final_status = (
-                PipelineStatus.SUCCEEDED
-                if status == "completed"
-                else PipelineStatus.FAILED
+                PipelineStatus.SUCCEEDED if status == "completed" else PipelineStatus.FAILED
             )
             updated_run = replace(
                 run,
