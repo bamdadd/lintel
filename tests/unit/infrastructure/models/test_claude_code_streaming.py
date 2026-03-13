@@ -9,6 +9,8 @@ import pytest
 from lintel.contracts.types import SandboxResult
 from lintel.infrastructure.models.claude_code import ClaudeCodeProvider
 
+VALID_CREDS = '{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}'
+
 
 def _ok(stdout: str = "", stderr: str = "") -> SandboxResult:
     return SandboxResult(exit_code=0, stdout=stdout, stderr=stderr)
@@ -31,6 +33,16 @@ def _make_sandbox(execute_results: list[SandboxResult]) -> AsyncMock:
     return manager
 
 
+def _preflight() -> list[SandboxResult]:
+    """Pre-flight: version check + credentials check."""
+    return [_ok("claude 1.0.0"), _ok(VALID_CREDS)]
+
+
+def _setup_calls() -> list[SandboxResult]:
+    """System prompt write + script write + nohup start + touch output."""
+    return [_ok(), _ok(), _ok(), _ok()]
+
+
 class TestInvokeStreamingHappyPath:
     """Process writes output, exits cleanly."""
 
@@ -38,27 +50,17 @@ class TestInvokeStreamingHappyPath:
     async def test_single_poll_success(self) -> None:
         manager = _make_sandbox(
             [
-                # Pre-flight: version + creds
-                _ok("claude 1.0.0"),
-                _ok(),
-                # Start nohup
-                _ok(),
-                # Touch output file
-                _ok(),
+                *_preflight(),
+                *_setup_calls(),
                 # --- Poll iteration 1 ---
-                # exit check: process done (exit code written)
-                _ok("0"),
-                # wc -l: 1 line of output
-                _ok("1"),
-                # sed: read line 1
-                _ok(STREAM_RESULT_LINE),
+                _ok("0"),  # exit check: process done
+                _ok("1"),  # wc -l: 1 line
+                _ok(STREAM_RESULT_LINE),  # head -5 peek (auth check, first output)
+                _ok(STREAM_RESULT_LINE),  # sed: read line 1
                 # --- After loop ---
-                # cat output file
-                _ok(STREAM_RESULT_LINE),
-                # cat exit file
-                _ok("0"),
-                # rm cleanup
-                _ok(),
+                _ok(STREAM_RESULT_LINE),  # cat output file
+                _ok("0"),  # cat exit file
+                _ok(),  # rm cleanup
             ]
         )
 
@@ -83,37 +85,28 @@ class TestInvokeStreamingDeadProcess:
     @patch("lintel.infrastructure.models.claude_code.STREAM_POLL_INTERVAL", 0.01)
     async def test_detects_dead_process_after_grace(self) -> None:
         """After startup grace, detects no process and bails out."""
-        # We need enough polls to pass the grace period (startup_grace_polls=10)
-        # then max_stale_polls=5 more to detect death.
-        # Each poll: exit_check + wc_count (+ pgrep after grace)
         poll_responses: list[SandboxResult] = []
 
         # Grace period polls (10 polls): exit_check=running, wc=0 each
         for _ in range(10):
-            poll_responses.append(_ok("running"))  # exit check
-            poll_responses.append(_ok("0"))  # wc -l
+            poll_responses.append(_ok("running"))
+            poll_responses.append(_ok("0"))
 
         # Post-grace polls (5 polls): exit_check=running, wc=0, pgrep=not found
         for _ in range(5):
-            poll_responses.append(_ok("running"))  # exit check
-            poll_responses.append(_ok("0"))  # wc -l
-            poll_responses.append(_ok("1"))  # pgrep: not found (exit 0, stdout="1")
+            poll_responses.append(_ok("running"))
+            poll_responses.append(_ok("0"))
+            poll_responses.append(_ok("1"))  # pgrep: not found
 
         manager = _make_sandbox(
             [
-                # Pre-flight
-                _ok("claude 1.0.0"),
-                _ok(),
-                # Start nohup
-                _ok(),
-                # Touch output
-                _ok(),
-                # Poll iterations
+                *_preflight(),
+                *_setup_calls(),
                 *poll_responses,
                 # After loop: cat output, cat exit, rm
-                _ok(""),  # empty output
-                _ok("1"),  # exit code 1 (default)
-                _ok(),  # cleanup
+                _ok(""),
+                _ok("1"),
+                _ok(),
             ]
         )
 
@@ -121,7 +114,7 @@ class TestInvokeStreamingDeadProcess:
         result = await provider.invoke_streaming(
             "say hello",
             sandbox_id="sb-1",
-            timeout=600,  # large timeout — should bail early via dead detection
+            timeout=600,
         )
 
         assert result["exit_code"] == 1
@@ -134,7 +127,6 @@ class TestInvokeStreamingHardTimeout:
     @patch("lintel.infrastructure.models.claude_code.STREAM_POLL_INTERVAL", 0.01)
     async def test_hard_timeout_fires(self) -> None:
         """With a tiny timeout, the hard timeout wrapper kicks in."""
-        # Create an execute mock that always returns "running" / 0 lines
         manager = AsyncMock()
         manager.write_file = AsyncMock()
 
@@ -143,16 +135,14 @@ class TestInvokeStreamingHardTimeout:
         async def _execute(*args: object, **kwargs: object) -> SandboxResult:
             nonlocal call_count
             call_count += 1
-            # First 2 calls: pre-flight
+            # Pre-flight (2) + setup (4) = 6 calls
             if call_count == 1:
                 return _ok("claude 1.0.0")
             if call_count == 2:
-                return _ok()
-            # Next 2: nohup + touch
-            if call_count in (3, 4):
+                return _ok(VALID_CREDS)
+            if call_count <= 6:
                 return _ok()
             # All subsequent: poll loop — always "running" with no output
-            # Alternate: exit_check returns "running", wc returns "0"
             if call_count % 2 == 1:
                 return _ok("running")
             return _ok("0")
@@ -160,14 +150,12 @@ class TestInvokeStreamingHardTimeout:
         manager.execute = AsyncMock(side_effect=_execute)
 
         provider = ClaudeCodeProvider(manager)
-        # timeout=0.05 seconds — poll loop will be killed by wait_for
         result = await provider.invoke_streaming(
             "say hello",
             sandbox_id="sb-1",
             timeout=0.05,
         )
 
-        # Should complete (not hang) — content may be empty or contain poll artifacts
         assert isinstance(result["content"], str)
 
 
@@ -178,7 +166,7 @@ class TestInvokeStreamingCredentialFailure:
         manager = _make_sandbox(
             [
                 _ok("claude 1.0.0"),
-                _fail(),  # creds not found
+                _ok("MISSING"),  # creds not found
             ]
         )
         provider = ClaudeCodeProvider(manager)
