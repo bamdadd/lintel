@@ -125,6 +125,42 @@ class TestRowToEvent:
         event = _row_to_event(row)
         assert type(event) is EventEnvelope
 
+    def test_global_position_deserialized(self) -> None:
+        row: dict[str, object] = {
+            "event_id": uuid4(),
+            "event_type": "ThreadMessageReceived",
+            "schema_version": 1,
+            "occurred_at": datetime.now(UTC),
+            "actor_type": "system",
+            "actor_id": "",
+            "thread_ref": None,
+            "correlation_id": uuid4(),
+            "causation_id": None,
+            "payload": "{}",
+            "idempotency_key": None,
+            "global_position": 42,
+        }
+        event = _row_to_event(row)
+        assert event.global_position == 42
+
+    def test_global_position_none_when_absent(self) -> None:
+        """Rows without global_position (pre-migration) return None."""
+        row: dict[str, object] = {
+            "event_id": uuid4(),
+            "event_type": "EventEnvelope",
+            "schema_version": 1,
+            "occurred_at": datetime.now(UTC),
+            "actor_type": "system",
+            "actor_id": "",
+            "thread_ref": None,
+            "correlation_id": uuid4(),
+            "causation_id": None,
+            "payload": "{}",
+            "idempotency_key": None,
+        }
+        event = _row_to_event(row)
+        assert event.global_position is None
+
 
 # ---------------------------------------------------------------------------
 # PostgresEventStore with mocked pool
@@ -228,3 +264,79 @@ class TestPostgresEventStoreRead:
         events = await store.read_by_correlation(cid)
         assert events == []
         conn.fetch.assert_called_once()
+
+    async def test_read_by_event_type(self) -> None:
+        pool, conn = _mock_pool()
+        now = datetime.now(UTC)
+        eid = uuid4()
+        conn.fetch.return_value = [
+            {
+                "event_id": eid,
+                "event_type": "ThreadMessageReceived",
+                "schema_version": 1,
+                "occurred_at": now,
+                "actor_type": "system",
+                "actor_id": "sys",
+                "thread_ref": None,
+                "correlation_id": uuid4(),
+                "causation_id": None,
+                "payload": "{}",
+                "idempotency_key": None,
+            }
+        ]
+        store = PostgresEventStore(pool)
+        events = await store.read_by_event_type("ThreadMessageReceived", from_position=0, limit=10)
+        assert len(events) == 1
+        assert isinstance(events[0], ThreadMessageReceived)
+        # Verify the SQL uses global_position filtering
+        call_args = conn.fetch.call_args
+        assert "event_type" in call_args[0][0]
+        assert "global_position" in call_args[0][0]
+
+    async def test_read_by_time_range_with_types(self) -> None:
+        pool, conn = _mock_pool()
+        now = datetime.now(UTC)
+        conn.fetch.return_value = [
+            {
+                "event_id": uuid4(),
+                "event_type": "WorkflowStarted",
+                "schema_version": 1,
+                "occurred_at": now,
+                "actor_type": "system",
+                "actor_id": "sys",
+                "thread_ref": None,
+                "correlation_id": uuid4(),
+                "causation_id": None,
+                "payload": "{}",
+                "idempotency_key": None,
+            }
+        ]
+        store = PostgresEventStore(pool)
+        from datetime import timedelta
+
+        events = await store.read_by_time_range(
+            now - timedelta(hours=1),
+            now + timedelta(hours=1),
+            event_types=frozenset({"WorkflowStarted"}),
+        )
+        assert len(events) == 1
+        assert isinstance(events[0], WorkflowStarted)
+        # Verify the SQL includes event_type filtering via ANY
+        call_args = conn.fetch.call_args
+        assert "ANY" in call_args[0][0]
+
+    async def test_read_by_time_range_without_types(self) -> None:
+        pool, conn = _mock_pool()
+        conn.fetch.return_value = []
+        store = PostgresEventStore(pool)
+        from datetime import timedelta
+
+        now = datetime.now(UTC)
+        events = await store.read_by_time_range(
+            now - timedelta(hours=1),
+            now + timedelta(hours=1),
+        )
+        assert events == []
+        # Verify the SQL does NOT include event_type filter
+        call_args = conn.fetch.call_args
+        assert "ANY" not in call_args[0][0]
