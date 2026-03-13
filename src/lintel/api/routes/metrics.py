@@ -187,4 +187,5 @@ async def quality_metrics(
             },
             "window_days": days,
         }
-    return proj.get_quality_summary(project_id=project_id, days=days)
+    result: dict[str, Any] = proj.get_quality_summary(project_id=project_id, days=days)
+    return result

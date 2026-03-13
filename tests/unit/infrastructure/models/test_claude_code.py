@@ -82,7 +82,7 @@ class TestClaudeCodeProvider:
                     stdout='{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}',
                     stderr="",
                 ),
-                # _write_tmpfs_file: system prompt write via exec
+                # _write_tmpfs_file: system prompt written via exec (cat heredoc)
                 SandboxResult(exit_code=0, stdout="", stderr=""),
                 # actual claude --print invocation
                 SandboxResult(
@@ -100,6 +100,13 @@ class TestClaudeCodeProvider:
         assert result["content"] == "Implementation complete."
         assert result["exit_code"] == 0
         assert result["model"] == "claude-code"
+
+        # Verify system prompt was written via exec (not write_file — /tmp is tmpfs)
+        # The 3rd execute call is the _write_tmpfs_file heredoc for the system prompt
+        assert manager.execute.call_count == 4  # version, creds, sysprompt heredoc, claude
+        sysprompt_call = manager.execute.call_args_list[2]
+        sysprompt_job = sysprompt_call[0][1]  # SandboxJob
+        assert "/tmp/lintel-sysprompt-" in sysprompt_job.command
 
     async def test_expired_token_raises(self) -> None:
         manager = _make_sandbox(
