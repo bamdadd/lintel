@@ -312,9 +312,7 @@ async def test_read_by_event_type_from_position(event_store: PostgresEventStore)
     assert mid_pos is not None
     from_mid = await event_store.read_by_event_type("ThreadMessageReceived", from_position=mid_pos)
     assert len(from_mid) >= 3
-    assert all(
-        e.global_position is not None and e.global_position >= mid_pos for e in from_mid
-    )
+    assert all(e.global_position is not None and e.global_position >= mid_pos for e in from_mid)
 
 
 # ---------------------------------------------------------------------------
@@ -437,6 +435,4 @@ async def test_read_all_uses_global_position(event_store: PostgresEventStore) ->
     assert mid_pos is not None
 
     from_mid = await event_store.read_all(from_position=mid_pos)
-    assert all(
-        e.global_position is not None and e.global_position >= mid_pos for e in from_mid
-    )
+    assert all(e.global_position is not None and e.global_position >= mid_pos for e in from_mid)

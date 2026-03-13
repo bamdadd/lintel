@@ -218,8 +218,8 @@ class TestCatchUpSubscribe:
         await asyncio.sleep(0.01)
 
         handler = _RecordingHandler()
-        # Skip first 3 events (positions 0, 1, 2)
-        sub = await catch_up_subscribe(store, bus, frozenset({"TypeA"}), handler, from_position=3)
+        # Skip first 3 events (1-based positions 1, 2, 3) — keep positions 4, 5
+        sub = await catch_up_subscribe(store, bus, frozenset({"TypeA"}), handler, from_position=4)
 
         assert len(handler.events) == 2
         assert handler.events[0].event_id == events[3].event_id

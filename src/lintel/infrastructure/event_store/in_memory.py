@@ -82,7 +82,7 @@ class InMemoryEventStore:
         all_events: list[EventEnvelope] = []
         for stream in self._streams.values():
             all_events.extend(stream)
-        all_events.sort(key=lambda e: (e.global_position or 0))
+        all_events.sort(key=lambda e: e.global_position or 0)
         filtered = [e for e in all_events if (e.global_position or 0) >= from_position]
         return filtered[:limit]
 
@@ -109,7 +109,7 @@ class InMemoryEventStore:
             for event in stream:
                 if event.event_type == event_type:
                     all_events.append(event)
-        all_events.sort(key=lambda e: (e.global_position or 0))
+        all_events.sort(key=lambda e: e.global_position or 0)
         filtered = [e for e in all_events if (e.global_position or 0) >= from_position]
         return filtered[:limit]
 

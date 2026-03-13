@@ -121,9 +121,7 @@ class TestInMemoryEventStore:
             "ThreadMessageReceived", from_position=mid_pos
         )
         assert len(from_mid) == 3
-        assert all(
-            e.global_position is not None and e.global_position >= mid_pos for e in from_mid
-        )
+        assert all(e.global_position is not None and e.global_position >= mid_pos for e in from_mid)
 
     async def test_read_by_event_type_empty(self) -> None:
         results = await self.store.read_by_event_type("NonExistent")
@@ -186,18 +184,14 @@ class TestInMemoryEventStore:
 
     async def test_global_position_monotonically_increasing(self) -> None:
         for i in range(5):
-            await self.store.append(
-                f"s-{i}", [EventEnvelope(payload={"i": i})]
-            )
+            await self.store.append(f"s-{i}", [EventEnvelope(payload={"i": i})])
         all_events = await self.store.read_all()
         positions = [e.global_position for e in all_events]
         assert positions == [1, 2, 3, 4, 5]
 
     async def test_read_all_from_position_uses_global_position(self) -> None:
         for i in range(5):
-            await self.store.append(
-                f"s-{i}", [EventEnvelope(payload={"i": i})]
-            )
+            await self.store.append(f"s-{i}", [EventEnvelope(payload={"i": i})])
         # global_positions will be 1..5
         from_3 = await self.store.read_all(from_position=3)
         assert len(from_3) == 3
