@@ -8,7 +8,6 @@ from uuid import uuid4
 
 import asyncpg
 import pytest
-
 from lintel.contracts.events import ThreadMessageReceived, WorkflowStarted
 from lintel.contracts.types import ActorType, ThreadRef
 from lintel.infrastructure.event_store.postgres import (

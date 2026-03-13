@@ -1,4 +1,4 @@
-.PHONY: help install test test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
+.PHONY: help install test test-contracts test-app test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -9,11 +9,17 @@ install: ## Install all dependencies
 test: ## Run all tests (pass ARGS= for extra pytest flags)
 	uv run pytest $(ARGS)
 
+test-contracts: ## Run contracts package tests
+	uv run --package lintel-contracts pytest packages/contracts/tests/ -v
+
+test-app: ## Run app package tests (in-memory only)
+	uv run --package lintel pytest packages/app/tests/ -v
+
 test-unit: ## Run unit tests (in-memory only, parallelised)
-	uv run pytest tests/unit -v -n auto
+	uv run pytest packages/app/tests/ packages/contracts/tests/ -v -n auto
 
 test-postgres: ## Run unit tests against both memory and postgres backends
-	uv run pytest tests/unit -v --run-postgres
+	uv run pytest packages/app/tests/ -v --run-postgres
 
 test-integration: migrate ## Run integration tests (requires postgres + migrations)
 	uv run pytest tests/integration -v
@@ -25,15 +31,15 @@ test-sandbox: ## Sandbox smoke + stage tests (requires Docker + sandbox image)
 	uv run pytest tests/integration/sandbox -v --run-sandbox
 
 lint: ## Check linting and formatting
-	uv run ruff check src/ tests/
-	uv run ruff format --check src/ tests/
+	uv run ruff check packages/ tests/
+	uv run ruff format --check packages/ tests/
 
 typecheck: ## Run mypy strict type checking
-	uv run mypy src/lintel/
+	uv run mypy packages/contracts/src/lintel/contracts/ packages/app/src/lintel/
 
 format: ## Auto-fix formatting and lint
-	uv run ruff format src/ tests/
-	uv run ruff check --fix src/ tests/
+	uv run ruff format packages/ tests/
+	uv run ruff check --fix packages/ tests/
 
 serve: ## Start dev server on :8000 (in-memory storage)
 	LINTEL_STORAGE_BACKEND=memory uv run uvicorn lintel.api.app:app --reload --host 0.0.0.0 --port 8000

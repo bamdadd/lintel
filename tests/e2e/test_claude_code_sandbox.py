@@ -13,7 +13,6 @@ from __future__ import annotations
 import os
 
 import pytest
-
 from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
 

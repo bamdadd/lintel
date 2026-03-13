@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import asyncpg
 import pytest
-
 from lintel.contracts.events import (
     HumanApprovalGranted,
     ThreadMessageReceived,

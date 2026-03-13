@@ -7,7 +7,6 @@ from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-
 from lintel.api.app import create_app
 
 if TYPE_CHECKING:

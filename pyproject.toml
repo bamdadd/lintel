@@ -1,50 +1,10 @@
 [project]
-name = "lintel"
+name = "lintel-workspace"
 version = "0.1.0"
-description = "Open Source AI Collaboration Infrastructure"
 requires-python = ">=3.12"
-dependencies = [
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.34",
-    "asyncpg>=0.30",
-    "sqlalchemy[asyncio]>=2.0",
-    "langgraph>=0.3",
-    "langgraph-checkpoint-postgres>=2.0",
-    "presidio-analyzer>=2.2",
-    "presidio-anonymizer>=2.2",
-    "litellm>=1.55",
-    "slack-bolt>=1.21",
-    "slack-sdk>=3.33",
-    "pydantic>=2.10",
-    "pydantic-settings>=2.7",
-    "structlog>=24.4",
-    "httpx>=0.28",
-    "tenacity>=9.0",
-    "opentelemetry-sdk>=1.29",
-    "opentelemetry-exporter-otlp>=1.29",
-    "cryptography>=44.0",
-    "nats-py>=2.9",
-    "fastapi-mcp>=0.4.0",
-    "boto3>=1.35",
-]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.3",
-    "pytest-asyncio>=0.24",
-    "pytest-cov>=6.0",
-    "testcontainers[postgres,nats]>=4.9",
-    "ruff>=0.8",
-    "mypy>=1.13",
-    "pre-commit>=4.0",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/lintel"]
+[tool.uv.workspace]
+members = ["packages/*"]
 
 [tool.ruff]
 line-length = 100
@@ -56,7 +16,8 @@ select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM", "TCH", "RUF"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["packages/contracts/tests", "packages/app/tests", "tests"]
+importmode = "importlib"
 
 [tool.mypy]
 python_version = "3.12"
@@ -80,4 +41,11 @@ disallow_untyped_calls = false
 dev = [
     "anthropic[bedrock]>=0.84.0",
     "pytest-xdist>=3.8.0",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "testcontainers[postgres,nats]>=4.9",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pre-commit>=4.0",
 ]

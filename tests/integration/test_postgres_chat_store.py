@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import asyncpg
 import pytest
-
 from lintel.infrastructure.persistence.stores import PostgresChatStore
 
 if TYPE_CHECKING:
