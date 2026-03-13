@@ -266,7 +266,13 @@ class ClaudeCodeProvider:
         )
 
         # Write the command to a script to avoid quoting issues with nohup sh -c
-        script = f"#!/bin/sh\n{full_cmd}\necho $? > {exit_file}\n"
+        # Use trap to ensure exit file is written even if the process is killed
+        script = (
+            f"#!/bin/sh\n"
+            f"trap 'echo 130 > {exit_file}' INT TERM HUP\n"
+            f"{full_cmd}\n"
+            f"echo $? > {exit_file}\n"
+        )
         await self._sandbox.write_file(sandbox_id, script_file, script)
 
         # Start Claude Code in background
@@ -287,72 +293,119 @@ class ClaudeCodeProvider:
 
         # Poll the output file for new lines
         lines_seen = 0
-        elapsed = 0
         final_content_parts: list[str] = []
 
-        while elapsed < timeout:
-            await asyncio.sleep(STREAM_POLL_INTERVAL)
-            elapsed += STREAM_POLL_INTERVAL
+        # Number of consecutive polls with no output and no process — detects silent death
+        stale_polls = 0
+        max_stale_polls = 5  # ~15s with STREAM_POLL_INTERVAL=3
 
-            # Check if process finished
-            exit_check = await self._sandbox.execute(
-                sandbox_id,
-                SandboxJob(
-                    command=f"cat {exit_file} 2>/dev/null || echo running",
-                    timeout_seconds=15,
-                ),
-            )
-            process_done = exit_check.stdout.strip() != "running"
+        async def _poll_loop() -> None:
+            nonlocal lines_seen, stale_polls
+            elapsed = 0
+            while elapsed < timeout:
+                await asyncio.sleep(STREAM_POLL_INTERVAL)
+                elapsed += STREAM_POLL_INTERVAL
 
-            # Read new lines from the output
-            tail_result = await self._sandbox.execute(
-                sandbox_id,
-                SandboxJob(
-                    command=f"wc -l < {output_file}",
-                    timeout_seconds=15,
-                ),
-            )
-            try:
-                total_lines = int(tail_result.stdout.strip())
-            except ValueError:
-                total_lines = 0
-
-            if total_lines > lines_seen:
-                # Read only new lines
-                skip = lines_seen + 1
-                new_lines_result = await self._sandbox.execute(
+                # Check if process finished
+                exit_check = await self._sandbox.execute(
                     sandbox_id,
                     SandboxJob(
-                        command=f"sed -n '{skip},{total_lines}p' {output_file}",
-                        timeout_seconds=30,
+                        command=f"cat {exit_file} 2>/dev/null || echo running",
+                        timeout_seconds=15,
                     ),
                 )
-                for line in new_lines_result.stdout.strip().split("\n"):
-                    if not line.strip():
-                        continue
-                    activity = self._parse_stream_line(line)
-                    if activity and on_activity:
-                        await on_activity(activity)
-                    # Collect text content for final result
-                    try:
-                        obj = json.loads(line)
-                        if obj.get("type") == "text":
-                            final_content_parts.append(obj.get("text", ""))
-                        elif obj.get("type") == "result":
-                            final_content_parts.append(obj.get("result", ""))
-                    except json.JSONDecodeError:
-                        pass
-                lines_seen = total_lines
+                process_done = exit_check.stdout.strip() != "running"
 
-            if process_done:
-                break
+                # Read new lines from the output
+                tail_result = await self._sandbox.execute(
+                    sandbox_id,
+                    SandboxJob(
+                        command=f"wc -l < {output_file}",
+                        timeout_seconds=15,
+                    ),
+                )
+                try:
+                    total_lines = int(tail_result.stdout.strip())
+                except ValueError:
+                    total_lines = 0
+
+                if total_lines > lines_seen:
+                    stale_polls = 0
+                    # Read only new lines
+                    skip = lines_seen + 1
+                    new_lines_result = await self._sandbox.execute(
+                        sandbox_id,
+                        SandboxJob(
+                            command=f"sed -n '{skip},{total_lines}p' {output_file}",
+                            timeout_seconds=30,
+                        ),
+                    )
+                    for line in new_lines_result.stdout.strip().split("\n"):
+                        if not line.strip():
+                            continue
+                        activity = self._parse_stream_line(line)
+                        if activity and on_activity:
+                            await on_activity(activity)
+                        # Collect text content for final result
+                        try:
+                            obj = json.loads(line)
+                            if obj.get("type") == "text":
+                                final_content_parts.append(obj.get("text", ""))
+                            elif obj.get("type") == "result":
+                                final_content_parts.append(obj.get("result", ""))
+                        except json.JSONDecodeError:
+                            pass
+                    lines_seen = total_lines
+                elif not process_done:
+                    # No new output and process hasn't finished — check if it's still alive
+                    proc_check = await self._sandbox.execute(
+                        sandbox_id,
+                        SandboxJob(
+                            command=f"pgrep -f 'lintel-run-{invocation_id}' >/dev/null 2>&1"
+                            f" || pgrep -f 'claude.*print' >/dev/null 2>&1"
+                            f"; echo $?",
+                            timeout_seconds=10,
+                        ),
+                    )
+                    proc_alive = proc_check.stdout.strip() == "0"
+                    if not proc_alive:
+                        stale_polls += 1
+                        if stale_polls >= max_stale_polls:
+                            logger.warning(
+                                "claude_code_process_dead",
+                                sandbox_id=sandbox_id[:12],
+                                invocation_id=invocation_id,
+                                stale_polls=stale_polls,
+                            )
+                            break
+
+                if process_done:
+                    break
+
+        try:
+            await asyncio.wait_for(_poll_loop(), timeout=timeout + 30)
+        except TimeoutError:
+            logger.warning(
+                "claude_code_streaming_hard_timeout",
+                sandbox_id=sandbox_id[:12],
+                invocation_id=invocation_id,
+                timeout=timeout,
+            )
 
         # Read final output for complete parsing
         final_result = await self._sandbox.execute(
             sandbox_id,
             SandboxJob(command=f"cat {output_file}", timeout_seconds=10),
         )
-        exit_code_str = exit_check.stdout.strip() if process_done else "1"
+        # Read exit code from the file (may not exist if process died)
+        exit_read = await self._sandbox.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"cat {exit_file} 2>/dev/null || echo 1",
+                timeout_seconds=10,
+            ),
+        )
+        exit_code_str = exit_read.stdout.strip()
         try:
             exit_code = int(exit_code_str)
         except ValueError:

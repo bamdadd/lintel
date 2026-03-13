@@ -7,6 +7,10 @@
     "lintel": {
       "type": "http",
       "url": "http://localhost:8000/mcp"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
     }
   }
 }
