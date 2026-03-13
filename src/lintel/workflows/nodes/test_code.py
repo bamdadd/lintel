@@ -201,35 +201,71 @@ async def _build_changed_tests_command(
     sandbox_id: str,
     workdir: str,
 ) -> str | None:
-    """Find test files changed by the implement stage and build a targeted command.
+    """Find test files for changed code and build a targeted pytest command.
 
-    Returns a pytest command that runs only the changed/new test files,
-    or None if no test files were changed (falls back to full suite).
+    Looks at both changed test files AND changed source files (mapping
+    src/foo/bar.py → tests/**/test_bar.py) so that the test run covers
+    code the LLM actually touched rather than the entire suite.
+
+    Returns a pytest command or None (falls back to full suite).
     """
     from lintel.contracts.types import SandboxJob
 
-    # Find test files changed vs main branch (covers all implement commits)
+    # 1. Find ALL changed files vs main
     result = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
             command=(
-                "{ git diff --name-only origin/main -- 'tests/' 2>/dev/null"
-                " || git diff --name-only main -- 'tests/' 2>/dev/null"
-                " || git diff --name-only HEAD~1 -- 'tests/' 2>/dev/null; }"
-                " | grep -E 'test_.*\\.py$' | sort -u || true"
+                "{ git diff --name-only origin/main 2>/dev/null"
+                " || git diff --name-only main 2>/dev/null"
+                " || git diff --name-only HEAD~1 2>/dev/null; }"
+                " | sort -u || true"
             ),
             workdir=workdir,
             timeout_seconds=10,
         ),
     )
-    changed_files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
-    if not changed_files:
+    all_changed = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+    if not all_changed:
+        return None
+
+    # 2. Collect changed test files directly
+    test_files: set[str] = set()
+    source_basenames: set[str] = set()
+    for f in all_changed:
+        if "/test_" in f and f.endswith(".py"):
+            test_files.add(f)
+        elif f.endswith(".py") and "/tests/" not in f:
+            # Extract basename: src/lintel/domain/foo.py → foo
+            import os
+
+            basename = os.path.splitext(os.path.basename(f))[0]
+            if basename != "__init__":
+                source_basenames.add(basename)
+
+    # 3. Find corresponding test files for changed source files
+    if source_basenames:
+        # Build a find command to locate test files matching changed sources
+        patterns = " -o ".join(f'-name "test_{b}.py"' for b in source_basenames)
+        find_result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"find tests/ -type f \\( {patterns} \\) 2>/dev/null || true",
+                workdir=workdir,
+                timeout_seconds=10,
+            ),
+        )
+        for f in find_result.stdout.strip().split("\n"):
+            if f.strip():
+                test_files.add(f.strip())
+
+    if not test_files:
         return None
 
     path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
-    files_arg = " ".join(changed_files)
+    files_arg = " ".join(sorted(test_files))
     logger.info(
-        "test_discovery: running %d changed test files instead of full suite",
-        len(changed_files),
+        "test_discovery: running %d targeted test files instead of full suite",
+        len(test_files),
     )
     return f"{path_prefix} && uv run python -m pytest {files_arg} -v 2>&1"

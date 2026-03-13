@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 MAX_FIX_ATTEMPTS = 3
+MAX_TDD_FIX_ATTEMPTS = 2
 
 GENERATE_SYSTEM_PROMPT = """\
 You are a senior software engineer. Given a plan and existing file contents, \
@@ -503,15 +504,73 @@ async def _implement_tdd(
         await append_log(config, "implement", "TDD session failed", state)
         return "Implementation failed.", False, []
 
-    # Verify final test state
-    test_output, test_exit = await _run_tests(
-        config, state, sandbox_manager, sandbox_id, workspace_path
+    # Detect "no changes" — LLM concluded everything was already done
+    from lintel.contracts.types import SandboxJob
+
+    diff_check = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command="git diff --name-only origin/main 2>/dev/null | head -20",
+            workdir=workspace_path,
+            timeout_seconds=10,
+        ),
     )
-    test_passed = test_exit == 0
-    if test_passed:
-        await append_log(config, "implement", "Final tests: PASSED", state)
-    else:
-        await append_log(config, "implement", "Final tests: FAILED", state)
+    changed_files = [f for f in diff_check.stdout.strip().split("\n") if f.strip()]
+    if not changed_files:
+        await append_log(config, "implement", "No files changed — skipping tests", state)
+        return "No changes made.", True, [usage]
+
+    await append_log(config, "implement", f"{len(changed_files)} file(s) changed", state)
+
+    # Test/fix loop — give the LLM a chance to fix failures
+    test_passed = False
+    test_output = ""
+    for attempt in range(MAX_TDD_FIX_ATTEMPTS + 1):
+        test_output, test_exit = await _run_tests(
+            config, state, sandbox_manager, sandbox_id, workspace_path
+        )
+        if test_exit == 0:
+            test_passed = True
+            await append_log(config, "implement", "Tests: PASSED", state)
+            break
+
+        if attempt < MAX_TDD_FIX_ATTEMPTS:
+            await append_log(
+                config,
+                "implement",
+                f"Tests failed (attempt {attempt + 1}/{MAX_TDD_FIX_ATTEMPTS}) — fixing...",
+                state,
+            )
+            await _log_test_output(test_output, config, state)
+            try:
+                fix_result = await agent_runtime.execute_step(
+                    thread_ref=thread_ref,
+                    agent_role=AgentRole.CODER,
+                    step_name="implement_fix",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {
+                            "role": "user",
+                            "content": (
+                                f"## Test Failures\n```\n{test_output}\n```\n\n"
+                                "Fix ONLY the failing tests. Do not change anything else."
+                            ),
+                        },
+                    ],
+                    sandbox_manager=sandbox_manager,
+                    sandbox_id=sandbox_id,
+                    on_activity=_on_activity,
+                )
+                fix_usage = extract_token_usage("implement_tdd_fix", fix_result)
+                usage["input_tokens"] += fix_usage.get("input_tokens", 0)
+                usage["output_tokens"] += fix_usage.get("output_tokens", 0)
+            except Exception:
+                logger.exception("implement_tdd_fix_failed")
+                await append_log(config, "implement", "Fix attempt failed", state)
+                break
+
+    if not test_passed:
+        await append_log(config, "implement", "Tests still failing after fix attempts", state)
         await _log_test_output(test_output, config, state)
 
     # Verify lint
@@ -520,9 +579,9 @@ async def _implement_tdd(
     )
     lint_passed = lint_exit == 0
     if lint_passed:
-        await append_log(config, "implement", "Final lint: PASSED", state)
+        await append_log(config, "implement", "Lint: PASSED", state)
     else:
-        await append_log(config, "implement", "Final lint: FAILED", state)
+        await append_log(config, "implement", "Lint: FAILED", state)
         await append_log(
             config, "implement", lint_output[-2000:] if lint_output else "No output", state
         )
@@ -974,9 +1033,7 @@ async def _run_tests(
                 timeout_seconds=60,
             ),
         )
-        await append_log(
-            config, "implement", f"git pull: {pull_result.stdout[:80]}", state
-        )
+        await append_log(config, "implement", f"git pull: {pull_result.stdout[:80]}", state)
     except Exception:
         logger.warning("implement_git_pull_failed")
 
