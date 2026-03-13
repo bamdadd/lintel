@@ -5,9 +5,15 @@ from fastapi import Request
 from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
+from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
+
+
+def get_quality_metrics_projection(request: Request) -> QualityMetricsProjection:
+    """Get quality metrics projection from app state."""
+    return request.app.state.quality_metrics_projection  # type: ignore[no-any-return]
 
 
 def get_thread_status_projection(request: Request) -> ThreadStatusProjection:

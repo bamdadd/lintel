@@ -34,3 +34,37 @@ class OverviewMetricsResponse(BaseModel):
     pii: PiiStatsResponse
     sandboxes: SandboxOverview
     connections: ConnectionOverview
+
+
+# --- MET-5: Quality Metrics ---
+
+
+class CoverageDeltaEntry(BaseModel):
+    project_id: str
+    commit_sha: str
+    pr_id: str
+    coverage_before: float
+    coverage_after: float
+    delta: float
+    occurred_at: str
+
+
+class DefectDensityResponse(BaseModel):
+    bug_count: int
+    lines_changed: int
+    density: float
+    window_days: int
+
+
+class ReworkRatioResponse(BaseModel):
+    rework_loc: int
+    total_loc: int
+    ratio: float
+    window_days: int
+
+
+class QualityMetricsResponse(BaseModel):
+    coverage_deltas: list[CoverageDeltaEntry]
+    defect_density: DefectDensityResponse
+    rework_ratio: ReworkRatioResponse
+    window_days: int

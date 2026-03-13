@@ -85,6 +85,7 @@ from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
 from lintel.infrastructure.projections.audit import AuditProjection
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
+from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
@@ -479,14 +480,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     thread_status = ThreadStatusProjection()
     task_backlog = TaskBacklogProjection()
     audit_projection = AuditProjection(stores["audit_entry_store"])
+    quality_metrics = QualityMetricsProjection()
     engine = InMemoryProjectionEngine(event_bus=event_bus)
     await engine.register(thread_status)
     await engine.register(task_backlog)
     await engine.register(audit_projection)
+    await engine.register(quality_metrics)
     await engine.start()
 
     app.state.thread_status_projection = thread_status
     app.state.task_backlog_projection = task_backlog
+    app.state.quality_metrics_projection = quality_metrics
     app.state.projection_engine = engine
     sandbox_manager = DockerSandboxManager()
     app.state.sandbox_manager = sandbox_manager
