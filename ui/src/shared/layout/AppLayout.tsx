@@ -52,9 +52,11 @@ import {
   IconChartBar,
   IconFlask,
   IconBulb,
+  IconBug,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
+import { ClaudeCredentialsBanner } from '@/shared/components/ClaudeCredentialsBanner';
 import { CommandPalette } from '@/shared/components/CommandPalette';
 import { ConnectionStatus } from '@/shared/components/ConnectionStatus';
 
@@ -83,6 +85,7 @@ const navSections: NavSection[] = [
       { label: 'Sandboxes', path: '/sandboxes', icon: IconBox },
       { label: 'Artifacts', path: '/artifacts', icon: IconPackage },
       { label: 'Test Results', path: '/test-results', icon: IconTestPipe2 },
+      { label: 'Debug', path: '/debug', icon: IconBug },
     ],
   },
   {
@@ -176,6 +179,7 @@ export function AppLayout() {
             <Title order={3}>Lintel</Title>
           </Group>
           <Group gap="sm">
+            <ClaudeCredentialsBanner />
             <ConnectionStatus />
             <ActionIcon
               variant="default"

@@ -69,7 +69,7 @@ async def analyse_code(
         try:
             from lintel.workflows.nodes._codebase_context import gather_codebase_context
 
-            workspace_path = state.get("workspace_path", "/workspace/repo")
+            workspace_path = state.get("workspace_path") or "/workspace/repo"
             codebase_context = await gather_codebase_context(
                 sandbox_manager, sandbox_id, repo_path=workspace_path
             )

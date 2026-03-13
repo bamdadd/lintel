@@ -150,7 +150,30 @@ class AgentRuntime:
             ],
         )
 
+        logger.info(
+            "agent_step_start",
+            agent_role=agent_role.value,
+            step_name=step_name,
+            message_count=len(messages),
+            tool_count=len(tools) if tools else 0,
+            has_sandbox=sandbox_id is not None,
+            sandbox_id=sandbox_id[:12] if sandbox_id else None,
+            max_iterations=max_iterations,
+            correlation_id=str(cid),
+        )
+
         policy = await self._model_router.select_model(agent_role, step_name)
+
+        logger.info(
+            "agent_step_model_selected",
+            agent_role=agent_role.value,
+            step_name=step_name,
+            provider=policy.provider,
+            model=policy.model_name,
+            max_tokens=policy.max_tokens,
+            temperature=policy.temperature,
+        )
+
         await self._event_store.append(
             thread_ref.stream_id,
             [
@@ -214,11 +237,15 @@ class AgentRuntime:
         has_tool_calls = bool(result.get("tool_calls"))
         logger.info(
             "model_initial_response",
+            agent_role=agent_role.value,
             step_name=step_name,
+            provider=policy.provider,
             has_tool_calls=has_tool_calls,
             tool_count=len(result.get("tool_calls", [])),
             content_length=len(result.get("content", "") or ""),
+            content_preview=(result.get("content", "") or "")[:200],
             tools_provided=len(all_tools),
+            usage=result.get("usage", {}),
         )
 
         # Claude Code handles its own tool loop — skip ours
@@ -402,6 +429,17 @@ class AgentRuntime:
             ],
         )
 
+        logger.info(
+            "agent_step_stream_start",
+            agent_role=agent_role.value,
+            step_name=step_name,
+            provider=policy.provider,
+            model=policy.model_name,
+            message_count=len(messages),
+            has_sandbox=sandbox_id is not None,
+            sandbox_id=sandbox_id[:12] if sandbox_id else None,
+        )
+
         # Claude Code uses invoke_streaming via on_activity callback
         if policy.provider == "claude_code":
             model_kwargs: dict[str, Any] = {}
@@ -434,6 +472,16 @@ class AgentRuntime:
                 },
                 "model": policy.model_name,
             }
+
+        logger.info(
+            "agent_step_stream_complete",
+            agent_role=agent_role.value,
+            step_name=step_name,
+            provider=policy.provider,
+            content_length=len(full_content),
+            content_preview=full_content[:200],
+            usage=result.get("usage", {}),
+        )
 
         await self._event_store.append(
             thread_ref.stream_id,

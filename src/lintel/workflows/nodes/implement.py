@@ -178,7 +178,7 @@ async def spawn_implementation(
 
     plan = state.get("plan", {})
     messages = state.get("sanitized_messages", [])
-    workspace_path = state.get("workspace_path", "/workspace/repo")
+    workspace_path = state.get("workspace_path") or "/workspace/repo"
 
     # Read project guidelines
     guidelines = await _read_guidelines(sandbox_manager, sandbox_id, workspace_path)

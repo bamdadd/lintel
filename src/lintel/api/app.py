@@ -30,6 +30,7 @@ from lintel.api.routes import (
     chat,
     compliance,
     credentials,
+    debug,
     environments,
     events,
     experimentation,
@@ -573,6 +574,7 @@ def create_app() -> FastAPI:
     app.include_router(compliance.router, prefix="/api/v1", tags=["compliance"])
     app.include_router(experimentation.router, prefix="/api/v1", tags=["experimentation"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+    app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
 
     # Expose all API endpoints as MCP tools/resources
     from fastapi_mcp import FastApiMCP  # type: ignore[import-untyped]

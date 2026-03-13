@@ -76,7 +76,7 @@ async def research_codebase(
     if sandbox_manager is not None and sandbox_id is not None:
         await append_log(config, "research", "Reading codebase from sandbox...", state)
         try:
-            workspace_path = state.get("workspace_path", "/workspace/repo")
+            workspace_path = state.get("workspace_path") or "/workspace/repo"
             codebase_context = await _gather_context(sandbox_manager, sandbox_id, workspace_path)
         except Exception:
             logger.warning("research_sandbox_context_failed", exc_info=True)

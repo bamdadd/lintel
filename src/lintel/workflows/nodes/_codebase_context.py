@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
+
+import structlog
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import SandboxManager
     from lintel.contracts.types import SandboxResult
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 # Files that are typically useful for understanding a project
 CONTEXT_FILES = (
@@ -67,15 +68,21 @@ async def gather_codebase_context(
     Uses tree/ls for structure, grep for key patterns, and reads important files.
     Returns a formatted string suitable for inclusion in a planner prompt.
     """
+    logger.info(
+        "codebase_context_gathering",
+        sandbox_id=sandbox_id[:12],
+        repo_path=repo_path,
+    )
+
     # Verify the repo path exists before gathering context
     repo_check = await _run(
         sandbox_manager, sandbox_id, f"test -d {repo_path} && echo EXISTS", workdir="/"
     )
     if "EXISTS" not in repo_check:
         logger.error(
-            "codebase_context_repo_not_found repo_path=%s sandbox_id=%s",
-            repo_path,
-            sandbox_id,
+            "codebase_context_repo_not_found",
+            repo_path=repo_path,
+            sandbox_id=sandbox_id[:12],
         )
         msg = (
             f"Repository not found at {repo_path} in sandbox "
@@ -152,6 +159,15 @@ async def gather_codebase_context(
             _add(f"## {label}\n```\n{grep_out}\n```")
 
     if not sections:
+        logger.warning("codebase_context_empty", sandbox_id=sandbox_id[:12], repo_path=repo_path)
         return ""
 
-    return "# Codebase Context\n\n" + "\n\n".join(sections)
+    result = "# Codebase Context\n\n" + "\n\n".join(sections)
+    logger.info(
+        "codebase_context_gathered",
+        sandbox_id=sandbox_id[:12],
+        repo_path=repo_path,
+        sections=len(sections),
+        total_chars=total_chars,
+    )
+    return result

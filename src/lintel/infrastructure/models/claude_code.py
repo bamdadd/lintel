@@ -40,11 +40,148 @@ CLAUDE_CODE_PROBE_TIMEOUT = 10
 STREAM_POLL_INTERVAL = 3
 
 
+def _read_host_credentials() -> str | None:
+    """Read Claude Code credentials from the host system (macOS Keychain or Linux filesystem).
+
+    Returns the raw JSON string or None if unavailable.
+    """
+    import platform
+    import subprocess
+
+    system = platform.system()
+
+    if system == "Darwin":
+        try:
+            result = subprocess.run(
+                ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+        except Exception:
+            logger.debug("claude_code_keychain_read_failed")
+        return None
+
+    # Linux: read from filesystem
+    from pathlib import Path
+
+    for cred_path in [
+        Path.home() / ".claude" / ".credentials.json",
+        Path.home() / ".claude" / "credentials.json",
+    ]:
+        if cred_path.is_file():
+            try:
+                return cred_path.read_text().strip()
+            except Exception:
+                logger.debug("claude_code_creds_file_read_failed", path=str(cred_path))
+    return None
+
+
+def _validate_credentials_json(creds_json: str) -> bool:
+    """Check if credentials JSON contains a non-expired token. Returns True if valid."""
+    import json as _json
+    from datetime import UTC, datetime
+
+    try:
+        creds = _json.loads(creds_json)
+    except (json.JSONDecodeError, ValueError):
+        return False
+
+    expires_at = creds.get("claudeAiOauth", {}).get("expiresAt")
+    if expires_at:
+        if isinstance(expires_at, str):
+            exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        else:
+            exp_dt = datetime.fromtimestamp(expires_at / 1000, tz=UTC)
+        if datetime.now(tz=UTC) >= exp_dt:
+            return False
+    return True
+
+
+async def _inject_credentials_into_sandbox(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    creds_json: str,
+) -> bool:
+    """Write credentials JSON into a sandbox. Returns True on success."""
+    try:
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command="mkdir -p /home/vscode/.claude", timeout_seconds=5),
+        )
+        await sandbox_manager.write_file(
+            sandbox_id,
+            "/home/vscode/.claude/.credentials.json",
+            creds_json,
+        )
+        return True
+    except Exception:
+        logger.debug("claude_code_inject_creds_failed", sandbox_id=sandbox_id[:12])
+        return False
+
+
+async def refresh_credentials_for_sandbox(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+) -> bool:
+    """Read fresh credentials from the host and inject into a single sandbox.
+
+    Works on both macOS (Keychain) and Linux (filesystem).
+    Returns True if successfully refreshed.
+    """
+    creds_json = _read_host_credentials()
+    if not creds_json:
+        logger.debug("claude_code_no_host_credentials", sandbox_id=sandbox_id[:12])
+        return False
+
+    if not _validate_credentials_json(creds_json):
+        logger.warning("claude_code_host_token_expired", sandbox_id=sandbox_id[:12])
+        return False
+
+    return await _inject_credentials_into_sandbox(sandbox_manager, sandbox_id, creds_json)
+
+
+async def _refresh_token_from_keychain(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+) -> bool:
+    """Pull fresh Claude Code credentials from host and write to sandbox.
+
+    Returns True if successfully refreshed.
+    """
+    return await refresh_credentials_for_sandbox(sandbox_manager, sandbox_id)
+
+
+async def _write_tmpfs_file(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    path: str,
+    content: str,
+) -> None:
+    """Write a file into a sandbox using exec (not put_archive).
+
+    Docker's put_archive API silently fails on tmpfs-mounted paths like /tmp.
+    This uses a heredoc via exec to write files correctly to any filesystem.
+    """
+    # Use a unique delimiter unlikely to appear in content
+    delimiter = f"LINTEL_EOF_{uuid4().hex[:8]}"
+    await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=f"cat > {path} << '{delimiter}'\n{content}\n{delimiter}",
+            timeout_seconds=10,
+        ),
+    )
+
+
 async def validate_claude_token(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
 ) -> TokenStatus:
     """Validate Claude Code is installed and credentials exist (no API call)."""
+    logger.info("claude_code_validate_start", sandbox_id=sandbox_id[:12])
     # Check CLI is installed
     result = await sandbox_manager.execute(
         sandbox_id,
@@ -58,23 +195,66 @@ async def validate_claude_token(
         logger.warning("claude_code_not_installed", output=combined[:200])
         return TokenStatus.INVALID
 
-    # Check credentials file exists (written by _inject_claude_credentials)
+    # Check credentials file exists and token hasn't expired
     cred_check = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
             command=(
-                "test -f /home/vscode/.claude/.credentials.json"
-                " || test -f /home/vscode/.claude/credentials.json"
-                " || test -f /home/vscode/.claude.json"
-                " || test -f /root/.claude/credentials.json"
+                "cat /home/vscode/.claude/.credentials.json"
+                " 2>/dev/null || cat /home/vscode/.claude/credentials.json"
+                " 2>/dev/null || echo MISSING"
             ),
             timeout_seconds=CLAUDE_CODE_PROBE_TIMEOUT,
         ),
     )
-    if cred_check.exit_code != 0:
+    cred_output = cred_check.stdout.strip()
+    if cred_output == "MISSING" or not cred_output:
         logger.warning("claude_code_no_credentials", sandbox_id=sandbox_id[:12])
         return TokenStatus.EXPIRED
 
+    # Parse credentials and check expiresAt
+    try:
+        import json as _json
+        from datetime import UTC, datetime
+
+        creds = _json.loads(cred_output)
+        oauth = creds.get("claudeAiOauth", {})
+        expires_at = oauth.get("expiresAt")
+        if expires_at:
+            # expiresAt is an ISO timestamp or Unix epoch ms
+            if isinstance(expires_at, str):
+                exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            else:
+                exp_dt = datetime.fromtimestamp(expires_at / 1000, tz=UTC)
+            now = datetime.now(tz=UTC)
+            if now >= exp_dt:
+                logger.warning(
+                    "claude_code_token_expired",
+                    sandbox_id=sandbox_id[:12],
+                    expires_at=str(exp_dt),
+                    now=str(now),
+                )
+                # Try to re-inject fresh credentials from host Keychain
+                refreshed = await _refresh_token_from_keychain(
+                    sandbox_manager, sandbox_id,
+                )
+                if refreshed:
+                    logger.info(
+                        "claude_code_token_refreshed",
+                        sandbox_id=sandbox_id[:12],
+                    )
+                    return TokenStatus.VALID
+                return TokenStatus.EXPIRED
+            logger.info(
+                "claude_code_token_valid",
+                sandbox_id=sandbox_id[:12],
+                expires_in_minutes=int((exp_dt - now).total_seconds() / 60),
+            )
+    except Exception:
+        # Can't parse — assume valid and let the actual call fail with a clear error
+        logger.debug("claude_code_creds_parse_failed", sandbox_id=sandbox_id[:12])
+
+    logger.info("claude_code_validate_ok", sandbox_id=sandbox_id[:12])
     return TokenStatus.VALID
 
 
@@ -151,7 +331,7 @@ class ClaudeCodeProvider:
         invocation_id = uuid4().hex[:10]
         if system_prompt:
             prompt_file = f"/tmp/lintel-sysprompt-{invocation_id}.md"
-            await self._sandbox.write_file(sandbox_id, prompt_file, system_prompt)
+            await _write_tmpfs_file(self._sandbox, sandbox_id, prompt_file, system_prompt)
             cmd_parts.extend(["--system-prompt", prompt_file])
 
         # Append the user prompt (quoted)
@@ -162,8 +342,12 @@ class ClaudeCodeProvider:
             "claude_code_invoke",
             sandbox_id=sandbox_id[:12],
             prompt_length=len(prompt),
+            prompt_preview=prompt[:200],
+            system_prompt_length=len(system_prompt),
             max_turns=max_turns,
             allowed_tools=allowed_tools,
+            command=full_cmd[:500],
+            workdir=workdir,
         )
 
         result = await self._sandbox.execute(
@@ -175,14 +359,30 @@ class ClaudeCodeProvider:
             ),
         )
 
+        logger.info(
+            "claude_code_invoke_raw_result",
+            sandbox_id=sandbox_id[:12],
+            exit_code=result.exit_code,
+            stdout_length=len(result.stdout),
+            stdout_preview=result.stdout[:500],
+            stderr_length=len(result.stderr),
+            stderr_preview=result.stderr[:500],
+        )
+
         if result.exit_code != 0:
             combined = result.stdout + result.stderr
             if "authentication_error" in combined:
+                logger.error(
+                    "claude_code_auth_error",
+                    sandbox_id=sandbox_id[:12],
+                    combined_preview=combined[:500],
+                )
                 raise ClaudeCodeCredentialError(TokenStatus.EXPIRED)
 
             logger.warning(
                 "claude_code_invoke_failed",
                 exit_code=result.exit_code,
+                stdout_preview=result.stdout[:500],
                 stderr=result.stderr[:500],
             )
 
@@ -197,6 +397,8 @@ class ClaudeCodeProvider:
             sandbox_id=sandbox_id[:12],
             exit_code=result.exit_code,
             content_length=len(parsed.get("content", "")),
+            content_preview=parsed.get("content", "")[:300],
+            usage=parsed.get("usage", {}),
         )
 
         return parsed
@@ -249,7 +451,7 @@ class ClaudeCodeProvider:
 
         if system_prompt:
             prompt_file = f"/tmp/lintel-sysprompt-{invocation_id}.md"
-            await self._sandbox.write_file(sandbox_id, prompt_file, system_prompt)
+            await _write_tmpfs_file(self._sandbox, sandbox_id, prompt_file, system_prompt)
             cmd_parts.extend(["--system-prompt", prompt_file])
 
         cmd_parts.append(shlex.quote(prompt))
@@ -261,19 +463,24 @@ class ClaudeCodeProvider:
             "claude_code_invoke_streaming",
             sandbox_id=sandbox_id[:12],
             prompt_length=len(prompt),
+            prompt_preview=prompt[:200],
+            system_prompt_length=len(system_prompt),
             max_turns=max_turns,
             invocation_id=invocation_id,
+            command=full_cmd[:500],
+            workdir=workdir,
+            output_file=output_file,
+            exit_file=exit_file,
         )
 
-        # Write the command to a script to avoid quoting issues with nohup sh -c
-        # Use trap to ensure exit file is written even if the process is killed
+        # Write script via exec (not write_file) — /tmp is tmpfs, put_archive fails silently
         script = (
             f"#!/bin/sh\n"
             f"trap 'echo 130 > {exit_file}' INT TERM HUP\n"
             f"{full_cmd}\n"
             f"echo $? > {exit_file}\n"
         )
-        await self._sandbox.write_file(sandbox_id, script_file, script)
+        await _write_tmpfs_file(self._sandbox, sandbox_id, script_file, script)
 
         # Start Claude Code in background
         await self._sandbox.execute(
@@ -296,42 +503,107 @@ class ClaudeCodeProvider:
         final_content_parts: list[str] = []
 
         # Number of consecutive polls with no output and no process — detects silent death
+        # Start counting only after a grace period to allow claude to start up
         stale_polls = 0
         max_stale_polls = 5  # ~15s with STREAM_POLL_INTERVAL=3
+        startup_grace_polls = 10  # ~30s grace period for claude to start
+
+        consecutive_sandbox_errors = 0
+        max_sandbox_errors = 3
 
         async def _poll_loop() -> None:
-            nonlocal lines_seen, stale_polls
-            elapsed = 0
-            while elapsed < timeout:
-                await asyncio.sleep(STREAM_POLL_INTERVAL)
-                elapsed += STREAM_POLL_INTERVAL
+            """Poll output file until process completes or errors out."""
+            nonlocal lines_seen, stale_polls, consecutive_sandbox_errors
 
-                # Check if process finished
-                exit_check = await self._sandbox.execute(
-                    sandbox_id,
-                    SandboxJob(
-                        command=f"cat {exit_file} 2>/dev/null || echo running",
-                        timeout_seconds=15,
-                    ),
-                )
+            start_time = asyncio.get_event_loop().time()
+
+            while True:
+                elapsed = int(asyncio.get_event_loop().time() - start_time)
+                await asyncio.sleep(STREAM_POLL_INTERVAL)
+
+                try:
+                    # Check if process finished
+                    exit_check = await self._sandbox.execute(
+                        sandbox_id,
+                        SandboxJob(
+                            command=f"cat {exit_file} 2>/dev/null || echo running",
+                            timeout_seconds=15,
+                        ),
+                    )
+                    consecutive_sandbox_errors = 0
+                except Exception:
+                    consecutive_sandbox_errors += 1
+                    logger.warning(
+                        "claude_code_sandbox_error",
+                        sandbox_id=sandbox_id[:12],
+                        invocation_id=invocation_id,
+                        consecutive_errors=consecutive_sandbox_errors,
+                    )
+                    if consecutive_sandbox_errors >= max_sandbox_errors:
+                        logger.error(
+                            "claude_code_sandbox_unreachable",
+                            sandbox_id=sandbox_id[:12],
+                            invocation_id=invocation_id,
+                        )
+                        if on_activity:
+                            await on_activity("Sandbox unreachable — aborting")
+                        return
+                    continue
+
                 process_done = exit_check.stdout.strip() != "running"
 
-                # Read new lines from the output
-                tail_result = await self._sandbox.execute(
-                    sandbox_id,
-                    SandboxJob(
-                        command=f"wc -l < {output_file}",
-                        timeout_seconds=15,
-                    ),
-                )
+                # Read line count
                 try:
+                    tail_result = await self._sandbox.execute(
+                        sandbox_id,
+                        SandboxJob(
+                            command=f"wc -l < {output_file}",
+                            timeout_seconds=15,
+                        ),
+                    )
                     total_lines = int(tail_result.stdout.strip())
-                except ValueError:
+                except (ValueError, Exception):
                     total_lines = 0
+
+                # Check for auth errors on first output
+                if total_lines > 0 and lines_seen == 0:
+                    peek = await self._sandbox.execute(
+                        sandbox_id,
+                        SandboxJob(
+                            command=f"head -5 {output_file}",
+                            timeout_seconds=10,
+                        ),
+                    )
+                    peek_text = peek.stdout.lower()
+                    if (
+                        "authentication_error" in peek_text
+                        or "oauth token has expired" in peek_text
+                        or "token expired" in peek_text
+                    ):
+                        logger.error(
+                            "claude_code_stream_auth_error",
+                            sandbox_id=sandbox_id[:12],
+                            invocation_id=invocation_id,
+                            output_preview=peek.stdout[:300],
+                        )
+                        if on_activity:
+                            await on_activity(
+                                "AUTH_EXPIRED: OAuth token expired"
+                                " — re-authenticate in sandbox"
+                            )
+                        return
 
                 if total_lines > lines_seen:
                     stale_polls = 0
-                    # Read only new lines
+                    new_count = total_lines - lines_seen
+                    logger.debug(
+                        "claude_code_stream_new_lines",
+                        sandbox_id=sandbox_id[:12],
+                        invocation_id=invocation_id,
+                        new_lines=new_count,
+                        total_lines=total_lines,
+                        elapsed=elapsed,
+                    )
                     skip = lines_seen + 1
                     new_lines_result = await self._sandbox.execute(
                         sandbox_id,
@@ -344,8 +616,15 @@ class ClaudeCodeProvider:
                         if not line.strip():
                             continue
                         activity = self._parse_stream_line(line)
-                        if activity and on_activity:
-                            await on_activity(activity)
+                        if activity:
+                            logger.info(
+                                "claude_code_stream_activity",
+                                sandbox_id=sandbox_id[:12],
+                                invocation_id=invocation_id,
+                                activity=activity[:200],
+                            )
+                            if on_activity:
+                                await on_activity(activity)
                         # Collect text content for final result
                         try:
                             obj = json.loads(line)
@@ -357,30 +636,44 @@ class ClaudeCodeProvider:
                             pass
                     lines_seen = total_lines
                 elif not process_done:
-                    # No new output and process hasn't finished — check if it's still alive
-                    proc_check = await self._sandbox.execute(
-                        sandbox_id,
-                        SandboxJob(
-                            command=f"pgrep -f 'lintel-run-{invocation_id}' >/dev/null 2>&1"
-                            f" || pgrep -f 'claude.*print' >/dev/null 2>&1"
-                            f"; echo $?",
-                            timeout_seconds=10,
-                        ),
+                    logger.debug(
+                        "claude_code_stream_poll_idle",
+                        sandbox_id=sandbox_id[:12],
+                        invocation_id=invocation_id,
+                        elapsed=elapsed,
+                        total_lines=total_lines,
+                        lines_seen=lines_seen,
                     )
-                    proc_alive = proc_check.stdout.strip() == "0"
-                    if not proc_alive:
-                        stale_polls += 1
-                        if stale_polls >= max_stale_polls:
-                            logger.warning(
-                                "claude_code_process_dead",
-                                sandbox_id=sandbox_id[:12],
-                                invocation_id=invocation_id,
-                                stale_polls=stale_polls,
-                            )
-                            break
+                    polls_so_far = elapsed // STREAM_POLL_INTERVAL
+                    if polls_so_far >= startup_grace_polls:
+                        proc_check = await self._sandbox.execute(
+                            sandbox_id,
+                            SandboxJob(
+                                command=(
+                                    f"pgrep -f 'lintel-run-{invocation_id}'"
+                                    f" >/dev/null 2>&1"
+                                    f" || pgrep -f 'claude.*print'"
+                                    f" >/dev/null 2>&1"
+                                    f"; echo $?"
+                                ),
+                                timeout_seconds=10,
+                            ),
+                        )
+                        proc_alive = proc_check.stdout.strip() == "0"
+                        if not proc_alive:
+                            stale_polls += 1
+                            if stale_polls >= max_stale_polls:
+                                logger.warning(
+                                    "claude_code_process_dead",
+                                    sandbox_id=sandbox_id[:12],
+                                    invocation_id=invocation_id,
+                                    stale_polls=stale_polls,
+                                )
+                                return
 
                 if process_done:
-                    break
+                    # Read any remaining lines before exiting
+                    return
 
         try:
             await asyncio.wait_for(_poll_loop(), timeout=timeout + 30)
@@ -391,6 +684,14 @@ class ClaudeCodeProvider:
                 invocation_id=invocation_id,
                 timeout=timeout,
             )
+
+        logger.info(
+            "claude_code_stream_poll_done",
+            sandbox_id=sandbox_id[:12],
+            invocation_id=invocation_id,
+            lines_streamed=lines_seen,
+            content_parts=len(final_content_parts),
+        )
 
         # Read final output for complete parsing
         final_result = await self._sandbox.execute(
@@ -410,6 +711,15 @@ class ClaudeCodeProvider:
             exit_code = int(exit_code_str)
         except ValueError:
             exit_code = 1
+
+        logger.info(
+            "claude_code_stream_final_output",
+            sandbox_id=sandbox_id[:12],
+            invocation_id=invocation_id,
+            exit_code=exit_code,
+            stdout_length=len(final_result.stdout),
+            stdout_preview=final_result.stdout[:500],
+        )
 
         parsed = self._parse_output(final_result.stdout)
         # If _parse_output found nothing, use content collected during streaming
@@ -432,9 +742,12 @@ class ClaudeCodeProvider:
         logger.info(
             "claude_code_invoke_streaming_complete",
             sandbox_id=sandbox_id[:12],
+            invocation_id=invocation_id,
             exit_code=exit_code,
             content_length=len(parsed.get("content", "")),
+            content_preview=parsed.get("content", "")[:300],
             lines_streamed=lines_seen,
+            usage=parsed.get("usage", {}),
         )
 
         return parsed

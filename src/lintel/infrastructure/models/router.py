@@ -365,6 +365,17 @@ class DefaultModelRouter:
             int(str(policy.extra_params.get("max_turns", 20))) if policy.extra_params else 20
         )
 
+        logger.info(
+            "claude_code_router_dispatch",
+            sandbox_id=sandbox_id[:12] if sandbox_id else None,
+            system_prompt_length=len(system_prompt),
+            user_prompt_length=len(user_prompt),
+            user_prompt_preview=user_prompt.strip()[:200],
+            max_turns=max_turns,
+            streaming=on_activity is not None,
+            model=policy.model_name,
+        )
+
         # Use streaming invoke if an activity callback is provided
         if on_activity is not None:
             result = await provider.invoke_streaming(
@@ -381,6 +392,16 @@ class DefaultModelRouter:
                 system_prompt=system_prompt.strip(),
                 max_turns=max_turns,
             )
+
+        logger.info(
+            "claude_code_router_result",
+            sandbox_id=sandbox_id[:12] if sandbox_id else None,
+            exit_code=result.get("exit_code"),
+            content_length=len(result.get("content", "")),
+            content_preview=result.get("content", "")[:300],
+            usage=result.get("usage", {}),
+            stderr_preview=result.get("stderr", "")[:200],
+        )
 
         return {
             "content": result.get("content", ""),
