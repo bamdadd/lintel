@@ -132,6 +132,9 @@ export interface PipelineStage {
   stage_id: string;
   name: string;
   status: string;
+  started_at?: string;
+  finished_at?: string;
+  duration_ms?: number;
 }
 
 export function usePipelineStages(runId: string | undefined) {

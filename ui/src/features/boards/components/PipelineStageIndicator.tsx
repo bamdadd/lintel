@@ -13,6 +13,30 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: 'var(--mantine-color-red-4)',
 };
 
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  const mins = Math.floor(ms / 60_000);
+  const secs = Math.round((ms % 60_000) / 1000);
+  return `${mins}m ${secs}s`;
+}
+
+function formatElapsed(startedAt: string): string {
+  const elapsed = Date.now() - new Date(startedAt).getTime();
+  return formatDuration(elapsed);
+}
+
+function stageTooltip(stage: PipelineStage): string {
+  const base = `${stage.name}: ${stage.status}`;
+  if (stage.duration_ms != null) {
+    return `${base} (${formatDuration(stage.duration_ms)})`;
+  }
+  if (stage.status === 'running' && stage.started_at) {
+    return `${base} (${formatElapsed(stage.started_at)} so far)`;
+  }
+  return base;
+}
+
 interface PipelineStageIndicatorProps {
   pipeline: PipelineRun;
   stages: PipelineStage[];
@@ -38,7 +62,7 @@ export function PipelineStageIndicator({ pipeline, stages }: PipelineStageIndica
         {stages.map((stage) => (
           <Tooltip
             key={stage.stage_id}
-            label={`${stage.name}: ${stage.status}`}
+            label={stageTooltip(stage)}
             withArrow
             position="top"
           >
