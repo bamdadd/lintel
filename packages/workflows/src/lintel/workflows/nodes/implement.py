@@ -18,6 +18,7 @@ testing, linting, and incremental git commits.
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -372,6 +373,58 @@ async def spawn_implementation(
     if total_usage:
         result_dict["token_usage"] = total_usage
     return result_dict
+
+
+# ---------------------------------------------------------------------------
+# Streaming execution helper
+# ---------------------------------------------------------------------------
+
+
+async def _stream_execute_with_logging(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    command: str,
+    workdir: str,
+    timeout_seconds: int,
+    log_fn: Callable[[str], Awaitable[None]],
+) -> tuple[str, int]:
+    """Execute a command with real-time log streaming.
+
+    If the sandbox supports ``execute_stream()``, yields lines to ``log_fn``
+    as they arrive. Otherwise falls back to blocking ``execute()`` and logs
+    output after completion.
+
+    Returns ``(full_output, exit_code)`` — same contract as the old blocking path.
+    """
+    from lintel.contracts.types import SandboxJob
+
+    stream_fn = getattr(sandbox_manager, "execute_stream", None)
+    if stream_fn is None or not callable(stream_fn):
+        # Fallback: blocking execute
+        result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command=command, workdir=workdir, timeout_seconds=timeout_seconds),
+        )
+        output = result.stdout + result.stderr
+        for line in output.splitlines():
+            stripped = line.strip()
+            if stripped:
+                await log_fn(stripped)
+        return output, result.exit_code
+
+    # Streaming path
+    job = SandboxJob(command=command, workdir=workdir, timeout_seconds=timeout_seconds)
+    output_lines: list[str] = []
+    exit_code = -1
+
+    async for line in await stream_fn(sandbox_id, job):
+        if line.startswith("__EXIT:") and line.endswith("__"):
+            exit_code = int(line[7:-2])
+        else:
+            output_lines.append(line)
+            await log_fn(line)
+
+    return "\n".join(output_lines), exit_code
 
 
 # ---------------------------------------------------------------------------
