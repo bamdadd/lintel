@@ -33,23 +33,27 @@ export function Component() {
 
   const handleClickItem = (item: WorkItem) => {
     setSelectedItem(item);
+    setSearchParams({ work_item: item.work_item_id }, { replace: true });
     openDetail();
+  };
+
+  const handleCloseDetail = () => {
+    closeDetail();
+    setSearchParams({}, { replace: true });
   };
 
   // Auto-open work item detail when linked via ?work_item=<id>
   const items = (itemsResp?.data ?? []) as WorkItem[];
   useEffect(() => {
     const workItemId = searchParams.get('work_item');
-    if (workItemId && items.length > 0) {
+    if (workItemId && items.length > 0 && !detailOpened) {
       const found = items.find((i) => i.work_item_id === workItemId);
       if (found) {
         setSelectedItem(found);
         openDetail();
-        // Clear the query param so it doesn't re-trigger
-        setSearchParams({}, { replace: true });
       }
     }
-  }, [searchParams, items, openDetail, setSearchParams]);
+  }, [searchParams, items, openDetail, detailOpened]);
 
   const columns = useMemo(
     () => [...(board?.columns ?? [])].sort((a, b) => a.position - b.position),
@@ -245,7 +249,7 @@ export function Component() {
         </Group>
       </DragDropContext>
 
-      <WorkItemDetailModal item={selectedItem} opened={detailOpened} onClose={closeDetail} />
+      <WorkItemDetailModal item={selectedItem} opened={detailOpened} onClose={handleCloseDetail} />
     </Stack>
   );
 }
