@@ -38,6 +38,8 @@ def _mock_sandbox(
     mgr.execute = AsyncMock(side_effect=side_effects)
     mgr.reconnect_network = AsyncMock()
     mgr.disconnect_network = AsyncMock()
+    # Ensure execute_stream is not callable so _stream_execute_with_logging falls back to execute()
+    mgr.execute_stream = None
     return mgr
 
 

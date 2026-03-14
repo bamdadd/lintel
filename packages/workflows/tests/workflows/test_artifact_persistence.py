@@ -87,9 +87,13 @@ async def test_test_node_persists_test_result() -> None:
     from lintel.workflows.nodes.test_code import run_tests
 
     sandbox = AsyncMock()
-    sandbox.execute = AsyncMock(
-        return_value=SandboxResult(exit_code=0, stdout="3 passed", stderr=""),
-    )
+    sandbox.execute = AsyncMock(side_effect=[
+        SandboxResult(exit_code=0, stdout="", stderr=""),  # git diff (no changed tests)
+        SandboxResult(exit_code=0, stdout="3 passed", stderr=""),  # test execution
+    ])
+    sandbox.execute_stream = None  # force fallback to blocking execute
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
 
     result_store = AsyncMock()
     added_results: list[Any] = []
@@ -125,9 +129,13 @@ async def test_test_node_records_failure() -> None:
     from lintel.workflows.nodes.test_code import run_tests
 
     sandbox = AsyncMock()
-    sandbox.execute = AsyncMock(
-        return_value=SandboxResult(exit_code=1, stdout="", stderr="FAILED test_foo"),
-    )
+    sandbox.execute = AsyncMock(side_effect=[
+        SandboxResult(exit_code=0, stdout="", stderr=""),  # git diff (no changed tests)
+        SandboxResult(exit_code=1, stdout="", stderr="FAILED test_foo"),  # test execution
+    ])
+    sandbox.execute_stream = None
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
 
     result_store = AsyncMock()
     added_results: list[Any] = []

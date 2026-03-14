@@ -97,14 +97,19 @@ async def run_tests(
         )
     else:
         await tracker.append_log("test", f"Running: {test_command}")
+    async def _log_test_line(line: str) -> None:
+        await tracker.append_log("test", line)
+
     try:
-        result = await sandbox_manager.execute(
+        from lintel.workflows.nodes.implement import _stream_execute_with_logging
+
+        output, exit_code = await _stream_execute_with_logging(
+            sandbox_manager,
             sandbox_id,
-            SandboxJob(
-                command=test_command,
-                workdir=workdir,
-                timeout_seconds=600,
-            ),
+            test_command,
+            workdir,
+            600,
+            _log_test_line,
         )
     except Exception:
         from lintel.workflows.nodes._error_handling import WorkflowErrorHandler
@@ -120,14 +125,10 @@ async def run_tests(
             Exception("Sandbox execution failed"),
         )
 
-    passed = result.exit_code == 0
+    passed = exit_code == 0
     verdict = "passed" if passed else "failed"
-    output = result.stdout + result.stderr
 
-    # Log test output to stage
-    await tracker.append_log("test", f"Exit code: {result.exit_code}")
-    for line in output.strip().split("\n")[:30]:
-        await tracker.append_log("test", line)
+    await tracker.append_log("test", f"Exit code: {exit_code}")
 
     # Truncate long output
     if len(output) > 5000:
@@ -136,7 +137,7 @@ async def run_tests(
     logger.info(
         "test_run_complete verdict=%s exit_code=%d",
         verdict,
-        result.exit_code,
+        exit_code,
     )
 
     # Persist test result
@@ -167,7 +168,7 @@ async def run_tests(
 
     await tracker.mark_completed(
         "test",
-        error="" if passed else f"Tests failed (exit {result.exit_code})",
+        error="" if passed else f"Tests failed (exit {exit_code})",
     )
     return {
         "current_phase": "reviewing",
@@ -175,9 +176,9 @@ async def run_tests(
             {
                 "node": "test",
                 "verdict": verdict,
-                "exit_code": result.exit_code,
+                "exit_code": exit_code,
                 "summary": (
-                    f"Tests {verdict}" + (f": {result.stderr[:200]}" if not passed else "")
+                    f"Tests {verdict}" + (f" (exit {exit_code})" if not passed else "")
                 ),
                 "output": output,
             }
