@@ -6,7 +6,7 @@ from typing import Any
 from unittest.mock import AsyncMock
 
 from lintel.agents.runtime import AgentRuntime
-from lintel.agents.sandbox_tools import sandbox_tool_schemas
+from lintel.agents.sandbox_tools import SandboxToolDispatcher, sandbox_tool_schemas
 from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
 
 
@@ -293,3 +293,80 @@ class TestSandboxToolSchemas:
             "sandbox_list_files",
             "sandbox_execute_command",
         ]
+
+
+class TestSandboxToolDispatcher:
+    """Tests for SandboxToolDispatcher class interface."""
+
+    def test_is_sandbox_tool_classmethod(self) -> None:
+        assert SandboxToolDispatcher.is_sandbox_tool("sandbox_read_file") is True
+        assert SandboxToolDispatcher.is_sandbox_tool("sandbox_execute_command") is True
+        assert SandboxToolDispatcher.is_sandbox_tool("some_other_tool") is False
+
+    def test_tool_schemas_classmethod(self) -> None:
+        schemas = SandboxToolDispatcher.tool_schemas()
+        assert len(schemas) == 4
+        names = [s["function"]["name"] for s in schemas]
+        assert "sandbox_read_file" in names
+
+    def test_tool_schemas_with_exclude(self) -> None:
+        schemas = SandboxToolDispatcher.tool_schemas(exclude={"sandbox_list_files"})
+        names = [s["function"]["name"] for s in schemas]
+        assert "sandbox_list_files" not in names
+        assert len(schemas) == 3
+
+    async def test_dispatch_read_file(self) -> None:
+        sandbox_manager = AsyncMock()
+        sandbox_manager.read_file = AsyncMock(return_value="file contents")
+        dispatcher = SandboxToolDispatcher(sandbox_manager, "sandbox-1")
+
+        result = await dispatcher.dispatch("sandbox_read_file", {"path": "/workspace/foo.py"})
+
+        assert result == "file contents"
+        sandbox_manager.read_file.assert_awaited_once_with("sandbox-1", "/workspace/foo.py")
+
+    async def test_dispatch_write_file(self) -> None:
+        sandbox_manager = AsyncMock()
+        sandbox_manager.write_file = AsyncMock()
+        dispatcher = SandboxToolDispatcher(sandbox_manager, "sandbox-1")
+
+        result = await dispatcher.dispatch(
+            "sandbox_write_file", {"path": "/workspace/bar.py", "content": "print('hi')"}
+        )
+
+        assert result == "File written: /workspace/bar.py"
+        sandbox_manager.write_file.assert_awaited_once_with(
+            "sandbox-1", "/workspace/bar.py", "print('hi')"
+        )
+
+    async def test_dispatch_list_files(self) -> None:
+        sandbox_manager = AsyncMock()
+        sandbox_manager.list_files = AsyncMock(return_value=["a.py", "b.py"])
+        dispatcher = SandboxToolDispatcher(sandbox_manager, "sandbox-1")
+
+        result = await dispatcher.dispatch("sandbox_list_files", {})
+
+        assert result == '["a.py", "b.py"]'
+        sandbox_manager.list_files.assert_awaited_once_with("sandbox-1", "/workspace")
+
+    async def test_dispatch_execute_command(self) -> None:
+        from lintel.contracts.types import SandboxResult
+
+        sandbox_manager = AsyncMock()
+        sandbox_manager.execute = AsyncMock(
+            return_value=SandboxResult(exit_code=0, stdout="ok\n", stderr="")
+        )
+        dispatcher = SandboxToolDispatcher(sandbox_manager, "sandbox-1")
+
+        result = await dispatcher.dispatch("sandbox_execute_command", {"command": "echo ok"})
+
+        assert result == "ok\n"
+        sandbox_manager.execute.assert_awaited_once()
+
+    async def test_dispatch_unknown_tool_returns_error_json(self) -> None:
+        sandbox_manager = AsyncMock()
+        dispatcher = SandboxToolDispatcher(sandbox_manager, "sandbox-1")
+
+        result = await dispatcher.dispatch("not_a_real_tool", {})
+
+        assert "Unknown sandbox tool" in result
