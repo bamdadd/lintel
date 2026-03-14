@@ -203,6 +203,19 @@ class SandboxManager(Protocol):
         job: SandboxJob,
     ) -> SandboxResult: ...
 
+    async def execute_stream(
+        self,
+        sandbox_id: str,
+        job: SandboxJob,
+    ) -> AsyncIterator[str]:
+        """Execute a command and yield stdout/stderr lines as they arrive.
+
+        Returns an async iterator of output lines (combined stdout+stderr).
+        The final yielded item is a sentinel ``__EXIT:<code>__`` carrying the
+        exit code so callers can detect success/failure without a separate call.
+        """
+        yield ""  # pragma: no cover
+
     async def read_file(
         self,
         sandbox_id: str,
