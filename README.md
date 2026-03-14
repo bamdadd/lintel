@@ -148,28 +148,21 @@ erDiagram
 
 </details>
 
-### Clean architecture boundaries
+### Workspace packages
+
+Lintel is a **uv workspace monorepo** — each package has its own `pyproject.toml`, source, and colocated tests:
 
 ```
-src/lintel/
-  contracts/       Pure domain — types, commands, events, Protocol interfaces (no I/O)
-  domain/          Domain logic and event dispatching
-  agents/          Agent role definitions (planner, coder, reviewer, PM, designer, summarizer)
-  workflows/       LangGraph workflow graphs and node implementations
-  projections/     CQRS read-side projections (audit, metrics)
-  skills/          Pluggable agent capabilities
-  api/             FastAPI routes, middleware, MCP surface
-  infrastructure/  Concrete implementations of Protocol interfaces
-    channels/        Slack adapter (slack-bolt)
-    event_store/     PostgreSQL event persistence (asyncpg + SQLAlchemy async)
-    models/          LLM provider routing (litellm)
-    pii/             PII detection and anonymisation (Presidio)
-    sandbox/         Isolated Docker execution environments
-    vault/           Encrypted secret storage (cryptography)
-    repos/           Git and PR operations
-    mcp/             MCP tool client for external servers
-    observability/   OpenTelemetry tracing
+packages/
+  contracts/        lintel-contracts       — types, commands, events, Protocol interfaces (no deps)
+  domain/           lintel-domain          — business logic, skills, scheduling
+  agents/           lintel-agents          — AI agent runtime
+  infrastructure/   lintel-infrastructure  — postgres, slack, presidio, sandbox, vault, observability
+  workflows/        lintel-workflows       — LangGraph workflow graphs and node implementations
+  app/              lintel                 — FastAPI API, middleware, MCP surface, composition root
 ```
+
+Dependency flow: `contracts` → `domain` / `agents` → `infrastructure` / `workflows` → `app`
 
 Domain code depends only on `contracts/` abstractions — never on infrastructure.
 
@@ -202,11 +195,47 @@ make serve-db
 open http://localhost:8000
 ```
 
-### Run checks
+### Development workflow
+
+**Working on a feature** — run tests for the package you're changing:
 
 ```bash
-make all              # lint + typecheck + test (917 tests)
+make test-contracts          # if touching contracts
+make test-domain             # if touching domain
+make test-agents             # if touching agents
+make test-infrastructure     # if touching infrastructure
+make test-workflows          # if touching workflows
+make test-app                # if touching API/routes
+
+# Or auto-detect affected packages (+ their dependents):
+make test-affected BASE_REF=main
+
+# Or use testmon for incremental testing (tracks file-to-test deps):
+uv run pytest --testmon packages/domain/tests/
+
+# Run a single test:
+uv run pytest packages/contracts/tests/test_types.py -v
 ```
+
+**Before pushing:**
+
+```bash
+make lint                    # ruff check + format
+make typecheck               # mypy strict mode
+```
+
+**Before merging:**
+
+```bash
+make all                     # lint + typecheck + all tests + integration + UI build
+```
+
+### CI pipeline
+
+| Trigger | Unit Tests | Integration | Lint + Typecheck |
+|---------|-----------|-------------|------------------|
+| **PR**  | Affected packages only | Skipped | Full |
+| **Main push** | All packages | Postgres + migrations | Full |
 
 ### Docker Compose (full stack)
 
@@ -219,22 +248,30 @@ curl http://localhost:8000/healthz
 
 ---
 
-## Available commands
+## All make targets
 
 ```
-make install          Install all dependencies (uv sync --all-extras)
-make serve            Dev server on :8000 (in-memory)
-make serve-db         Dev server on :8000 (PostgreSQL)
-make test             Run all tests
-make test-unit        Unit tests only
-make test-integration Integration tests (testcontainers)
-make test-e2e         End-to-end tests
-make lint             Ruff check + format check
-make typecheck        mypy strict mode
-make format           Auto-fix formatting and lint
-make migrate          Run event store migrations
-make all              lint + typecheck + test
-make dev              Launch tmux dev environment (3 windows)
+make install              Install all deps (uv sync --all-extras --all-packages)
+make serve                Dev server on :8000 (in-memory)
+make serve-db             Dev server on :8000 (PostgreSQL)
+make test                 Run all tests
+make test-affected        Run tests for changed packages only
+make test-contracts       Run contracts tests
+make test-domain          Run domain tests
+make test-agents          Run agents tests
+make test-infrastructure  Run infrastructure tests
+make test-workflows       Run workflows tests
+make test-app             Run app tests
+make test-unit            All unit tests (parallelised)
+make test-postgres        Tests against postgres backend
+make test-integration     Integration tests (testcontainers)
+make test-e2e             End-to-end tests
+make lint                 Ruff check + format check
+make typecheck            mypy strict mode
+make format               Auto-fix formatting and lint
+make migrate              Run event store migrations
+make all                  lint + typecheck + all tests + integration + UI build
+make dev                  Launch tmux dev environment (3 windows)
 ```
 
 ---
