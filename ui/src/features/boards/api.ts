@@ -14,6 +14,7 @@ export interface Board {
   project_id: string;
   name: string;
   columns: BoardColumn[];
+  auto_move: boolean;
 }
 
 export interface WorkItem {

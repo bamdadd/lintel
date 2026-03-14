@@ -120,11 +120,13 @@ class CreateBoardRequest(BaseModel):
     project_id: str
     name: str
     columns: list[BoardColumnRequest] = Field(default_factory=list)
+    auto_move: bool = False
 
 
 class UpdateBoardRequest(BaseModel):
     name: str | None = None
     columns: list[BoardColumnRequest] | None = None
+    auto_move: bool | None = None
 
 
 # ---------------------------------------------------------------------------

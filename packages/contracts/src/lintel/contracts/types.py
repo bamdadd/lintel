@@ -342,6 +342,7 @@ class Board:
     project_id: str
     name: str
     columns: tuple[BoardColumn, ...] = ()
+    auto_move: bool = False
 
 
 # --- Pipeline & Stages ---

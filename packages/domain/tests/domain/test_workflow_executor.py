@@ -451,3 +451,154 @@ async def test_execute_pauses_at_interrupt() -> None:
     # Pipeline status should be waiting_approval
     status_updates = [u for u in updated_runs if u.status == PipelineStatus.WAITING_APPROVAL]
     assert len(status_updates) >= 1
+
+
+async def test_auto_move_sets_status_open_on_failure() -> None:
+    """When auto_move is enabled, failed pipeline moves work item to 'open' not 'failed'."""
+    event_store = AsyncMock()
+
+    async def failing_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
+        raise RuntimeError("boom")
+
+    graph = _make_graph(failing_astream)
+
+    work_item = {"work_item_id": "wi-1", "status": "in_progress", "project_id": "p1"}
+    work_item_store = AsyncMock()
+    work_item_store.get = AsyncMock(return_value=work_item)
+    work_item_store.list_all = AsyncMock(return_value=[work_item])
+
+    board_store = AsyncMock()
+    board_store.list_by_project = AsyncMock(
+        return_value=[
+            {
+                "board_id": "b1",
+                "project_id": "p1",
+                "auto_move": True,
+                "columns": [
+                    {"column_id": "c1", "name": "Todo", "work_item_status": "open", "wip_limit": 0},
+                    {
+                        "column_id": "c2",
+                        "name": "In Progress",
+                        "work_item_status": "in_progress",
+                        "wip_limit": 0,
+                    },
+                ],
+            },
+        ]
+    )
+
+    app_state = MagicMock()
+    app_state.work_item_store = work_item_store
+    app_state.board_store = board_store
+    app_state.pipeline_store = None
+    app_state.chat_store = None
+
+    command = StartWorkflow(
+        thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
+        workflow_type="feature_to_pr",
+        work_item_id="wi-1",
+    )
+
+    executor = WorkflowExecutor(event_store=event_store, graph=graph, app_state=app_state)
+    await executor.execute(command)
+
+    assert work_item["status"] == "open"
+
+
+async def test_auto_move_disabled_sets_status_failed() -> None:
+    """When auto_move is disabled, failed pipeline sets work item to 'failed'."""
+    event_store = AsyncMock()
+
+    async def failing_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
+        raise RuntimeError("boom")
+
+    graph = _make_graph(failing_astream)
+
+    work_item = {"work_item_id": "wi-1", "status": "in_progress", "project_id": "p1"}
+    work_item_store = AsyncMock()
+    work_item_store.get = AsyncMock(return_value=work_item)
+
+    board_store = AsyncMock()
+    board_store.list_by_project = AsyncMock(
+        return_value=[
+            {"board_id": "b1", "project_id": "p1", "auto_move": False, "columns": []},
+        ]
+    )
+
+    app_state = MagicMock()
+    app_state.work_item_store = work_item_store
+    app_state.board_store = board_store
+    app_state.pipeline_store = None
+    app_state.chat_store = None
+
+    command = StartWorkflow(
+        thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
+        workflow_type="feature_to_pr",
+        work_item_id="wi-1",
+    )
+
+    executor = WorkflowExecutor(event_store=event_store, graph=graph, app_state=app_state)
+    await executor.execute(command)
+
+    assert work_item["status"] == "failed"
+
+
+async def test_auto_promote_moves_open_item_to_in_progress() -> None:
+    """Auto_move promotes oldest open item when WIP has capacity."""
+    event_store = AsyncMock()
+
+    async def fake_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
+        yield {"node_a": {"output": "done"}}
+
+    graph = _make_graph(fake_astream)
+
+    completed_item = {"work_item_id": "wi-1", "status": "in_progress", "project_id": "p1"}
+    open_item = {"work_item_id": "wi-2", "status": "open", "project_id": "p1"}
+
+    work_item_store = AsyncMock()
+    work_item_store.get = AsyncMock(return_value=completed_item)
+    # After wi-1 is closed, list_all returns wi-1 as closed + wi-2 as open
+    work_item_store.list_all = AsyncMock(
+        return_value=[
+            {**completed_item, "status": "closed"},
+            open_item,
+        ]
+    )
+
+    board_store = AsyncMock()
+    board_store.list_by_project = AsyncMock(
+        return_value=[
+            {
+                "board_id": "b1",
+                "project_id": "p1",
+                "auto_move": True,
+                "columns": [
+                    {"column_id": "c1", "name": "Todo", "work_item_status": "open", "wip_limit": 0},
+                    {
+                        "column_id": "c2",
+                        "name": "In Progress",
+                        "work_item_status": "in_progress",
+                        "wip_limit": 2,
+                    },
+                ],
+            },
+        ]
+    )
+
+    app_state = MagicMock()
+    app_state.work_item_store = work_item_store
+    app_state.board_store = board_store
+    app_state.pipeline_store = None
+    app_state.chat_store = None
+
+    command = StartWorkflow(
+        thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
+        workflow_type="feature_to_pr",
+        work_item_id="wi-1",
+    )
+
+    executor = WorkflowExecutor(event_store=event_store, graph=graph, app_state=app_state)
+    await executor.execute(command)
+
+    # wi-2 should have been promoted to in_progress
+    assert open_item["status"] == "in_progress"

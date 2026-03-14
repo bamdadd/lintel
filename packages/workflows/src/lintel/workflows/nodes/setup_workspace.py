@@ -245,7 +245,11 @@ async def setup_workspace(
             try:
                 wi = await wi_store.get(work_item_id)
                 if wi is not None:
-                    bn = wi.get("branch_name", "") if isinstance(wi, dict) else getattr(wi, "branch_name", "")
+                    bn = (
+                        wi.get("branch_name", "")
+                        if isinstance(wi, dict)
+                        else getattr(wi, "branch_name", "")
+                    )
                     if bn:
                         feature_branch = bn
                         logger.info("setup_workspace_reusing_branch", branch=bn)
@@ -563,9 +567,7 @@ async def setup_workspace(
                     "setup_workspace", f"Reusing existing branch: {feature_branch}"
                 )
             else:
-                await tracker.append_log(
-                    "setup_workspace", f"Created new branch: {feature_branch}"
-                )
+                await tracker.append_log("setup_workspace", f"Created new branch: {feature_branch}")
 
         # Clone additional repos (if multi-repo project)
         additional_repos = [u for u in repo_urls[1:] if u] if len(repo_urls) > 1 else []

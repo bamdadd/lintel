@@ -193,6 +193,7 @@ class BoardData(BaseModel):
     project_id: str = ""
     name: str = ""
     columns: list[BoardColumnData] = Field(default_factory=list)
+    auto_move: bool = False
 
     model_config = ConfigDict(extra="allow")
 

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
-import { Title, Stack, Group, Loader, Center, Text, ActionIcon, Button } from '@mantine/core';
-import { IconSettings, IconPlus } from '@tabler/icons-react';
+import {
+  Title, Stack, Group, Loader, Center, Text, ActionIcon, Button,
+  TextInput, MultiSelect, Switch, Tooltip,
+} from '@mantine/core';
+import { IconSettings, IconPlus, IconSearch, IconX, IconArrowsSort } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useQueryClient } from '@tanstack/react-query';
-import { useBoardsGetBoard, useWorkItemsForBoard, useUpdateWorkItem } from '../api';
+import { useBoardsGetBoard, useWorkItemsForBoard, useUpdateWorkItem, useUpdateBoard } from '../api';
 import type { WorkItem } from '../api';
 import { BoardColumn } from '../components/BoardColumn';
 import { EditBoardModal } from '../components/EditBoardModal';
@@ -23,6 +26,7 @@ export function Component() {
     board?.project_id,
   );
   const updateMut = useUpdateWorkItem();
+  const updateBoardMut = useUpdateBoard();
   const qc = useQueryClient();
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
@@ -33,6 +37,11 @@ export function Component() {
 
   // Track whether the user intentionally closed the modal to prevent re-open
   const [closedManually, setClosedManually] = useState(false);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
 
   const handleClickItem = (item: WorkItem) => {
     setSelectedItem(item);
@@ -64,13 +73,42 @@ export function Component() {
     }
   }, [searchParams, items, openDetail, detailOpened, closedManually]);
 
+  // Derive unique tags and statuses for filter dropdowns
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) {
+      for (const tag of item.tags ?? []) set.add(tag);
+    }
+    return [...set].sort();
+  }, [items]);
+
+  const allStatuses = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) {
+      if (item.status) set.add(item.status);
+    }
+    return [...set].sort();
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return items.filter((item) => {
+      if (q && !item.title.toLowerCase().includes(q)) return false;
+      if (filterStatuses.length > 0 && !filterStatuses.includes(item.status)) return false;
+      if (filterTags.length > 0 && !filterTags.some((t) => item.tags?.includes(t))) return false;
+      return true;
+    });
+  }, [items, searchQuery, filterStatuses, filterTags]);
+
+  const hasActiveFilters = searchQuery !== '' || filterTags.length > 0 || filterStatuses.length > 0;
+
   const columns = useMemo(
     () => [...(board?.columns ?? [])].sort((a, b) => a.position - b.position),
     [board],
   );
 
   const itemsByColumn = useMemo(() => {
-    const items = (itemsResp?.data ?? []) as WorkItem[];
+    const items = filteredItems;
     const map: Record<string, WorkItem[]> = {};
     for (const col of columns) {
       map[col.column_id] = [];
@@ -100,7 +138,7 @@ export function Component() {
       map[key]!.sort((a, b) => (a.column_position ?? 0) - (b.column_position ?? 0));
     }
     return map;
-  }, [itemsResp, columns]);
+  }, [filteredItems, columns]);
 
   const handleDragEnd = (result: DropResult) => {
     const { draggableId, source, destination } = result;
@@ -218,6 +256,24 @@ export function Component() {
           </Text>
         </Group>
         <Group gap="xs">
+          <Tooltip label="When enabled, failed pipelines move items back to Todo and items auto-promote to In Progress when WIP has capacity">
+            <IconArrowsSort size={16} style={{ opacity: 0.6 }} />
+          </Tooltip>
+          <Switch
+            label="Auto Move"
+            size="sm"
+            checked={board.auto_move ?? false}
+            onChange={(e) => {
+              if (!boardId) return;
+              updateBoardMut.mutate(
+                { boardId, data: { auto_move: e.currentTarget.checked } },
+                {
+                  onSuccess: () =>
+                    void qc.invalidateQueries({ queryKey: ['/api/v1/boards', boardId] }),
+                },
+              );
+            }}
+          />
           <Button leftSection={<IconPlus size={16} />} size="sm" onClick={openCreateItem}>
             New Work Item
           </Button>
@@ -230,6 +286,49 @@ export function Component() {
       {board?.project_id && (
         <CreateWorkItemModal opened={createItemOpened} onClose={closeCreateItem} projectId={board.project_id} />
       )}
+
+      <Group gap="sm" wrap="wrap">
+        <TextInput
+          placeholder="Search by title..."
+          leftSection={<IconSearch size={14} />}
+          size="xs"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.currentTarget.value)}
+          style={{ flex: '1 1 180px', maxWidth: 260 }}
+          rightSection={searchQuery ? (
+            <ActionIcon size="xs" variant="subtle" onClick={() => setSearchQuery('')}>
+              <IconX size={12} />
+            </ActionIcon>
+          ) : undefined}
+        />
+        <MultiSelect
+          placeholder="Filter by status"
+          data={allStatuses}
+          value={filterStatuses}
+          onChange={setFilterStatuses}
+          size="xs"
+          clearable
+          style={{ flex: '1 1 150px', maxWidth: 220 }}
+        />
+        <MultiSelect
+          placeholder="Filter by tags"
+          data={allTags}
+          value={filterTags}
+          onChange={setFilterTags}
+          size="xs"
+          clearable
+          style={{ flex: '1 1 150px', maxWidth: 220 }}
+        />
+        {hasActiveFilters && (
+          <Button
+            variant="subtle"
+            size="compact-xs"
+            onClick={() => { setSearchQuery(''); setFilterTags([]); setFilterStatuses([]); }}
+          >
+            Clear filters
+          </Button>
+        )}
+      </Group>
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <Group gap="md" align="flex-start" wrap="nowrap" style={{ overflowX: 'auto' }}>

@@ -835,8 +835,28 @@ class WorkflowExecutor:
                 error=str(exc),
             )
 
+    async def _is_auto_move_enabled(self, project_id: str) -> bool:
+        """Check if any board for this project has auto_move enabled."""
+        if self._app_state is None:
+            return False
+        board_store = getattr(self._app_state, "board_store", None)
+        if board_store is None:
+            return False
+        try:
+            boards = await board_store.list_by_project(project_id)
+            return any(
+                (
+                    b.get("auto_move", False)
+                    if isinstance(b, dict)
+                    else getattr(b, "auto_move", False)
+                )
+                for b in boards
+            )
+        except Exception:
+            return False
+
     async def _fail_work_item(self, command: StartWorkflow) -> None:
-        """Mark the work item as failed after workflow failure."""
+        """Mark the work item as failed (or open if auto_move is on)."""
         if self._app_state is None:
             return
         work_item_store = getattr(self._app_state, "work_item_store", None)
@@ -846,7 +866,10 @@ class WorkflowExecutor:
             item = await work_item_store.get(command.work_item_id)
             if item is None:
                 return
-            item["status"] = "failed"
+            project_id = item.get("project_id", "")
+            auto_move = await self._is_auto_move_enabled(project_id)
+            new_status = "open" if auto_move else "failed"
+            item["status"] = new_status
             await work_item_store.update(command.work_item_id, item)
             # Emit audit event for work item failure
             stream_id = f"work_item:{command.work_item_id}"
@@ -854,11 +877,24 @@ class WorkflowExecutor:
                 event_type="WorkItemUpdated",
                 payload={
                     "work_item_id": command.work_item_id,
-                    "status": "failed",
+                    "status": new_status,
+                    "auto_moved": auto_move,
                 },
             )
             await self._event_store.append(stream_id=stream_id, events=[event])
             await self._project_events([event])
+            if auto_move:
+                logger.info(
+                    "auto_move_failed_to_todo",
+                    work_item_id=command.work_item_id,
+                )
+                # Item moved from in_progress to open — WIP capacity freed
+                # Exclude the just-failed item from promotion
+                await self._auto_promote_if_capacity(
+                    project_id,
+                    work_item_store,
+                    exclude_id=command.work_item_id,
+                )
         except Exception as exc:
             logger.warning(
                 "fail_work_item_failed",
@@ -890,7 +926,87 @@ class WorkflowExecutor:
             )
             await self._event_store.append(stream_id=stream_id, events=[event])
             await self._project_events([event])
+            # Auto-promote: if auto_move is on and WIP has capacity, move oldest open item
+            project_id = item.get("project_id", "")
+            await self._auto_promote_if_capacity(project_id, work_item_store)
         except Exception as exc:
             logger.warning(
                 "complete_work_item_failed", work_item_id=command.work_item_id, error=str(exc)
+            )
+
+    async def _auto_promote_if_capacity(
+        self, project_id: str, work_item_store: object, *, exclude_id: str = ""
+    ) -> None:
+        """Promote the oldest open work item to in_progress if WIP has capacity."""
+        if not project_id or self._app_state is None:
+            return
+        if not await self._is_auto_move_enabled(project_id):
+            return
+        board_store = getattr(self._app_state, "board_store", None)
+        if board_store is None:
+            return
+        try:
+            boards = await board_store.list_by_project(project_id)
+            # Find the in_progress WIP limit
+            wip_limit = 0
+            for board in boards:
+                columns = (
+                    board.get("columns", [])
+                    if isinstance(board, dict)
+                    else getattr(board, "columns", ())
+                )
+                for col in columns:
+                    col_status = (
+                        col.get("work_item_status", "")
+                        if isinstance(col, dict)
+                        else getattr(col, "work_item_status", "")
+                    )
+                    if col_status == "in_progress":
+                        wip_limit = int(
+                            col.get("wip_limit", 0)
+                            if isinstance(col, dict)
+                            else getattr(col, "wip_limit", 0)
+                        )
+                        break
+
+            all_items = await work_item_store.list_all(project_id=project_id)  # type: ignore[attr-defined]
+            in_progress_count = sum(1 for i in all_items if i.get("status") == "in_progress")
+            # If no WIP limit or under capacity, promote oldest open item
+            if wip_limit == 0 or in_progress_count < wip_limit:
+                open_items = [
+                    i
+                    for i in all_items
+                    if i.get("status") == "open" and i.get("work_item_id") != exclude_id
+                ]
+                if not open_items:
+                    return
+                # Pick the first open item (oldest by insertion order)
+                candidate = open_items[0]
+                candidate_id = candidate.get("work_item_id", "")
+                if not candidate_id:
+                    return
+                candidate["status"] = "in_progress"
+                await work_item_store.update(candidate_id, candidate)  # type: ignore[attr-defined]
+                logger.info(
+                    "auto_promote_to_in_progress",
+                    work_item_id=candidate_id,
+                    project_id=project_id,
+                )
+                # Emit event
+                stream_id = f"work_item:{candidate_id}"
+                event = WorkItemUpdated(
+                    event_type="WorkItemUpdated",
+                    payload={
+                        "work_item_id": candidate_id,
+                        "status": "in_progress",
+                        "auto_promoted": True,
+                    },
+                )
+                await self._event_store.append(stream_id=stream_id, events=[event])
+                await self._project_events([event])
+        except Exception as exc:
+            logger.warning(
+                "auto_promote_failed",
+                project_id=project_id,
+                error=str(exc),
             )
