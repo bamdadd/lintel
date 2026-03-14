@@ -119,7 +119,10 @@ export function usePipelinesForWorkItem(workItemId: string | undefined) {
       const resp = await customInstance<ListResponse<PipelineRun>>('/api/v1/pipelines');
       // Filter client-side since API doesn't support work_item_id filter
       const all = (resp?.data ?? resp) as unknown as PipelineRun[];
-      return Array.isArray(all) ? all.filter((r) => r.work_item_id === workItemId) : [];
+      const filtered = Array.isArray(all) ? all.filter((r) => r.work_item_id === workItemId) : [];
+      return filtered.sort((a, b) =>
+        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+      );
     },
     enabled: !!workItemId,
   });
