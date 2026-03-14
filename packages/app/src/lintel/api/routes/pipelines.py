@@ -256,6 +256,58 @@ def _find_stage(run: PipelineRun, stage_id: str) -> Stage | None:
     return None
 
 
+class ReportVersionService:
+    """Manages stage report version history stored in app state."""
+
+    @staticmethod
+    def report_key(stage_name: str) -> str:
+        """Map stage name to the output key holding the report."""
+        if stage_name in ("research", "approve_research"):
+            return "research_report"
+        if stage_name in ("plan", "approve_spec"):
+            return "plan"
+        return "report"
+
+    @staticmethod
+    def get_versions(
+        request: Request, run_id: str, stage_id: str
+    ) -> list[dict[str, object]]:
+        """Retrieve report version history from app state."""
+        versions_store: dict[str, list[dict[str, object]]] = getattr(
+            request.app.state, "_report_versions", {}
+        )
+        key = f"{run_id}:{stage_id}"
+        return versions_store.get(key, [])
+
+    @staticmethod
+    def add_version(
+        request: Request,
+        run_id: str,
+        stage_id: str,
+        content: str,
+        editor: str,
+        version_type: str = "edit",
+    ) -> dict[str, object]:
+        """Append a new version to the report history."""
+        if not hasattr(request.app.state, "_report_versions"):
+            request.app.state._report_versions = {}
+        versions_store: dict[str, list[dict[str, object]]] = request.app.state._report_versions
+        key = f"{run_id}:{stage_id}"
+        versions = versions_store.setdefault(key, [])
+        from lintel.contracts.data_models import ReportVersion
+
+        ver = ReportVersion(
+            version=len(versions) + 1,
+            content=content,
+            editor=editor,
+            type=version_type,
+            timestamp=datetime.now(UTC).isoformat(),
+        )
+        data = ver.model_dump()
+        versions.append(data)
+        return data
+
+
 @router.get("/pipelines/{run_id}/stages/{stage_id}/logs")
 async def stream_stage_logs(
     run_id: str,
@@ -612,50 +664,6 @@ class RegeneratePayload(BaseModel):
     guidance: str = Field(default="", description="Optional prompt to guide regeneration")
 
 
-def _report_key(stage_name: str) -> str:
-    """Map stage name to the output key holding the report."""
-    if stage_name in ("research", "approve_research"):
-        return "research_report"
-    if stage_name in ("plan", "approve_spec"):
-        return "plan"
-    return "report"
-
-
-def _get_report_versions(request: Request, run_id: str, stage_id: str) -> list[dict[str, object]]:
-    """Retrieve report version history from app state."""
-    versions_store: dict[str, list[dict[str, object]]] = getattr(
-        request.app.state, "_report_versions", {}
-    )
-    key = f"{run_id}:{stage_id}"
-    return versions_store.get(key, [])
-
-
-def _add_report_version(
-    request: Request,
-    run_id: str,
-    stage_id: str,
-    content: str,
-    editor: str,
-    version_type: str = "edit",
-) -> dict[str, object]:
-    """Append a new version to the report history."""
-    if not hasattr(request.app.state, "_report_versions"):
-        request.app.state._report_versions = {}
-    versions_store: dict[str, list[dict[str, object]]] = request.app.state._report_versions
-    key = f"{run_id}:{stage_id}"
-    versions = versions_store.setdefault(key, [])
-    from lintel.contracts.data_models import ReportVersion
-
-    ver = ReportVersion(
-        version=len(versions) + 1,
-        content=content,
-        editor=editor,
-        type=version_type,
-        timestamp=datetime.now(UTC).isoformat(),
-    )
-    data = ver.model_dump()
-    versions.append(data)
-    return data
 
 
 @router.patch("/pipelines/{run_id}/stages/{stage_id}/report")
@@ -683,7 +691,7 @@ async def edit_stage_report(
         )
 
     # Update the report in stage outputs
-    rkey = _report_key(stage.name)
+    rkey = ReportVersionService.report_key(stage.name)
     outputs = dict(stage.outputs) if stage.outputs else {}
     outputs[rkey] = body.content
 
@@ -692,7 +700,7 @@ async def edit_stage_report(
     await store.update(updated)
 
     # Record version
-    version = _add_report_version(request, run_id, stage_id, body.content, body.editor)
+    version = ReportVersionService.add_version(request, run_id, stage_id, body.content, body.editor)
 
     await dispatch_event(
         request,
@@ -730,7 +738,7 @@ async def list_report_versions(
     stage = _find_stage(run, stage_id)
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
-    return _get_report_versions(request, run_id, stage_id)
+    return ReportVersionService.get_versions(request, run_id, stage_id)
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/regenerate")
@@ -784,7 +792,7 @@ async def regenerate_stage(
     updated = replace(run, stages=tuple(new_stages), status=PipelineStatus.RUNNING)
     await store.update(updated)
 
-    _add_report_version(
+    ReportVersionService.add_version(
         request,
         run_id,
         stage_id,

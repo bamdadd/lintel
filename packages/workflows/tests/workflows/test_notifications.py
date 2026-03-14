@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from lintel.workflows.nodes._notifications import (
+    NotificationService,
     extract_conversation_id,
     notify_phase_change,
 )
@@ -73,3 +74,33 @@ class TestNotifyPhaseChange:
     async def test_missing_conversation_does_not_raise(self, memory_store: object) -> None:
         # conversation "missing" does not exist — should log warning, not raise
         await notify_phase_change(memory_store, "missing", "testing", "Running tests")
+
+
+class TestNotificationService:
+    """Tests for the NotificationService class interface."""
+
+    def test_extract_conversation_id_via_class(self) -> None:
+        ref = "thread:lintel-chat:chat:abc123"
+        assert NotificationService.extract_conversation_id(ref) == "abc123"
+
+    def test_extract_conversation_id_returns_none_for_slack(self) -> None:
+        ref = "thread:T12345:C67890:1234567890.123456"
+        assert NotificationService.extract_conversation_id(ref) is None
+
+    async def test_notify_phase_change_noop_when_none(self) -> None:
+        await NotificationService.notify_phase_change(None, "conv1", "planning", "summary")
+
+    async def test_notify_phase_change_adds_message(self) -> None:
+        from lintel.api.routes.chat import ChatStore
+
+        store = ChatStore()
+        await store.create(
+            conversation_id="conv1",
+            user_id="u1",
+            display_name=None,
+            project_id=None,
+        )
+        await NotificationService.notify_phase_change(store, "conv1", "planning", "Generating plan")
+        conv = await store.get("conv1")
+        assert conv is not None
+        assert len(conv["messages"]) == 1

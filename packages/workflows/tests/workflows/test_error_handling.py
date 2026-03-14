@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lintel.workflows.nodes._error_handling import handle_node_error
+from lintel.workflows.nodes._error_handling import WorkflowErrorHandler, handle_node_error
 
 
 class TestHandleNodeError:
@@ -38,3 +38,20 @@ class TestHandleNodeError:
         """Phase should not be 'closed' so retries are possible."""
         result = await handle_node_error({}, "setup", Exception("fail"))
         assert result["current_phase"] != "closed"
+
+
+class TestWorkflowErrorHandler:
+    """Tests for the WorkflowErrorHandler class interface."""
+
+    @pytest.mark.asyncio
+    async def test_handle_staticmethod_matches_wrapper(self) -> None:
+        result = await WorkflowErrorHandler.handle({}, "implement", ValueError("boom"))
+        assert result["error"] == "implement failed: boom"
+        assert result["current_phase"] == "implement_failed"
+
+    @pytest.mark.asyncio
+    async def test_handle_agent_outputs(self) -> None:
+        result = await WorkflowErrorHandler.handle({}, "plan", Exception("bad"))
+        outputs = result["agent_outputs"]
+        assert len(outputs) == 1
+        assert outputs[0]["node"] == "plan"

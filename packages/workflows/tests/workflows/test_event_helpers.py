@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from lintel.contracts.types import AuditEntry
 
-from lintel.workflows.nodes._event_helpers import emit_audit_entry
+from lintel.workflows.nodes._event_helpers import AuditEmitter, emit_audit_entry
 
 
 class _FakeAuditStore:
@@ -80,3 +80,30 @@ class TestEmitAuditEntry:
             )
         ids = [e.entry_id for e in store.entries]
         assert len(set(ids)) == 3
+
+
+class TestAuditEmitter:
+    """Tests for the AuditEmitter class interface."""
+
+    async def test_emit_staticmethod_creates_entry(self) -> None:
+        store = _FakeAuditStore()
+        await AuditEmitter.emit(
+            store,
+            actor_id="user-1",
+            actor_type="user",
+            action="workflow_started",
+            resource_type="work_item",
+            resource_id="wi-1",
+        )
+        assert len(store.entries) == 1
+        assert store.entries[0].actor_id == "user-1"
+
+    async def test_emit_noop_when_none(self) -> None:
+        await AuditEmitter.emit(
+            None,
+            actor_id="a",
+            actor_type="system",
+            action="x",
+            resource_type="r",
+            resource_id="id",
+        )

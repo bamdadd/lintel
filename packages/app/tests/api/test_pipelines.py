@@ -1,11 +1,13 @@
 """Tests for pipelines API."""
 
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 import pytest
 
 from lintel.api.app import create_app
+from lintel.api.routes.pipelines import ReportVersionService
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -372,3 +374,65 @@ class TestPipelinesAPI:
         """SSE endpoint returns 404 for missing pipeline."""
         resp = client.get("/api/v1/pipelines/missing/events")
         assert resp.status_code == 404
+
+
+class TestReportVersionService:
+    """Unit tests for the ReportVersionService class."""
+
+    def _make_request(self) -> MagicMock:
+        """Build a minimal mock Request with app.state."""
+        req = MagicMock()
+        req.app.state = MagicMock(spec=[])
+        return req
+
+    def test_report_key_research(self) -> None:
+        assert ReportVersionService.report_key("research") == "research_report"
+        assert ReportVersionService.report_key("approve_research") == "research_report"
+
+    def test_report_key_plan(self) -> None:
+        assert ReportVersionService.report_key("plan") == "plan"
+        assert ReportVersionService.report_key("approve_spec") == "plan"
+
+    def test_report_key_fallback(self) -> None:
+        assert ReportVersionService.report_key("implement") == "report"
+        assert ReportVersionService.report_key("review") == "report"
+
+    def test_get_versions_empty(self) -> None:
+        req = self._make_request()
+        result = ReportVersionService.get_versions(req, "run1", "stage1")
+        assert result == []
+
+    def test_add_and_get_version(self) -> None:
+        req = self._make_request()
+        ver = ReportVersionService.add_version(req, "run1", "s1", "content v1", "alice")
+        assert ver["version"] == 1
+        assert ver["content"] == "content v1"
+        assert ver["editor"] == "alice"
+        assert ver["type"] == "edit"
+
+        versions = ReportVersionService.get_versions(req, "run1", "s1")
+        assert len(versions) == 1
+        assert versions[0]["version"] == 1
+
+    def test_add_version_increments(self) -> None:
+        req = self._make_request()
+        ReportVersionService.add_version(req, "run1", "s1", "v1", "alice")
+        ReportVersionService.add_version(req, "run1", "s1", "v2", "bob")
+        versions = ReportVersionService.get_versions(req, "run1", "s1")
+        assert len(versions) == 2
+        assert versions[1]["version"] == 2
+        assert versions[1]["editor"] == "bob"
+
+    def test_add_version_type_regenerate(self) -> None:
+        req = self._make_request()
+        ver = ReportVersionService.add_version(
+            req, "run1", "s1", "[Regenerating]", "system", version_type="regenerate"
+        )
+        assert ver["type"] == "regenerate"
+
+    def test_versions_isolated_by_stage(self) -> None:
+        req = self._make_request()
+        ReportVersionService.add_version(req, "run1", "s1", "for s1", "alice")
+        ReportVersionService.add_version(req, "run1", "s2", "for s2", "bob")
+        assert len(ReportVersionService.get_versions(req, "run1", "s1")) == 1
+        assert len(ReportVersionService.get_versions(req, "run1", "s2")) == 1
