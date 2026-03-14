@@ -281,9 +281,7 @@ class ChatService:
                     for rid in repo_ids[1:]:
                         extra = await repo_store.get(rid)
                         if extra is not None:
-                            extra_url = (
-                                extra.url if hasattr(extra, "url") else extra.get("url", "")
-                            )
+                            extra_url = extra.url if hasattr(extra, "url") else extra.get("url", "")
                             if extra_url:
                                 all_urls.append(extra_url)
                     project["_repo_urls"] = tuple(all_urls)
@@ -475,11 +473,7 @@ class ChatService:
             work_item_id=work_item_id,
             run_id=run_id,
             repo_url=cmd_repo_url,
-            repo_urls=(
-                cmd_repo_urls
-                if isinstance(cmd_repo_urls, tuple)
-                else tuple(cmd_repo_urls)
-            ),
+            repo_urls=(cmd_repo_urls if isinstance(cmd_repo_urls, tuple) else tuple(cmd_repo_urls)),
             repo_branch=cmd_repo_branch,
             credential_ids=cmd_credential_ids,
         )
@@ -920,9 +914,7 @@ async def send_message_stream(
                             yield f"data: {json.dumps({'token': full_content})}\n\n"
                 else:
                     # Stream reply token-by-token for chat responses
-                    project, repo_url, branch = await svc.resolve_project_context(
-                        conversation_id
-                    )
+                    project, repo_url, branch = await svc.resolve_project_context(conversation_id)
                     proj_ctx = svc.build_project_context(project, repo_url, branch)
                     async for token in chat_router.reply_stream(
                         body.message,

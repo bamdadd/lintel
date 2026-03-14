@@ -269,9 +269,7 @@ class ReportVersionService:
         return "report"
 
     @staticmethod
-    def get_versions(
-        request: Request, run_id: str, stage_id: str
-    ) -> list[dict[str, object]]:
+    def get_versions(request: Request, run_id: str, stage_id: str) -> list[dict[str, object]]:
         """Retrieve report version history from app state."""
         versions_store: dict[str, list[dict[str, object]]] = getattr(
             request.app.state, "_report_versions", {}
@@ -662,8 +660,6 @@ class RegeneratePayload(BaseModel):
     """Body for regenerating a stage report."""
 
     guidance: str = Field(default="", description="Optional prompt to guide regeneration")
-
-
 
 
 @router.patch("/pipelines/{run_id}/stages/{stage_id}/report")

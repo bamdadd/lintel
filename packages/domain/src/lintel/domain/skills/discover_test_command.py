@@ -126,8 +126,7 @@ async def discover_test_command(
             sandbox_id,
             SandboxJob(
                 command=(
-                    f"grep -c 'tool.uv.workspace' {workdir}/pyproject.toml"
-                    " 2>/dev/null || echo 0"
+                    f"grep -c 'tool.uv.workspace' {workdir}/pyproject.toml 2>/dev/null || echo 0"
                 ),
                 workdir=workdir,
                 timeout_seconds=5,
@@ -367,7 +366,9 @@ async def _python_test_command(
         # For workspace projects, prefer test-affected (only tests changed packages)
         if is_workspace:
             affected_target = await _find_make_affected_target(
-                sandbox_manager, sandbox_id, workdir,
+                sandbox_manager,
+                sandbox_id,
+                workdir,
             )
             if affected_target:
                 logger.info("test_discovery: workspace detected, using %s", affected_target)

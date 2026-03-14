@@ -404,7 +404,8 @@ class StageTracker:
                 channel_adapter = getattr(app_state, "channel_adapter", None)
                 if channel_adapter is not None:
                     try:
-                        message = f"Stage *{stage_name}* is now *{status}* (run: {self.run_id[:12]})"
+                        run_short = self.run_id[:12]
+                        message = f"Stage *{stage_name}* is now *{status}* (run: {run_short})"
                         await channel_adapter.send_message(
                             channel_id=target,
                             thread_ts="",
@@ -492,8 +493,8 @@ async def update_stage(
 ) -> None:
     """Update a stage's status within a pipeline run."""
     tracker = StageTracker(config, state)
-    tracker._run_id = run_id  # noqa: SLF001
-    await tracker._update_stage(stage_name, status, outputs=outputs, error=error)  # noqa: SLF001
+    tracker._run_id = run_id
+    await tracker._update_stage(stage_name, status, outputs=outputs, error=error)
 
 
 def _get_pipeline_store(

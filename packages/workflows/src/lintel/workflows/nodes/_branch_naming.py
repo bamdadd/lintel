@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import re
+from typing import ClassVar
 
 
 class BranchNaming:
     """Encapsulates branch naming conventions."""
 
-    _TYPE_MAP: dict[str, str] = {
+    _TYPE_MAP: ClassVar[dict[str, str]] = {
         "feature": "feat",
         "bug": "fix",
         "refactor": "refactor",
