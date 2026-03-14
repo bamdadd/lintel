@@ -6,8 +6,9 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from lintel.contracts.data_models import BoardData, TagData
 from pydantic import BaseModel, Field
+
+from lintel.contracts.data_models import BoardData, TagData
 
 router = APIRouter()
 

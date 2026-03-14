@@ -8,9 +8,10 @@ import shlex
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+import structlog
+
 from lintel.contracts.errors import ClaudeCodeCredentialError
 from lintel.contracts.types import SandboxJob, TokenStatus
-import structlog
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

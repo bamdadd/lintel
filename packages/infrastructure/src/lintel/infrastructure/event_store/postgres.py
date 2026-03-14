@@ -6,8 +6,9 @@ import hashlib
 import json
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from lintel.contracts.events import EVENT_TYPE_MAP, EventEnvelope
 import structlog
+
+from lintel.contracts.events import EVENT_TYPE_MAP, EventEnvelope
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     import asyncpg
+
     from lintel.contracts.protocols import EventBus
 
 logger = structlog.get_logger()

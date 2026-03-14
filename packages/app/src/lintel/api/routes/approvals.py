@@ -4,11 +4,12 @@ from dataclasses import asdict
 from typing import Any
 
 from fastapi import APIRouter, Request
+from pydantic import BaseModel
+
 from lintel.contracts.commands import GrantApproval, RejectApproval
 from lintel.contracts.events import HumanApprovalGranted, HumanApprovalRejected
 from lintel.contracts.types import ThreadRef
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel
 
 router = APIRouter()
 

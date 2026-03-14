@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from lintel.workflows.registry import WORKFLOW_BUILDERS, get_workflow_builder
 import pytest
+
+from lintel.workflows.registry import WORKFLOW_BUILDERS, get_workflow_builder
 
 
 class TestWorkflowRegistry:

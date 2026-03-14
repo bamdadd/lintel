@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
+
 from lintel.contracts.types import Repository, RepoStatus
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
-import pytest
 
 
 class TestInMemoryRepositoryStore:

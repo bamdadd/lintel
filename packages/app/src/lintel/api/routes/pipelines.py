@@ -10,6 +10,8 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
 from lintel.contracts.events import (
     PipelineRunCancelled,
     PipelineRunDeleted,
@@ -22,7 +24,6 @@ from lintel.contracts.events import (
 )
 from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel, Field
 
 router = APIRouter()
 

@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import pytest
+
 from lintel.contracts.events import EventEnvelope, ThreadMessageReceived, WorkflowStarted
 from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
-import pytest
 
 THREAD = ThreadRef("ws1", "ch1", "ts1")
 

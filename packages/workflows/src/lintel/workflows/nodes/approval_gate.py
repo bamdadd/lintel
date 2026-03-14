@@ -13,6 +13,7 @@ import structlog
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
+
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()

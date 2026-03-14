@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from lintel.workflows.nodes._error_handling import handle_node_error
 import pytest
+
+from lintel.workflows.nodes._error_handling import handle_node_error
 
 
 class TestHandleNodeError:

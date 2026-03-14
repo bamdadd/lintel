@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+
 from lintel.contracts.data_models import SandboxMetadata
 from lintel.contracts.errors import SandboxNotFoundError
 from lintel.contracts.events import (
@@ -15,7 +17,6 @@ from lintel.contracts.events import (
 )
 from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel
 
 router = APIRouter()
 

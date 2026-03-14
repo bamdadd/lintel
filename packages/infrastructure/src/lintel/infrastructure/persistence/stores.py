@@ -13,6 +13,7 @@ from lintel.infrastructure.persistence.dict_store import PostgresDictStore
 
 if TYPE_CHECKING:
     import asyncpg
+
     from lintel.contracts.types import (
         AIProvider,
         Credential,

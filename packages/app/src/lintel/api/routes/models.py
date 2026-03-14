@@ -7,6 +7,8 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+
 from lintel.api.routes.ai_providers import (
     InMemoryAIProviderStore,
     get_ai_provider_store,
@@ -20,7 +22,6 @@ from lintel.contracts.events import (
 )
 from lintel.contracts.types import Model, ModelAssignment, ModelAssignmentContext
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel, Field
 
 router = APIRouter()
 

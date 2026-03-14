@@ -5,8 +5,9 @@ from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from lintel.contracts.types import AuditEntry
 from pydantic import BaseModel
+
+from lintel.contracts.types import AuditEntry
 
 router = APIRouter()
 

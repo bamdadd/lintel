@@ -8,6 +8,8 @@ import time
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+import structlog
+
 from lintel.contracts.events import (
     PipelineRunCompleted,
     PipelineRunFailed,
@@ -16,7 +18,6 @@ from lintel.contracts.events import (
     WorkItemCompleted,
     WorkItemUpdated,
 )
-import structlog
 
 if TYPE_CHECKING:
     from lintel.contracts.commands import StartWorkflow

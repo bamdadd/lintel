@@ -3,6 +3,8 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+
 from lintel.contracts.data_models import ConnectionData
 from lintel.contracts.events import (
     ConnectionCreated,
@@ -11,7 +13,6 @@ from lintel.contracts.events import (
     SettingsUpdated,
 )
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel
 
 router = APIRouter()
 

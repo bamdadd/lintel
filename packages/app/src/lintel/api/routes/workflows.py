@@ -4,12 +4,13 @@ from dataclasses import asdict
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
 from lintel.api.deps import get_command_dispatcher, get_thread_status_projection
 from lintel.contracts.commands import ProcessIncomingMessage, StartWorkflow
 from lintel.contracts.types import ThreadRef
 from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
-from pydantic import BaseModel
 
 router = APIRouter()
 

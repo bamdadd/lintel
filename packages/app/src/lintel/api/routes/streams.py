@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
+
 from lintel.api.deps import get_event_store
 
 if TYPE_CHECKING:

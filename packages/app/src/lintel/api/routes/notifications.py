@@ -5,6 +5,8 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+
 from lintel.contracts.events import (
     NotificationRuleCreated,
     NotificationRuleRemoved,
@@ -12,7 +14,6 @@ from lintel.contracts.events import (
 )
 from lintel.contracts.types import NotificationChannel, NotificationRule
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel, Field
 
 router = APIRouter()
 

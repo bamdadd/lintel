@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from langgraph.graph import END, StateGraph
+
 from lintel.workflows.feature_to_pr import _check_phase
 from lintel.workflows.nodes.generic import (
     build_release,

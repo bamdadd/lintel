@@ -10,12 +10,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from lintel.contracts.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
     SandboxTimeoutError,
 )
-import pytest
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import SandboxManager
@@ -300,7 +301,6 @@ async def test_implement_handles_sandbox_failure(
     import json
 
     from lintel.workflows.nodes.implement import spawn_implementation
-
     from tests.integration.sandbox.fake_runtime import PLAN_RESPONSE, make_fake_runtime
     from tests.integration.sandbox.test_pipeline_stages import (
         WORKDIR,
@@ -335,7 +335,6 @@ async def test_test_node_handles_missing_sandbox(
 ) -> None:
     """Test node should handle missing sandbox gracefully."""
     from lintel.workflows.nodes.test_code import run_tests
-
     from tests.integration.sandbox.test_pipeline_stages import SandboxProject, StageRunner
 
     mgr, sandbox_id = sandbox
@@ -357,7 +356,6 @@ async def test_review_handles_empty_diff(
 ) -> None:
     """Review node should handle projects with no changes gracefully."""
     from lintel.workflows.nodes.review import review_output
-
     from tests.integration.sandbox.fake_runtime import make_fake_runtime
     from tests.integration.sandbox.test_pipeline_stages import (
         WORKDIR,

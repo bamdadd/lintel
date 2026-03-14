@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+
 from lintel.api.schemas.health import HealthResponse
 
 router = APIRouter()

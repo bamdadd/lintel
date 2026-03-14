@@ -319,7 +319,6 @@ async def test_close_creates_pr(runner: StageRunner) -> None:
     """Close node should create a PR and post the review comment."""
     from lintel.workflows.nodes.close import close_workflow
     from lintel.workflows.nodes.implement import spawn_implementation
-
     from tests.integration.sandbox.fake_runtime import FakeRepoProvider
 
     await runner.project.install_deps()
@@ -359,7 +358,6 @@ async def test_close_creates_pr_with_local_remote(runner: StageRunner) -> None:
     from lintel.contracts.types import SandboxJob
     from lintel.workflows.nodes.close import close_workflow
     from lintel.workflows.nodes.implement import spawn_implementation
-
     from tests.integration.sandbox.fake_runtime import FakeRepoProvider
 
     await runner.project.install_deps()

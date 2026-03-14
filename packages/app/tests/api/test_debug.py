@@ -6,8 +6,9 @@ import asyncio
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
-from lintel.api.app import create_app
 import pytest
+
+from lintel.api.app import create_app
 
 
 @pytest.fixture

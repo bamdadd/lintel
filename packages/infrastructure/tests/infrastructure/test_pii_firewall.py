@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
+import pytest
+
 from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.pii.placeholder_manager import PlaceholderManager
-import pytest
 
 _presidio_available = True
 try:

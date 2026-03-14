@@ -3,9 +3,10 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
+import structlog
+
 from lintel.api.deps import get_projection_engine
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
-import structlog
 
 logger = structlog.get_logger()
 

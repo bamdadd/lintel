@@ -24,6 +24,7 @@ import structlog
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
+
     from lintel.agents.runtime import AgentRuntime
     from lintel.contracts.protocols import SandboxManager
     from lintel.contracts.types import ThreadRef

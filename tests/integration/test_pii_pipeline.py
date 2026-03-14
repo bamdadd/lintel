@@ -7,12 +7,13 @@ from uuid import uuid4
 
 import asyncpg
 from cryptography.fernet import Fernet
+import pytest
+
 from lintel.contracts.events import ThreadMessageReceived
 from lintel.contracts.types import ActorType, ThreadRef
 from lintel.infrastructure.event_store.postgres import PostgresEventStore
 from lintel.infrastructure.pii.presidio_firewall import PresidioFirewall
 from lintel.infrastructure.vault.postgres_vault import PostgresPIIVault
-import pytest
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

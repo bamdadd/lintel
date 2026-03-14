@@ -9,6 +9,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Generator
 from fastapi.testclient import TestClient
+
 from lintel.api.app import create_app
 
 SANDBOX_BODY: dict[str, object] = {

@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import asyncpg
-from lintel.infrastructure.persistence.stores import PostgresChatStore
 import pytest
+
+from lintel.infrastructure.persistence.stores import PostgresChatStore
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

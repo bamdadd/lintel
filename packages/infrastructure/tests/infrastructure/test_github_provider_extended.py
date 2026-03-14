@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from lintel.infrastructure.repos.github_provider import GitHubRepoProvider
 import pytest
+
+from lintel.infrastructure.repos.github_provider import GitHubRepoProvider
 
 
 class TestTokenInjection:

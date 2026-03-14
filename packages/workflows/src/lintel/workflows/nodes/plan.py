@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-from lintel.contracts.types import AgentRole
 import structlog
+
+from lintel.contracts.types import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
+
     from lintel.agents.runtime import AgentRuntime
     from lintel.contracts.types import ThreadRef
     from lintel.workflows.state import ThreadWorkflowState

@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi.testclient import TestClient
-from lintel.api.app import create_app
 import pytest
+
+from lintel.api.app import create_app
 
 if TYPE_CHECKING:
     from collections.abc import Generator

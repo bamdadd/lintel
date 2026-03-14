@@ -5,10 +5,11 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+
 from lintel.contracts.events import TriggerCreated, TriggerRemoved, TriggerUpdated
 from lintel.contracts.types import Trigger, TriggerType
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel, Field
 
 router = APIRouter()
 

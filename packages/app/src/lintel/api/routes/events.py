@@ -3,6 +3,7 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
+
 from lintel.api.deps import get_event_store, get_task_backlog_projection
 from lintel.contracts.events import EVENT_TYPE_MAP
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore

@@ -8,6 +8,8 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
+
 from lintel.contracts.data_models import WorkItemData
 from lintel.contracts.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
 from lintel.contracts.types import (
@@ -22,7 +24,6 @@ from lintel.contracts.types import (
     WorkItemType,
 )
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

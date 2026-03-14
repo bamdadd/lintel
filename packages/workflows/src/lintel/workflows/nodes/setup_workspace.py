@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from langchain_core.runnables import RunnableConfig
+
     from lintel.contracts.protocols import CredentialStore, SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 

@@ -8,8 +8,9 @@ from pathlib import Path
 import sqlite3
 from typing import TYPE_CHECKING, Any
 
-from lintel.contracts.types import ModelPolicy
 import structlog
+
+from lintel.contracts.types import ModelPolicy
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

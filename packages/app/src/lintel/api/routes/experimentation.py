@@ -8,6 +8,8 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
+
 from lintel.contracts.events import (
     ComplianceExperimentCreated,
     ComplianceExperimentRemoved,
@@ -28,7 +30,6 @@ from lintel.contracts.types import (
     KPIDirection,
 )
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel, Field
 
 from .compliance import ComplianceStore
 

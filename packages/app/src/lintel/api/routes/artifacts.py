@@ -5,8 +5,9 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from lintel.contracts.types import CodeArtifact, TestResult, TestVerdict
 from pydantic import BaseModel, Field
+
+from lintel.contracts.types import CodeArtifact, TestResult, TestVerdict
 
 router = APIRouter()
 

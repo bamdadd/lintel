@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from lintel.contracts.errors import (
     SandboxError,
     SandboxExecutionError,
     SandboxNotFoundError,
     SandboxTimeoutError,
 )
-import pytest
 
 
 class TestSandboxError:

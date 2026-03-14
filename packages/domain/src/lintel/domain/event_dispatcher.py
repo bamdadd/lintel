@@ -13,6 +13,7 @@ import structlog
 
 if TYPE_CHECKING:
     from fastapi import Request
+
     from lintel.contracts.events import EventEnvelope
 
 logger = structlog.get_logger()

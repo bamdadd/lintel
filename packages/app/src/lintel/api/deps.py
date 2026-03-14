@@ -1,6 +1,7 @@
 """Dependency injection for FastAPI routes."""
 
 from fastapi import Request
+
 from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine

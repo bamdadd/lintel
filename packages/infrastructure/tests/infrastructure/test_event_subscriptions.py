@@ -13,6 +13,8 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
+
 from lintel.contracts.events import EventEnvelope
 from lintel.contracts.types import ActorType
 from lintel.infrastructure.event_bus.in_memory import InMemoryEventBus
@@ -23,7 +25,6 @@ from lintel.infrastructure.event_bus.subscriptions import (
     live_subscribe,
 )
 from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
-import pytest
 
 
 def _make_event(event_type: str = "TestEvent") -> EventEnvelope:

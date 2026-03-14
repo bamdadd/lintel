@@ -9,6 +9,7 @@ import structlog
 
 if TYPE_CHECKING:
     import asyncpg
+
     from lintel.contracts.types import ThreadRef
 
 logger = structlog.get_logger()

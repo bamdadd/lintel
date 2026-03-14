@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
+
     from lintel.workflows.state import ThreadWorkflowState
 
 

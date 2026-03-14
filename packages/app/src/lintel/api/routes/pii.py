@@ -5,11 +5,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request
+from pydantic import BaseModel
+
 from lintel.contracts.commands import RevealPII
 from lintel.contracts.events import VaultRevealRequested
 from lintel.contracts.types import ThreadRef
 from lintel.domain.event_dispatcher import dispatch_event
-from pydantic import BaseModel
 
 router = APIRouter()
 

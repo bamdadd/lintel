@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock
 
-from lintel.infrastructure.channels.slack.adapter import SlackChannelAdapter
 import pytest
+
+from lintel.infrastructure.channels.slack.adapter import SlackChannelAdapter
 
 
 @pytest.fixture

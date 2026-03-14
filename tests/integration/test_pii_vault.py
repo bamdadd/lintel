@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING
 
 import asyncpg
 from cryptography.fernet import Fernet
+import pytest
+
 from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.vault.postgres_vault import PostgresPIIVault
-import pytest
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

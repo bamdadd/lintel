@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
+import pytest
+
 from lintel.api.routes.variables import InMemoryVariableStore
 from lintel.contracts.types import (
     Credential,
@@ -17,7 +19,6 @@ from lintel.contracts.types import (
     Variable,
 )
 from lintel.workflows.nodes.setup_workspace import setup_workspace
-import pytest
 
 
 class DummySandboxManager:
