@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, NewType
 from uuid import UUID
@@ -495,6 +495,37 @@ class WorkflowHook:
     params_template: dict[str, str] | None = None  # map event fields to workflow params
     enabled: bool = True
     max_chain_depth: int = 5  # prevent infinite hook loops
+
+
+class AutomationTriggerType(StrEnum):
+    CRON = "cron"
+    EVENT = "event"
+    MANUAL = "manual"
+
+
+class ConcurrencyPolicy(StrEnum):
+    ALLOW = "allow"
+    QUEUE = "queue"
+    SKIP = "skip"
+    CANCEL = "cancel"
+
+
+@dataclass(frozen=True)
+class AutomationDefinition:
+    """Server-side automation rule that executes workflows on schedule or event."""
+
+    automation_id: str
+    name: str
+    project_id: str
+    workflow_definition_id: str
+    trigger_type: AutomationTriggerType
+    trigger_config: dict[str, object]
+    input_parameters: dict[str, object] = field(default_factory=dict)
+    concurrency_policy: ConcurrencyPolicy = ConcurrencyPolicy.QUEUE
+    enabled: bool = True
+    max_chain_depth: int = 3
+    created_at: str = ""
+    updated_at: str = ""
 
 
 # --- Artifacts & Test Results ---
