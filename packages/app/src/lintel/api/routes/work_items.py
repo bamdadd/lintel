@@ -198,7 +198,7 @@ async def _check_wip_limit(
         return None
 
     try:
-        boards = await board_store.list(project_id)
+        boards = await board_store.list_by_project(project_id)
     except Exception:
         return None
 
