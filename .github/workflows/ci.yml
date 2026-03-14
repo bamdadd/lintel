@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v4
       - uses: actions/setup-python@v5
         with:
@@ -23,15 +25,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: make install
-      - run: make test-unit
+      # PRs: only test affected packages. Main: test everything.
+      - name: Run affected tests (PR)
+        if: github.event_name == 'pull_request'
+        run: make test-affected BASE_REF=origin/${{ github.base_ref }}
+      - name: Run all tests (main)
+        if: github.event_name == 'push'
+        run: make test-unit
 
   test-integration:
     runs-on: ubuntu-latest
+    # Only run integration tests on main pushes
+    if: github.event_name == 'push'
     services:
       postgres:
         image: postgres:16
