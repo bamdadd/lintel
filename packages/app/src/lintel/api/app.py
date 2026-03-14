@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from fastapi.routing import APIRoute
     from langgraph.graph.state import CompiledStateGraph
 
+from lintel.api.container import AppContainer, wire_container
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routes import (
     admin,
@@ -515,7 +516,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except Exception:
         pass  # Docker may not be available
 
+    # Wire DI container so route handlers can use Provide[AppContainer.X]
+    container = AppContainer()
+    services = {
+        "event_bus": event_bus,
+        "model_router": model_router,
+        "chat_router": chat_router,
+        "agent_runtime": agent_runtime,
+        "command_dispatcher": dispatcher,
+        "workflow_executor": executor,
+        "sandbox_manager": sandbox_manager,
+        "mcp_tool_client": mcp_tool_client,
+        "projection_engine": engine,
+        "thread_status_projection": thread_status,
+        "quality_metrics_projection": quality_metrics,
+        "task_backlog_projection": task_backlog,
+    }
+    wire_container(container, stores, services)
+    container.wire(
+        packages=["lintel.api.routes"],
+        modules=["lintel.api.deps"],
+    )
+    app.state.container = container
+
     yield
+
+    container.unwire()
     # Cleanup
     await engine.stop()
     if db_pool is not None:
@@ -539,7 +565,7 @@ def create_app() -> FastAPI:
     app.add_middleware(CorrelationMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=["*"],
         allow_methods=["*"],
         allow_headers=["*", "X-Correlation-ID"],
         expose_headers=["X-Correlation-ID"],
