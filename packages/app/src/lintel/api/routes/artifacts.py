@@ -9,7 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
+from lintel.contracts.events import ArtifactStored, TestRunCompleted
 from lintel.contracts.types import CodeArtifact, TestResult, TestVerdict
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -116,6 +118,7 @@ class CreateTestResultRequest(BaseModel):
 @inject
 async def create_artifact(
     body: CreateCodeArtifactRequest,
+    request: Request,
     store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.artifact_id)
@@ -131,6 +134,17 @@ async def create_artifact(
         metadata=body.metadata,
     )
     await store.add(artifact)
+    await dispatch_event(
+        request,
+        ArtifactStored(
+            payload={
+                "resource_id": body.artifact_id,
+                "artifact_type": body.artifact_type,
+                "run_id": body.run_id,
+            }
+        ),
+        stream_id=f"artifact:{body.artifact_id}",
+    )
     return asdict(artifact)
 
 
@@ -164,6 +178,7 @@ async def get_artifact(
 @inject
 async def create_test_result(
     body: CreateTestResultRequest,
+    request: Request,
     store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.result_id)
@@ -184,6 +199,17 @@ async def create_test_result(
         failures=tuple(body.failures),
     )
     await store.add(result)
+    await dispatch_event(
+        request,
+        TestRunCompleted(
+            payload={
+                "resource_id": body.result_id,
+                "run_id": body.run_id,
+                "verdict": body.verdict.value,
+            }
+        ),
+        stream_id=f"test_result:{body.result_id}",
+    )
     return _test_result_to_dict(result)
 
 

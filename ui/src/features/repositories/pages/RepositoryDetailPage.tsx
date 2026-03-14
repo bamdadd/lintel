@@ -2,17 +2,18 @@ import { useParams, useNavigate } from 'react-router';
 import { useState } from 'react';
 import {
   Title, Stack, Paper, Text, Group, Button, Loader, Center,
-  TextInput, Select, Modal,
+  TextInput, Select, Modal, Tabs, Table, Badge, Anchor,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useRepositoriesGetRepository,
   useRepositoriesUpdateRepository,
   useRepositoriesRemoveRepository,
 } from '@/generated/api/repositories/repositories';
 import { StatusBadge } from '@/shared/components/StatusBadge';
+import { customInstance } from '@/shared/api/client';
 import type { RepoStatus } from '@/generated/models/repoStatus';
 
 interface RepoData {
@@ -23,6 +24,25 @@ interface RepoData {
   owner: string;
   provider: string;
   status: string;
+}
+
+interface Commit {
+  sha: string;
+  message: string;
+  author: string;
+  date: string;
+}
+
+interface PullRequest {
+  number: number;
+  title: string;
+  state: string;
+  author: string;
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+  head_branch: string;
+  base_branch: string;
 }
 
 export function Component() {
@@ -37,6 +57,20 @@ export function Component() {
   const updateMut = useRepositoriesUpdateRepository();
   const deleteMut = useRepositoriesRemoveRepository();
 
+  const { data: commitsResp, isLoading: commitsLoading } = useQuery({
+    queryKey: ['repositories', repoId, 'commits'],
+    queryFn: () =>
+      customInstance<{ data: Commit[] }>(`/api/v1/repositories/${repoId}/commits?limit=20`),
+    enabled: !!repoId,
+  });
+
+  const { data: prsResp, isLoading: prsLoading } = useQuery({
+    queryKey: ['repositories', repoId, 'pull-requests'],
+    queryFn: () =>
+      customInstance<{ data: PullRequest[] }>(`/api/v1/repositories/${repoId}/pull-requests?state=all&limit=20`),
+    enabled: !!repoId,
+  });
+
   const form = useForm({
     initialValues: { name: '', default_branch: '', owner: '', status: '' },
   });
@@ -45,6 +79,9 @@ export function Component() {
 
   const repo = resp?.data as RepoData | undefined;
   if (!repo) return <Text>Repository not found</Text>;
+
+  const commits = (commitsResp?.data ?? []) as Commit[];
+  const pullRequests = (prsResp?.data ?? []) as PullRequest[];
 
   const startEdit = () => {
     form.setValues({
@@ -103,6 +140,86 @@ export function Component() {
         <Button onClick={startEdit}>Edit</Button>
         <Button color="red" variant="light" onClick={handleDelete} loading={deleteMut.isPending}>Delete</Button>
       </Group>
+
+      <Tabs defaultValue="commits">
+        <Tabs.List>
+          <Tabs.Tab value="commits">Commits ({commits.length})</Tabs.Tab>
+          <Tabs.Tab value="prs">Pull Requests ({pullRequests.length})</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="commits" pt="sm">
+          {commitsLoading ? (
+            <Center py="md"><Loader size="sm" /></Center>
+          ) : commits.length === 0 ? (
+            <Text c="dimmed" py="md">No commits found. Ensure GITHUB_TOKEN is configured.</Text>
+          ) : (
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>SHA</Table.Th>
+                  <Table.Th>Message</Table.Th>
+                  <Table.Th>Author</Table.Th>
+                  <Table.Th>Date</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {commits.map((c) => (
+                  <Table.Tr key={c.sha}>
+                    <Table.Td><Anchor href={`${repo.url}/commit/${c.sha}`} target="_blank" size="sm" ff="monospace">{c.sha.slice(0, 7)}</Anchor></Table.Td>
+                    <Table.Td><Text size="sm" lineClamp={1}>{c.message.split('\n')[0]}</Text></Table.Td>
+                    <Table.Td><Text size="sm">{c.author}</Text></Table.Td>
+                    <Table.Td><Text size="sm">{new Date(c.date).toLocaleDateString()}</Text></Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          )}
+        </Tabs.Panel>
+
+        <Tabs.Panel value="prs" pt="sm">
+          {prsLoading ? (
+            <Center py="md"><Loader size="sm" /></Center>
+          ) : pullRequests.length === 0 ? (
+            <Text c="dimmed" py="md">No pull requests found. Ensure GITHUB_TOKEN is configured.</Text>
+          ) : (
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>#</Table.Th>
+                  <Table.Th>Title</Table.Th>
+                  <Table.Th>State</Table.Th>
+                  <Table.Th>Author</Table.Th>
+                  <Table.Th>Branch</Table.Th>
+                  <Table.Th>Updated</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {pullRequests.map((pr) => (
+                  <Table.Tr key={pr.number}>
+                    <Table.Td>
+                      <Anchor href={pr.html_url} target="_blank" size="sm">#{pr.number}</Anchor>
+                    </Table.Td>
+                    <Table.Td><Text size="sm" lineClamp={1}>{pr.title}</Text></Table.Td>
+                    <Table.Td>
+                      <Badge
+                        size="sm"
+                        color={pr.state === 'open' ? 'green' : pr.state === 'closed' ? 'red' : 'purple'}
+                      >
+                        {pr.state}
+                      </Badge>
+                    </Table.Td>
+                    <Table.Td><Text size="sm">{pr.author}</Text></Table.Td>
+                    <Table.Td>
+                      <Text size="sm" ff="monospace">{pr.head_branch} &rarr; {pr.base_branch}</Text>
+                    </Table.Td>
+                    <Table.Td><Text size="sm">{new Date(pr.updated_at).toLocaleDateString()}</Text></Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          )}
+        </Tabs.Panel>
+      </Tabs>
 
       <Modal opened={editing} onClose={() => setEditing(false)} title="Edit Repository">
         <form onSubmit={handleSave}>

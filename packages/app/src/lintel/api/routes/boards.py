@@ -11,6 +11,15 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.contracts.data_models import BoardData, TagData
+from lintel.contracts.events import (
+    BoardCreated,
+    BoardRemoved,
+    BoardUpdated,
+    TagCreated,
+    TagRemoved,
+    TagUpdated,
+)
+from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -127,6 +136,7 @@ class UpdateBoardRequest(BaseModel):
 @inject
 async def create_tag(
     body: CreateTagRequest,
+    request: Request,
     store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.tag_id)
@@ -134,6 +144,11 @@ async def create_tag(
         raise HTTPException(status_code=409, detail="Tag already exists")
     data = body.model_dump()
     await store.add(data)
+    await dispatch_event(
+        request,
+        TagCreated(payload={"resource_id": body.tag_id, "name": body.name}),
+        stream_id=f"tag:{body.tag_id}",
+    )
     result = await store.get(body.tag_id)
     return result  # type: ignore[return-value]
 
@@ -164,6 +179,7 @@ async def get_tag(
 async def update_tag(
     tag_id: str,
     body: UpdateTagRequest,
+    request: Request,
     store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(tag_id)
@@ -172,6 +188,11 @@ async def update_tag(
     updates = body.model_dump(exclude_none=True)
     merged = {**item, **updates}
     await store.update(tag_id, merged)
+    await dispatch_event(
+        request,
+        TagUpdated(payload={"resource_id": tag_id, "fields": list(updates.keys())}),
+        stream_id=f"tag:{tag_id}",
+    )
     result = await store.get(tag_id)
     return result  # type: ignore[return-value]
 
@@ -180,12 +201,18 @@ async def update_tag(
 @inject
 async def remove_tag(
     tag_id: str,
+    request: Request,
     store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
 ) -> None:
     item = await store.get(tag_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Tag not found")
     await store.remove(tag_id)
+    await dispatch_event(
+        request,
+        TagRemoved(payload={"resource_id": tag_id, "name": item.get("name", "")}),
+        stream_id=f"tag:{tag_id}",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +224,7 @@ async def remove_tag(
 @inject
 async def create_board(
     body: CreateBoardRequest,
+    request: Request,
     store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.board_id)
@@ -204,6 +232,11 @@ async def create_board(
         raise HTTPException(status_code=409, detail="Board already exists")
     data = body.model_dump()
     await store.add(data)
+    await dispatch_event(
+        request,
+        BoardCreated(payload={"resource_id": body.board_id, "name": body.name}),
+        stream_id=f"board:{body.board_id}",
+    )
     result = await store.get(body.board_id)
     return result  # type: ignore[return-value]
 
@@ -234,6 +267,7 @@ async def get_board(
 async def update_board(
     board_id: str,
     body: UpdateBoardRequest,
+    request: Request,
     store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(board_id)
@@ -242,6 +276,11 @@ async def update_board(
     updates = body.model_dump(exclude_none=True)
     merged = {**item, **updates}
     await store.update(board_id, merged)
+    await dispatch_event(
+        request,
+        BoardUpdated(payload={"resource_id": board_id, "fields": list(updates.keys())}),
+        stream_id=f"board:{board_id}",
+    )
     result = await store.get(board_id)
     return result  # type: ignore[return-value]
 
@@ -250,9 +289,15 @@ async def update_board(
 @inject
 async def remove_board(
     board_id: str,
+    request: Request,
     store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
 ) -> None:
     item = await store.get(board_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Board not found")
     await store.remove(board_id)
+    await dispatch_event(
+        request,
+        BoardRemoved(payload={"resource_id": board_id, "name": item.get("name", "")}),
+        stream_id=f"board:{board_id}",
+    )

@@ -637,6 +637,39 @@ class SettingsUpdated(EventEnvelope):
     event_type: str = "SettingsUpdated"
 
 
+# --- Board & Tag Events ---
+
+
+@dataclass(frozen=True)
+class BoardCreated(EventEnvelope):
+    event_type: str = "BoardCreated"
+
+
+@dataclass(frozen=True)
+class BoardUpdated(EventEnvelope):
+    event_type: str = "BoardUpdated"
+
+
+@dataclass(frozen=True)
+class BoardRemoved(EventEnvelope):
+    event_type: str = "BoardRemoved"
+
+
+@dataclass(frozen=True)
+class TagCreated(EventEnvelope):
+    event_type: str = "TagCreated"
+
+
+@dataclass(frozen=True)
+class TagUpdated(EventEnvelope):
+    event_type: str = "TagUpdated"
+
+
+@dataclass(frozen=True)
+class TagRemoved(EventEnvelope):
+    event_type: str = "TagRemoved"
+
+
 # --- Conversation Events ---
 
 
@@ -1144,6 +1177,12 @@ EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
         ConnectionUpdated,
         ConnectionRemoved,
         SettingsUpdated,
+        BoardCreated,
+        BoardUpdated,
+        BoardRemoved,
+        TagCreated,
+        TagUpdated,
+        TagRemoved,
         ConversationCreated,
         ConversationDeleted,
         WorkflowTriggered,

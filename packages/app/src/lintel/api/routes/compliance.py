@@ -27,6 +27,8 @@ from lintel.contracts.events import (
     PracticeCreated,
     PracticeRemoved,
     PracticeUpdated,
+    ProjectUpdated,
+    ProjectUpdated,
     ProcedureCreated,
     ProcedureRemoved,
     ProcedureUpdated,
@@ -934,6 +936,17 @@ async def update_compliance_config(
     merged_config = {**current_config, **updates}
     project["compliance_config"] = merged_config
     await store.update(project_id, project)
+    await dispatch_event(
+        request,
+        ProjectUpdated(
+            payload={
+                "resource_id": project_id,
+                "fields": ["compliance_config"],
+                "compliance_config": merged_config,
+            }
+        ),
+        stream_id=f"project:{project_id}",
+    )
     return {"project_id": project_id, **merged_config}
 
 
