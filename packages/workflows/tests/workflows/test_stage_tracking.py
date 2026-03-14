@@ -11,6 +11,7 @@ from lintel.contracts.types import (
     StageAttempt,
     StageStatus,
 )
+from lintel.workflows.nodes._stage_tracking import StageTracker
 
 
 class FakePipelineStore:
@@ -199,3 +200,95 @@ class TestArchiveAndReset:
         s = run.stages[0]
         assert "new log line" in s.logs
         assert len(s.attempts) == 1
+
+
+class TestStageTrackerClass:
+    """Test StageTracker class directly (not via backward-compat wrappers)."""
+
+    async def test_mark_running_via_tracker(self) -> None:
+        stage = Stage(stage_id="s1", name="plan", stage_type="agent")
+        store = FakePipelineStore(_make_run([stage]))
+        config = _make_config(store)
+
+        tracker = StageTracker(config)
+        await tracker.mark_running("plan")
+
+        run = await store.get("run-1")
+        assert run is not None
+        assert run.stages[0].status == StageStatus.RUNNING
+
+    async def test_append_log_via_tracker(self) -> None:
+        stage = Stage(stage_id="s1", name="plan", stage_type="agent", status=StageStatus.RUNNING)
+        store = FakePipelineStore(_make_run([stage]))
+        config = _make_config(store)
+
+        tracker = StageTracker(config)
+        await tracker.append_log("plan", "some log")
+
+        run = await store.get("run-1")
+        assert run is not None
+        assert "some log" in run.stages[0].logs
+
+    async def test_mark_completed_succeeded_via_tracker(self) -> None:
+        stage = Stage(stage_id="s1", name="plan", stage_type="agent", status=StageStatus.RUNNING)
+        store = FakePipelineStore(_make_run([stage]))
+        config: dict[str, Any] = {"configurable": {"pipeline_store": store, "run_id": "run-1"}}
+
+        tracker = StageTracker(config)
+        await tracker.mark_completed("plan", outputs={"result": "ok"})
+
+        run = await store.get("run-1")
+        assert run is not None
+        assert run.stages[0].status == StageStatus.SUCCEEDED
+        assert run.stages[0].outputs == {"result": "ok"}
+
+    async def test_mark_completed_failed_via_tracker(self) -> None:
+        stage = Stage(stage_id="s1", name="plan", stage_type="agent", status=StageStatus.RUNNING)
+        store = FakePipelineStore(_make_run([stage]))
+        config: dict[str, Any] = {"configurable": {"pipeline_store": store, "run_id": "run-1"}}
+
+        tracker = StageTracker(config)
+        await tracker.mark_completed("plan", error="something broke")
+
+        run = await store.get("run-1")
+        assert run is not None
+        assert run.stages[0].status == StageStatus.FAILED
+
+    async def test_run_id_cached(self) -> None:
+        config = _make_config(FakePipelineStore(_make_run([])))
+        tracker = StageTracker(config)
+        rid1 = tracker.run_id
+        rid2 = tracker.run_id
+        assert rid1 == rid2 == "run-1"
+
+    async def test_pipeline_store_cached(self) -> None:
+        store = FakePipelineStore(_make_run([]))
+        config = _make_config(store)
+        tracker = StageTracker(config)
+        ps1 = tracker.pipeline_store
+        ps2 = tracker.pipeline_store
+        assert ps1 is ps2 is store
+
+    def test_extract_token_usage_static(self) -> None:
+        result = {
+            "model": "gpt-4",
+            "usage": {"input_tokens": 10, "output_tokens": 5},
+        }
+        usage = StageTracker.extract_token_usage(result)
+        assert usage["input_tokens"] == 10
+        assert usage["output_tokens"] == 5
+        assert usage["total_tokens"] == 15
+
+    def test_extract_token_usage_missing_usage(self) -> None:
+        usage = StageTracker.extract_token_usage({})
+        assert usage["input_tokens"] == 0
+        assert usage["total_tokens"] == 0
+
+    async def test_unknown_node_name_noop(self) -> None:
+        store = FakePipelineStore(_make_run([]))
+        config = _make_config(store)
+        tracker = StageTracker(config)
+        # Should not raise; unknown node → stage_name is None → early return
+        await tracker.mark_running("nonexistent_node")
+        await tracker.append_log("nonexistent_node", "line")
+        await tracker.mark_completed("nonexistent_node")
