@@ -495,9 +495,16 @@ async def retry_stage(
         stream_id=f"run:{run_id}",
     )
 
-    # TODO: Re-invoke the workflow node via the executor (Phase 2 integration).
-    # For now, the stage is reset and the executor's stream loop will pick it up
-    # if the workflow is still running, or a manual re-dispatch is needed.
+    # Re-invoke the workflow executor if the session is still alive
+    executor = getattr(request.app.state, "workflow_executor", None)
+    if executor is not None and run_id in getattr(executor, "_suspended_runs", {}):
+        import asyncio
+
+        task = asyncio.create_task(executor.resume(run_id))
+        bg = getattr(request.app.state, "_background_tasks", set())
+        request.app.state._background_tasks = bg
+        bg.add(task)
+        task.add_done_callback(bg.discard)
 
     return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]
 
