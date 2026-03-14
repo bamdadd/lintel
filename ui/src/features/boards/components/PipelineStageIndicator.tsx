@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Group, Tooltip, Box, Text } from '@mantine/core';
 import { useNavigate } from 'react-router';
 import type { PipelineRun, PipelineStage } from '../api';
@@ -26,13 +27,20 @@ function formatElapsed(startedAt: string): string {
   return formatDuration(elapsed);
 }
 
-function stageTooltip(stage: PipelineStage): string {
+function stageTooltip(stage: PipelineStage, _tick: number): string {
   const base = `${stage.name}: ${stage.status}`;
-  if (stage.duration_ms != null) {
-    return `${base} (${formatDuration(stage.duration_ms)})`;
-  }
+  // For running stages, always show live elapsed time
   if (stage.status === 'running' && stage.started_at) {
     return `${base} (${formatElapsed(stage.started_at)} so far)`;
+  }
+  // For completed stages, show final duration (skip 0/null)
+  if (stage.duration_ms) {
+    return `${base} (${formatDuration(stage.duration_ms)})`;
+  }
+  // Fallback: if finished but no duration_ms, calculate from timestamps
+  if (stage.started_at && stage.finished_at) {
+    const ms = new Date(stage.finished_at).getTime() - new Date(stage.started_at).getTime();
+    if (ms > 0) return `${base} (${formatDuration(ms)})`;
   }
   return base;
 }
@@ -44,6 +52,14 @@ interface PipelineStageIndicatorProps {
 
 export function PipelineStageIndicator({ pipeline, stages }: PipelineStageIndicatorProps) {
   const navigate = useNavigate();
+  const hasRunning = stages.some((s) => s.status === 'running');
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!hasRunning) return;
+    const id = setInterval(() => setTick((t) => t + 1), 5000);
+    return () => clearInterval(id);
+  }, [hasRunning]);
 
   if (stages.length === 0) return null;
 
@@ -62,7 +78,7 @@ export function PipelineStageIndicator({ pipeline, stages }: PipelineStageIndica
         {stages.map((stage) => (
           <Tooltip
             key={stage.stage_id}
-            label={stageTooltip(stage)}
+            label={stageTooltip(stage, tick)}
             withArrow
             position="top"
           >
