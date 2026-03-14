@@ -53,6 +53,7 @@ import {
   IconFlask,
   IconBulb,
   IconBug,
+  IconCalendarEvent,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -86,6 +87,12 @@ const navSections: NavSection[] = [
       { label: 'Artifacts', path: '/artifacts', icon: IconPackage },
       { label: 'Test Results', path: '/test-results', icon: IconTestPipe2 },
       { label: 'Debug', path: '/debug', icon: IconBug },
+    ],
+  },
+  {
+    label: 'Scheduling',
+    items: [
+      { label: 'Automations', path: '/automations', icon: IconCalendarEvent },
     ],
   },
   {

@@ -118,6 +118,14 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/audit/pages/AuditLogPage'),
       },
       {
+        path: 'automations',
+        lazy: () => import('@/features/automations/pages/AutomationListPage'),
+      },
+      {
+        path: 'automations/:automationId',
+        lazy: () => import('@/features/automations/pages/AutomationDetailPage'),
+      },
+      {
         path: 'triggers',
         lazy: () => import('@/features/triggers/pages/TriggerListPage'),
       },
