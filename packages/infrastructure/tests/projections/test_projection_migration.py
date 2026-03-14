@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock
 
-from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
-from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.projections.audit import AuditProjection
 from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
+from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
+from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 
 
 class TestTaskBacklogProjectionProtocol:

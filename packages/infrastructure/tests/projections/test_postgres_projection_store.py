@@ -1,7 +1,8 @@
 """Integration tests for PostgresProjectionStore — requires running Postgres."""
 
-import pytest
 from datetime import UTC, datetime
+
+import pytest
 
 from lintel.contracts.projections import ProjectionState
 from lintel.infrastructure.projections.stores import PostgresProjectionStore

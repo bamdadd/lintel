@@ -168,9 +168,7 @@ class InMemoryProjectionEngine:
             raise RuntimeError(msg)
         events = await self._event_store.read_stream(stream_id)
         for meta in self._metas:
-            matching = [
-                e for e in events if e.event_type in meta.projection.handled_event_types
-            ]
+            matching = [e for e in events if e.event_type in meta.projection.handled_event_types]
             await meta.projection.rebuild(matching)
             if matching:
                 last = matching[-1]

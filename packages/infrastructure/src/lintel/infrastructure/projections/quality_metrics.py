@@ -103,7 +103,7 @@ class QualityMetricsProjection:
         }
 
     def restore_state(self, state: dict[str, Any]) -> None:
-        def _parse_dt(v: Any) -> datetime:
+        def _parse_dt(v: str | datetime) -> datetime:
             return datetime.fromisoformat(v) if isinstance(v, str) else v
 
         self._coverage_records = [

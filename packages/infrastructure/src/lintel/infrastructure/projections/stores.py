@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -46,21 +45,21 @@ class PostgresProjectionStore:
         await self._inner.put(state.projection_name, data)
 
     async def load(self, projection_name: str) -> ProjectionState | None:
-        from lintel.contracts.projections import ProjectionState as PS
+        from lintel.contracts.projections import ProjectionState as _ProjectionState
 
         data = await self._inner.get(projection_name)
         if data is None:
             return None
         data["updated_at"] = datetime.fromisoformat(data["updated_at"])
-        return PS(**data)
+        return _ProjectionState(**data)
 
     async def load_all(self) -> list[ProjectionState]:
-        from lintel.contracts.projections import ProjectionState as PS
+        from lintel.contracts.projections import ProjectionState as _ProjectionState
 
         rows = await self._inner.list_all()
         for r in rows:
             r["updated_at"] = datetime.fromisoformat(r["updated_at"])
-        return [PS(**r) for r in rows]
+        return [_ProjectionState(**r) for r in rows]
 
     async def delete(self, projection_name: str) -> None:
         await self._inner.remove(projection_name)

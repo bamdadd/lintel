@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from lintel.contracts.events import EventEnvelope
-from lintel.contracts.projections import ProjectionState, ProjectionStatus
-from lintel.domain.projections.protocols import (
-    Projection,
-    ProjectionEngine,
-    ProjectionStore,
-)
+if TYPE_CHECKING:
+    from lintel.contracts.events import EventEnvelope
+    from lintel.contracts.projections import ProjectionState, ProjectionStatus
+    from lintel.domain.projections.protocols import (
+        Projection,
+        ProjectionEngine,
+        ProjectionStore,
+    )
 
 
 class FakeProjection:
