@@ -161,6 +161,7 @@ async def review_output(
                 on_activity=_on_activity,
                 sandbox_manager=sandbox_manager,
                 sandbox_id=sandbox_id,
+                run_id=state.get("run_id", ""),
             )
             remaining = "".join(_line_buffer).strip()
             if remaining:

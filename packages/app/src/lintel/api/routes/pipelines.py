@@ -495,12 +495,20 @@ async def retry_stage(
         stream_id=f"run:{run_id}",
     )
 
-    # Re-invoke the workflow executor if the session is still alive
+    # Re-invoke the workflow executor
     executor = getattr(request.app.state, "workflow_executor", None)
-    if executor is not None and run_id in getattr(executor, "_suspended_runs", {}):
+    if executor is not None:
         import asyncio
 
-        task = asyncio.create_task(executor.resume(run_id))
+        suspended = getattr(executor, "_suspended_runs", {})
+        if run_id in suspended:
+            # Session alive — resume from checkpoint
+            task = asyncio.create_task(executor.resume(run_id))
+        else:
+            # Session lost (server restart) — re-execute the full workflow
+            task = asyncio.create_task(
+                _redispatch_workflow(executor, updated, request.app.state)
+            )
         bg = getattr(request.app.state, "_background_tasks", set())
         request.app.state._background_tasks = bg
         bg.add(task)

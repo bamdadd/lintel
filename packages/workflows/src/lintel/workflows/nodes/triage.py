@@ -107,6 +107,7 @@ async def triage_issue(
             {"role": "user", "content": user_request},
         ],
         tools=[],
+        run_id=state.get("run_id", ""),
     )
 
     content = result.get("content", "")

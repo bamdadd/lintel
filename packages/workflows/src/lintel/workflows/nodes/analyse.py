@@ -127,6 +127,7 @@ async def analyse_code(
         on_chunk=_on_chunk,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
+        run_id=state.get("run_id", ""),
     )
 
     remaining = "".join(_line_buffer).strip()

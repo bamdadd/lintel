@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import {
   Title, Stack, Table, Loader, Center, Badge, Text, Select, Group,
-  Collapse, Paper, ActionIcon, Pagination,
+  Collapse, Paper, ActionIcon, Pagination, Anchor,
 } from '@mantine/core';
-import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronRight, IconExternalLink } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router';
 import { useEventsListEventTypes } from '@/generated/api/events/events';
 import { customInstance } from '@/shared/api/client';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -46,6 +47,88 @@ const eventColor: Record<string, string> = {
   Revoked: 'red',
 };
 
+/** Map event type prefix to a UI route with :id placeholder */
+const RESOURCE_ROUTES: Record<string, string> = {
+  Project: '/projects/:id',
+  WorkItem: '/work-items',
+  Pipeline: '/pipelines/runs/:id',
+  PipelineRun: '/pipelines/runs/:id',
+  PipelineStage: '/pipelines/runs/:id',
+  StageReport: '/pipelines/runs/:id',
+  Conversation: '/chat/:id',
+  Repository: '/repositories/:id',
+  Sandbox: '/sandboxes/:id',
+  AgentDefinition: '/agents/:id',
+  Credential: '/credentials',
+  Trigger: '/triggers',
+  Variable: '/variables',
+  Environment: '/environments',
+  Policy: '/policies',
+  Team: '/teams',
+  User: '/users',
+  AIProvider: '/ai-providers',
+  Model: '/models',
+  ModelAssignment: '/models',
+  Skill: '/skills',
+  Board: '/boards/:id',
+  Tag: '/boards/tags',
+  Artifact: '/artifacts',
+  TestRun: '/test-results',
+  NotificationRule: '/notifications',
+  MCPServer: '/mcp-servers',
+  WorkflowDefinition: '/workflows',
+  Regulation: '/compliance/regulations',
+  CompliancePolicy: '/compliance/policies',
+  Procedure: '/compliance/procedures',
+  Practice: '/compliance/practices',
+  ArchitectureDecision: '/compliance/architecture-decisions',
+  Strategy: '/experimentation/strategies',
+  KPI: '/experimentation/kpis',
+  ComplianceExperiment: '/experimentation/experiments',
+  ComplianceMetric: '/experimentation/metrics',
+  KnowledgeEntry: '/knowledge',
+  Connection: '/settings',
+  Settings: '/settings',
+  ApprovalRequest: '/approvals',
+  AgentStep: '/pipelines/runs/:id',
+  ModelSelected: '/pipelines/runs/:id',
+  ModelCall: '/pipelines/runs/:id',
+};
+
+/** Extract the entity prefix from an event type, e.g. "ProjectCreated" -> "Project" */
+function getEntityPrefix(eventType: string): string {
+  // Handle multi-word prefixes first (longest match)
+  const prefixes = Object.keys(RESOURCE_ROUTES).sort((a, b) => b.length - a.length);
+  for (const prefix of prefixes) {
+    if (eventType.startsWith(prefix)) return prefix;
+  }
+  return '';
+}
+
+/** Get a link path for an event's resource, or null if not linkable */
+function getResourceLink(event: EventItem): string | null {
+  const prefix = getEntityPrefix(event.event_type);
+  const route = RESOURCE_ROUTES[prefix];
+  if (!route) return null;
+
+  // For pipeline stage and agent step events, use run_id from payload
+  const RUN_ID_PREFIXES = ['PipelineStage', 'StageReport', 'AgentStep', 'ModelSelected', 'ModelCall'];
+  if (RUN_ID_PREFIXES.includes(prefix)) {
+    const runId = event.payload?.run_id as string | undefined;
+    if (runId) return route.replace(':id', runId);
+    return null;
+  }
+
+  const resourceId = event.payload?.resource_id as string | undefined;
+  if (!resourceId) return null;
+
+  if (route.includes(':id')) {
+    return route.replace(':id', resourceId);
+  }
+
+  return route;
+}
+
 function getEventColor(eventType: string): string {
   for (const [suffix, color] of Object.entries(eventColor)) {
     if (eventType.endsWith(suffix)) return color;
@@ -72,6 +155,8 @@ function formatKey(key: string): string {
 function ExpandableEventRow({ event }: { event: EventItem }) {
   const [opened, setOpened] = useState(false);
   const hasPayload = event.payload && Object.keys(event.payload).length > 0;
+  const resourceId = event.payload?.resource_id as string | undefined;
+  const resourceLink = getResourceLink(event);
 
   return (
     <>
@@ -102,9 +187,26 @@ function ExpandableEventRow({ event }: { event: EventItem }) {
           </Group>
         </Table.Td>
         <Table.Td>
-          <Text size="xs" c="dimmed" truncate style={{ maxWidth: 200 }}>
-            {event.payload?.resource_id as string ?? '—'}
-          </Text>
+          {resourceId ? (
+            resourceLink ? (
+              <Anchor
+                component={Link}
+                to={resourceLink}
+                size="xs"
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                style={{ maxWidth: 200, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <Text size="xs" truncate style={{ maxWidth: 180 }}>{resourceId}</Text>
+                <IconExternalLink size={12} />
+              </Anchor>
+            ) : (
+              <Text size="xs" c="dimmed" truncate style={{ maxWidth: 200 }}>
+                {resourceId}
+              </Text>
+            )
+          ) : (
+            <Text size="xs" c="dimmed">—</Text>
+          )}
         </Table.Td>
         <Table.Td>
           {hasPayload ? (

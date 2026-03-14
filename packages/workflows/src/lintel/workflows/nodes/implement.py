@@ -489,6 +489,7 @@ async def _implement_tdd(
             sandbox_manager=sandbox_manager,
             sandbox_id=sandbox_id,
             on_activity=_on_activity,
+            run_id=state.get("run_id", ""),
         )
         usage = StageTracker.extract_token_usage(result)
         content = result.get("content", "")
@@ -550,6 +551,7 @@ async def _implement_tdd(
                     sandbox_manager=sandbox_manager,
                     sandbox_id=sandbox_id,
                     on_activity=_on_activity,
+                    run_id=state.get("run_id", ""),
                 )
                 fix_usage = StageTracker.extract_token_usage(fix_result)
                 usage["input_tokens"] += fix_usage.get("input_tokens", 0)
@@ -753,6 +755,7 @@ async def _implement_structured(
             ],
             tools=[],  # No tools — single-shot JSON generation
             max_iterations=1,
+            run_id=state.get("run_id", ""),
         )
         gen_content = gen_result.get("content", "")
         usage = StageTracker.extract_token_usage(gen_result)
@@ -1164,6 +1167,7 @@ async def _fix_failures(
         sandbox_id=sandbox_id,
         max_iterations=10,
         on_tool_call=_on_tool_call,
+        run_id=state.get("run_id", ""),
     )
 
 

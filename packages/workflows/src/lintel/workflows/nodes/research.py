@@ -171,6 +171,7 @@ async def research_codebase(
         on_activity=_on_activity,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
+        run_id=state.get("run_id", ""),
     )
 
     # Flush any remaining buffered content

@@ -133,6 +133,7 @@ class AgentRuntime:
         max_iterations: int = DEFAULT_MAX_TOOL_ITERATIONS,
         on_tool_call: Callable[[int, str, dict[str, Any], str], Awaitable[None]] | None = None,
         on_activity: Callable[[str], Awaitable[None]] | None = None,
+        run_id: str = "",
     ) -> dict[str, Any]:
         cid = correlation_id or uuid4()
 
@@ -147,6 +148,7 @@ class AgentRuntime:
                     payload={
                         "agent_role": agent_role.value,
                         "step_name": step_name,
+                        **({"run_id": run_id} if run_id else {}),
                     },
                 )
             ],
@@ -188,6 +190,8 @@ class AgentRuntime:
                         "agent_role": agent_role.value,
                         "provider": policy.provider,
                         "model_name": policy.model_name,
+                        **({"run_id": run_id} if run_id else {}),
+                        **({"run_id": run_id} if run_id else {}),
                     },
                 )
             ],
@@ -346,6 +350,7 @@ class AgentRuntime:
                         "provider": policy.provider,
                         "model": result.get("model", policy.model_name),
                         "input_tokens": total_input_tokens,
+                        **({"run_id": run_id} if run_id else {}),
                         "output_tokens": total_output_tokens,
                         "mcp_tools_available": len(mcp_tools),
                         "tool_iterations": iteration,
@@ -366,6 +371,7 @@ class AgentRuntime:
                         "agent_role": agent_role.value,
                         "step_name": step_name,
                         "output_summary": (result.get("content") or "")[:500],
+                        **({"run_id": run_id} if run_id else {}),
                     },
                 )
             ],
@@ -384,6 +390,7 @@ class AgentRuntime:
         sandbox_manager: SandboxManager | None = None,
         sandbox_id: str | None = None,
         on_activity: Callable[[str], Awaitable[None]] | None = None,
+        run_id: str = "",
     ) -> dict[str, Any]:
         """Like execute_step but streams content, calling on_chunk for each piece.
 
@@ -407,6 +414,7 @@ class AgentRuntime:
                         "agent_role": agent_role.value,
                         "step_name": step_name,
                         "streaming": True,
+                        **({"run_id": run_id} if run_id else {}),
                     },
                 )
             ],
@@ -497,6 +505,7 @@ class AgentRuntime:
                         "agent_role": agent_role.value,
                         "step_name": step_name,
                         "output_summary": full_content[:500],
+                        **({"run_id": run_id} if run_id else {}),
                     },
                 )
             ],
