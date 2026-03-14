@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from lintel.contracts.types import SandboxResult
 from lintel.infrastructure.models.claude_code import ClaudeCodeProvider
+import pytest
 
 VALID_CREDS = '{"claudeAiOauth":{"expiresAt":"2099-01-01T00:00:00Z"}}'
 

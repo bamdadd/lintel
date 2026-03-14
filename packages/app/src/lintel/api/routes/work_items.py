@@ -1,9 +1,9 @@
 """Work-item CRUD endpoints."""
 
 import asyncio
-import logging
 from dataclasses import asdict
 from datetime import UTC, datetime
+import logging
 from typing import Annotated, Any
 from uuid import uuid4
 
@@ -219,11 +219,7 @@ async def _check_wip_limit(
 
             if col_status == target_status and wip_limit > 0:
                 all_items = await store.list_all(project_id=project_id)
-                current_count = sum(
-                    1
-                    for i in all_items
-                    if i.get("status") == target_status
-                )
+                current_count = sum(1 for i in all_items if i.get("status") == target_status)
                 if current_count >= wip_limit:
                     return (
                         f"WIP limit reached for '{col_name}': "

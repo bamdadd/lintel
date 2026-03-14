@@ -5,7 +5,6 @@ from __future__ import annotations
 import dataclasses
 from uuid import UUID
 
-import pytest
 from lintel.contracts.commands import (
     GrantApproval,
     ProcessIncomingMessage,
@@ -16,6 +15,7 @@ from lintel.contracts.commands import (
     StartWorkflow,
 )
 from lintel.contracts.types import AgentRole, ThreadRef
+import pytest
 
 REF = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0")
 

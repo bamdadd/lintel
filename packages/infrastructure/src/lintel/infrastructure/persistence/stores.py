@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from datetime import UTC, datetime
+import json
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 

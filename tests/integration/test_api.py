@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 from lintel.api.app import create_app
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

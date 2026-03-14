@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-import pytest
 from lintel.contracts.types import SkillDescriptor, SkillResult
 from lintel.domain.skills.registry import InMemorySkillRegistry
+import pytest
 
 
 @dataclass

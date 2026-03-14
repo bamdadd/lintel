@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 import importlib
 import time
-from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-import structlog
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
+import structlog
 
 router = APIRouter()
 logger = structlog.get_logger()

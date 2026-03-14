@@ -9,9 +9,9 @@ if TYPE_CHECKING:
 
 import os
 
-import pytest
 from fastapi.testclient import TestClient
 from lintel.api.app import create_app
+import pytest
 
 
 @pytest.fixture()

@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import contextlib
 import time
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-import structlog
 from lintel.contracts.events import (
     PipelineRunCompleted,
     PipelineRunFailed,
@@ -17,6 +16,7 @@ from lintel.contracts.events import (
     WorkItemCompleted,
     WorkItemUpdated,
 )
+import structlog
 
 if TYPE_CHECKING:
     from lintel.contracts.commands import StartWorkflow

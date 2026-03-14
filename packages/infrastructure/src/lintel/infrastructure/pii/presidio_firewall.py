@@ -6,9 +6,9 @@ import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-import structlog
 from lintel.infrastructure.pii.placeholder_manager import PlaceholderManager
 from presidio_analyzer import AnalyzerEngine, RecognizerResult
+import structlog
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import PIIVault

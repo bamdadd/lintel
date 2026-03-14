@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import structlog
 from lintel.contracts.types import AgentRole
+import structlog
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig

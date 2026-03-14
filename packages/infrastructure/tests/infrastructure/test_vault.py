@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from cryptography.fernet import Fernet
 from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.vault.postgres_vault import PostgresPIIVault
+import pytest
 
 THREAD = ThreadRef("ws1", "ch1", "ts1")
 

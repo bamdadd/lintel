@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 from lintel.api.app import create_app
+import pytest
 
 
 @pytest.fixture

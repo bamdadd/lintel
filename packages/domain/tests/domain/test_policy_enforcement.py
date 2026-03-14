@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from lintel.contracts.types import PolicyAction
 from lintel.domain.workflow_executor import WorkflowExecutor
+import pytest
 
 
 @pytest.fixture()

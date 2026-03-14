@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from lintel.contracts.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
@@ -12,6 +11,7 @@ from lintel.contracts.errors import (
 )
 from lintel.contracts.types import SandboxConfig, SandboxJob, SandboxStatus, ThreadRef
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+import pytest
 
 
 def _make_thread_ref() -> ThreadRef:

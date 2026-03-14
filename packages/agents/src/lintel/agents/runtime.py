@@ -6,7 +6,6 @@ import json
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-import structlog
 from lintel.contracts.events import (
     AgentStepCompleted,
     AgentStepStarted,
@@ -14,6 +13,7 @@ from lintel.contracts.events import (
     ModelSelected,
 )
 from lintel.contracts.types import ActorType
+import structlog
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

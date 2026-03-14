@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import pytest
 from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
+import pytest
 
 
 @dataclass(frozen=True)

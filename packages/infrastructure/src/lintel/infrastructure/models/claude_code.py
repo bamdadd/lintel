@@ -8,9 +8,9 @@ import shlex
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-import structlog
 from lintel.contracts.errors import ClaudeCodeCredentialError
 from lintel.contracts.types import SandboxJob, TokenStatus
+import structlog
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -80,8 +80,8 @@ def _read_host_credentials() -> str | None:
 
 def _validate_credentials_json(creds_json: str) -> bool:
     """Check if credentials JSON contains a non-expired token. Returns True if valid."""
-    import json as _json
     from datetime import UTC, datetime
+    import json as _json
 
     try:
         creds = _json.loads(creds_json)
@@ -213,8 +213,8 @@ async def validate_claude_token(
 
     # Parse credentials and check expiresAt
     try:
-        import json as _json
         from datetime import UTC, datetime
+        import json as _json
 
         creds = _json.loads(cred_output)
         oauth = creds.get("claudeAiOauth", {})

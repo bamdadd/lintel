@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import asyncpg
-import pytest
 from cryptography.fernet import Fernet
 from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.vault.postgres_vault import PostgresPIIVault
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 from lintel.domain.graph_compiler import GraphCompiler
+import pytest
 
 
 def _sample_graph_def() -> dict[str, list[dict[str, str]]]:

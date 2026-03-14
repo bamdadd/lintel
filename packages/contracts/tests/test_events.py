@@ -6,7 +6,6 @@ import dataclasses
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-import pytest
 from lintel.contracts.events import (
     EVENT_TYPE_MAP,
     AgentStepCompleted,
@@ -36,6 +35,7 @@ from lintel.contracts.events import (
     deserialize_event,
 )
 from lintel.contracts.types import ActorType, ThreadRef
+import pytest
 
 
 class TestEventEnvelope:

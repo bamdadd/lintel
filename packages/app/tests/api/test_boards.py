@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from lintel.api.app import create_app
+import pytest
 from starlette.testclient import TestClient
 
 

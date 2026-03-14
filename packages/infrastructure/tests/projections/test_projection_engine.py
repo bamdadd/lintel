@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
 from lintel.contracts.events import (
     AgentStepCompleted,
     AgentStepScheduled,
@@ -20,6 +19,7 @@ from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
+import pytest
 
 
 def _make_event(

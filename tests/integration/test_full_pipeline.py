@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import asyncpg
-import pytest
 from lintel.contracts.events import ThreadMessageReceived, WorkflowStarted
 from lintel.contracts.types import ActorType, ThreadRef
 from lintel.infrastructure.event_store.postgres import PostgresEventStore
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

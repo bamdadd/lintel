@@ -10,12 +10,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
 from lintel.contracts.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
     SandboxTimeoutError,
 )
+import pytest
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import SandboxManager

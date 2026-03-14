@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
+import json
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import pytest
 from lintel.contracts.events import (
     EventEnvelope,
     ThreadMessageReceived,
@@ -20,6 +19,7 @@ from lintel.infrastructure.event_store.postgres import (
     PostgresEventStore,
     _row_to_event,
 )
+import pytest
 
 # ---------------------------------------------------------------------------
 # _row_to_event unit tests (no DB needed)

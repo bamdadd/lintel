@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from datetime import UTC, datetime
+import json
 from typing import TYPE_CHECKING, Annotated, Any
 from uuid import uuid4
 
-import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+import structlog
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

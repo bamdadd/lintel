@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-import pytest
 from lintel.contracts.errors import SandboxNotFoundError
 from lintel.contracts.types import (
     SandboxConfig,
@@ -14,6 +13,7 @@ from lintel.contracts.types import (
     SandboxStatus,
     ThreadRef,
 )
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Generator

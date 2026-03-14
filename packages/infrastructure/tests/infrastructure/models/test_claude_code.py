@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
 from lintel.contracts.errors import ClaudeCodeCredentialError
 from lintel.contracts.types import SandboxResult, TokenStatus
 from lintel.infrastructure.models.claude_code import (
     ClaudeCodeProvider,
     validate_claude_token,
 )
+import pytest
 
 
 def _make_sandbox(execute_results: list[SandboxResult]) -> AsyncMock:

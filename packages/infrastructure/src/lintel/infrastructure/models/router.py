@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sqlite3
 from pathlib import Path
+import sqlite3
 from typing import TYPE_CHECKING, Any
 
-import structlog
 from lintel.contracts.types import ModelPolicy
+import structlog
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

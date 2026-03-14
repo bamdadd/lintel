@@ -11,12 +11,12 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-import structlog
 from lintel.contracts.types import (
     DEFAULT_DELIVERY_PHASES,
     DeliveryLoop,
     PhaseTransitionRecord,
 )
+import structlog
 
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope

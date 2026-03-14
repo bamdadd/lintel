@@ -6,8 +6,8 @@ import hashlib
 import json
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-import structlog
 from lintel.contracts.events import EVENT_TYPE_MAP, EventEnvelope
+import structlog
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence

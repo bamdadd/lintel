@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from lintel.workflows.nodes._notifications import (
     extract_conversation_id,
     notify_phase_change,
 )
+import pytest
 
 
 class TestExtractConversationId:

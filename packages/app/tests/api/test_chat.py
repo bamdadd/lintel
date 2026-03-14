@@ -3,11 +3,11 @@
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
-import pytest
 from fastapi.testclient import TestClient
 from lintel.api.app import create_app
 from lintel.contracts.types import ModelPolicy
 from lintel.domain.chat_router import ChatRouterResult
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Generator

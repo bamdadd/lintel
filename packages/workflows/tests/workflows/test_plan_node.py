@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock
 
-import pytest
 from lintel.workflows.nodes.plan import _parse_plan, plan_work
+import pytest
 
 
 class TestParsePlan:

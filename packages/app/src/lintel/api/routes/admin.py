@@ -2,10 +2,10 @@
 
 from typing import Annotated, Any
 
-import structlog
 from fastapi import APIRouter, Depends, Request
 from lintel.api.deps import get_projection_engine
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
+import structlog
 
 logger = structlog.get_logger()
 
@@ -90,8 +90,8 @@ async def claude_credentials_status(request: Request) -> dict[str, Any]:
     Returns token status, expiry time, and minutes remaining. The UI can poll this
     to show a warning banner when credentials are about to expire.
     """
-    import json as _json
     from datetime import UTC, datetime
+    import json as _json
 
     from lintel.contracts.types import AIProviderType
     from lintel.infrastructure.models.claude_code import _read_host_credentials

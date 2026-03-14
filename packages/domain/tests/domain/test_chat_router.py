@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-import pytest
 from lintel.domain.chat_router import WORKFLOW_KEYWORDS, ChatRouter, ChatRouterResult
+import pytest
 
 
 class TestKeywordClassification:

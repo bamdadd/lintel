@@ -4,8 +4,8 @@ from dataclasses import asdict
 from typing import Annotated, Any
 from uuid import uuid4
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
+import httpx
 from lintel.contracts.events import (
     AIProviderApiKeyUpdated,
     AIProviderCreated,
