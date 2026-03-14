@@ -36,13 +36,66 @@ REVEAL_BODY: dict[str, object] = {
 }
 
 
+class _StubSandboxManager:
+    """Sandbox manager stub that tracks created sandboxes for extended endpoint tests."""
+
+    def __init__(self) -> None:
+        self._sandboxes: set[str] = set()
+
+    async def create(self, config: object, thread_ref: object) -> str:
+        from uuid import uuid4
+
+        sid = str(uuid4())
+        self._sandboxes.add(sid)
+        return sid
+
+    async def execute(self, sandbox_id: str, job: object) -> object:
+        from lintel.contracts.errors import SandboxNotFoundError
+        from lintel.contracts.types import SandboxResult
+
+        if sandbox_id not in self._sandboxes:
+            raise SandboxNotFoundError(sandbox_id)
+        return SandboxResult(exit_code=0, stdout="ok\n")
+
+    async def destroy(self, sandbox_id: str) -> None:
+        self._sandboxes.discard(sandbox_id)
+
+    async def get_status(self, sandbox_id: str) -> object:
+        from lintel.contracts.errors import SandboxNotFoundError
+        from lintel.contracts.types import SandboxStatus
+
+        if sandbox_id not in self._sandboxes:
+            raise SandboxNotFoundError(sandbox_id)
+        return SandboxStatus.RUNNING
+
+    async def read_file(self, sandbox_id: str, path: str) -> str:
+        return ""
+
+    async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
+        pass
+
+    async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
+        return []
+
+    async def collect_artifacts(
+        self,
+        sandbox_id: str,
+        workdir: str = "/workspace",
+    ) -> dict[str, object]:
+        return {"type": "diff", "content": "some diff"}
+
+    async def reconnect_network(self, sandbox_id: str) -> None:
+        pass
+
+    async def disconnect_network(self, sandbox_id: str) -> None:
+        pass
+
+
 @pytest.fixture()
 def client() -> Generator[TestClient]:
-    from tests.api.test_sandboxes import DummySandboxManager
-
     app = create_app()
     with TestClient(app) as c:
-        app.state.sandbox_manager = DummySandboxManager()
+        app.state.sandbox_manager = _StubSandboxManager()
         yield c
 
 

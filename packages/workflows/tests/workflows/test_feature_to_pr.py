@@ -269,9 +269,52 @@ class TestNodeFunctions:
         assert len(result["plan"]["tasks"]) > 0
 
     async def test_implement_returns_error_without_sandbox(self) -> None:
+        from lintel.contracts.errors import SandboxNotFoundError
+        from lintel.contracts.types import (
+            SandboxConfig,
+            SandboxJob,
+            SandboxResult,
+            SandboxStatus,
+            ThreadRef,
+        )
         from lintel.workflows.nodes.implement import spawn_implementation
 
-        from workflows.test_implement_node import DummySandboxManager
+        class DummySandboxManager:
+            async def create(self, config: SandboxConfig, thread_ref: ThreadRef) -> str:
+                return "sandbox-123"
+
+            async def execute(self, sandbox_id: str, job: SandboxJob) -> SandboxResult:
+                if sandbox_id != "sandbox-123":
+                    raise SandboxNotFoundError(sandbox_id)
+                return SandboxResult(exit_code=0, stdout="ok\n")
+
+            async def read_file(self, sandbox_id: str, path: str) -> str:
+                return ""
+
+            async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
+                pass
+
+            async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
+                return []
+
+            async def get_status(self, sandbox_id: str) -> SandboxStatus:
+                return SandboxStatus.RUNNING
+
+            async def collect_artifacts(
+                self,
+                sandbox_id: str,
+                workdir: str = "/workspace",
+            ) -> dict[str, Any]:
+                return {"type": "diff", "content": "some diff"}
+
+            async def destroy(self, sandbox_id: str) -> None:
+                pass
+
+            async def reconnect_network(self, sandbox_id: str) -> None:
+                pass
+
+            async def disconnect_network(self, sandbox_id: str) -> None:
+                pass
 
         state = ThreadWorkflowState(
             thread_ref="thread:w:c:t",

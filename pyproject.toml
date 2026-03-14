@@ -16,6 +16,7 @@ select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM", "TCH", "RUF"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
 testpaths = [
     "packages/contracts/tests",
     "packages/domain/tests",
@@ -25,7 +26,6 @@ testpaths = [
     "packages/app/tests",
     "tests",
 ]
-import_mode = "importlib"
 
 [tool.mypy]
 python_version = "3.12"

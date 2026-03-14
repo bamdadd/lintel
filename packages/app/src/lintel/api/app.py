@@ -17,6 +17,38 @@ if TYPE_CHECKING:
     from fastapi.routing import APIRoute
     from langgraph.graph.state import CompiledStateGraph
 
+from lintel.api.routes.agents import AgentDefinitionStore
+from lintel.api.routes.ai_providers import InMemoryAIProviderStore
+from lintel.api.routes.approval_requests import InMemoryApprovalRequestStore
+from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
+from lintel.api.routes.audit import AuditEntryStore
+from lintel.api.routes.boards import BoardStore, TagStore
+from lintel.api.routes.chat import ChatStore
+from lintel.api.routes.compliance import ComplianceStore
+from lintel.api.routes.credentials import InMemoryCredentialStore
+from lintel.api.routes.environments import InMemoryEnvironmentStore
+from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
+from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
+from lintel.api.routes.notifications import NotificationRuleStore
+from lintel.api.routes.pipelines import InMemoryPipelineStore
+from lintel.api.routes.policies import InMemoryPolicyStore
+from lintel.api.routes.projects import ProjectStore
+from lintel.api.routes.skills import InMemorySkillStore
+from lintel.api.routes.teams import InMemoryTeamStore
+from lintel.api.routes.triggers import InMemoryTriggerStore
+from lintel.api.routes.users import InMemoryUserStore
+from lintel.api.routes.variables import InMemoryVariableStore
+from lintel.api.routes.work_items import WorkItemStore
+from lintel.infrastructure.event_bus.in_memory import InMemoryEventBus
+from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
+from lintel.infrastructure.projections.audit import AuditProjection
+from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
+from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
+from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
+from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
+from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
+from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routes import (
     admin,
@@ -58,37 +90,6 @@ from lintel.api.routes import (
     workflow_definitions,
     workflows,
 )
-from lintel.api.routes.agents import AgentDefinitionStore
-from lintel.api.routes.ai_providers import InMemoryAIProviderStore
-from lintel.api.routes.approval_requests import InMemoryApprovalRequestStore
-from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
-from lintel.api.routes.audit import AuditEntryStore
-from lintel.api.routes.boards import BoardStore, TagStore
-from lintel.api.routes.chat import ChatStore
-from lintel.api.routes.compliance import ComplianceStore
-from lintel.api.routes.credentials import InMemoryCredentialStore
-from lintel.api.routes.environments import InMemoryEnvironmentStore
-from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
-from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
-from lintel.api.routes.notifications import NotificationRuleStore
-from lintel.api.routes.pipelines import InMemoryPipelineStore
-from lintel.api.routes.policies import InMemoryPolicyStore
-from lintel.api.routes.projects import ProjectStore
-from lintel.api.routes.skills import InMemorySkillStore
-from lintel.api.routes.teams import InMemoryTeamStore
-from lintel.api.routes.triggers import InMemoryTriggerStore
-from lintel.api.routes.users import InMemoryUserStore
-from lintel.api.routes.variables import InMemoryVariableStore
-from lintel.api.routes.work_items import WorkItemStore
-from lintel.infrastructure.event_bus.in_memory import InMemoryEventBus
-from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
-from lintel.infrastructure.projections.audit import AuditProjection
-from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
-from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
-from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
-from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
-from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
-from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
 
 
 async def _seed_defaults(stores: dict[str, Any]) -> None:
