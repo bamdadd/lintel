@@ -1063,10 +1063,15 @@ async def _run_tests(
             SandboxJob(command=cmd, workdir=workspace_path, timeout_seconds=180),
         )
 
-    # Try changed tests first
-    changed_cmd = await _build_changed_tests_command(sandbox_manager, sandbox_id, workspace_path)
-    if changed_cmd:
-        test_command = changed_cmd
+    # Try changed tests first — but skip if discovery already returned an
+    # affected-only target (e.g. make test-affected) since that already scopes
+    # to changed packages and is more reliable than raw pytest file lists.
+    if "affected" not in test_command and "changed" not in test_command:
+        changed_cmd = await _build_changed_tests_command(
+            sandbox_manager, sandbox_id, workspace_path
+        )
+        if changed_cmd:
+            test_command = changed_cmd
 
     await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
     try:
