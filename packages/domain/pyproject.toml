@@ -6,6 +6,7 @@ dependencies = [
     "lintel-contracts",
     "structlog>=24.4",
     "langgraph>=0.3",
+    "croniter>=6.0.0",
 ]
 
 [tool.uv.sources]

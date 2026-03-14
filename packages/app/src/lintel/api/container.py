@@ -74,6 +74,7 @@ class AppContainer(containers.DeclarativeContainer):
     sandbox_store: providers.Provider[Any] = providers.Object(None)
     tag_store: providers.Provider[Any] = providers.Object(None)
     board_store: providers.Provider[Any] = providers.Object(None)
+    automation_store: providers.Provider[Any] = providers.Object(None)
 
     # Compliance & Governance stores
     regulation_store: providers.Provider[Any] = providers.Object(None)

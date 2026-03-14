@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.7",
     "structlog>=24.4",
     "dependency-injector>=4.48.3",
+    "croniter>=6.0.0",
 ]
 
 [tool.uv.sources]
