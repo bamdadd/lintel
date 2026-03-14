@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from lintel.domain.chat_router import ChatRouterResult
 
+
 from lintel.contracts.commands import StartWorkflow
 from lintel.contracts.events import (
     ConversationCreated,

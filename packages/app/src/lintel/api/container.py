@@ -104,7 +104,9 @@ class AppContainer(containers.DeclarativeContainer):
     task_backlog_projection: providers.Provider[Any] = providers.Object(None)
 
 
-def wire_container(container: AppContainer, stores: dict[str, Any], services: dict[str, Any]) -> None:
+def wire_container(
+    container: AppContainer, stores: dict[str, Any], services: dict[str, Any]
+) -> None:
     """Populate container providers from pre-constructed store/service instances.
 
     Called from lifespan after all stores and services are constructed so the
