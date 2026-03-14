@@ -132,4 +132,8 @@ This gives visibility into the full request lifecycle: HTTP status, chat routing
 - **Tests required:** Every feature must include tests colocated with the package:
   - Unit tests for new domain logic in `packages/<pkg>/tests/`
   - Integration tests when the feature touches infrastructure in `tests/integration/`
-- **Verify before committing:** Run `make test-unit` (or targeted `uv run pytest`) to confirm new tests pass before considering a feature complete.
+- **Test the package you changed, not everything:** During development, run per-package tests for fast feedback:
+  - `make test-contracts`, `make test-domain`, `make test-agents`, `make test-infrastructure`, `make test-workflows`, `make test-app`
+  - Or use `make test-affected BASE_REF=main` to auto-detect affected packages
+  - Only run `make test-unit` or `make all` as a final check before committing
+- **Do NOT add `__init__.py` to test directories** — pytest uses `--import-mode=importlib` and `__init__.py` in tests causes namespace collisions across packages.
