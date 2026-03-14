@@ -1174,29 +1174,30 @@ async def _run_tests(
             test_command = changed_cmd
 
     await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
+
+    async def _log_test_line(line: str) -> None:
+        await tracker.append_log("implement", line)
+
     try:
-        result = await sandbox_manager.execute(
+        output, exit_code = await _stream_execute_with_logging(
+            sandbox_manager,
             sandbox_id,
-            SandboxJob(command=test_command, workdir=workspace_path, timeout_seconds=600),
+            test_command,
+            workspace_path,
+            600,
+            _log_test_line,
         )
     except Exception:
         logger.warning("implement_test_execute_failed")
         return "Test execution failed", 1
 
-    output = result.stdout + result.stderr
-
-    # Stream test output to stage logs so it's visible in the UI
-    verdict = "PASSED" if result.exit_code == 0 else "FAILED"
+    verdict = "PASSED" if exit_code == 0 else "FAILED"
     await tracker.append_log("implement", f"Tests: {verdict}")
-    for line in output.splitlines()[-30:]:
-        stripped = line.strip()
-        if stripped:
-            await tracker.append_log("implement", stripped)
 
     if len(output) > 5000:
         output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
 
-    return output, result.exit_code
+    return output, exit_code
 
 
 async def _run_lint(
@@ -1247,30 +1248,30 @@ async def _run_lint(
         logger.warning("implement_lint_fix_failed")
 
     await tracker.append_log("implement", f"Running lint: {lint_command[:80]}")
+
+    async def _log_lint_line(line: str) -> None:
+        await tracker.append_log("implement", line)
+
     try:
-        result = await sandbox_manager.execute(
+        output, exit_code = await _stream_execute_with_logging(
+            sandbox_manager,
             sandbox_id,
-            SandboxJob(command=lint_command, workdir=workspace_path, timeout_seconds=120),
+            lint_command,
+            workspace_path,
+            120,
+            _log_lint_line,
         )
     except Exception:
         logger.warning("implement_lint_execute_failed")
         return "Lint execution failed", 1
 
-    output = result.stdout + result.stderr
-
-    # Stream lint output to stage logs
-    verdict = "PASSED" if result.exit_code == 0 else "FAILED"
+    verdict = "PASSED" if exit_code == 0 else "FAILED"
     await tracker.append_log("implement", f"Lint: {verdict}")
-    if result.exit_code != 0:
-        for line in output.splitlines()[-20:]:
-            stripped = line.strip()
-            if stripped:
-                await tracker.append_log("implement", stripped)
 
     if len(output) > 5000:
         output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
 
-    return output, result.exit_code
+    return output, exit_code
 
 
 async def _fix_failures(
