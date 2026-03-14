@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import asyncpg
+
     from lintel.contracts.projections import ProjectionState
 
 
@@ -25,3 +30,37 @@ class InMemoryProjectionStore:
 
     async def delete(self, projection_name: str) -> None:
         self._states.pop(projection_name, None)
+
+
+class PostgresProjectionStore:
+    """Postgres-backed projection store using the shared entities table."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        from lintel.infrastructure.persistence.dict_store import PostgresDictStore
+
+        self._inner = PostgresDictStore(pool, kind="projection_state")
+
+    async def save(self, state: ProjectionState) -> None:
+        data = asdict(state)
+        data["updated_at"] = data["updated_at"].isoformat()
+        await self._inner.put(state.projection_name, data)
+
+    async def load(self, projection_name: str) -> ProjectionState | None:
+        from lintel.contracts.projections import ProjectionState as PS
+
+        data = await self._inner.get(projection_name)
+        if data is None:
+            return None
+        data["updated_at"] = datetime.fromisoformat(data["updated_at"])
+        return PS(**data)
+
+    async def load_all(self) -> list[ProjectionState]:
+        from lintel.contracts.projections import ProjectionState as PS
+
+        rows = await self._inner.list_all()
+        for r in rows:
+            r["updated_at"] = datetime.fromisoformat(r["updated_at"])
+        return [PS(**r) for r in rows]
+
+    async def delete(self, projection_name: str) -> None:
+        await self._inner.remove(projection_name)
