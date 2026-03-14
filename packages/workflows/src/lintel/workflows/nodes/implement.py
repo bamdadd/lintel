@@ -620,7 +620,7 @@ async def _discover_dev_commands(
     )
     makefile = make_check.stdout
 
-    # Detect project type
+    # Detect project type and workspace structure
     detect = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
@@ -631,6 +631,22 @@ async def _discover_dev_commands(
     )
     files = detect.stdout
 
+    # Detect uv workspace
+    is_workspace = False
+    if "pyproject.toml" in files:
+        ws_check = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    f"grep -c 'tool.uv.workspace' {workspace_path}/pyproject.toml"
+                    " 2>/dev/null || echo 0"
+                ),
+                workdir=workspace_path,
+                timeout_seconds=5,
+            ),
+        )
+        is_workspace = ws_check.stdout.strip() not in ("0", "")
+
     # Defaults
     test_command = "make test-unit" if "test-unit:" in makefile else "make test"
     lint_command = "make lint" if "lint:" in makefile else "echo 'no lint configured'"
@@ -638,7 +654,10 @@ async def _discover_dev_commands(
     test_single_command = "uv run pytest <file> -v"
 
     if "pyproject.toml" in files:
-        if "test-unit:" not in makefile:
+        # Workspace projects: prefer test-affected (only tests changed packages)
+        if is_workspace and "test-affected:" in makefile:
+            test_command = "make test-affected"
+        elif "test-unit:" not in makefile:
             test_command = "uv run pytest tests/unit -v -n auto"
         test_single_command = "uv run pytest <file> -v"
         if "lint:" not in makefile:

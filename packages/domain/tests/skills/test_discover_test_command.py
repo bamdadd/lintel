@@ -27,12 +27,16 @@ class TestDiscoverTestCommand:
         mgr = _mock_sandbox(
             # detect files
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
+            # workspace check
+            (0, "0", ""),
             # detect capabilities (postgres available)
             (0, "HAS_POSTGRES\nHAS_UV", ""),
             # _python_setup: probe installed
             (0, "MISSING", ""),
             # _python_setup: which uv
             (0, "/root/.local/bin/uv", ""),
+            # _python_setup: workspace check for sync
+            (0, "0", ""),
             # _detect_python_extras: grep pyproject.toml
             (0, '"spacy>=3.0"', ""),
             # _python_test_command: make help
@@ -49,10 +53,12 @@ class TestDiscoverTestCommand:
         """Python project, no postgres → falls back to test-unit."""
         mgr = _mock_sandbox(
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
+            (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
             # probe installed
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
+            (0, "0", ""),  # workspace check for sync
             (0, "", ""),
             # _python_test_command: make help
             (0, "test         Run all\ntest-unit    Unit tests\n", ""),
@@ -67,9 +73,11 @@ class TestDiscoverTestCommand:
         """Python project, no postgres, no unit target → pytest tests/unit/."""
         mgr = _mock_sandbox(
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
+            (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
+            (0, "0", ""),  # workspace check for sync
             (0, "", ""),
             # _python_test_command: make help
             (0, "build\nlint\n", ""),
@@ -85,9 +93,11 @@ class TestDiscoverTestCommand:
         """Python project, no Makefile → pytest directly."""
         mgr = _mock_sandbox(
             (0, "/w/pyproject.toml", ""),
+            (0, "0", ""),  # workspace check
             (0, "HAS_UV\nHAS_POSTGRES", ""),
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
+            (0, "0", ""),  # workspace check for sync
             (0, "", ""),
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
@@ -99,9 +109,11 @@ class TestDiscoverTestCommand:
         """Spacy in pyproject.toml → setup includes model download."""
         mgr = _mock_sandbox(
             (0, "/w/pyproject.toml", ""),
+            (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
+            (0, "0", ""),  # workspace check for sync
             (0, '"presidio-analyzer>=2.0"', ""),
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
@@ -112,9 +124,11 @@ class TestDiscoverTestCommand:
         """uv not found → setup includes curl install."""
         mgr = _mock_sandbox(
             (0, "/w/pyproject.toml", ""),
+            (0, "0", ""),  # workspace check
             (0, "", ""),
             (0, "MISSING", ""),  # probe
             (0, "MISSING", ""),  # which uv
+            (0, "0", ""),  # workspace check for sync
             (0, "", ""),
         )
         result = await discover_test_command(mgr, "sb-1", "/w")
@@ -126,6 +140,7 @@ class TestDiscoverTestCommand:
         """When venv exists with project installed, skip all setup."""
         mgr = _mock_sandbox(
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
+            (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
             # probe: already installed
             (0, "INSTALLED", ""),
@@ -138,6 +153,36 @@ class TestDiscoverTestCommand:
 
         assert result["test_command"] == "make test-unit"
         assert result["setup_commands"] == []
+
+    async def test_workspace_prefers_test_affected(self) -> None:
+        """uv workspace with test-affected target → make test-affected."""
+        mgr = _mock_sandbox(
+            (0, "/w/Makefile\n/w/pyproject.toml", ""),
+            (0, "1", ""),  # workspace check → is workspace
+            (0, "HAS_UV", ""),
+            # probe: already installed
+            (0, "INSTALLED", ""),
+            # _find_make_affected_target: grep Makefile
+            (0, "test\ntest-unit\ntest-affected\nlint\n", ""),
+        )
+        result = await discover_test_command(mgr, "sb-1", "/w")
+
+        assert result["test_command"] == "make test-affected"
+
+    async def test_workspace_uses_all_packages_sync(self) -> None:
+        """uv workspace → uv sync --all-extras --all-packages."""
+        mgr = _mock_sandbox(
+            (0, "/w/pyproject.toml", ""),
+            (0, "1", ""),  # workspace check
+            (0, "HAS_UV", ""),
+            (0, "MISSING", ""),  # probe
+            (0, "/root/.local/bin/uv", ""),  # which uv
+            (0, "1", ""),  # workspace check for sync
+            (0, "", ""),  # extras
+        )
+        result = await discover_test_command(mgr, "sb-1", "/w")
+
+        assert any("--all-packages" in c for c in result["setup_commands"])
 
     async def test_package_json_with_test_script(self) -> None:
         mgr = _mock_sandbox(

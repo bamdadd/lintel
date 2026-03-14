@@ -246,11 +246,16 @@ async def _build_changed_tests_command(
     # 3. Find corresponding test files for changed source files
     if source_basenames:
         # Build a find command to locate test files matching changed sources
+        # Search both tests/ (single-package) and packages/*/tests/ (workspace)
         patterns = " -o ".join(f'-name "test_{b}.py"' for b in source_basenames)
         find_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
-                command=f"find tests/ -type f \\( {patterns} \\) 2>/dev/null || true",
+                command=(
+                    f"{{ find tests/ -type f \\( {patterns} \\) 2>/dev/null;"
+                    f" find packages/*/tests/ -type f \\( {patterns} \\) 2>/dev/null; }}"
+                    " | sort -u || true"
+                ),
                 workdir=workdir,
                 timeout_seconds=10,
             ),

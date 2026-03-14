@@ -119,6 +119,22 @@ async def discover_test_command(
     )
     files = detect.stdout.strip()
 
+    # --- Phase 1b: Detect uv workspace ---
+    is_workspace = False
+    if "pyproject.toml" in files:
+        ws_check = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    f"grep -c 'tool.uv.workspace' {workdir}/pyproject.toml"
+                    " 2>/dev/null || echo 0"
+                ),
+                workdir=workdir,
+                timeout_seconds=5,
+            ),
+        )
+        is_workspace = ws_check.stdout.strip() not in ("0", "")
+
     # --- Phase 2: Detect sandbox capabilities ---
     capabilities = await _detect_sandbox_capabilities(
         sandbox_manager,
@@ -141,6 +157,7 @@ async def discover_test_command(
             workdir,
             files,
             capabilities,
+            is_workspace=is_workspace,
         )
         return {"test_command": test_cmd, "setup_commands": setup}
 
@@ -255,8 +272,21 @@ async def _python_setup_commands(
     if "MISSING" in check.stdout:
         commands.append("curl -LsSf https://astral.sh/uv/install.sh | sh")
 
-    # 2. Install project dependencies
-    commands.append(f"{path_prefix} && uv sync --all-extras 2>&1 | tail -5")
+    # 2. Install project dependencies (use --all-packages for uv workspaces)
+    ws_check = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=f"grep -c 'tool.uv.workspace' {workdir}/pyproject.toml 2>/dev/null || echo 0",
+            workdir=workdir,
+            timeout_seconds=5,
+        ),
+    )
+    sync_flag = (
+        "--all-extras --all-packages"
+        if ws_check.stdout.strip() not in ("0", "")
+        else "--all-extras"
+    )
+    commands.append(f"{path_prefix} && uv sync {sync_flag} 2>&1 | tail -5")
 
     # 3. Detect extra Python dependencies from pyproject.toml
     extras = await _detect_python_extras(
@@ -320,17 +350,29 @@ async def _python_test_command(
     workdir: str,
     files: str,
     capabilities: dict[str, bool],
+    *,
+    is_workspace: bool = False,
 ) -> str:
     """Determine the best test command for a Python project.
 
     Priority:
-    1. Makefile with test-like target (prefer test-unit in sandbox without DB)
-    2. pytest directly
+    1. Workspace project with ``test-affected`` Makefile target → ``make test-affected``
+    2. Makefile with test-like target (prefer test-unit in sandbox without DB)
+    3. pytest directly (workspace-aware path search)
     """
     path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
 
     # Check Makefile targets
     if "Makefile" in files:
+        # For workspace projects, prefer test-affected (only tests changed packages)
+        if is_workspace:
+            affected_target = await _find_make_affected_target(
+                sandbox_manager, sandbox_id, workdir,
+            )
+            if affected_target:
+                logger.info("test_discovery: workspace detected, using %s", affected_target)
+                return f"make {affected_target}"
+
         test_target = await _find_make_test_target(
             sandbox_manager,
             sandbox_id,
@@ -353,8 +395,15 @@ async def _python_test_command(
                     return f"make {unit_target}"
             return f"make {test_target}"
 
-    # Fallback: run pytest directly, unit tests only if no DB
+    # Fallback: run pytest directly
     if not capabilities.get("postgres"):
+        if is_workspace:
+            # Workspace: run affected package tests via pytest
+            return (
+                f"{path_prefix} && uv run python -m pytest"
+                " $(find packages/*/tests -maxdepth 0 -type d"
+                " 2>/dev/null | tr '\\n' ' ') -v 2>&1 || true"
+            )
         return f"{path_prefix} && uv run python -m pytest tests/unit/ -v 2>&1 || true"
     return f"{path_prefix} && uv run python -m pytest"
 
@@ -396,6 +445,40 @@ async def _find_make_test_target(
     if targets_result.stdout.strip():
         return pick_test_target(targets_result.stdout)
 
+    return None
+
+
+async def _find_make_affected_target(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workdir: str,
+) -> str | None:
+    """Find a workspace-aware affected-only test target in the Makefile."""
+    from lintel.contracts.types import SandboxJob
+
+    targets_result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                f"grep -E '^[a-zA-Z_-]+:' {workdir}/Makefile "
+                "| sed 's/:.*//' | sort -u 2>/dev/null || true"
+            ),
+            workdir=workdir,
+            timeout_seconds=10,
+        ),
+    )
+    if not targets_result.stdout.strip():
+        return None
+
+    targets: set[str] = set()
+    for line in targets_result.stdout.lower().strip().split("\n"):
+        tokens = line.split()
+        if tokens:
+            targets.add(tokens[0])
+
+    for candidate in ("test-affected", "test-changed"):
+        if candidate in targets:
+            return candidate
     return None
 
 
