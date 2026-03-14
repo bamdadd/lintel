@@ -11,6 +11,7 @@ resolution-markers = [
 members = [
     "lintel",
     "lintel-contracts",
+    "lintel-domain",
     "lintel-workspace",
 ]
 
@@ -1473,6 +1474,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
     { name = "lintel-contracts" },
+    { name = "lintel-domain" },
     { name = "litellm" },
     { name = "nats-py" },
     { name = "opentelemetry-exporter-otlp" },
@@ -1500,6 +1502,7 @@ requires-dist = [
     { name = "langgraph", specifier = ">=0.3" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
     { name = "litellm", specifier = ">=1.55" },
     { name = "nats-py", specifier = ">=2.9" },
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.29" },
@@ -1528,6 +1531,23 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-domain"
+version = "0.1.0"
+source = { editable = "packages/domain" }
+dependencies = [
+    { name = "langgraph" },
+    { name = "lintel-contracts" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "langgraph", specifier = ">=0.3" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 

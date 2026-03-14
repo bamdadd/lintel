@@ -24,7 +24,7 @@ async def run_tests(
 ) -> dict[str, Any]:
     """Run the project test suite in the sandbox and report results."""
     from lintel.contracts.types import SandboxJob
-    from lintel.skills.discover_test_command import discover_test_command
+    from lintel.domain.skills.discover_test_command import discover_test_command
     from lintel.workflows.nodes._stage_tracking import (
         append_log,
         mark_completed,

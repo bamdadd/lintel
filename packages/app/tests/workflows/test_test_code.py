@@ -52,7 +52,7 @@ def _patch_discovery(
     else:
         result["setup_commands"] = []
     return patch(
-        "lintel.skills.discover_test_command.discover_test_command",
+        "lintel.domain.skills.discover_test_command.discover_test_command",
         new_callable=AsyncMock,
         return_value=result,
     )

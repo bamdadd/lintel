@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 from lintel.contracts.types import SandboxResult
-from lintel.skills.discover_test_command import (
+from lintel.domain.skills.discover_test_command import (
     DiscoverTestCommandSkill,
     discover_test_command,
     pick_test_target,
