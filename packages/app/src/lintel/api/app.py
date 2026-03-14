@@ -52,6 +52,7 @@ from lintel.api.routes import (
     streams,
     teams,
     threads,
+    automations,
     triggers,
     users,
     variables,
@@ -77,6 +78,7 @@ from lintel.api.routes.policies import InMemoryPolicyStore
 from lintel.api.routes.projects import ProjectStore
 from lintel.api.routes.skills import InMemorySkillStore
 from lintel.api.routes.teams import InMemoryTeamStore
+from lintel.api.routes.automations import InMemoryAutomationStore
 from lintel.api.routes.triggers import InMemoryTriggerStore
 from lintel.api.routes.users import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
@@ -151,6 +153,7 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "pipeline_store": InMemoryPipelineStore(),
         "environment_store": InMemoryEnvironmentStore(),
         "trigger_store": InMemoryTriggerStore(),
+        "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
         "user_store": InMemoryUserStore(),
         "team_store": InMemoryTeamStore(),
@@ -602,6 +605,7 @@ def create_app() -> FastAPI:
     app.include_router(pipelines.router, prefix="/api/v1", tags=["pipelines"])
     app.include_router(environments.router, prefix="/api/v1", tags=["environments"])
     app.include_router(triggers.router, prefix="/api/v1", tags=["triggers"])
+    app.include_router(automations.router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables.router, prefix="/api/v1", tags=["variables"])
     app.include_router(users.router, prefix="/api/v1", tags=["users"])
     app.include_router(teams.router, prefix="/api/v1", tags=["teams"])
