@@ -128,6 +128,38 @@ export function usePipelinesForWorkItem(workItemId: string | undefined) {
   });
 }
 
+export interface PipelineStage {
+  stage_id: string;
+  name: string;
+  status: string;
+}
+
+export function usePipelineStages(runId: string | undefined) {
+  return useQuery({
+    queryKey: ['/api/v1/pipelines', runId, 'stages'],
+    queryFn: () =>
+      customInstance<ListResponse<PipelineStage>>(
+        `/api/v1/pipelines/${runId}/stages`,
+      ),
+    enabled: !!runId,
+  });
+}
+
+/**
+ * Fetches the latest pipeline + its stages for a work item.
+ * Used by WorkItemCard to show stage indicator boxes.
+ */
+export function useLatestPipelineWithStages(workItemId: string | undefined) {
+  const { data: pipelines } = usePipelinesForWorkItem(workItemId);
+  const latestPipeline = pipelines?.[0];
+  const { data: stagesResp } = usePipelineStages(latestPipeline?.run_id);
+  const stages = (stagesResp?.data ?? stagesResp ?? []) as PipelineStage[];
+  return {
+    pipeline: latestPipeline ?? null,
+    stages: Array.isArray(stages) ? stages : [],
+  };
+}
+
 export function useDeleteWorkItem() {
   return useMutation({
     mutationFn: (workItemId: string) =>
