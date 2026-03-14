@@ -17,12 +17,12 @@ Add an **Automations** system that allows teams to define server-side automation
 ### New Types (contracts/types.py)
 
 ```python
-class AutomationTriggerType(str, Enum):
+class AutomationTriggerType(StrEnum):
     CRON = "cron"        # time-based via cron expression
     EVENT = "event"      # internal domain events via EventBus
     MANUAL = "manual"    # API/UI/MCP triggered
 
-class ConcurrencyPolicy(str, Enum):
+class ConcurrencyPolicy(StrEnum):
     ALLOW = "allow"      # run all simultaneously
     QUEUE = "queue"      # FIFO, one at a time
     SKIP = "skip"        # drop if already running
@@ -39,8 +39,9 @@ class AutomationDefinition:
     input_parameters: dict[str, object] = field(default_factory=dict)
     concurrency_policy: ConcurrencyPolicy = ConcurrencyPolicy.QUEUE
     enabled: bool = True
-    created_at: datetime
-    updated_at: datetime
+    max_chain_depth: int = 3
+    created_at: str = ""
+    updated_at: str = ""
 ```
 
 ### trigger_config shapes
@@ -52,6 +53,8 @@ class AutomationDefinition:
 ### PipelineRun linkage
 
 Each automation execution creates a `PipelineRun` with `trigger_type="automation:{automation_id}"`. This follows the existing pattern (`"chat:{conversation_id}"`). No separate `AutomationRun` entity.
+
+`PipelineRun.work_item_id` defaults to `""` — automation-triggered runs may not have an associated work item. The field is already optional (has default).
 
 ## Events
 
@@ -74,8 +77,8 @@ Stream ID: `automation:{automation_id}`
 
 Asyncio background task started in app lifespan, following the `SchedulerLoop` pattern.
 
-- **Cron tick:** Every 60 seconds, query enabled cron automations, evaluate via `croniter`, fire those due. Tracks `last_fired_at` per automation to prevent double-firing.
-- **Event subscriptions:** On startup, subscribe to EventBus for event types referenced by enabled event automations. When an event matches, fire the automation.
+- **Cron tick:** Every 60 seconds, query enabled cron automations, evaluate via `croniter`, fire those due. Tracks `last_fired_at` in an in-memory `dict[str, datetime]` keyed by automation_id. On startup, initializes from the most recent `AutomationFired` event per automation (via event store query) to avoid double-firing after restart.
+- **Event subscriptions:** On startup, subscribe to EventBus for event types referenced by enabled event automations. When an event matches, fire the automation. **Loop guard:** tracks chain depth per correlation_id. If depth exceeds `max_chain_depth` on the automation, emits `AutomationSkipped` with reason `"max_chain_depth_exceeded"` instead of firing.
 - **Resubscription:** When an automation is created/updated/removed, update EventBus subscriptions accordingly.
 
 ### Concurrency Enforcement
@@ -92,7 +95,7 @@ Before creating a PipelineRun, check active runs for that automation:
 | `cancel` | yes | Cancel active run, emit `AutomationCancelled`, create new |
 | `cancel` | no | Create run immediately |
 
-**Queue implementation:** In-memory queue per automation. Subscribe to `PipelineRunCompleted`/`PipelineRunFailed` to dequeue next. Queued-but-not-started runs are lost on server restart (acceptable for v1).
+**Queue implementation:** In-memory queue per automation. Subscribe to `PipelineRunCompleted`/`PipelineRunFailed` to dequeue next. On restart, queued-but-not-started items are lost — no PipelineRun was created yet so there's nothing orphaned. This is acceptable for v1.
 
 **Cancel implementation:** Mark the active PipelineRun as `cancelled` and let the workflow executor check for cancellation.
 
@@ -131,7 +134,15 @@ class UpdateAutomationRequest(BaseModel):
     input_parameters: dict[str, object] | None = None
     concurrency_policy: ConcurrencyPolicy | None = None
     enabled: bool | None = None
+    max_chain_depth: int | None = None
 ```
+
+Note: `workflow_definition_id` and `trigger_type` are immutable after creation. To change either, delete and recreate the automation.
+
+**Validation:** `trigger_config` is validated at the route layer on create/update:
+- `cron`: must contain `schedule` (valid cron expression via croniter) and optional `timezone`
+- `event`: must contain `event_types` (non-empty list of strings matching known event types)
+- `manual`: no required fields
 
 ## MCP Tools
 
@@ -167,6 +178,7 @@ automations_list_automation_runs
 ## Relationship to Existing Entities
 
 - **Trigger** — stays as-is. Lightweight "event source registration" on PipelineRun. Automations are a higher-level concept.
+- **WorkflowHook** — existing entity that binds event patterns to workflow triggers with `max_chain_depth`. Automations with `trigger_type=EVENT` overlap in purpose. WorkflowHook is lower-level (fires on raw event patterns); Automations add concurrency policies, input parameters, and scheduling. Long-term, WorkflowHook may be deprecated in favour of Automations, but for v1 they coexist.
 - **WorkflowDefinition** — referenced by automation. Automation says "run this workflow."
 - **PipelineRun** — execution record. Linked via `trigger_type="automation:{id}"`.
 - **EventBus** — used for event-triggered automations and concurrency queue management.
