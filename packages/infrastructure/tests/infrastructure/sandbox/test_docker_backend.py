@@ -6,15 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-try:
-    import docker as _docker
-    _docker.from_env().ping()
-    _has_docker = True
-except Exception:
-    _has_docker = False
-
-pytestmark = pytest.mark.skipif(not _has_docker, reason="Docker daemon not available")
-
 from lintel.contracts.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
@@ -22,6 +13,16 @@ from lintel.contracts.errors import (
 )
 from lintel.contracts.types import SandboxConfig, SandboxJob, SandboxStatus, ThreadRef
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+
+try:
+    import docker as _docker
+
+    _docker.from_env().ping()
+    _has_docker = True
+except Exception:
+    _has_docker = False
+
+pytestmark = pytest.mark.skipif(not _has_docker, reason="Docker daemon not available")
 
 
 def _make_thread_ref() -> ThreadRef:

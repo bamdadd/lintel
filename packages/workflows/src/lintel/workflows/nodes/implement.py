@@ -838,13 +838,13 @@ async def _implement_structured(
     # Push branch after implement so progress is preserved across restarts
     feature_branch = state.get("feature_branch", "")
     if feature_branch:
-        from lintel.contracts.types import SandboxJob as _SJ
+        from lintel.contracts.types import SandboxJob
 
         await tracker.append_log("implement", f"Pushing branch {feature_branch}...")
         try:
             push_result = await sandbox_manager.execute(
                 sandbox_id,
-                _SJ(
+                SandboxJob(
                     command=(
                         f"git add -A && git diff --cached --quiet"
                         f" || git commit -m 'wip: implement stage progress'"
@@ -1155,15 +1155,18 @@ async def _run_lint(
     # Auto-fix lint issues before checking (ruff format + ruff check --fix)
     format_command = (
         "make format"
-        if "format:" in (await sandbox_manager.execute(
-            sandbox_id,
-            SandboxJob(
-                command="grep -c 'format:' Makefile 2>/dev/null || echo 0",
-                workdir=workspace_path,
-                timeout_seconds=5,
-            ),
-        )).stdout
-        else 'ruff check --fix . 2>/dev/null; ruff format . 2>/dev/null; true'
+        if "format:"
+        in (
+            await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command="grep -c 'format:' Makefile 2>/dev/null || echo 0",
+                    workdir=workspace_path,
+                    timeout_seconds=5,
+                ),
+            )
+        ).stdout
+        else "ruff check --fix . 2>/dev/null; ruff format . 2>/dev/null; true"
     )
     await tracker.append_log("implement", f"Auto-fixing lint: {format_command[:60]}")
     try:
