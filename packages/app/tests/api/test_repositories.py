@@ -137,3 +137,83 @@ class TestRepositoryAPI:
         assert data["owner"] == "org"
         assert data["default_branch"] == "main"
         assert data["url"] == "https://github.com/org/r"
+
+    def test_list_commits_repo_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/repositories/nope/commits")
+        assert resp.status_code == 404
+
+    def test_list_pull_requests_repo_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/repositories/nope/pull-requests")
+        assert resp.status_code == 404
+
+
+class TestRepositoryProviderEndpoints:
+    """Tests for commits/PRs endpoints using a fake RepoProvider."""
+
+    @pytest.fixture()
+    def client_with_provider(self) -> Generator[TestClient]:
+        from unittest.mock import AsyncMock
+
+        from dependency_injector import providers
+
+        app = create_app()
+        with TestClient(app) as c:
+            container = app.state.container
+            mock_provider = AsyncMock()
+            mock_provider.list_commits.return_value = [
+                {"sha": "abc123", "message": "init", "author": "dev", "date": "2026-01-01"},
+            ]
+            mock_provider.list_pull_requests.return_value = [
+                {
+                    "number": 1,
+                    "title": "feat: add stuff",
+                    "state": "open",
+                    "author": "dev",
+                    "created_at": "2026-01-01",
+                    "updated_at": "2026-01-02",
+                    "html_url": "https://github.com/org/r/pull/1",
+                    "head_branch": "feature",
+                    "base_branch": "main",
+                },
+            ]
+            container.repo_provider.override(providers.Object(mock_provider))
+            yield c
+
+    def test_list_commits(self, client_with_provider: TestClient) -> None:
+        client_with_provider.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "repo", "url": "https://github.com/org/r"},
+        )
+        resp = client_with_provider.get("/api/v1/repositories/r1/commits")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["sha"] == "abc123"
+
+    def test_list_commits_custom_branch(self, client_with_provider: TestClient) -> None:
+        client_with_provider.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "repo", "url": "https://github.com/org/r"},
+        )
+        resp = client_with_provider.get("/api/v1/repositories/r1/commits?branch=develop&limit=5")
+        assert resp.status_code == 200
+
+    def test_list_pull_requests(self, client_with_provider: TestClient) -> None:
+        client_with_provider.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "repo", "url": "https://github.com/org/r"},
+        )
+        resp = client_with_provider.get("/api/v1/repositories/r1/pull-requests")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["number"] == 1
+        assert data[0]["title"] == "feat: add stuff"
+
+    def test_list_pull_requests_closed(self, client_with_provider: TestClient) -> None:
+        client_with_provider.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "repo", "url": "https://github.com/org/r"},
+        )
+        resp = client_with_provider.get("/api/v1/repositories/r1/pull-requests?state=closed")
+        assert resp.status_code == 200

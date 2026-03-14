@@ -125,3 +125,38 @@ async def remove_repository(
         RepositoryRemoved(payload={"resource_id": repo_id, "name": repo.name}),
         stream_id=f"repository:{repo_id}",
     )
+
+
+@router.get("/repositories/{repo_id}/commits")
+@inject
+async def list_repository_commits(
+    repo_id: str,
+    branch: str | None = None,
+    limit: int = 20,
+    store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
+    repo_provider: Any = Depends(Provide[AppContainer.repo_provider]),  # noqa: B008
+) -> list[dict[str, Any]]:
+    repo = await store.get(repo_id)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    if repo_provider is None:
+        raise HTTPException(status_code=503, detail="Repository provider not configured")
+    ref = branch or repo.default_branch
+    return await repo_provider.list_commits(repo.url, ref, limit)
+
+
+@router.get("/repositories/{repo_id}/pull-requests")
+@inject
+async def list_repository_pull_requests(
+    repo_id: str,
+    state: str = "open",
+    limit: int = 20,
+    store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
+    repo_provider: Any = Depends(Provide[AppContainer.repo_provider]),  # noqa: B008
+) -> list[dict[str, Any]]:
+    repo = await store.get(repo_id)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    if repo_provider is None:
+        raise HTTPException(status_code=503, detail="Repository provider not configured")
+    return await repo_provider.list_pull_requests(repo.url, state, limit)

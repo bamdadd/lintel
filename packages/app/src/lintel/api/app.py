@@ -89,6 +89,7 @@ from lintel.infrastructure.projections.quality_metrics import QualityMetricsProj
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
 from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
+from lintel.infrastructure.repos.github_provider import GitHubRepoProvider
 from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
 
 
@@ -519,6 +520,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except Exception:
         pass  # Docker may not be available
 
+    # Construct repo provider for GitHub API access (commits, PRs, branches)
+    github_token = os.environ.get("GITHUB_TOKEN", "")
+    repo_provider = GitHubRepoProvider(token=github_token) if github_token else None
+
     # Wire DI container so route handlers can use Provide[AppContainer.X]
     container = AppContainer()
     services = {
@@ -530,6 +535,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         "workflow_executor": executor,
         "sandbox_manager": sandbox_manager,
         "mcp_tool_client": mcp_tool_client,
+        "repo_provider": repo_provider,
         "projection_engine": engine,
         "thread_status_projection": thread_status,
         "quality_metrics_projection": quality_metrics,

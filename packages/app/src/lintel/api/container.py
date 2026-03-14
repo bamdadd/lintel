@@ -88,6 +88,9 @@ class AppContainer(containers.DeclarativeContainer):
     knowledge_extraction_store: providers.Provider[Any] = providers.Object(None)
     architecture_decision_store: providers.Provider[Any] = providers.Object(None)
 
+    # Repository provider (GitHub API access for commits, PRs, etc.)
+    repo_provider: providers.Provider[Any] = providers.Object(None)
+
     # Domain services
     model_router: providers.Provider[Any] = providers.Object(None)
     chat_router: providers.Provider[Any] = providers.Object(None)

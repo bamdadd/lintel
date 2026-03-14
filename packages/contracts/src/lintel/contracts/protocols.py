@@ -353,6 +353,13 @@ class RepoProvider(Protocol):
         limit: int = 20,
     ) -> list[dict[str, Any]]: ...
 
+    async def list_pull_requests(
+        self,
+        repo_url: str,
+        state: str = "open",
+        limit: int = 20,
+    ) -> list[dict[str, Any]]: ...
+
 
 class StepMetricsRecorder(Protocol):
     """Records per-step OTel metrics for workflow execution."""

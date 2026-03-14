@@ -176,3 +176,33 @@ class GitHubRepoProvider:
                 }
                 for c in resp.json()
             ]
+
+    async def list_pull_requests(
+        self, repo_url: str, state: str = "open", limit: int = 20
+    ) -> list[dict[str, Any]]:
+        import httpx
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/pulls"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url,
+                headers=self._headers(),
+                params={"state": state, "per_page": limit, "sort": "updated", "direction": "desc"},
+            )
+            resp.raise_for_status()
+            return [
+                {
+                    "number": pr["number"],
+                    "title": pr["title"],
+                    "state": pr["state"],
+                    "author": pr["user"]["login"],
+                    "created_at": pr["created_at"],
+                    "updated_at": pr["updated_at"],
+                    "html_url": pr["html_url"],
+                    "head_branch": pr["head"]["ref"],
+                    "base_branch": pr["base"]["ref"],
+                }
+                for pr in resp.json()
+            ]
