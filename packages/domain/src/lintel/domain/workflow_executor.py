@@ -147,6 +147,11 @@ class WorkflowExecutor:
             "credential_ids": command.credential_ids,
         }
 
+        # Rehydrate state from previous run if continuing
+        if command.continue_from_run_id:
+            prev_state = await self._rehydrate_from_run(command.continue_from_run_id)
+            initial_input.update(prev_state)
+
         # Store graph and command for potential resumption
         self._suspended_runs[run_id] = {
             "graph": graph,
@@ -157,6 +162,44 @@ class WorkflowExecutor:
 
         await self._stream_graph(run_id, graph, initial_input, config)
         return run_id
+
+    async def _rehydrate_from_run(self, prev_run_id: str) -> dict[str, Any]:
+        """Load stage outputs from a previous run and map them to workflow state keys."""
+        from lintel.contracts.types import StageStatus
+
+        result: dict[str, Any] = {}
+        if self._app_state is None:
+            return result
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return result
+        try:
+            run = await pipeline_store.get(prev_run_id)
+            if run is None:
+                logger.warning("rehydrate_run_not_found", run_id=prev_run_id)
+                return result
+            for stage in run.stages:
+                if isinstance(stage, dict):
+                    stage = _dict_to_stage(stage)
+                outputs = stage.outputs if isinstance(stage.outputs, dict) else {}
+                if stage.status == StageStatus.SUCCEEDED and outputs:
+                    if stage.name == "research" and "research_report" in outputs:
+                        result["research_context"] = outputs["research_report"]
+                    elif stage.name == "plan" and "plan" in outputs:
+                        result["plan"] = outputs["plan"]
+                    elif stage.name == "setup_workspace" and "feature_branch" in outputs:
+                        result["feature_branch"] = outputs["feature_branch"]
+                elif stage.status == StageStatus.FAILED and stage.error:
+                    result["previous_error"] = stage.error
+                    result["previous_failed_stage"] = stage.name
+            logger.info(
+                "rehydrated_from_previous_run",
+                prev_run_id=prev_run_id,
+                keys=list(result.keys()),
+            )
+        except Exception:
+            logger.warning("rehydrate_failed", prev_run_id=prev_run_id, exc_info=True)
+        return result
 
     async def resume(self, run_id: str) -> None:
         """Resume a workflow that was paused at an approval gate."""

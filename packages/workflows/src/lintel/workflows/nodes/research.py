@@ -60,6 +60,21 @@ async def research_codebase(
 
     tracker = StageTracker(config)
     await tracker.mark_running("research")
+
+    # Skip if research_context already populated (pipeline continuation)
+    existing_context = state.get("research_context", "")
+    if existing_context:
+        await tracker.append_log("research", "Using rehydrated research context — skipping LLM")
+        await tracker.mark_completed(
+            "research",
+            outputs={"research_report": existing_context, "rehydrated": True},
+        )
+        return {
+            "research_context": existing_context,
+            "current_phase": "planning",
+            "agent_outputs": [{"node": "research", "summary": "Rehydrated from previous run"}],
+        }
+
     await tracker.append_log("research", "Researching codebase...")
 
     _configurable = config.get("configurable", {})
@@ -200,6 +215,28 @@ async def research_codebase(
         "research_report": research_report,
     }
     await tracker.mark_completed("research", outputs=stage_outputs)
+
+    # Store as artifact for the artifacts page
+    _artifact_store = _configurable.get("code_artifact_store")
+    if _artifact_store is None:
+        _app = _configurable.get("app_state")
+        if _app is not None:
+            _artifact_store = getattr(_app, "code_artifact_store", None)
+    if _artifact_store is not None:
+        from lintel.contracts.types import CodeArtifact
+
+        try:
+            artifact = CodeArtifact(
+                artifact_id=f"{state.get('run_id', '')}-research",
+                work_item_id=state.get("work_item_id", ""),
+                run_id=state.get("run_id", ""),
+                artifact_type="research_report",
+                path="",
+                content=research_report,
+            )
+            await _artifact_store.add(artifact)
+        except Exception:
+            logger.warning("research_artifact_storage_failed", exc_info=True)
 
     return {
         "research_context": research_report,

@@ -148,6 +148,20 @@ class TestCommandDefaults:
         assert cmd.reason == "support ticket"
 
 
+class TestStartWorkflowContinuation:
+    def test_continue_from_run_id_defaults_empty(self) -> None:
+        cmd = StartWorkflow(thread_ref=REF, workflow_type="feature_to_pr")
+        assert cmd.continue_from_run_id == ""
+
+    def test_continue_from_run_id_set(self) -> None:
+        cmd = StartWorkflow(
+            thread_ref=REF,
+            workflow_type="feature_to_pr",
+            continue_from_run_id="prev-run-123",
+        )
+        assert cmd.continue_from_run_id == "prev-run-123"
+
+
 class TestCommandUniqueCorrelationIds:
     def test_each_command_gets_unique_correlation_id(self) -> None:
         ids = set()

@@ -435,6 +435,36 @@ async def _trigger_workflow_for_work_item(
         except Exception:
             pass
 
+    # Find most recent failed pipeline for continuation
+    continue_from_run_id = ""
+    if pipeline_store:
+        try:
+            all_runs = await pipeline_store.list_all()
+            failed_runs = [
+                r
+                for r in all_runs
+                if (
+                    (r.work_item_id if hasattr(r, "work_item_id") else r.get("work_item_id", ""))
+                    == work_item_id
+                    and str(r.status if hasattr(r, "status") else r.get("status", ""))
+                    in ("failed", str(PipelineStatus.FAILED))
+                )
+            ]
+            if failed_runs:
+                failed_runs.sort(
+                    key=lambda r: (
+                        r.created_at if hasattr(r, "created_at") else r.get("created_at", "")
+                    ),
+                    reverse=True,
+                )
+                prev = failed_runs[0]
+                continue_from_run_id = (
+                    prev.run_id if hasattr(prev, "run_id") else prev.get("run_id", "")
+                )
+                logger.info("continuing_from_previous_run: %s", continue_from_run_id)
+        except Exception:
+            logger.warning("continuation_lookup_failed", exc_info=True)
+
     command = StartWorkflow(
         thread_ref=thread_ref,
         workflow_type=workflow_type,
@@ -446,6 +476,7 @@ async def _trigger_workflow_for_work_item(
         repo_urls=repo_urls,
         repo_branch=repo_branch,
         credential_ids=credential_ids,
+        continue_from_run_id=continue_from_run_id,
     )
 
     dispatcher = getattr(request.app.state, "command_dispatcher", None)

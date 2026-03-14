@@ -229,10 +229,23 @@ async def spawn_implementation(
         else ""
     )
 
+    # Inject failure context from previous pipeline run (continuation)
+    previous_error = state.get("previous_error", "")
+    failure_section = ""
+    if previous_error:
+        prev_stage = state.get("previous_failed_stage", "implement")
+        failure_section = (
+            f"\n\n## Previous Attempt Failed\n"
+            f"The previous pipeline run failed at the **{prev_stage}** stage with:\n"
+            f"```\n{previous_error}\n```\n"
+            f"Take this into account and avoid the same failure mode.\n"
+        )
+
     user_prompt = (
         f"## Plan\n{plan_summary}\n\n## Tasks\n{task_text}\n\n"
         f"## Original request\n{chr(10).join(messages)}"
-        f"{file_context}{research_section}{guidelines_section}{review_section}"
+        f"{file_context}{research_section}{guidelines_section}"
+        f"{review_section}{failure_section}"
     )
 
     # Parse thread ref

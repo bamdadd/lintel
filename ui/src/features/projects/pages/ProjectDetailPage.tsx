@@ -244,8 +244,8 @@ export function Component() {
                           <Text size="sm" truncate style={{ flex: 1, cursor: 'pointer' }} onClick={() => void navigate(item.path)}>
                             {item.label}
                           </Text>
-                          {'status' in item && item.status && (
-                            <StatusBadge status={item.status} size="xs" />
+                          {'status' in item && (item as { status?: string }).status && (
+                            <StatusBadge status={(item as { status: string }).status} size="xs" />
                           )}
                         </Group>
                       ))}

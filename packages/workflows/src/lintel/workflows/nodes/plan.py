@@ -82,6 +82,22 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
 
     tracker = StageTracker(config)
     await tracker.mark_running("plan")
+
+    # Skip if plan already populated (pipeline continuation)
+    existing_plan = state.get("plan", {})
+    if existing_plan and existing_plan.get("tasks"):
+        await tracker.append_log("plan", "Using rehydrated plan — skipping LLM")
+        await tracker.mark_completed(
+            "plan",
+            outputs={"plan": existing_plan, "rehydrated": True},
+        )
+        return {
+            "plan": existing_plan,
+            "current_phase": "awaiting_spec_approval",
+            "pending_approvals": ["spec_approval"],
+            "agent_outputs": [{"node": "plan", "summary": "Rehydrated from previous run"}],
+        }
+
     await tracker.append_log("plan", "Generating implementation plan...")
 
     _configurable = config.get("configurable", {})
@@ -203,6 +219,29 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         "plan": plan,
     }
     await tracker.mark_completed("plan", outputs=stage_outputs)
+
+    # Store plan as artifact
+    _artifact_store = _configurable.get("code_artifact_store")
+    if _artifact_store is None:
+        _app = _configurable.get("app_state")
+        if _app is not None:
+            _artifact_store = getattr(_app, "code_artifact_store", None)
+    if _artifact_store is not None:
+        from lintel.contracts.types import CodeArtifact
+
+        try:
+            artifact = CodeArtifact(
+                artifact_id=f"{state.get('run_id', '')}-plan",
+                work_item_id=state.get("work_item_id", ""),
+                run_id=state.get("run_id", ""),
+                artifact_type="plan",
+                path="",
+                content=content,
+            )
+            await _artifact_store.add(artifact)
+        except Exception:
+            logger.warning("plan_artifact_storage_failed", exc_info=True)
+
     return {
         "plan": plan,
         "current_phase": "awaiting_spec_approval",

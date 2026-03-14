@@ -14,7 +14,7 @@ import { useCallback, useRef, useEffect, useState } from 'react';
 import {
   Stack, Group, Text, Badge, Button, Paper, Code, ScrollArea,
   Modal, ActionIcon, Tooltip, TypographyStylesProvider, UnstyledButton,
-  useMantineColorScheme, Tabs as MantineTabs,
+  useMantineColorScheme,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import {

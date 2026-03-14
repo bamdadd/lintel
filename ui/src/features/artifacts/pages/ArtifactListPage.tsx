@@ -1,8 +1,9 @@
 import {
   Title, Stack, Table, Loader, Center, Badge, Text, Tabs, Group, TextInput,
-  Modal, ScrollArea, Code, Progress,
+  Modal, ScrollArea, Code, Progress, TypographyStylesProvider,
 } from '@mantine/core';
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   useArtifactsListArtifacts,
   useArtifactsListTestResults,
@@ -10,6 +11,15 @@ import {
 import { DiffView } from '@/shared/components/DiffView';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
+import '@/features/chat/chat-markdown.css';
+
+const artifactTypeColor: Record<string, string> = {
+  diff: 'blue',
+  research_report: 'teal',
+  plan: 'violet',
+};
+
+const markdownTypes = new Set(['research_report', 'plan']);
 
 interface ArtifactItem {
   artifact_id: string;
@@ -51,6 +61,7 @@ export function Component() {
   const filteredArtifacts = artifacts.filter((a) =>
     a.path?.toLowerCase().includes(filter.toLowerCase())
     || a.artifact_type?.toLowerCase().includes(filter.toLowerCase())
+    || a.run_id?.toLowerCase().includes(filter.toLowerCase())
   );
 
   const filteredTests = testResults.filter((t) =>
@@ -87,8 +98,8 @@ export function Component() {
               <Table.Tbody>
                 {filteredArtifacts.map((a) => (
                   <Table.Tr key={a.artifact_id} style={{ cursor: 'pointer' }} onClick={() => setViewArtifact(a)}>
-                    <Table.Td><code>{a.path}</code></Table.Td>
-                    <Table.Td><Badge variant="light">{a.artifact_type}</Badge></Table.Td>
+                    <Table.Td><code>{a.path || a.artifact_id}</code></Table.Td>
+                    <Table.Td><Badge variant="light" color={artifactTypeColor[a.artifact_type] ?? 'gray'}>{a.artifact_type}</Badge></Table.Td>
                     <Table.Td><Text size="xs" c="dimmed">{a.run_id?.slice(0, 8)}</Text></Table.Td>
                     <Table.Td><TimeAgo date={a.created_at} size="sm" /></Table.Td>
                   </Table.Tr>
@@ -143,17 +154,23 @@ export function Component() {
         </Tabs.Panel>
       </Tabs>
 
-      <Modal opened={!!viewArtifact} onClose={() => setViewArtifact(null)} title={viewArtifact?.path ?? 'Artifact'} size="xl">
+      <Modal opened={!!viewArtifact} onClose={() => setViewArtifact(null)} title={viewArtifact?.path || viewArtifact?.artifact_type || 'Artifact'} size="xl">
         {viewArtifact && (
           <Stack gap="sm">
             <Group gap="md">
-              <Badge>{viewArtifact.artifact_type}</Badge>
+              <Badge color={artifactTypeColor[viewArtifact.artifact_type] ?? 'gray'}>{viewArtifact.artifact_type}</Badge>
               <Text size="sm" c="dimmed">Run: {viewArtifact.run_id}</Text>
               <Text size="sm" c="dimmed">Work Item: {viewArtifact.work_item_id}</Text>
             </Group>
             <ScrollArea h={400}>
               {viewArtifact.artifact_type === 'diff' ? (
                 <DiffView content={viewArtifact.content} maxHeight={380} />
+              ) : markdownTypes.has(viewArtifact.artifact_type) ? (
+                <TypographyStylesProvider>
+                  <div className="chat-markdown">
+                    <ReactMarkdown>{viewArtifact.content || 'No content'}</ReactMarkdown>
+                  </div>
+                </TypographyStylesProvider>
               ) : (
                 <Code block>{viewArtifact.content || 'No content'}</Code>
               )}

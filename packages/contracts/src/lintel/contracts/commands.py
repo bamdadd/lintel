@@ -32,6 +32,7 @@ class StartWorkflow:
     repo_urls: tuple[str, ...] = ()
     repo_branch: str = "main"
     credential_ids: tuple[str, ...] = ()
+    continue_from_run_id: str = ""
 
 
 @dataclass(frozen=True)
