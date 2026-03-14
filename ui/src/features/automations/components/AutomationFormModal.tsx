@@ -132,15 +132,19 @@ export function AutomationFormModal({
   const { data: projectsResp } = useProjectsListProjects();
   const { data: workflowsResp } = useWorkflowDefinitionsListWorkflowDefinitions();
 
-  const projectOptions = (projectsResp?.data ?? []).map((p: Record<string, unknown>) => ({
-    value: String(p.project_id ?? ''),
-    label: String(p.name ?? p.project_id ?? ''),
-  }));
+  const projectOptions = (Array.isArray(projectsResp?.data) ? projectsResp.data : [])
+    .map((p: Record<string, unknown>) => ({
+      value: String(p.project_id ?? ''),
+      label: String(p.name ?? p.project_id ?? ''),
+    }))
+    .filter((o) => o.value !== '');
 
-  const workflowOptions = (workflowsResp?.data ?? []).map((w: Record<string, unknown>) => ({
-    value: String(w.workflow_id ?? ''),
-    label: String(w.name ?? w.workflow_id ?? ''),
-  }));
+  const workflowOptions = (Array.isArray(workflowsResp?.data) ? workflowsResp.data : [])
+    .map((w: Record<string, unknown>) => ({
+      value: String(w.workflow_id ?? ''),
+      label: String(w.name ?? w.workflow_id ?? ''),
+    }))
+    .filter((o) => o.value !== '');
 
   const handleSubmit = form.onSubmit((values) => {
     let trigger_config: Record<string, unknown> = {};
