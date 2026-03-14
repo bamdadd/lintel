@@ -1,5 +1,5 @@
 import { Stack, Text } from '@mantine/core';
-import { parseExpression } from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 
 interface NextRunsListProps {
   schedule: string;
@@ -8,11 +8,11 @@ interface NextRunsListProps {
 }
 
 export function NextRunsList({ schedule, timezone = 'UTC', count = 5 }: NextRunsListProps) {
-  let dates: Date[] = [];
+  const dates: Date[] = [];
   try {
-    const interval = parseExpression(schedule, { tz: timezone });
+    const cron = CronExpressionParser.parse(schedule, { tz: timezone });
     for (let i = 0; i < count; i++) {
-      dates.push(interval.next().toDate());
+      dates.push(cron.next().toDate());
     }
   } catch {
     return <Text size="xs" c="red">Invalid cron expression</Text>;

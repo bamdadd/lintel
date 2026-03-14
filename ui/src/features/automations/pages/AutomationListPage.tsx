@@ -20,9 +20,10 @@ export function Component() {
   const qc = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
 
-  const automations = resp?.data ?? [];
+  const automations = Array.isArray(resp?.data) ? resp.data : [];
 
-  const handleCreate = (values: Parameters<typeof createMut.mutate>[0]['data']) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCreate = (values: any) => {
     createMut.mutate(
       { data: values },
       {

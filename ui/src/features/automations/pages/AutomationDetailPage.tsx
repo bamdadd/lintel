@@ -18,8 +18,6 @@ import { IconPlayerPlay, IconSettings, IconTimeline } from '@tabler/icons-react'
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router';
 
-import { StatusBadge } from '@/shared/components/StatusBadge';
-
 import {
   useAutomationsDeleteAutomation,
   useAutomationsGetAutomation,

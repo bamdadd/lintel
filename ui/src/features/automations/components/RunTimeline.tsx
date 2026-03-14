@@ -41,7 +41,7 @@ function bucketRuns(runs: RunTimelineProps['runs']): Array<{ day: string; passed
     }
   }
 
-  return days.map((day) => ({ day, ...buckets[day] }));
+  return days.map((day) => ({ day, passed: buckets[day]?.passed ?? 0, failed: buckets[day]?.failed ?? 0 }));
 }
 
 export function RunTimeline({ runs }: RunTimelineProps) {

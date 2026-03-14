@@ -1,4 +1,4 @@
-import { ActionIcon, Badge, Group, Paper, Stack, Switch, Text } from '@mantine/core';
+import { ActionIcon, Badge, Group, Paper, Switch, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlayerPlay } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
