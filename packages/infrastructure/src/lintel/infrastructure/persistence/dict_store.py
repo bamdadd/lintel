@@ -17,7 +17,7 @@ class PostgresComplianceStore:
         self._id_field = id_field
 
     def _to_dict(self, entity: Any) -> dict[str, Any]:  # noqa: ANN401
-        from dataclasses import asdict, fields
+        from dataclasses import asdict
 
         if hasattr(entity, "__dataclass_fields__"):
             data = asdict(entity)

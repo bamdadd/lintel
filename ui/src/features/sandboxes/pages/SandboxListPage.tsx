@@ -31,10 +31,9 @@ import {
   useSandboxesListSandboxes,
   useSandboxesCreateSandbox,
   useSandboxesDestroySandbox,
-} from '@/generated/api/sandboxes/sandboxes';
-import {
   useSandboxesGetSandboxStatus,
 } from '@/generated/api/sandboxes/sandboxes';
+import { useSettingsGetSettings } from '@/generated/api/settings/settings';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { getStatusColor } from '@/shared/components/StatusBadge';
 
@@ -97,6 +96,8 @@ interface SandboxEntry {
 
 export function Component() {
   const { data: resp, isLoading } = useSandboxesListSandboxes({ query: { refetchInterval: 5000 } });
+  const { data: settingsResp } = useSettingsGetSettings();
+  const maxSandboxes = (settingsResp?.data as { max_sandboxes?: number } | undefined)?.max_sandboxes ?? 20;
   const { data: presets } = usePresets();
   const createMutation = useSandboxesCreateSandbox();
   const destroyMutation = useSandboxesDestroySandbox();
@@ -238,7 +239,16 @@ export function Component() {
   return (
     <Stack gap="md">
       <Group justify="space-between">
-        <Title order={2}>Sandboxes</Title>
+        <Group gap="sm" align="baseline">
+          <Title order={2}>Sandboxes</Title>
+          <Badge
+            size="lg"
+            variant="light"
+            color={sandboxes.length >= maxSandboxes ? 'red' : sandboxes.length >= maxSandboxes * 0.8 ? 'yellow' : 'blue'}
+          >
+            {sandboxes.length} / {maxSandboxes}
+          </Badge>
+        </Group>
         <Group gap="xs">
           {sandboxes.length > 0 && (
             <Button

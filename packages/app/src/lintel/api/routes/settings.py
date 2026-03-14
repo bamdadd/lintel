@@ -51,6 +51,7 @@ class UpdateSettingsRequest(BaseModel):
     pii_detection_enabled: bool | None = None
     sandbox_enabled: bool | None = None
     max_concurrent_workflows: int | None = None
+    max_sandboxes: int | None = None
 
 
 @router.post("/settings/connections", status_code=201)
