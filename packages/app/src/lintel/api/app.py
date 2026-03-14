@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from fastapi.routing import APIRoute
     from langgraph.graph.state import CompiledStateGraph
 
+from lintel.api.container import AppContainer, wire_container
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routes import (
     admin,
@@ -196,6 +197,9 @@ def _dc_to_dict(obj: Any) -> dict[str, Any]:  # noqa: ANN401
 def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     """Create all Postgres-backed stores."""
     from lintel.infrastructure.event_store.postgres import PostgresEventStore
+    from lintel.infrastructure.persistence.dict_store import (
+        PostgresComplianceStore as PgCompliance,
+    )
     from lintel.infrastructure.persistence.stores import (
         PostgresAgentDefinitionStore,
         PostgresAIProviderStore,
@@ -339,18 +343,18 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "sandbox_store": PostgresSandboxStore(pool),
         "tag_store": _TagStoreAdapter(_PgTagStore(pool)),
         "board_store": _BoardStoreAdapter(_PgBoardStore(pool)),
-        # Compliance & Governance stores (in-memory for now; Postgres CRUD store can be added)
-        "regulation_store": ComplianceStore("regulation_id"),
-        "compliance_policy_store": ComplianceStore("policy_id"),
-        "procedure_store": ComplianceStore("procedure_id"),
-        "practice_store": ComplianceStore("practice_id"),
-        "strategy_store": ComplianceStore("strategy_id"),
-        "kpi_store": ComplianceStore("kpi_id"),
-        "experiment_store": ComplianceStore("experiment_id"),
-        "compliance_metric_store": ComplianceStore("metric_id"),
-        "knowledge_entry_store": ComplianceStore("entry_id"),
-        "knowledge_extraction_store": ComplianceStore("run_id"),
-        "architecture_decision_store": ComplianceStore("decision_id"),
+        # Compliance & Governance stores (Postgres-backed)
+        "regulation_store": PgCompliance(pool, "regulation", "regulation_id"),
+        "compliance_policy_store": PgCompliance(pool, "compliance_policy", "policy_id"),
+        "procedure_store": PgCompliance(pool, "procedure", "procedure_id"),
+        "practice_store": PgCompliance(pool, "practice", "practice_id"),
+        "strategy_store": PgCompliance(pool, "strategy", "strategy_id"),
+        "kpi_store": PgCompliance(pool, "kpi", "kpi_id"),
+        "experiment_store": PgCompliance(pool, "experiment", "experiment_id"),
+        "compliance_metric_store": PgCompliance(pool, "compliance_metric", "metric_id"),
+        "knowledge_entry_store": PgCompliance(pool, "knowledge_entry", "entry_id"),
+        "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
+        "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
     }
 
 
@@ -515,7 +519,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     except Exception:
         pass  # Docker may not be available
 
+    # Wire DI container so route handlers can use Provide[AppContainer.X]
+    container = AppContainer()
+    services = {
+        "event_bus": event_bus,
+        "model_router": model_router,
+        "chat_router": chat_router,
+        "agent_runtime": agent_runtime,
+        "command_dispatcher": dispatcher,
+        "workflow_executor": executor,
+        "sandbox_manager": sandbox_manager,
+        "mcp_tool_client": mcp_tool_client,
+        "projection_engine": engine,
+        "thread_status_projection": thread_status,
+        "quality_metrics_projection": quality_metrics,
+        "task_backlog_projection": task_backlog,
+    }
+    wire_container(container, stores, services)
+    container.wire(
+        packages=["lintel.api.routes"],
+        modules=["lintel.api.deps"],
+    )
+    app.state.container = container
+
     yield
+
+    container.unwire()
     # Cleanup
     await engine.stop()
     if db_pool is not None:
@@ -539,7 +568,7 @@ def create_app() -> FastAPI:
     app.add_middleware(CorrelationMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=["*"],
         allow_methods=["*"],
         allow_headers=["*", "X-Correlation-ID"],
         expose_headers=["X-Correlation-ID"],

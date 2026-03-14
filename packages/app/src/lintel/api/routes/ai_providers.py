@@ -1,13 +1,15 @@
 """AI model provider management endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 import httpx
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import (
     AIProviderApiKeyUpdated,
     AIProviderCreated,
@@ -144,10 +146,11 @@ def _mask_key(key: str) -> str:
 
 
 @router.post("/ai-providers", status_code=201)
+@inject
 async def create_ai_provider(
     body: CreateAIProviderRequest,
     request: Request,
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Register an AI model provider."""
     reqs = PROVIDER_FIELD_REQUIREMENTS.get(body.provider_type, {})
@@ -194,8 +197,9 @@ async def create_ai_provider(
 
 
 @router.get("/ai-providers")
+@inject
 async def list_ai_providers(
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """List all configured AI providers."""
     providers = await store.list_all()
@@ -226,8 +230,9 @@ async def list_provider_types() -> list[dict[str, Any]]:
 
 
 @router.get("/ai-providers/default")
+@inject
 async def get_default_provider(
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Get the default AI provider."""
     provider = await store.get_default()
@@ -240,9 +245,10 @@ async def get_default_provider(
 
 
 @router.get("/ai-providers/{provider_id}")
+@inject
 async def get_ai_provider(
     provider_id: str,
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Get a specific AI provider."""
     provider = await store.get(provider_id)
@@ -255,11 +261,12 @@ async def get_ai_provider(
 
 
 @router.patch("/ai-providers/{provider_id}")
+@inject
 async def update_ai_provider(
     provider_id: str,
     body: UpdateAIProviderRequest,
     request: Request,
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Update an AI provider's configuration."""
     provider = await store.get(provider_id)
@@ -282,11 +289,12 @@ async def update_ai_provider(
 
 
 @router.put("/ai-providers/{provider_id}/api-key")
+@inject
 async def update_api_key(
     provider_id: str,
     body: UpdateAPIKeyRequest,
     request: Request,
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Update or set the API key for a provider."""
     provider = await store.get(provider_id)
@@ -306,10 +314,11 @@ async def update_api_key(
 
 
 @router.delete("/ai-providers/{provider_id}", status_code=204)
+@inject
 async def delete_ai_provider(
     provider_id: str,
     request: Request,
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> None:
     """Remove an AI provider."""
     provider = await store.get(provider_id)
@@ -348,9 +357,10 @@ def _ollama_model_defaults(model_name: str) -> dict[str, Any]:
 
 
 @router.get("/ai-providers/{provider_id}/available-models")
+@inject
 async def list_available_models(
     provider_id: str,
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """Query the provider for available models (e.g. Ollama /api/tags)."""
     provider = await store.get(provider_id)
@@ -494,10 +504,11 @@ async def _list_bedrock_models(provider: AIProvider) -> list[dict[str, Any]]:
 
 
 @router.get("/ai-providers/{provider_id}/models")
+@inject
 async def list_provider_models(
     provider_id: str,
-    store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
     request: Request,
+    store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """List all models registered under a specific provider."""
     provider = await store.get(provider_id)

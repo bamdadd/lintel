@@ -12,15 +12,25 @@ export class ApiError extends Error {
   }
 }
 
+function getBaseUrl(): string {
+  if (typeof window === 'undefined') return '';
+  const { hostname, protocol } = window.location;
+  // In dev, if not on localhost, talk to the API on port 8000 directly
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    return `${protocol}//${hostname}:8000`;
+  }
+  return '';
+}
+
 export async function customInstance<T>(
   url: string,
   options?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(url, {
+  const response = await fetch(`${getBaseUrl()}${url}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'X-Correlation-ID': crypto.randomUUID(),
+      'X-Correlation-ID': globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
       ...options?.headers,
     },
   });

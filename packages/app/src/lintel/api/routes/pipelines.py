@@ -5,13 +5,15 @@ from collections.abc import AsyncGenerator
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
 import json
-from typing import Annotated, Any
+from typing import Any
 import uuid
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import (
     PipelineRunCancelled,
     PipelineRunDeleted,
@@ -93,10 +95,11 @@ class CreatePipelineRequest(BaseModel):
 
 
 @router.post("/pipelines", status_code=201)
+@inject
 async def create_pipeline(
     body: CreatePipelineRequest,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.run_id)
     if existing is not None:
@@ -139,8 +142,9 @@ async def create_pipeline(
 
 
 @router.get("/pipelines")
+@inject
 async def list_pipelines(
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     runs = await store.list_all(project_id=project_id)
@@ -148,9 +152,10 @@ async def list_pipelines(
 
 
 @router.get("/pipelines/{run_id}")
+@inject
 async def get_pipeline(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
@@ -159,9 +164,10 @@ async def get_pipeline(
 
 
 @router.get("/pipelines/{run_id}/stages")
+@inject
 async def list_stages(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     run = await store.get(run_id)
     if run is None:
@@ -170,10 +176,11 @@ async def list_stages(
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}")
+@inject
 async def get_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
@@ -185,10 +192,11 @@ async def get_stage(
 
 
 @router.post("/pipelines/{run_id}/cancel")
+@inject
 async def cancel_pipeline(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
@@ -233,10 +241,11 @@ async def cancel_pipeline(
 
 
 @router.delete("/pipelines/{run_id}", status_code=204)
+@inject
 async def delete_pipeline(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> None:
     run = await store.get(run_id)
     if run is None:
@@ -256,11 +265,62 @@ def _find_stage(run: PipelineRun, stage_id: str) -> Stage | None:
     return None
 
 
+class ReportVersionService:
+    """Manages stage report version history stored in app state."""
+
+    @staticmethod
+    def report_key(stage_name: str) -> str:
+        """Map stage name to the output key holding the report."""
+        if stage_name in ("research", "approve_research"):
+            return "research_report"
+        if stage_name in ("plan", "approve_spec"):
+            return "plan"
+        return "report"
+
+    @staticmethod
+    def get_versions(request: Request, run_id: str, stage_id: str) -> list[dict[str, object]]:
+        """Retrieve report version history from app state."""
+        versions_store: dict[str, list[dict[str, object]]] = getattr(
+            request.app.state, "_report_versions", {}
+        )
+        key = f"{run_id}:{stage_id}"
+        return versions_store.get(key, [])
+
+    @staticmethod
+    def add_version(
+        request: Request,
+        run_id: str,
+        stage_id: str,
+        content: str,
+        editor: str,
+        version_type: str = "edit",
+    ) -> dict[str, object]:
+        """Append a new version to the report history."""
+        if not hasattr(request.app.state, "_report_versions"):
+            request.app.state._report_versions = {}
+        versions_store: dict[str, list[dict[str, object]]] = request.app.state._report_versions
+        key = f"{run_id}:{stage_id}"
+        versions = versions_store.setdefault(key, [])
+        from lintel.contracts.data_models import ReportVersion
+
+        ver = ReportVersion(
+            version=len(versions) + 1,
+            content=content,
+            editor=editor,
+            type=version_type,
+            timestamp=datetime.now(UTC).isoformat(),
+        )
+        data = ver.model_dump()
+        versions.append(data)
+        return data
+
+
 @router.get("/pipelines/{run_id}/stages/{stage_id}/logs")
+@inject
 async def stream_stage_logs(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> StreamingResponse:
     """Stream stage logs via SSE. Shows stored logs and polls for new ones."""
     run = await store.get(run_id)
@@ -317,9 +377,10 @@ async def stream_stage_logs(
 
 
 @router.get("/pipelines/{run_id}/events")
+@inject
 async def stream_pipeline_events(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> StreamingResponse:
     """Stream pipeline stage status changes via SSE for real-time UI updates."""
     run = await store.get(run_id)
@@ -369,11 +430,12 @@ async def stream_pipeline_events(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/retry")
+@inject
 async def retry_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Retry a failed or stuck stage. Resets it to running and re-invokes the node."""
     run = await store.get(run_id)
@@ -441,11 +503,12 @@ async def retry_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/reject")
+@inject
 async def reject_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Reject a stage that is waiting for human approval, failing the pipeline."""
     run = await store.get(run_id)
@@ -532,11 +595,12 @@ async def reject_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/approve")
+@inject
 async def approve_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Approve a stage that is waiting for human approval and resume the workflow."""
     import asyncio
@@ -612,59 +676,14 @@ class RegeneratePayload(BaseModel):
     guidance: str = Field(default="", description="Optional prompt to guide regeneration")
 
 
-def _report_key(stage_name: str) -> str:
-    """Map stage name to the output key holding the report."""
-    if stage_name in ("research", "approve_research"):
-        return "research_report"
-    if stage_name in ("plan", "approve_spec"):
-        return "plan"
-    return "report"
-
-
-def _get_report_versions(request: Request, run_id: str, stage_id: str) -> list[dict[str, object]]:
-    """Retrieve report version history from app state."""
-    versions_store: dict[str, list[dict[str, object]]] = getattr(
-        request.app.state, "_report_versions", {}
-    )
-    key = f"{run_id}:{stage_id}"
-    return versions_store.get(key, [])
-
-
-def _add_report_version(
-    request: Request,
-    run_id: str,
-    stage_id: str,
-    content: str,
-    editor: str,
-    version_type: str = "edit",
-) -> dict[str, object]:
-    """Append a new version to the report history."""
-    if not hasattr(request.app.state, "_report_versions"):
-        request.app.state._report_versions = {}
-    versions_store: dict[str, list[dict[str, object]]] = request.app.state._report_versions
-    key = f"{run_id}:{stage_id}"
-    versions = versions_store.setdefault(key, [])
-    from lintel.contracts.data_models import ReportVersion
-
-    ver = ReportVersion(
-        version=len(versions) + 1,
-        content=content,
-        editor=editor,
-        type=version_type,
-        timestamp=datetime.now(UTC).isoformat(),
-    )
-    data = ver.model_dump()
-    versions.append(data)
-    return data
-
-
 @router.patch("/pipelines/{run_id}/stages/{stage_id}/report")
+@inject
 async def edit_stage_report(
     run_id: str,
     stage_id: str,
     body: ReportEditPayload,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Edit the report output of a completed or waiting_approval stage."""
     run = await store.get(run_id)
@@ -683,7 +702,7 @@ async def edit_stage_report(
         )
 
     # Update the report in stage outputs
-    rkey = _report_key(stage.name)
+    rkey = ReportVersionService.report_key(stage.name)
     outputs = dict(stage.outputs) if stage.outputs else {}
     outputs[rkey] = body.content
 
@@ -692,7 +711,7 @@ async def edit_stage_report(
     await store.update(updated)
 
     # Record version
-    version = _add_report_version(request, run_id, stage_id, body.content, body.editor)
+    version = ReportVersionService.add_version(request, run_id, stage_id, body.content, body.editor)
 
     await dispatch_event(
         request,
@@ -717,11 +736,12 @@ async def edit_stage_report(
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}/report/versions")
+@inject
 async def list_report_versions(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> list[dict[str, object]]:
     """List all versions of a stage report."""
     run = await store.get(run_id)
@@ -730,16 +750,17 @@ async def list_report_versions(
     stage = _find_stage(run, stage_id)
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
-    return _get_report_versions(request, run_id, stage_id)
+    return ReportVersionService.get_versions(request, run_id, stage_id)
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/regenerate")
+@inject
 async def regenerate_stage(
     run_id: str,
     stage_id: str,
     body: RegeneratePayload,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Re-run a stage with optional guidance, resetting it to running."""
     run = await store.get(run_id)
@@ -784,7 +805,7 @@ async def regenerate_stage(
     updated = replace(run, stages=tuple(new_stages), status=PipelineStatus.RUNNING)
     await store.update(updated)
 
-    _add_report_version(
+    ReportVersionService.add_version(
         request,
         run_id,
         stage_id,

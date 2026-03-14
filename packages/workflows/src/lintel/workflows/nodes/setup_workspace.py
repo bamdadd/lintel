@@ -210,8 +210,9 @@ async def setup_workspace(
     to be set in state (populated by the chat route before workflow dispatch).
     """
     from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef, Variable
-    from lintel.workflows.nodes._stage_tracking import append_log, mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
+    tracker = StageTracker(config)
     _configurable = config.get("configurable", {})
     app_state = _configurable.get("app_state")
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
@@ -222,11 +223,11 @@ async def setup_workspace(
         getattr(app_state, "variable_store", None) if app_state else None
     )
 
-    await mark_running(config, "setup_workspace", state)
-    await append_log(config, "setup_workspace", "Setting up workspace...", state)
+    await tracker.mark_running("setup_workspace")
+    await tracker.append_log("setup_workspace", "Setting up workspace...")
 
     if sandbox_manager is None:
-        await mark_completed(config, "setup_workspace", state, error="No sandbox manager available")
+        await tracker.mark_completed("setup_workspace", error="No sandbox manager available")
         msg = "No sandbox manager available — cannot set up workspace"
         raise RuntimeError(msg)
 
@@ -244,12 +245,7 @@ async def setup_workspace(
     if not repo_url:
         # No repo configured — create an empty sandbox so downstream nodes
         # (research, plan, implement) can still operate on the user's request
-        await append_log(
-            config,
-            "setup_workspace",
-            "No repository URL — creating empty workspace",
-            state,
-        )
+        await tracker.append_log("setup_workspace", "No repository URL — creating empty workspace")
         thread_ref_str = state["thread_ref"]
         parts = thread_ref_str.replace("thread:", "").split(":")
         thread_ref = ThreadRef(
@@ -268,22 +264,12 @@ async def setup_workspace(
         # Inject Claude Code credentials so downstream nodes can use the CLI
         if credentials_json:
             await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
-            await append_log(
-                config,
-                "setup_workspace",
-                "Claude Code credentials injected into sandbox",
-                state,
+            await tracker.append_log(
+                "setup_workspace", "Claude Code credentials injected into sandbox"
             )
-        await append_log(
-            config,
+        await tracker.append_log("setup_workspace", f"Empty sandbox created: `{sandbox_id[:12]}`")
+        await tracker.mark_completed(
             "setup_workspace",
-            f"Empty sandbox created: `{sandbox_id[:12]}`",
-            state,
-        )
-        await mark_completed(
-            config,
-            "setup_workspace",
-            state,
             outputs={
                 "sandbox_id": sandbox_id,
                 "repo_url": "",
@@ -299,7 +285,7 @@ async def setup_workspace(
         }
 
     if not feature_branch:
-        from lintel.workflows.nodes._branch_naming import generate_branch_name
+        from lintel.workflows.nodes._branch_naming import BranchNaming
 
         intent = state.get("intent", "feature")
         description = ""
@@ -307,7 +293,7 @@ async def setup_workspace(
         if messages:
             description = messages[0][:60] if isinstance(messages[0], str) else ""
         feature_branch = (
-            generate_branch_name(work_item_id, work_type=intent, description=description)
+            BranchNaming.generate(work_item_id, work_type=intent, description=description)
             if work_item_id
             else "lintel/task/work"
         )
@@ -350,11 +336,9 @@ async def setup_workspace(
         # Filter to sandboxes not already allocated to a pipeline
         free = [s for s in existing if not s.get("pipeline_id")]
         total = len(existing)
-        await append_log(
-            config,
+        await tracker.append_log(
             "setup_workspace",
             f"Found {total} sandbox(es) in pool ({len(free)} free)",
-            state,
         )
         if free:
             sandbox_id = free[0].get("sandbox_id", "")
@@ -397,18 +381,14 @@ async def setup_workspace(
         # Inject Claude Code credentials into reused sandbox
         if credentials_json:
             await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
-        await append_log(
-            config,
+        await tracker.append_log(
             "setup_workspace",
             f"Using existing sandbox `{sandbox_id[:12]}` from pool (network reconnected)",
-            state,
         )
     else:
-        await append_log(
-            config,
+        await tracker.append_log(
             "setup_workspace",
             "No sandboxes in pool — creating a new one (fallback)",
-            state,
         )
         sandbox_config = SandboxConfig(
             network_enabled=True,
@@ -433,12 +413,7 @@ async def setup_workspace(
         # Inject Claude Code credentials into new sandbox
         if credentials_json:
             await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
-        await append_log(
-            config,
-            "setup_workspace",
-            f"Sandbox created: `{sandbox_id[:12]}`",
-            state,
-        )
+        await tracker.append_log("setup_workspace", f"Sandbox created: `{sandbox_id[:12]}`")
 
     try:
         # Inject secret variables as files in /run/secrets/
@@ -449,11 +424,9 @@ async def setup_workspace(
             )
             for var in secret_vars:
                 await sandbox_manager.write_file(sandbox_id, f"/run/secrets/{var.key}", var.value)
-            await append_log(
-                config,
+            await tracker.append_log(
                 "setup_workspace",
                 f"Injected {len(secret_vars)} secret(s) into sandbox",
-                state,
             )
 
         # Create the run-specific workspace directory
@@ -481,11 +454,8 @@ async def setup_workspace(
 
         if repo_already_cloned:
             # Repo exists — checkout base branch and pull latest
-            await append_log(
-                config,
-                "setup_workspace",
-                f"Repo already cloned, resetting to {repo_branch} and pulling...",
-                state,
+            await tracker.append_log(
+                "setup_workspace", f"Repo already cloned, resetting to {repo_branch} and pulling..."
             )
             reset_cmd = (
                 f"cd {repo_path}"
@@ -498,28 +468,24 @@ async def setup_workspace(
                 SandboxJob(command=reset_cmd, timeout_seconds=60),
             )
             if reset_result.exit_code != 0:
-                await append_log(
-                    config,
+                await tracker.append_log(
                     "setup_workspace",
                     f"Reset failed (exit {reset_result.exit_code}): {reset_result.stderr}",
-                    state,
                 )
                 # Fall through to re-clone below
-                await append_log(
-                    config, "setup_workspace", "Removing stale repo and re-cloning...", state
-                )
+                await tracker.append_log("setup_workspace", "Removing stale repo and re-cloning...")
                 await sandbox_manager.execute(
                     sandbox_id,
                     SandboxJob(command=f"rm -rf {repo_path}", timeout_seconds=30),
                 )
                 repo_already_cloned = False
             else:
-                await append_log(config, "setup_workspace", "Repo updated to latest", state)
+                await tracker.append_log("setup_workspace", "Repo updated to latest")
 
         if not repo_already_cloned:
             # Clone repo into sandbox workspace
-            await append_log(
-                config, "setup_workspace", f"Cloning {repo_url} (branch: {repo_branch})...", state
+            await tracker.append_log(
+                "setup_workspace", f"Cloning {repo_url} (branch: {repo_branch})..."
             )
             clone_result = await sandbox_manager.execute(
                 sandbox_id,
@@ -536,10 +502,10 @@ async def setup_workspace(
                 error_msg = (
                     f"Git clone failed (exit {clone_result.exit_code}): {clone_result.stderr}"
                 )
-                await append_log(config, "setup_workspace", error_msg, state)
-                await mark_completed(config, "setup_workspace", state, error=error_msg)
+                await tracker.append_log("setup_workspace", error_msg)
+                await tracker.mark_completed("setup_workspace", error=error_msg)
                 raise RuntimeError(error_msg)
-            await append_log(config, "setup_workspace", "Clone successful", state)
+            await tracker.append_log("setup_workspace", "Clone successful")
 
         # Verify the repo exists in the sandbox
         verify_result = await sandbox_manager.execute(
@@ -548,15 +514,15 @@ async def setup_workspace(
         )
         if verify_result.exit_code != 0:
             error_msg = f"Repo not found at {repo_path} after clone/reset"
-            await append_log(config, "setup_workspace", error_msg, state)
-            await mark_completed(config, "setup_workspace", state, error=error_msg)
+            await tracker.append_log("setup_workspace", error_msg)
+            await tracker.mark_completed("setup_workspace", error=error_msg)
             raise RuntimeError(error_msg)
-        await append_log(
-            config, "setup_workspace", f"Repo verified: {verify_result.stdout.strip()[:200]}", state
+        await tracker.append_log(
+            "setup_workspace", f"Repo verified: {verify_result.stdout.strip()[:200]}"
         )
 
         # Create and checkout feature branch
-        await append_log(config, "setup_workspace", f"Creating branch: {feature_branch}", state)
+        await tracker.append_log("setup_workspace", f"Creating branch: {feature_branch}")
         branch_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
@@ -565,11 +531,9 @@ async def setup_workspace(
             ),
         )
         if branch_result.exit_code != 0:
-            await append_log(
-                config,
+            await tracker.append_log(
                 "setup_workspace",
                 f"Branch creation failed (exit {branch_result.exit_code}): {branch_result.stderr}",
-                state,
             )
 
         # Clone additional repos (if multi-repo project)
@@ -621,10 +585,8 @@ async def setup_workspace(
         )
         # TODO: emit AuditEntry when store injection is available
 
-        await mark_completed(
-            config,
+        await tracker.mark_completed(
             "setup_workspace",
-            state,
             outputs={
                 "sandbox_id": sandbox_id,
                 "repo_url": repo_url,
@@ -640,7 +602,7 @@ async def setup_workspace(
         }
     except Exception:
         logger.exception("workspace_setup_failed")
-        await mark_completed(config, "setup_workspace", state, error="Workspace setup failed")
+        await tracker.mark_completed("setup_workspace", error="Workspace setup failed")
         if created_sandbox:
             await sandbox_manager.destroy(sandbox_id)
         raise
@@ -655,7 +617,9 @@ async def _install_project_deps(
 ) -> None:
     """Detect project type and install dependencies while network is available."""
     from lintel.contracts.types import SandboxJob
-    from lintel.workflows.nodes._stage_tracking import append_log
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+
+    tracker = StageTracker(config, state)
 
     detect = await sandbox_manager.execute(
         sandbox_id,
@@ -668,7 +632,7 @@ async def _install_project_deps(
     files = detect.stdout.strip()
 
     if "pyproject.toml" in files:
-        await append_log(config, "setup_workspace", "Installing Python dependencies...", state)
+        await tracker.append_log("setup_workspace", "Installing Python dependencies...")
         # Ensure uv is on PATH
         uv_check = await sandbox_manager.execute(
             sandbox_id,
@@ -679,7 +643,7 @@ async def _install_project_deps(
             ),
         )
         if "MISSING" in uv_check.stdout:
-            await append_log(config, "setup_workspace", "Installing uv...", state)
+            await tracker.append_log("setup_workspace", "Installing uv...")
             install = await sandbox_manager.execute(
                 sandbox_id,
                 SandboxJob(
@@ -689,11 +653,8 @@ async def _install_project_deps(
                 ),
             )
             if install.exit_code != 0:
-                await append_log(
-                    config,
-                    "setup_workspace",
-                    f"uv install failed: {install.stderr[:200]}",
-                    state,
+                await tracker.append_log(
+                    "setup_workspace", f"uv install failed: {install.stderr[:200]}"
                 )
                 return
 
@@ -710,7 +671,7 @@ async def _install_project_deps(
             ),
         )
         if sync.exit_code == 0:
-            await append_log(config, "setup_workspace", "Python dependencies installed", state)
+            await tracker.append_log("setup_workspace", "Python dependencies installed")
             # Download spacy model into venv (presidio needs it at import time)
             await sandbox_manager.execute(
                 sandbox_id,
@@ -724,25 +685,21 @@ async def _install_project_deps(
                 ),
             )
         else:
-            await append_log(
-                config,
+            await tracker.append_log(
                 "setup_workspace",
                 f"Dependency install failed (non-fatal): {sync.stderr[:200]}",
-                state,
             )
 
     elif "package.json" in files:
-        await append_log(config, "setup_workspace", "Installing Node dependencies...", state)
+        await tracker.append_log("setup_workspace", "Installing Node dependencies...")
         npm = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(command="npm install 2>&1 | tail -5", workdir=workdir, timeout_seconds=120),
         )
         if npm.exit_code == 0:
-            await append_log(config, "setup_workspace", "Node dependencies installed", state)
+            await tracker.append_log("setup_workspace", "Node dependencies installed")
         else:
-            await append_log(
-                config,
+            await tracker.append_log(
                 "setup_workspace",
                 f"npm install failed (non-fatal): {npm.stderr[:200]}",
-                state,
             )

@@ -1,12 +1,14 @@
 """Trigger CRUD endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import TriggerCreated, TriggerRemoved, TriggerUpdated
 from lintel.contracts.types import Trigger, TriggerType
 from lintel.domain.event_dispatcher import dispatch_event
@@ -54,7 +56,7 @@ class InMemoryTriggerStore:
 
 
 def get_trigger_store(request: Request) -> InMemoryTriggerStore:
-    """Get trigger store from app state."""
+    """Kept for backward compat."""
     return request.app.state.trigger_store  # type: ignore[no-any-return]
 
 
@@ -84,10 +86,11 @@ class UpdateTriggerRequest(BaseModel):
 
 
 @router.post("/triggers", status_code=201)
+@inject
 async def create_trigger(
     body: CreateTriggerRequest,
     request: Request,
-    store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
+    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.trigger_id)
     if existing is not None:
@@ -110,8 +113,9 @@ async def create_trigger(
 
 
 @router.get("/triggers")
+@inject
 async def list_triggers(
-    store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
+    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     triggers = await store.list_all(project_id=project_id)
@@ -119,9 +123,10 @@ async def list_triggers(
 
 
 @router.get("/triggers/{trigger_id}")
+@inject
 async def get_trigger(
     trigger_id: str,
-    store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
+    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
 ) -> dict[str, Any]:
     trigger = await store.get(trigger_id)
     if trigger is None:
@@ -130,11 +135,12 @@ async def get_trigger(
 
 
 @router.patch("/triggers/{trigger_id}")
+@inject
 async def update_trigger(
     trigger_id: str,
     body: UpdateTriggerRequest,
     request: Request,
-    store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
+    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
 ) -> dict[str, Any]:
     trigger = await store.get(trigger_id)
     if trigger is None:
@@ -151,10 +157,11 @@ async def update_trigger(
 
 
 @router.delete("/triggers/{trigger_id}", status_code=204)
+@inject
 async def delete_trigger(
     trigger_id: str,
     request: Request,
-    store: Annotated[InMemoryTriggerStore, Depends(get_trigger_store)],
+    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
 ) -> None:
     trigger = await store.get(trigger_id)
     if trigger is None:

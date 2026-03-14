@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.api.routes.ai_providers import (
-    InMemoryAIProviderStore,
-    get_ai_provider_store,
+    InMemoryAIProviderStore,  # noqa: TC001
 )
 from lintel.contracts.events import (
     ModelAssignmentCreated,
@@ -154,11 +155,12 @@ async def _enrich_model(
 
 
 @router.post("/models", status_code=201)
+@inject
 async def create_model(
     request: Request,
     body: CreateModelRequest,
-    store: Annotated[InMemoryModelStore, Depends(get_model_store)],
-    provider_store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryModelStore = Depends(Provide[AppContainer.model_store]),  # noqa: B008
+    provider_store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Register an AI model."""
     all_providers = await provider_store.list_all()
@@ -195,9 +197,10 @@ async def create_model(
 
 
 @router.get("/models")
+@inject
 async def list_models(
-    store: Annotated[InMemoryModelStore, Depends(get_model_store)],
-    provider_store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryModelStore = Depends(Provide[AppContainer.model_store]),  # noqa: B008
+    provider_store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
     provider_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """List all models, optionally filtered by provider."""
@@ -209,10 +212,11 @@ async def list_models(
 
 
 @router.get("/models/{model_id}")
+@inject
 async def get_model(
     model_id: str,
-    store: Annotated[InMemoryModelStore, Depends(get_model_store)],
-    provider_store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryModelStore = Depends(Provide[AppContainer.model_store]),  # noqa: B008
+    provider_store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Get a specific model."""
     model = await store.get(model_id)
@@ -222,12 +226,13 @@ async def get_model(
 
 
 @router.patch("/models/{model_id}")
+@inject
 async def update_model(
     request: Request,
     model_id: str,
     body: UpdateModelRequest,
-    store: Annotated[InMemoryModelStore, Depends(get_model_store)],
-    provider_store: Annotated[InMemoryAIProviderStore, Depends(get_ai_provider_store)],
+    store: InMemoryModelStore = Depends(Provide[AppContainer.model_store]),  # noqa: B008
+    provider_store: InMemoryAIProviderStore = Depends(Provide[AppContainer.ai_provider_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Update a model's configuration."""
     model = await store.get(model_id)
@@ -247,11 +252,14 @@ async def update_model(
 
 
 @router.delete("/models/{model_id}", status_code=204)
+@inject
 async def delete_model(
     request: Request,
     model_id: str,
-    store: Annotated[InMemoryModelStore, Depends(get_model_store)],
-    assignment_store: Annotated[InMemoryModelAssignmentStore, Depends(get_model_assignment_store)],
+    store: InMemoryModelStore = Depends(Provide[AppContainer.model_store]),  # noqa: B008
+    assignment_store: InMemoryModelAssignmentStore = Depends(  # noqa: B008
+        Provide[AppContainer.model_assignment_store],
+    ),
 ) -> None:
     """Remove a model and its assignments."""
     model = await store.get(model_id)
@@ -265,12 +273,15 @@ async def delete_model(
 
 
 @router.post("/models/{model_id}/assignments", status_code=201)
+@inject
 async def create_model_assignment(
     request: Request,
     model_id: str,
     body: CreateModelAssignmentRequest,
-    store: Annotated[InMemoryModelStore, Depends(get_model_store)],
-    assignment_store: Annotated[InMemoryModelAssignmentStore, Depends(get_model_assignment_store)],
+    store: InMemoryModelStore = Depends(Provide[AppContainer.model_store]),  # noqa: B008
+    assignment_store: InMemoryModelAssignmentStore = Depends(  # noqa: B008
+        Provide[AppContainer.model_assignment_store],
+    ),
 ) -> dict[str, Any]:
     """Create an assignment for a model."""
     model = await store.get(model_id)
@@ -293,10 +304,13 @@ async def create_model_assignment(
 
 
 @router.get("/models/{model_id}/assignments")
+@inject
 async def list_model_assignments(
     model_id: str,
-    store: Annotated[InMemoryModelStore, Depends(get_model_store)],
-    assignment_store: Annotated[InMemoryModelAssignmentStore, Depends(get_model_assignment_store)],
+    store: InMemoryModelStore = Depends(Provide[AppContainer.model_store]),  # noqa: B008
+    assignment_store: InMemoryModelAssignmentStore = Depends(  # noqa: B008
+        Provide[AppContainer.model_assignment_store],
+    ),
 ) -> list[dict[str, Any]]:
     """List assignments for a model."""
     model = await store.get(model_id)
@@ -307,8 +321,11 @@ async def list_model_assignments(
 
 
 @router.get("/model-assignments")
+@inject
 async def list_all_assignments(
-    assignment_store: Annotated[InMemoryModelAssignmentStore, Depends(get_model_assignment_store)],
+    assignment_store: InMemoryModelAssignmentStore = Depends(  # noqa: B008
+        Provide[AppContainer.model_assignment_store],
+    ),
     context: ModelAssignmentContext | None = None,
     context_id: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -321,10 +338,13 @@ async def list_all_assignments(
 
 
 @router.delete("/model-assignments/{assignment_id}", status_code=204)
+@inject
 async def delete_model_assignment(
     request: Request,
     assignment_id: str,
-    assignment_store: Annotated[InMemoryModelAssignmentStore, Depends(get_model_assignment_store)],
+    assignment_store: InMemoryModelAssignmentStore = Depends(  # noqa: B008
+        Provide[AppContainer.model_assignment_store],
+    ),
 ) -> None:
     """Remove a model assignment."""
     assignment = await assignment_store.get(assignment_id)

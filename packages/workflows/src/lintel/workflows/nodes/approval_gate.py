@@ -32,11 +32,12 @@ async def approval_gate(
     gate_type: str,
 ) -> dict[str, Any]:
     """Gate node — runs only after human approval resumes the graph."""
-    from lintel.workflows.nodes._stage_tracking import mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
+    tracker = StageTracker(_config, state)
     node_name = GATE_TO_NODE.get(gate_type, f"approval_gate_{gate_type}")
-    await mark_running(_config, node_name, state)
+    await tracker.mark_running(node_name)
 
     project_id = state.get("project_id", "")
     existing = list(state.get("pending_approvals", []))
@@ -51,5 +52,5 @@ async def approval_gate(
         project_id=project_id,
     )
 
-    await mark_completed(_config, node_name, state)
+    await tracker.mark_completed(node_name)
     return {"pending_approvals": existing}

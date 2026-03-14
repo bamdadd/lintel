@@ -7,6 +7,7 @@ import {
   Center,
   Switch,
   TextInput,
+  NumberInput,
 } from '@mantine/core';
 import {
   useSettingsListConnections,
@@ -24,6 +25,7 @@ interface SettingsData {
   pii_detection_enabled?: boolean;
   sandbox_enabled?: boolean;
   max_concurrent_workflows?: number;
+  max_sandboxes?: number;
 }
 
 export function Component() {
@@ -38,6 +40,19 @@ export function Component() {
   const handleToggle = (field: string, value: boolean) => {
     updateMutation.mutate(
       { data: { [field]: value } },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: getSettingsGetSettingsQueryKey() });
+        },
+      },
+    );
+  };
+
+  const handleNumber = (field: string, value: number | string) => {
+    const num = typeof value === 'string' ? parseInt(value, 10) : value;
+    if (isNaN(num)) return;
+    updateMutation.mutate(
+      { data: { [field]: num } },
       {
         onSuccess: () => {
           void queryClient.invalidateQueries({ queryKey: getSettingsGetSettingsQueryKey() });
@@ -114,6 +129,22 @@ export function Component() {
               onChange={(e) =>
                 handleToggle('sandbox_enabled', e.currentTarget.checked)
               }
+            />
+            <NumberInput
+              label="Max Concurrent Workflows"
+              description="Maximum number of workflows that can run simultaneously"
+              value={settings?.max_concurrent_workflows ?? 10}
+              min={1}
+              max={100}
+              onBlur={(e) => handleNumber('max_concurrent_workflows', e.currentTarget.value)}
+            />
+            <NumberInput
+              label="Max Sandboxes"
+              description="Maximum number of sandboxes allowed. Oldest inactive sandbox is evicted when limit is reached."
+              value={settings?.max_sandboxes ?? 20}
+              min={1}
+              max={200}
+              onBlur={(e) => handleNumber('max_sandboxes', e.currentTarget.value)}
             />
           </Stack>
         </Tabs.Panel>

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lintel.workflows.nodes._branch_naming import generate_branch_name
+from lintel.workflows.nodes._branch_naming import BranchNaming, generate_branch_name
 
 
 class TestGenerateBranchName:
@@ -57,3 +57,24 @@ class TestGenerateBranchName:
             description="hello---",
         )
         assert result == "lintel/feat/id123456-hello"
+
+
+class TestBranchNaming:
+    """Tests for the BranchNaming class interface."""
+
+    def test_generate_classmethod_matches_wrapper(self) -> None:
+        result = BranchNaming.generate("abc12345def", work_type="feature", description="add login")
+        assert result == "lintel/feat/abc12345-add-login"
+
+    def test_type_map_is_class_constant(self) -> None:
+        assert BranchNaming._TYPE_MAP["feature"] == "feat"
+        assert BranchNaming._TYPE_MAP["bug"] == "fix"
+        assert BranchNaming._TYPE_MAP["refactor"] == "refactor"
+
+    def test_generate_no_description(self) -> None:
+        result = BranchNaming.generate("abcdef12", work_type="feature")
+        assert result == "lintel/feat/abcdef12"
+
+    def test_generate_unknown_type(self) -> None:
+        result = BranchNaming.generate("id123456", work_type="chore", description="bump")
+        assert result == "lintel/task/id123456-bump"

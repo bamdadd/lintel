@@ -152,7 +152,7 @@ const navSections: NavSection[] = [
 ];
 
 export function AppLayout() {
-  const [opened, { toggle }] = useDisclosure();
+  const [opened, { toggle, close }] = useDisclosure();
   const navigate = useNavigate();
   const location = useLocation();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
@@ -209,7 +209,7 @@ export function AppLayout() {
                   label={item.label}
                   leftSection={<item.icon size={18} stroke={1.5} />}
                   active={location.pathname === item.path}
-                  onClick={() => void navigate(item.path)}
+                  onClick={() => { void navigate(item.path); close(); }}
                   py={4}
                   style={{ borderRadius: 4 }}
                 />

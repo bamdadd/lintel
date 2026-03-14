@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 from fastapi.testclient import TestClient
 
 from lintel.api.app import create_app
+from lintel.api.routes.sandboxes import SandboxStore
 
 
 class DummySandboxManager:
@@ -88,6 +89,8 @@ def client() -> Generator[TestClient]:
     app = create_app()
     with TestClient(app) as c:
         app.state.sandbox_manager = DummySandboxManager()
+        # Reset sandbox store to avoid recovered Docker containers from dev
+        app.state.sandbox_store = SandboxStore()
         yield c
 
 

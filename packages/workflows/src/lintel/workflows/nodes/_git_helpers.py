@@ -11,6 +11,64 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class GitOperations:
+    """Encapsulates git operations executed inside a sandbox."""
+
+    def __init__(self, sandbox_manager: SandboxManager, sandbox_id: str) -> None:
+        self._sandbox_manager = sandbox_manager
+        self._sandbox_id = sandbox_id
+
+    async def rebase_on_upstream(
+        self,
+        base_branch: str,
+        workdir: str = "/workspace/repo",
+    ) -> dict[str, Any]:
+        """Attempt to rebase the current branch on *base_branch*.
+
+        Returns a status dict with keys ``success`` (bool) and ``message`` (str).
+
+        .. note::
+           This performs a **local** rebase only (no ``git fetch``).  A fetch
+           would require network access which may be disabled in the sandbox.
+           TODO: fetch from origin once ``reconnect_network`` is available on
+           ``SandboxManager``.
+        """
+        from lintel.contracts.types import SandboxJob
+
+        result = await self._sandbox_manager.execute(
+            self._sandbox_id,
+            SandboxJob(
+                command=f"cd {workdir} && git rebase {base_branch}",
+                timeout_seconds=60,
+            ),
+        )
+
+        if result.exit_code != 0:
+            # Abort the failed rebase so the tree is left clean
+            await self._sandbox_manager.execute(
+                self._sandbox_id,
+                SandboxJob(
+                    command=f"cd {workdir} && git rebase --abort",
+                    timeout_seconds=30,
+                ),
+            )
+            logger.warning(
+                "rebase_conflict base_branch=%s stdout=%s",
+                base_branch,
+                result.stdout[:200] if result.stdout else "",
+            )
+            return {
+                "success": False,
+                "message": (
+                    f"Rebase on {base_branch} failed — conflicts detected. "
+                    "Manual resolution may be needed."
+                ),
+            }
+
+        return {"success": True, "message": f"Rebased successfully on {base_branch}."}
+
+
+# Backward-compatible wrapper
 async def rebase_on_upstream(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
@@ -19,44 +77,7 @@ async def rebase_on_upstream(
 ) -> dict[str, Any]:
     """Attempt to rebase the current branch on *base_branch*.
 
-    Returns a status dict with keys ``success`` (bool) and ``message`` (str).
-
-    .. note::
-       This performs a **local** rebase only (no ``git fetch``).  A fetch
-       would require network access which may be disabled in the sandbox.
-       TODO: fetch from origin once ``reconnect_network`` is available on
-       ``SandboxManager``.
+    Backward-compatible wrapper around :class:`GitOperations`.
     """
-    from lintel.contracts.types import SandboxJob
-
-    result = await sandbox_manager.execute(
-        sandbox_id,
-        SandboxJob(
-            command=f"cd {workdir} && git rebase {base_branch}",
-            timeout_seconds=60,
-        ),
-    )
-
-    if result.exit_code != 0:
-        # Abort the failed rebase so the tree is left clean
-        await sandbox_manager.execute(
-            sandbox_id,
-            SandboxJob(
-                command=f"cd {workdir} && git rebase --abort",
-                timeout_seconds=30,
-            ),
-        )
-        logger.warning(
-            "rebase_conflict base_branch=%s stdout=%s",
-            base_branch,
-            result.stdout[:200] if result.stdout else "",
-        )
-        return {
-            "success": False,
-            "message": (
-                f"Rebase on {base_branch} failed — conflicts detected. "
-                "Manual resolution may be needed."
-            ),
-        }
-
-    return {"success": True, "message": f"Rebased successfully on {base_branch}."}
+    ops = GitOperations(sandbox_manager, sandbox_id)
+    return await ops.rebase_on_upstream(base_branch, workdir)

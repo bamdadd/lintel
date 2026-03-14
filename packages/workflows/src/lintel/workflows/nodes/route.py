@@ -15,7 +15,7 @@ async def route_intent(
     config: RunnableConfig | None = None,
 ) -> dict[str, Any]:
     """Classify user intent. v0.1: keyword matching. Later: LLM."""
-    from lintel.workflows.nodes._stage_tracking import mark_completed
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
     messages = state.get("sanitized_messages", [])
     combined = " ".join(messages).lower()
@@ -27,6 +27,7 @@ async def route_intent(
         intent = "refactor"
 
     _config = config or {}
-    await mark_completed(_config, "route", state)
+    tracker = StageTracker(_config, state)
+    await tracker.mark_completed("route")
 
     return {"intent": intent, "current_phase": "planning"}

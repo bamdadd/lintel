@@ -1,4 +1,9 @@
-"""Dependency injection for FastAPI routes."""
+"""Dependency injection for FastAPI routes.
+
+These functions read from ``request.app.state`` for backward compatibility.
+New route handlers should prefer ``Depends(Provide[AppContainer.X])`` with
+``@inject`` from ``dependency_injector.wiring``.
+"""
 
 from fastapi import Request
 

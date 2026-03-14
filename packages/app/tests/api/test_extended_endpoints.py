@@ -97,6 +97,10 @@ def client() -> Generator[TestClient]:
     app = create_app()
     with TestClient(app) as c:
         app.state.sandbox_manager = _StubSandboxManager()
+        # Reset sandbox store to avoid recovered Docker containers from dev
+        from lintel.api.routes.sandboxes import SandboxStore
+
+        app.state.sandbox_store = SandboxStore()
         yield c
 
 

@@ -11,6 +11,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   IconShieldCheck, IconFileText, IconListDetails, IconTool,
   IconTarget, IconChartBar, IconFlask, IconBrain,
+  IconListCheck, IconPlayerPlay, IconLayoutKanban, IconBulb,
+  IconGitBranch, IconExternalLink,
 } from '@tabler/icons-react';
 import {
   useProjectsGetProject,
@@ -19,7 +21,14 @@ import {
 } from '@/generated/api/projects/projects';
 import { useRepositoriesListRepositories } from '@/generated/api/repositories/repositories';
 import { useAiProvidersListAiProviders } from '@/generated/api/ai-providers/ai-providers';
+import { useWorkItemsListWorkItems } from '@/generated/api/work-items/work-items';
+import { usePipelinesListPipelines } from '@/generated/api/pipelines/pipelines';
+import { useBoardsListBoards } from '@/generated/api/boards/boards';
+import { useWorkflowDefinitionsListWorkflowDefinitions } from '@/generated/api/workflow-definitions/workflow-definitions';
+import { architectureDecisionHooks } from '@/features/compliance/api';
 import { useComplianceOverview } from '@/features/compliance/api';
+import { StatusBadge } from '@/shared/components/StatusBadge';
+import { Anchor } from '@mantine/core';
 
 interface ProjectData {
   project_id: string;
@@ -49,6 +58,11 @@ export function Component() {
   const { data: reposResp } = useRepositoriesListRepositories();
   const { data: providersResp } = useAiProvidersListAiProviders();
   const { data: complianceResp } = useComplianceOverview(projectId ?? '');
+  const { data: workItemsResp } = useWorkItemsListWorkItems({ project_id: projectId }, { query: { enabled: !!projectId } });
+  const { data: pipelinesResp } = usePipelinesListPipelines({ project_id: projectId }, { query: { enabled: !!projectId } });
+  const { data: boardsResp } = useBoardsListBoards(projectId ?? '', { query: { enabled: !!projectId } });
+  const { data: workflowsResp } = useWorkflowDefinitionsListWorkflowDefinitions({ query: { enabled: !!projectId } });
+  const { data: adrsResp } = architectureDecisionHooks.useList(projectId);
   const updateMut = useProjectsUpdateProject();
   const deleteMut = useProjectsRemoveProject();
 
@@ -138,6 +152,9 @@ export function Component() {
       <Tabs defaultValue="details">
         <Tabs.List>
           <Tabs.Tab value="details">Details</Tabs.Tab>
+          <Tabs.Tab value="resources">
+            Resources
+          </Tabs.Tab>
           <Tabs.Tab value="compliance">
             Compliance
             {(counts.regulations ?? 0) + (counts.policies ?? 0) > 0 && (
@@ -171,6 +188,80 @@ export function Component() {
               <Button color="red" variant="light" onClick={handleDelete} loading={deleteMut.isPending}>Delete</Button>
             </Group>
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="resources" pt="md">
+          {(() => {
+            const workItems = (workItemsResp?.data ?? []) as unknown as { work_item_id: string; title: string; status: string; work_type: string }[];
+            const pipelines = (pipelinesResp?.data ?? []) as unknown as { run_id: string; status: string; workflow_definition_id: string; created_at?: string }[];
+            const boards = (boardsResp?.data ?? []) as unknown as { board_id: string; name: string }[];
+            const workflows = (workflowsResp?.data ?? []) as unknown as { definition_id: string; name: string; enabled: boolean }[];
+            const adrs = (adrsResp?.data ?? []) as unknown as { decision_id: string; title: string; status: string }[];
+
+            const sections = [
+              { label: 'Work Items', icon: IconListCheck, color: 'blue', count: workItems.length, path: '/work-items', items: workItems.slice(0, 5).map((w) => ({ id: w.work_item_id, label: w.title, status: w.status, path: `/boards` })) },
+              { label: 'Pipelines', icon: IconPlayerPlay, color: 'green', count: pipelines.length, path: '/pipelines', items: pipelines.slice(0, 5).map((p) => ({ id: p.run_id, label: p.workflow_definition_id, status: p.status, path: `/pipelines/${p.run_id}` })) },
+              { label: 'Boards', icon: IconLayoutKanban, color: 'violet', count: boards.length, path: '/boards', items: boards.slice(0, 5).map((b) => ({ id: b.board_id, label: b.name, path: `/boards` })) },
+              { label: 'Workflows', icon: IconGitBranch, color: 'cyan', count: workflows.length, path: '/workflows', items: workflows.slice(0, 5).map((w) => ({ id: w.definition_id, label: w.name, status: w.enabled ? 'active' : 'disabled', path: `/workflows/${w.definition_id}` })) },
+              { label: 'ADRs', icon: IconBulb, color: 'orange', count: adrs.length, path: '/compliance/architecture-decisions', items: adrs.slice(0, 5).map((a) => ({ id: a.decision_id, label: a.title, status: a.status, path: '/compliance/architecture-decisions' })) },
+            ];
+
+            return (
+              <Stack gap="md">
+                <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }}>
+                  {sections.map((s) => (
+                    <Paper key={s.label} withBorder p="sm" radius="md" style={{ cursor: 'pointer' }} onClick={() => void navigate(s.path)}>
+                      <Group gap="xs">
+                        <ThemeIcon size="md" color={s.color} variant="light">
+                          <s.icon size={16} />
+                        </ThemeIcon>
+                        <div>
+                          <Text size="lg" fw={700}>{s.count}</Text>
+                          <Text size="xs" c="dimmed">{s.label}</Text>
+                        </div>
+                      </Group>
+                    </Paper>
+                  ))}
+                </SimpleGrid>
+
+                {sections.filter((s) => s.items.length > 0).map((s) => (
+                  <Paper key={s.label} withBorder p="md" radius="md">
+                    <Group justify="space-between" mb="xs">
+                      <Group gap="xs">
+                        <ThemeIcon size="sm" color={s.color} variant="light">
+                          <s.icon size={14} />
+                        </ThemeIcon>
+                        <Text fw={600} size="sm">{s.label}</Text>
+                        <Badge size="xs" variant="light">{s.count}</Badge>
+                      </Group>
+                      <Anchor size="xs" onClick={() => void navigate(s.path)}>
+                        View all <IconExternalLink size={12} style={{ verticalAlign: 'middle' }} />
+                      </Anchor>
+                    </Group>
+                    <Stack gap={4}>
+                      {s.items.map((item) => (
+                        <Group key={item.id} justify="space-between" py={2} style={{ borderBottom: '1px solid var(--mantine-color-dark-5)' }}>
+                          <Text size="sm" truncate style={{ flex: 1, cursor: 'pointer' }} onClick={() => void navigate(item.path)}>
+                            {item.label}
+                          </Text>
+                          {'status' in item && item.status && (
+                            <StatusBadge status={item.status} size="xs" />
+                          )}
+                        </Group>
+                      ))}
+                      {s.count > 5 && (
+                        <Text size="xs" c="dimmed" mt={4}>+{s.count - 5} more</Text>
+                      )}
+                    </Stack>
+                  </Paper>
+                ))}
+
+                {sections.every((s) => s.items.length === 0) && (
+                  <Text c="dimmed" ta="center" py="xl">No resources linked to this project yet.</Text>
+                )}
+              </Stack>
+            );
+          })()}
         </Tabs.Panel>
 
         <Tabs.Panel value="compliance" pt="md">

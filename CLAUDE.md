@@ -80,6 +80,60 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 - Infrastructure implements Protocol interfaces — never import infrastructure from domain/contracts
 - pytest uses `--import-mode=importlib` — do NOT add `__init__.py` to test directories
 
+## Dependency Injection
+
+Uses `dependency-injector` (v4.x) with a `DeclarativeContainer` for the FastAPI app.
+
+**Container:** `packages/app/src/lintel/api/container.py` — `AppContainer` declares all stores, services, and projections as `providers.Object` holders. The lifespan in `app.py` constructs instances and overrides providers via `wire_container()`.
+
+**Route handler pattern** — all route handlers use `@inject` + `Depends(Provide[...])`:
+```python
+from dependency_injector.wiring import Provide, inject
+from lintel.api.container import AppContainer
+
+@router.get("/items")
+@inject
+async def list_items(
+    store: ItemStore = Depends(Provide[AppContainer.item_store]),  # noqa: B008
+) -> list[dict[str, Any]]:
+    ...
+```
+- `@inject` must be the decorator directly above the function (after `@router.X()`)
+- Use `= Depends(Provide[AppContainer.X])` default-value syntax with `# noqa: B008`
+- Old `get_X_store(request)` getter functions are kept for backward compatibility
+
+**Testing with DI:** Override providers in tests:
+```python
+container.some_store.override(providers.Object(fake_store))
+```
+
+## Key Service Classes
+
+Domain logic is encapsulated in typed classes, not standalone functions:
+
+| Class | Location | Purpose |
+|-------|----------|---------|
+| `StageTracker` | `workflows/nodes/_stage_tracking.py` | Pipeline stage lifecycle (mark_running, append_log, mark_completed) |
+| `ChatService` | `app/routes/chat.py` | Chat routing, project resolution, workflow dispatch |
+| `SandboxToolDispatcher` | `agents/sandbox_tools.py` | Routes tool calls to SandboxManager methods |
+| `BranchNaming` | `workflows/nodes/_branch_naming.py` | Branch name generation conventions |
+| `GitOperations` | `workflows/nodes/_git_helpers.py` | Sandbox git operations (rebase) |
+| `WorkflowErrorHandler` | `workflows/nodes/_error_handling.py` | Standardised node error handling |
+| `AuditEmitter` | `workflows/nodes/_event_helpers.py` | Audit entry recording |
+| `NotificationService` | `workflows/nodes/_notifications.py` | Phase change notifications |
+| `ReportVersionService` | `app/routes/pipelines.py` | Pipeline report versioning |
+
+**Workflow node pattern** — nodes instantiate `StageTracker` at the top:
+```python
+async def research_codebase(state, config):
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+    tracker = StageTracker(config, state)
+    await tracker.mark_running("research")
+    await tracker.append_log("research", "Researching...")
+    # ... do work ...
+    await tracker.mark_completed("research", outputs={...})
+```
+
 ## Development Environment (tmux)
 
 The dev environment runs via `make dev` (or `scripts/dev-tmux.sh`), which creates a tmux session `lintel` with 3 windows:

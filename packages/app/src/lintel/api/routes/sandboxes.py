@@ -230,6 +230,24 @@ async def create_sandbox(
     """Create a new sandbox environment."""
     import os
 
+    # Enforce max_sandboxes limit from general settings
+    sandbox_store = request.app.state.sandbox_store
+    general_settings = getattr(request.app.state, "general_settings", None)
+    if general_settings is not None:
+        max_sandboxes = general_settings.get("max_sandboxes", 20)
+    else:
+        from lintel.api.routes.settings import get_general_settings
+
+        general_settings = get_general_settings(request)
+        max_sandboxes = general_settings.get("max_sandboxes", 20)
+    current = await sandbox_store.list_all()
+    if len(current) >= max_sandboxes:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Sandbox limit reached ({len(current)}/{max_sandboxes}). "
+            "Destroy unused sandboxes or increase max_sandboxes in settings.",
+        )
+
     manager = request.app.state.sandbox_manager
     # Resolve preset if specified
     mounts_raw: list[dict[str, str]] = []

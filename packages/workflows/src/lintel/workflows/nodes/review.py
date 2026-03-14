@@ -42,14 +42,10 @@ async def review_output(
 ) -> dict[str, Any]:
     """Review implementation artifacts using the reviewer agent."""
     from lintel.contracts.types import AgentRole, SandboxJob, ThreadRef
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        extract_token_usage,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
+    tracker = StageTracker(_config)
     _configurable = _config.get("configurable", {})
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
     agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
@@ -67,7 +63,7 @@ async def review_output(
         if agent_runtime is None:
             agent_runtime = get_runtime(run_id)
 
-    await mark_running(_config, "review", state)
+    await tracker.mark_running("review")
 
     sandbox_id = state.get("sandbox_id")
     diff_text = ""
@@ -101,7 +97,7 @@ async def review_output(
                 break
 
     if not diff_text:
-        await mark_completed(_config, "review", state)
+        await tracker.mark_completed("review")
         return {
             "current_phase": "awaiting_pr_approval",
             "pending_approvals": ["pr_approval"],
@@ -114,9 +110,7 @@ async def review_output(
     if len(diff_text) > 50000:
         diff_text = diff_text[:50000] + "\n... (diff truncated)"
 
-    from lintel.workflows.nodes._stage_tracking import log_llm_context
-
-    await log_llm_context(_config, "review", "reviewer", "review", state)
+    await tracker.log_llm_context("review", "reviewer", "review")
 
     # Reconnect network — implement disconnects it, but review needs API access
     if sandbox_id and sandbox_manager is not None:
@@ -145,14 +139,14 @@ async def review_output(
                 line, text = text.split("\n", 1)
                 stripped = line.strip()
                 if stripped:
-                    await append_log(_config, "review", stripped, state)
+                    await tracker.append_log("review", stripped)
             _line_buffer.clear()
             if text:
                 _line_buffer.append(text)
 
         async def _on_activity(activity: str) -> None:
             if activity:
-                await append_log(_config, "review", activity, state)
+                await tracker.append_log("review", activity)
 
         try:
             agent_result = await agent_runtime.execute_step_stream(
@@ -170,9 +164,9 @@ async def review_output(
             )
             remaining = "".join(_line_buffer).strip()
             if remaining:
-                await append_log(_config, "review", remaining, state)
+                await tracker.append_log("review", remaining)
             review_output_text = agent_result.get("content", "Review complete.")
-            usage = extract_token_usage("review", agent_result)
+            usage = StageTracker.extract_token_usage(agent_result)
         except Exception:
             logger.exception("agent_review_failed")
             review_output_text = "Agent review failed — defaulting to manual review."
@@ -198,11 +192,9 @@ async def review_output(
     if usage:
         stage_outputs["token_usage"] = usage
     if verdict == "approve":
-        await mark_completed(_config, "review", state, outputs=stage_outputs)
+        await tracker.mark_completed("review", outputs=stage_outputs)
     else:
-        await mark_completed(
-            _config, "review", state, outputs=stage_outputs, error="Changes requested"
-        )
+        await tracker.mark_completed("review", outputs=stage_outputs, error="Changes requested")
 
     # Disconnect network again after review
     if sandbox_id and sandbox_manager is not None:

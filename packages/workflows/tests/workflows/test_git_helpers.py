@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 from lintel.contracts.types import SandboxJob, SandboxResult
-from lintel.workflows.nodes._git_helpers import rebase_on_upstream
+from lintel.workflows.nodes._git_helpers import GitOperations, rebase_on_upstream
 
 
 def _make_sandbox_manager(exit_code: int = 0) -> AsyncMock:
@@ -56,3 +56,27 @@ class TestRebaseOnUpstream:
         job: SandboxJob = manager.execute.call_args[0][1]
         assert "cd /custom/path" in job.command
         assert "git rebase develop" in job.command
+
+
+class TestGitOperations:
+    """Tests for the GitOperations class interface."""
+
+    async def test_rebase_success_via_class(self) -> None:
+        manager = _make_sandbox_manager(exit_code=0)
+        ops = GitOperations(manager, "sbx-1")
+        result = await ops.rebase_on_upstream("main")
+        assert result["success"] is True
+        assert "Rebased successfully" in result["message"]
+
+    async def test_rebase_conflict_via_class(self) -> None:
+        manager = AsyncMock()
+        manager.execute = AsyncMock(
+            side_effect=[
+                SandboxResult(exit_code=1, stdout="CONFLICT\n"),
+                SandboxResult(exit_code=0, stdout=""),
+            ],
+        )
+        ops = GitOperations(manager, "sbx-1")
+        result = await ops.rebase_on_upstream("main")
+        assert result["success"] is False
+        assert manager.execute.call_count == 2

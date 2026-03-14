@@ -7,9 +7,11 @@ import logging
 from typing import Annotated, Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.data_models import WorkItemData
 from lintel.contracts.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
 from lintel.contracts.types import (
@@ -59,8 +61,12 @@ class WorkItemStore:
 
 
 def get_work_item_store(request: Request) -> WorkItemStore:
-    """Get work-item store from app state."""
+    """Get work-item store from app state (kept for backward compat)."""
     return request.app.state.work_item_store  # type: ignore[no-any-return]
+
+
+# DI-wired alias — routes decorated with @inject use this directly.
+WorkItemStoreDep = Depends(Provide[AppContainer.work_item_store])
 
 
 class CreateWorkItemRequest(BaseModel):
@@ -91,10 +97,11 @@ class UpdateWorkItemRequest(BaseModel):
 
 
 @router.post("/work-items", status_code=201)
+@inject
 async def create_work_item(
     body: CreateWorkItemRequest,
     request: Request,
-    store: Annotated[WorkItemStore, Depends(get_work_item_store)],
+    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.work_item_id)
     if existing is not None:
@@ -128,17 +135,19 @@ async def create_work_item(
 
 
 @router.get("/work-items")
+@inject
 async def list_work_items(
-    store: Annotated[WorkItemStore, Depends(get_work_item_store)],
     project_id: Annotated[str | None, Query()] = None,
+    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     return await store.list_all(project_id=project_id)
 
 
 @router.get("/work-items/{work_item_id}")
+@inject
 async def get_work_item(
     work_item_id: str,
-    store: Annotated[WorkItemStore, Depends(get_work_item_store)],
+    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(work_item_id)
     if item is None:
@@ -147,11 +156,12 @@ async def get_work_item(
 
 
 @router.patch("/work-items/{work_item_id}")
+@inject
 async def update_work_item(
     work_item_id: str,
     body: UpdateWorkItemRequest,
     request: Request,
-    store: Annotated[WorkItemStore, Depends(get_work_item_store)],
+    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(work_item_id)
     if item is None:
@@ -367,10 +377,11 @@ async def _trigger_workflow_for_work_item(
 
 
 @router.delete("/work-items/{work_item_id}", status_code=204)
+@inject
 async def remove_work_item(
     work_item_id: str,
     request: Request,
-    store: Annotated[WorkItemStore, Depends(get_work_item_store)],
+    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
 ) -> None:
     item = await store.get(work_item_id)
     if item is None:

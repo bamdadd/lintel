@@ -81,7 +81,7 @@ class AgentRuntime:
         sandbox_id: str | None,
     ) -> str:
         """Dispatch a single tool call and return the result string."""
-        from lintel.agents.sandbox_tools import dispatch_sandbox_tool, is_sandbox_tool
+        from lintel.agents.sandbox_tools import SandboxToolDispatcher
 
         func = tool_call.get("function", {})
         name = func.get("name", "")
@@ -92,11 +92,13 @@ class AgentRuntime:
             return f"Invalid JSON arguments: {raw_args}"
 
         # Sandbox tools
-        if is_sandbox_tool(name):
+        if SandboxToolDispatcher.is_sandbox_tool(name):
             if sandbox_manager is None or sandbox_id is None:
                 return f"Sandbox not available for tool: {name}"
             try:
-                return await dispatch_sandbox_tool(sandbox_manager, sandbox_id, name, arguments)
+                return await SandboxToolDispatcher(sandbox_manager, sandbox_id).dispatch(
+                    name, arguments
+                )
             except Exception as exc:
                 logger.warning("sandbox_tool_error", tool=name, error=str(exc))
                 return f"Error executing {name}: {exc}"

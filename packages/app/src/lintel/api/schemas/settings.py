@@ -25,3 +25,4 @@ class SettingsResponse(BaseModel):
     pii_detection_enabled: bool
     sandbox_enabled: bool
     max_concurrent_workflows: int
+    max_sandboxes: int

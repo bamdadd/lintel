@@ -1,12 +1,14 @@
 """User CRUD endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import UserCreated, UserRemoved, UserUpdated
 from lintel.contracts.types import User, UserRole
 from lintel.domain.event_dispatcher import dispatch_event
@@ -37,7 +39,7 @@ class InMemoryUserStore:
 
 
 def get_user_store(request: Request) -> InMemoryUserStore:
-    """Get user store from app state."""
+    """Kept for backward compat."""
     return request.app.state.user_store  # type: ignore[no-any-return]
 
 
@@ -63,10 +65,11 @@ def _user_to_dict(user: User) -> dict[str, Any]:
 
 
 @router.post("/users", status_code=201)
+@inject
 async def create_user(
     body: CreateUserRequest,
     request: Request,
-    store: Annotated[InMemoryUserStore, Depends(get_user_store)],
+    store: InMemoryUserStore = Depends(Provide[AppContainer.user_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.user_id)
     if existing is not None:
@@ -89,17 +92,19 @@ async def create_user(
 
 
 @router.get("/users")
+@inject
 async def list_users(
-    store: Annotated[InMemoryUserStore, Depends(get_user_store)],
+    store: InMemoryUserStore = Depends(Provide[AppContainer.user_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     users = await store.list_all()
     return [_user_to_dict(u) for u in users]
 
 
 @router.get("/users/{user_id}")
+@inject
 async def get_user(
     user_id: str,
-    store: Annotated[InMemoryUserStore, Depends(get_user_store)],
+    store: InMemoryUserStore = Depends(Provide[AppContainer.user_store]),  # noqa: B008
 ) -> dict[str, Any]:
     user = await store.get(user_id)
     if user is None:
@@ -108,11 +113,12 @@ async def get_user(
 
 
 @router.patch("/users/{user_id}")
+@inject
 async def update_user(
     user_id: str,
     body: UpdateUserRequest,
     request: Request,
-    store: Annotated[InMemoryUserStore, Depends(get_user_store)],
+    store: InMemoryUserStore = Depends(Provide[AppContainer.user_store]),  # noqa: B008
 ) -> dict[str, Any]:
     user = await store.get(user_id)
     if user is None:
@@ -129,10 +135,11 @@ async def update_user(
 
 
 @router.delete("/users/{user_id}", status_code=204)
+@inject
 async def delete_user(
     user_id: str,
     request: Request,
-    store: Annotated[InMemoryUserStore, Depends(get_user_store)],
+    store: InMemoryUserStore = Depends(Provide[AppContainer.user_store]),  # noqa: B008
 ) -> None:
     user = await store.get(user_id)
     if user is None:

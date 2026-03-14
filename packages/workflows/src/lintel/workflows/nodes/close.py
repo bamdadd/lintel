@@ -23,13 +23,10 @@ async def close_workflow(
 ) -> dict[str, Any]:
     """Push the feature branch and create a pull request."""
     from lintel.contracts.types import SandboxJob
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
+    tracker = StageTracker(_config, state)
     _configurable = _config.get("configurable", {})
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
 
@@ -76,13 +73,13 @@ async def close_workflow(
         has_failure = True
 
     if has_failure:
-        await append_log(_config, "close", "Pipeline aborted due to earlier failure", state)
+        await tracker.append_log("close", "Pipeline aborted due to earlier failure")
         # Mark all remaining pending/running stages as skipped
         await _skip_remaining_stages(_config, state)
         await _release_sandbox()
         return {"current_phase": "closed"}
 
-    await mark_running(_config, "close", state)
+    await tracker.mark_running("close")
 
     sandbox_id = state.get("sandbox_id")
     feature_branch = state.get("feature_branch", "")
@@ -91,11 +88,11 @@ async def close_workflow(
     workdir = state.get("workspace_path", "/workspace/repo")
 
     if not sandbox_id or sandbox_manager is None:
-        await mark_completed(_config, "close", state)
+        await tracker.mark_completed("close")
         return {"current_phase": "closed"}
 
     # Commit any uncommitted changes
-    await append_log(_config, "close", "Committing changes...", state)
+    await tracker.append_log("close", "Committing changes...")
     messages = state.get("sanitized_messages", [])
     commit_msg = messages[0][:72] if messages else "lintel: implement feature"
     # Escape double quotes in commit message for shell safety
@@ -165,7 +162,7 @@ async def close_workflow(
                     logger.warning("close_credential_resolve_failed", cred_id=cred_id)
 
         # Push
-        await append_log(_config, "close", f"Pushing branch {feature_branch}...", state)
+        await tracker.append_log("close", f"Pushing branch {feature_branch}...")
         push_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
@@ -176,9 +173,9 @@ async def close_workflow(
         if push_result.exit_code != 0:
             push_error = push_result.stderr or push_result.stdout
             logger.warning("close_push_failed", error=push_error[:200])
-            await append_log(_config, "close", f"Push failed: {push_error[:200]}", state)
+            await tracker.append_log("close", f"Push failed: {push_error[:200]}")
         else:
-            await append_log(_config, "close", "Push succeeded", state)
+            await tracker.append_log("close", "Push succeeded")
 
             # Create PR — use injected repo_provider or resolve from credentials
             pr_url = await _create_pull_request(
@@ -219,12 +216,10 @@ async def close_workflow(
         stage_outputs["push_error"] = push_error
 
     if pr_url:
-        await mark_completed(_config, "close", state, outputs=stage_outputs)
+        await tracker.mark_completed("close", outputs=stage_outputs)
     else:
-        await mark_completed(
-            _config,
+        await tracker.mark_completed(
             "close",
-            state,
             outputs=stage_outputs or None,
             error=push_error or "No PR raised",
         )
@@ -249,8 +244,9 @@ async def _create_pull_request(
 
     Returns the PR URL, or empty string if creation is skipped/fails.
     """
-    from lintel.workflows.nodes._stage_tracking import append_log
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
+    tracker = StageTracker(config, state)
     _configurable = config.get("configurable", {})
     pr_url = ""
 
@@ -260,7 +256,7 @@ async def _create_pull_request(
         plan = state.get("plan", {})
         pr_body = _build_pr_body(state, plan)
         try:
-            await append_log(config, "close", "Creating pull request...", state)
+            await tracker.append_log("close", "Creating pull request...")
             pr_url = await repo_provider.create_pr(
                 repo_url=repo_url,
                 head=feature_branch,
@@ -268,7 +264,7 @@ async def _create_pull_request(
                 title=commit_msg,
                 body=pr_body,
             )
-            await append_log(config, "close", f"PR created: {pr_url}", state)
+            await tracker.append_log("close", f"PR created: {pr_url}")
 
             # Add review comment if available
             review_outputs = [
@@ -317,7 +313,7 @@ async def _create_pull_request(
                 plan = state.get("plan", {})
                 pr_body = _build_pr_body(state, plan)
 
-                await append_log(config, "close", "Creating pull request...", state)
+                await tracker.append_log("close", "Creating pull request...")
                 pr_url = await provider.create_pr(
                     repo_url=repo_url,
                     head=feature_branch,
@@ -325,7 +321,7 @@ async def _create_pull_request(
                     title=commit_msg,
                     body=pr_body,
                 )
-                await append_log(config, "close", f"PR created: {pr_url}", state)
+                await tracker.append_log("close", f"PR created: {pr_url}")
 
                 # Add review comment if available
                 review_outputs = [

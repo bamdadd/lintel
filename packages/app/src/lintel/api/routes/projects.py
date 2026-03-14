@@ -1,12 +1,14 @@
 """Project CRUD endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.data_models import ProjectData
 from lintel.contracts.events import ProjectCreated, ProjectRemoved, ProjectUpdated
 from lintel.contracts.types import Project, ProjectStatus
@@ -77,10 +79,11 @@ class UpdateProjectRequest(BaseModel):
 
 
 @router.post("/projects", status_code=201)
+@inject
 async def create_project(
     request: Request,
     body: CreateProjectRequest,
-    store: Annotated[ProjectStore, Depends(get_project_store)],
+    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.project_id)
     if existing is not None:
@@ -104,16 +107,18 @@ async def create_project(
 
 
 @router.get("/projects")
+@inject
 async def list_projects(
-    store: Annotated[ProjectStore, Depends(get_project_store)],
+    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     return await store.list_all()
 
 
 @router.get("/projects/{project_id}")
+@inject
 async def get_project(
     project_id: str,
-    store: Annotated[ProjectStore, Depends(get_project_store)],
+    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(project_id)
     if item is None:
@@ -122,11 +127,12 @@ async def get_project(
 
 
 @router.patch("/projects/{project_id}")
+@inject
 async def update_project(
     request: Request,
     project_id: str,
     body: UpdateProjectRequest,
-    store: Annotated[ProjectStore, Depends(get_project_store)],
+    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(project_id)
     if item is None:
@@ -144,10 +150,11 @@ async def update_project(
 
 
 @router.delete("/projects/{project_id}", status_code=204)
+@inject
 async def remove_project(
     request: Request,
     project_id: str,
-    store: Annotated[ProjectStore, Depends(get_project_store)],
+    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
 ) -> None:
     item = await store.get(project_id)
     if item is None:

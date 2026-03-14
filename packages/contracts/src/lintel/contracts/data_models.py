@@ -54,6 +54,7 @@ class GeneralSettings(BaseModel):
     pii_detection_enabled: bool = True
     sandbox_enabled: bool = True
     max_concurrent_workflows: int = 10
+    max_sandboxes: int = 20
 
 
 class AgentDefinitionData(BaseModel):
