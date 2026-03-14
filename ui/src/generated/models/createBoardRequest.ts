@@ -11,4 +11,5 @@ export interface CreateBoardRequest {
   project_id: string;
   name: string;
   columns?: BoardColumnRequest[];
+  auto_move?: boolean;
 }

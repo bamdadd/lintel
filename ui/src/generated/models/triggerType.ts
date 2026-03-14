@@ -14,4 +14,6 @@ export const TriggerType = {
   schedule: 'schedule',
   pr_event: 'pr_event',
   manual: 'manual',
+  work_item: 'work_item',
+  chat: 'chat',
 } as const;

@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ProjectStatus } from './projectStatus';
+import type { UpdateProjectRequestComplianceConfig } from './updateProjectRequestComplianceConfig';
 
 export interface UpdateProjectRequest {
   name?: string | null;
@@ -17,4 +18,5 @@ export interface UpdateProjectRequest {
   workflow_definition_id?: string | null;
   channel_id?: string | null;
   workspace_id?: string | null;
+  compliance_config?: UpdateProjectRequestComplianceConfig;
 }

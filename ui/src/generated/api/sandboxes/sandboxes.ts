@@ -27,6 +27,7 @@ import type {
   CreateSandboxRequest,
   ExecuteRequest,
   HTTPValidationError,
+  SandboxesCleanupUnassignedSandboxes200,
   SandboxesCleanupWorkspace200,
   SandboxesCreateSandbox201,
   SandboxesExecuteCommand200,
@@ -1238,5 +1239,87 @@ export const useSandboxesCleanupWorkspace = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getSandboxesCleanupWorkspaceMutationOptions(options), queryClient);
+    }
+    /**
+ * Destroy all sandboxes that are not assigned to a pipeline.
+ * @summary Cleanup Unassigned Sandboxes
+ */
+export type sandboxesCleanupUnassignedSandboxesResponse200 = {
+  data: SandboxesCleanupUnassignedSandboxes200
+  status: 200
+}
+
+export type sandboxesCleanupUnassignedSandboxesResponseSuccess = (sandboxesCleanupUnassignedSandboxesResponse200) & {
+  headers: Headers;
+};
+;
+
+export type sandboxesCleanupUnassignedSandboxesResponse = (sandboxesCleanupUnassignedSandboxesResponseSuccess)
+
+export const getSandboxesCleanupUnassignedSandboxesUrl = () => {
+
+
+  
+
+  return `/api/v1/sandboxes/cleanup-unassigned`
+}
+
+export const sandboxesCleanupUnassignedSandboxes = async ( options?: RequestInit): Promise<sandboxesCleanupUnassignedSandboxesResponse> => {
+  
+  return customInstance<sandboxesCleanupUnassignedSandboxesResponse>(getSandboxesCleanupUnassignedSandboxesUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+  
+
+
+
+export const getSandboxesCleanupUnassignedSandboxesMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCleanupUnassignedSandboxes>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof sandboxesCleanupUnassignedSandboxes>>, TError,void, TContext> => {
+
+const mutationKey = ['sandboxesCleanupUnassignedSandboxes'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sandboxesCleanupUnassignedSandboxes>>, void> = () => {
+          
+
+          return  sandboxesCleanupUnassignedSandboxes(requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SandboxesCleanupUnassignedSandboxesMutationResult = NonNullable<Awaited<ReturnType<typeof sandboxesCleanupUnassignedSandboxes>>>
+    
+    export type SandboxesCleanupUnassignedSandboxesMutationError = unknown
+
+    /**
+ * @summary Cleanup Unassigned Sandboxes
+ */
+export const useSandboxesCleanupUnassignedSandboxes = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sandboxesCleanupUnassignedSandboxes>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sandboxesCleanupUnassignedSandboxes>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSandboxesCleanupUnassignedSandboxesMutationOptions(options), queryClient);
     }
     

@@ -15,5 +15,6 @@ export const AIProviderType = {
   google: 'google',
   ollama: 'ollama',
   bedrock: 'bedrock',
+  claude_code: 'claude_code',
   custom: 'custom',
 } as const;

@@ -22,8 +22,10 @@ import type {
 import type {
   EventsGetEventsByCorrelation200,
   EventsGetEventsByStream200,
+  EventsListAllEventsParams,
   EventsListEvents200Item,
-  HTTPValidationError
+  HTTPValidationError,
+  PaginatedEventsResponse
 } from '../../models';
 
 import { customInstance } from '../../../shared/api/client';
@@ -246,6 +248,134 @@ export function useEventsListEvents<TData = Awaited<ReturnType<typeof eventsList
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getEventsListEventsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * List all events from the event store with pagination.
+
+Returns events in reverse chronological order (most recent first).
+Optionally filter by event_type.
+ * @summary List All Events
+ */
+export type eventsListAllEventsResponse200 = {
+  data: PaginatedEventsResponse
+  status: 200
+}
+
+export type eventsListAllEventsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type eventsListAllEventsResponseSuccess = (eventsListAllEventsResponse200) & {
+  headers: Headers;
+};
+export type eventsListAllEventsResponseError = (eventsListAllEventsResponse422) & {
+  headers: Headers;
+};
+
+export type eventsListAllEventsResponse = (eventsListAllEventsResponseSuccess | eventsListAllEventsResponseError)
+
+export const getEventsListAllEventsUrl = (params?: EventsListAllEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/events/all?${stringifiedParams}` : `/api/v1/events/all`
+}
+
+export const eventsListAllEvents = async (params?: EventsListAllEventsParams, options?: RequestInit): Promise<eventsListAllEventsResponse> => {
+  
+  return customInstance<eventsListAllEventsResponse>(getEventsListAllEventsUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getEventsListAllEventsQueryKey = (params?: EventsListAllEventsParams,) => {
+    return [
+    `/api/v1/events/all`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+    
+export const getEventsListAllEventsQueryOptions = <TData = Awaited<ReturnType<typeof eventsListAllEvents>>, TError = HTTPValidationError>(params?: EventsListAllEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListAllEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getEventsListAllEventsQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof eventsListAllEvents>>> = ({ signal }) => eventsListAllEvents(params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof eventsListAllEvents>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type EventsListAllEventsQueryResult = NonNullable<Awaited<ReturnType<typeof eventsListAllEvents>>>
+export type EventsListAllEventsQueryError = HTTPValidationError
+
+
+export function useEventsListAllEvents<TData = Awaited<ReturnType<typeof eventsListAllEvents>>, TError = HTTPValidationError>(
+ params: undefined |  EventsListAllEventsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListAllEvents>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventsListAllEvents>>,
+          TError,
+          Awaited<ReturnType<typeof eventsListAllEvents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useEventsListAllEvents<TData = Awaited<ReturnType<typeof eventsListAllEvents>>, TError = HTTPValidationError>(
+ params?: EventsListAllEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListAllEvents>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventsListAllEvents>>,
+          TError,
+          Awaited<ReturnType<typeof eventsListAllEvents>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useEventsListAllEvents<TData = Awaited<ReturnType<typeof eventsListAllEvents>>, TError = HTTPValidationError>(
+ params?: EventsListAllEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListAllEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List All Events
+ */
+
+export function useEventsListAllEvents<TData = Awaited<ReturnType<typeof eventsListAllEvents>>, TError = HTTPValidationError>(
+ params?: EventsListAllEventsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eventsListAllEvents>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getEventsListAllEventsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

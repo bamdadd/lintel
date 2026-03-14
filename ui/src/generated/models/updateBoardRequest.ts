@@ -9,4 +9,5 @@ import type { BoardColumnRequest } from './boardColumnRequest';
 export interface UpdateBoardRequest {
   name?: string | null;
   columns?: BoardColumnRequest[] | null;
+  auto_move?: boolean | null;
 }

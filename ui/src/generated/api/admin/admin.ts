@@ -24,8 +24,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminClaudeCredentialsStatus200,
   AdminClearCache200,
   AdminGetCacheStats200,
+  AdminGetProjectionStatus200Item,
+  AdminRefreshClaudeCredentials200,
   AdminResetProjections200
 } from '../../models';
 
@@ -119,6 +122,117 @@ export const useAdminResetProjections = <TError = unknown,
       return useMutation(getAdminResetProjectionsMutationOptions(options), queryClient);
     }
     /**
+ * Return status of all registered projections.
+ * @summary Get Projection Status
+ */
+export type adminGetProjectionStatusResponse200 = {
+  data: AdminGetProjectionStatus200Item[]
+  status: 200
+}
+
+export type adminGetProjectionStatusResponseSuccess = (adminGetProjectionStatusResponse200) & {
+  headers: Headers;
+};
+;
+
+export type adminGetProjectionStatusResponse = (adminGetProjectionStatusResponseSuccess)
+
+export const getAdminGetProjectionStatusUrl = () => {
+
+
+  
+
+  return `/api/v1/admin/projections`
+}
+
+export const adminGetProjectionStatus = async ( options?: RequestInit): Promise<adminGetProjectionStatusResponse> => {
+  
+  return customInstance<adminGetProjectionStatusResponse>(getAdminGetProjectionStatusUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getAdminGetProjectionStatusQueryKey = () => {
+    return [
+    `/api/v1/admin/projections`
+    ] as const;
+    }
+
+    
+export const getAdminGetProjectionStatusQueryOptions = <TData = Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminGetProjectionStatusQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetProjectionStatus>>> = ({ signal }) => adminGetProjectionStatus({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdminGetProjectionStatusQueryResult = NonNullable<Awaited<ReturnType<typeof adminGetProjectionStatus>>>
+export type AdminGetProjectionStatusQueryError = unknown
+
+
+export function useAdminGetProjectionStatus<TData = Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminGetProjectionStatus>>,
+          TError,
+          Awaited<ReturnType<typeof adminGetProjectionStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminGetProjectionStatus<TData = Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminGetProjectionStatus>>,
+          TError,
+          Awaited<ReturnType<typeof adminGetProjectionStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminGetProjectionStatus<TData = Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Projection Status
+ */
+
+export function useAdminGetProjectionStatus<TData = Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminGetProjectionStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdminGetProjectionStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
  * Return model router cache hit/miss statistics.
  * @summary Get Cache Stats
  */
@@ -311,4 +425,201 @@ export const useAdminClearCache = <TError = unknown,
       > => {
       return useMutation(getAdminClearCacheMutationOptions(options), queryClient);
     }
+    /**
+ * Read Claude Code credentials from host and inject into all running sandboxes.
+
+On macOS reads from Keychain, on Linux reads from ~/.claude/.credentials.json.
+ * @summary Refresh Claude Credentials
+ */
+export type adminRefreshClaudeCredentialsResponse200 = {
+  data: AdminRefreshClaudeCredentials200
+  status: 200
+}
+
+export type adminRefreshClaudeCredentialsResponseSuccess = (adminRefreshClaudeCredentialsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type adminRefreshClaudeCredentialsResponse = (adminRefreshClaudeCredentialsResponseSuccess)
+
+export const getAdminRefreshClaudeCredentialsUrl = () => {
+
+
+  
+
+  return `/api/v1/admin/refresh-claude-credentials`
+}
+
+export const adminRefreshClaudeCredentials = async ( options?: RequestInit): Promise<adminRefreshClaudeCredentialsResponse> => {
+  
+  return customInstance<adminRefreshClaudeCredentialsResponse>(getAdminRefreshClaudeCredentialsUrl(),
+  {      
+    ...options,
+    method: 'POST'
     
+    
+  }
+);}
+  
+
+
+
+export const getAdminRefreshClaudeCredentialsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRefreshClaudeCredentials>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminRefreshClaudeCredentials>>, TError,void, TContext> => {
+
+const mutationKey = ['adminRefreshClaudeCredentials'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminRefreshClaudeCredentials>>, void> = () => {
+          
+
+          return  adminRefreshClaudeCredentials(requestOptions)
+        }
+
+
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminRefreshClaudeCredentialsMutationResult = NonNullable<Awaited<ReturnType<typeof adminRefreshClaudeCredentials>>>
+    
+    export type AdminRefreshClaudeCredentialsMutationError = unknown
+
+    /**
+ * @summary Refresh Claude Credentials
+ */
+export const useAdminRefreshClaudeCredentials = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminRefreshClaudeCredentials>>, TError,void, TContext>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof adminRefreshClaudeCredentials>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAdminRefreshClaudeCredentialsMutationOptions(options), queryClient);
+    }
+    /**
+ * Check Claude Code credential expiry. Only reports if claude_code is configured as a provider.
+
+Returns token status, expiry time, and minutes remaining. The UI can poll this
+to show a warning banner when credentials are about to expire.
+ * @summary Claude Credentials Status
+ */
+export type adminClaudeCredentialsStatusResponse200 = {
+  data: AdminClaudeCredentialsStatus200
+  status: 200
+}
+
+export type adminClaudeCredentialsStatusResponseSuccess = (adminClaudeCredentialsStatusResponse200) & {
+  headers: Headers;
+};
+;
+
+export type adminClaudeCredentialsStatusResponse = (adminClaudeCredentialsStatusResponseSuccess)
+
+export const getAdminClaudeCredentialsStatusUrl = () => {
+
+
+  
+
+  return `/api/v1/admin/claude-credentials-status`
+}
+
+export const adminClaudeCredentialsStatus = async ( options?: RequestInit): Promise<adminClaudeCredentialsStatusResponse> => {
+  
+  return customInstance<adminClaudeCredentialsStatusResponse>(getAdminClaudeCredentialsStatusUrl(),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getAdminClaudeCredentialsStatusQueryKey = () => {
+    return [
+    `/api/v1/admin/claude-credentials-status`
+    ] as const;
+    }
+
+    
+export const getAdminClaudeCredentialsStatusQueryOptions = <TData = Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdminClaudeCredentialsStatusQueryKey();
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>> = ({ signal }) => adminClaudeCredentialsStatus({ signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdminClaudeCredentialsStatusQueryResult = NonNullable<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>>
+export type AdminClaudeCredentialsStatusQueryError = unknown
+
+
+export function useAdminClaudeCredentialsStatus<TData = Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>,
+          TError,
+          Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminClaudeCredentialsStatus<TData = Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>,
+          TError,
+          Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdminClaudeCredentialsStatus<TData = Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Claude Credentials Status
+ */
+
+export function useAdminClaudeCredentialsStatus<TData = Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof adminClaudeCredentialsStatus>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdminClaudeCredentialsStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+

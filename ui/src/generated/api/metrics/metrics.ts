@@ -20,9 +20,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  HTTPValidationError,
   MetricsAgentMetrics200,
   MetricsOverviewMetrics200,
-  MetricsPiiMetrics200
+  MetricsPiiMetrics200,
+  MetricsQualityMetrics200,
+  MetricsQualityMetricsParams
 } from '../../models';
 
 import { customInstance } from '../../../shared/api/client';
@@ -356,6 +359,131 @@ export function useMetricsOverviewMetrics<TData = Awaited<ReturnType<typeof metr
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getMetricsOverviewMetricsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * Quality metrics: test coverage delta, defect density, rework ratio (MET-5).
+ * @summary Quality Metrics
+ */
+export type metricsQualityMetricsResponse200 = {
+  data: MetricsQualityMetrics200
+  status: 200
+}
+
+export type metricsQualityMetricsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type metricsQualityMetricsResponseSuccess = (metricsQualityMetricsResponse200) & {
+  headers: Headers;
+};
+export type metricsQualityMetricsResponseError = (metricsQualityMetricsResponse422) & {
+  headers: Headers;
+};
+
+export type metricsQualityMetricsResponse = (metricsQualityMetricsResponseSuccess | metricsQualityMetricsResponseError)
+
+export const getMetricsQualityMetricsUrl = (params?: MetricsQualityMetricsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/metrics/quality?${stringifiedParams}` : `/api/v1/metrics/quality`
+}
+
+export const metricsQualityMetrics = async (params?: MetricsQualityMetricsParams, options?: RequestInit): Promise<metricsQualityMetricsResponse> => {
+  
+  return customInstance<metricsQualityMetricsResponse>(getMetricsQualityMetricsUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getMetricsQualityMetricsQueryKey = (params?: MetricsQualityMetricsParams,) => {
+    return [
+    `/api/v1/metrics/quality`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+    
+export const getMetricsQualityMetricsQueryOptions = <TData = Awaited<ReturnType<typeof metricsQualityMetrics>>, TError = HTTPValidationError>(params?: MetricsQualityMetricsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsQualityMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getMetricsQualityMetricsQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof metricsQualityMetrics>>> = ({ signal }) => metricsQualityMetrics(params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof metricsQualityMetrics>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type MetricsQualityMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof metricsQualityMetrics>>>
+export type MetricsQualityMetricsQueryError = HTTPValidationError
+
+
+export function useMetricsQualityMetrics<TData = Awaited<ReturnType<typeof metricsQualityMetrics>>, TError = HTTPValidationError>(
+ params: undefined |  MetricsQualityMetricsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsQualityMetrics>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof metricsQualityMetrics>>,
+          TError,
+          Awaited<ReturnType<typeof metricsQualityMetrics>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMetricsQualityMetrics<TData = Awaited<ReturnType<typeof metricsQualityMetrics>>, TError = HTTPValidationError>(
+ params?: MetricsQualityMetricsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsQualityMetrics>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof metricsQualityMetrics>>,
+          TError,
+          Awaited<ReturnType<typeof metricsQualityMetrics>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useMetricsQualityMetrics<TData = Awaited<ReturnType<typeof metricsQualityMetrics>>, TError = HTTPValidationError>(
+ params?: MetricsQualityMetricsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsQualityMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Quality Metrics
+ */
+
+export function useMetricsQualityMetrics<TData = Awaited<ReturnType<typeof metricsQualityMetrics>>, TError = HTTPValidationError>(
+ params?: MetricsQualityMetricsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof metricsQualityMetrics>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getMetricsQualityMetricsQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

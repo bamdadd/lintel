@@ -5,12 +5,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DevcontainerConfig } from './devcontainerConfig';
+import type { MountConfig } from './mountConfig';
 
 export interface CreateSandboxRequest {
   workspace_id: string;
   channel_id: string;
   thread_ts: string;
+  preset?: string | null;
   image?: string;
   network_enabled?: boolean;
   devcontainer?: DevcontainerConfig | null;
+  mounts?: MountConfig[];
 }

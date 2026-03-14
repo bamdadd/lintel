@@ -28,6 +28,10 @@ import type {
   RegisterRepoRequest,
   RepositoriesGetRepository200,
   RepositoriesListRepositories200Item,
+  RepositoriesListRepositoryCommits200Item,
+  RepositoriesListRepositoryCommitsParams,
+  RepositoriesListRepositoryPullRequests200Item,
+  RepositoriesListRepositoryPullRequestsParams,
   RepositoriesRegisterRepository201,
   RepositoriesUpdateRepository200,
   UpdateRepoRequest
@@ -534,4 +538,267 @@ export const useRepositoriesRemoveRepository = <TError = HTTPValidationError,
       > => {
       return useMutation(getRepositoriesRemoveRepositoryMutationOptions(options), queryClient);
     }
+    /**
+ * @summary List Repository Commits
+ */
+export type repositoriesListRepositoryCommitsResponse200 = {
+  data: RepositoriesListRepositoryCommits200Item[]
+  status: 200
+}
+
+export type repositoriesListRepositoryCommitsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type repositoriesListRepositoryCommitsResponseSuccess = (repositoriesListRepositoryCommitsResponse200) & {
+  headers: Headers;
+};
+export type repositoriesListRepositoryCommitsResponseError = (repositoriesListRepositoryCommitsResponse422) & {
+  headers: Headers;
+};
+
+export type repositoriesListRepositoryCommitsResponse = (repositoriesListRepositoryCommitsResponseSuccess | repositoriesListRepositoryCommitsResponseError)
+
+export const getRepositoriesListRepositoryCommitsUrl = (repoId: string,
+    params?: RepositoriesListRepositoryCommitsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
     
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/repositories/${repoId}/commits?${stringifiedParams}` : `/api/v1/repositories/${repoId}/commits`
+}
+
+export const repositoriesListRepositoryCommits = async (repoId: string,
+    params?: RepositoriesListRepositoryCommitsParams, options?: RequestInit): Promise<repositoriesListRepositoryCommitsResponse> => {
+  
+  return customInstance<repositoriesListRepositoryCommitsResponse>(getRepositoriesListRepositoryCommitsUrl(repoId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getRepositoriesListRepositoryCommitsQueryKey = (repoId: string,
+    params?: RepositoriesListRepositoryCommitsParams,) => {
+    return [
+    `/api/v1/repositories/${repoId}/commits`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+    
+export const getRepositoriesListRepositoryCommitsQueryOptions = <TData = Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError = HTTPValidationError>(repoId: string,
+    params?: RepositoriesListRepositoryCommitsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRepositoriesListRepositoryCommitsQueryKey(repoId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>> = ({ signal }) => repositoriesListRepositoryCommits(repoId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(repoId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RepositoriesListRepositoryCommitsQueryResult = NonNullable<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>>
+export type RepositoriesListRepositoryCommitsQueryError = HTTPValidationError
+
+
+export function useRepositoriesListRepositoryCommits<TData = Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError = HTTPValidationError>(
+ repoId: string,
+    params: undefined |  RepositoriesListRepositoryCommitsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>,
+          TError,
+          Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRepositoriesListRepositoryCommits<TData = Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError = HTTPValidationError>(
+ repoId: string,
+    params?: RepositoriesListRepositoryCommitsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>,
+          TError,
+          Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRepositoriesListRepositoryCommits<TData = Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError = HTTPValidationError>(
+ repoId: string,
+    params?: RepositoriesListRepositoryCommitsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Repository Commits
+ */
+
+export function useRepositoriesListRepositoryCommits<TData = Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError = HTTPValidationError>(
+ repoId: string,
+    params?: RepositoriesListRepositoryCommitsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryCommits>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRepositoriesListRepositoryCommitsQueryOptions(repoId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * @summary List Repository Pull Requests
+ */
+export type repositoriesListRepositoryPullRequestsResponse200 = {
+  data: RepositoriesListRepositoryPullRequests200Item[]
+  status: 200
+}
+
+export type repositoriesListRepositoryPullRequestsResponse422 = {
+  data: HTTPValidationError
+  status: 422
+}
+
+export type repositoriesListRepositoryPullRequestsResponseSuccess = (repositoriesListRepositoryPullRequestsResponse200) & {
+  headers: Headers;
+};
+export type repositoriesListRepositoryPullRequestsResponseError = (repositoriesListRepositoryPullRequestsResponse422) & {
+  headers: Headers;
+};
+
+export type repositoriesListRepositoryPullRequestsResponse = (repositoriesListRepositoryPullRequestsResponseSuccess | repositoriesListRepositoryPullRequestsResponseError)
+
+export const getRepositoriesListRepositoryPullRequestsUrl = (repoId: string,
+    params?: RepositoriesListRepositoryPullRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/repositories/${repoId}/pull-requests?${stringifiedParams}` : `/api/v1/repositories/${repoId}/pull-requests`
+}
+
+export const repositoriesListRepositoryPullRequests = async (repoId: string,
+    params?: RepositoriesListRepositoryPullRequestsParams, options?: RequestInit): Promise<repositoriesListRepositoryPullRequestsResponse> => {
+  
+  return customInstance<repositoriesListRepositoryPullRequestsResponse>(getRepositoriesListRepositoryPullRequestsUrl(repoId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+  
+
+
+
+
+export const getRepositoriesListRepositoryPullRequestsQueryKey = (repoId: string,
+    params?: RepositoriesListRepositoryPullRequestsParams,) => {
+    return [
+    `/api/v1/repositories/${repoId}/pull-requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+    
+export const getRepositoriesListRepositoryPullRequestsQueryOptions = <TData = Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError = HTTPValidationError>(repoId: string,
+    params?: RepositoriesListRepositoryPullRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getRepositoriesListRepositoryPullRequestsQueryKey(repoId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>> = ({ signal }) => repositoriesListRepositoryPullRequests(repoId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(repoId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type RepositoriesListRepositoryPullRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>>
+export type RepositoriesListRepositoryPullRequestsQueryError = HTTPValidationError
+
+
+export function useRepositoriesListRepositoryPullRequests<TData = Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError = HTTPValidationError>(
+ repoId: string,
+    params: undefined |  RepositoriesListRepositoryPullRequestsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>,
+          TError,
+          Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRepositoriesListRepositoryPullRequests<TData = Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError = HTTPValidationError>(
+ repoId: string,
+    params?: RepositoriesListRepositoryPullRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>,
+          TError,
+          Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useRepositoriesListRepositoryPullRequests<TData = Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError = HTTPValidationError>(
+ repoId: string,
+    params?: RepositoriesListRepositoryPullRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Repository Pull Requests
+ */
+
+export function useRepositoriesListRepositoryPullRequests<TData = Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError = HTTPValidationError>(
+ repoId: string,
+    params?: RepositoriesListRepositoryPullRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof repositoriesListRepositoryPullRequests>>, TError, TData>>, request?: SecondParameter<typeof customInstance>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getRepositoriesListRepositoryPullRequestsQueryOptions(repoId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+

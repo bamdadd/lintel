@@ -12,4 +12,5 @@ export const CredentialType = {
   ssh_key: 'ssh_key',
   github_token: 'github_token',
   ai_provider_api_key: 'ai_provider_api_key',
+  claude_code: 'claude_code',
 } as const;

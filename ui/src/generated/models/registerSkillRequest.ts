@@ -14,7 +14,6 @@ export interface RegisterSkillRequest {
   version: string;
   name: string;
   description?: string;
-  content?: string;
   category?: SkillCategory;
   input_schema?: RegisterSkillRequestInputSchema;
   output_schema?: RegisterSkillRequestOutputSchema;

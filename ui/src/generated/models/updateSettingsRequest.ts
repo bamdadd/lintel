@@ -11,4 +11,5 @@ export interface UpdateSettingsRequest {
   pii_detection_enabled?: boolean | null;
   sandbox_enabled?: boolean | null;
   max_concurrent_workflows?: number | null;
+  max_sandboxes?: number | null;
 }

@@ -10,7 +10,6 @@ import type { SkillExecutionMode } from './skillExecutionMode';
 export interface UpdateSkillRequest {
   name?: string | null;
   description?: string | null;
-  content?: string | null;
   category?: SkillCategory | null;
   version?: string | null;
   execution_mode?: SkillExecutionMode | null;
