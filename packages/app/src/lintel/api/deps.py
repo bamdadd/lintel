@@ -8,7 +8,7 @@ New route handlers should prefer ``Depends(Provide[AppContainer.X])`` with
 from fastapi import Request
 
 from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
-from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
+from lintel.contracts.protocols import EventStore
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
@@ -41,7 +41,7 @@ def get_repository_store(request: Request) -> InMemoryRepositoryStore:
     return request.app.state.repository_store  # type: ignore[no-any-return]
 
 
-def get_event_store(request: Request) -> InMemoryEventStore:
+def get_event_store(request: Request) -> EventStore:
     """Get event store from app state."""
     return request.app.state.event_store  # type: ignore[no-any-return]
 
