@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -184,10 +183,12 @@ class TestExecuteStreamStdout:
                 coro.close()  # type: ignore[union-attr]
             raise TimeoutError("timed out")
 
-        with patch(
-            "lintel.infrastructure.sandbox.docker_backend.asyncio.wait_for",
-            side_effect=_mock_wait_for,
+        with (
+            patch(
+                "lintel.infrastructure.sandbox.docker_backend.asyncio.wait_for",
+                side_effect=_mock_wait_for,
+            ),
+            pytest.raises(SandboxTimeoutError),
         ):
-            with pytest.raises(SandboxTimeoutError):
-                async for _ in await manager.execute_stream("sandbox-1", job):
-                    pass
+            async for _ in await manager.execute_stream("sandbox-1", job):
+                pass
