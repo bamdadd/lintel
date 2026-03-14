@@ -66,6 +66,8 @@ interface StageCardProps {
   allStages?: StageItem[];
   /** Called after a successful approve/reject/retry so the parent can refetch. */
   onActionComplete?: () => void;
+  /** If provided, delegate fullscreen to parent (URL-synced) instead of local modal. */
+  onOpenArtifact?: (tabKey: string) => void;
 }
 
 // ── Live-log hook (SSE) ────────────────────────────────────────────────────
@@ -530,7 +532,7 @@ export function StageFullscreenModal({
 
 // ── Component ──────────────────────────────────────────────────────────────
 
-export function StageCard({ stage, runId, allStages, onActionComplete }: StageCardProps) {
+export function StageCard({ stage, runId, allStages, onActionComplete, onOpenArtifact }: StageCardProps) {
   const navigate = useNavigate();
   const [retrying, setRetrying] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -539,9 +541,14 @@ export function StageCard({ stage, runId, allStages, onActionComplete }: StageCa
   const [fullscreenTabKey, setFullscreenTabKey] = useState('');
 
   const openFullscreen = useCallback((type: FullscreenTab) => {
-    setFullscreenTabKey(`${type}:${stage.stage_id}`);
-    setFullscreenOpen(true);
-  }, [stage.stage_id]);
+    const tabKey = `${type}:${stage.stage_id}`;
+    if (onOpenArtifact) {
+      onOpenArtifact(tabKey);
+    } else {
+      setFullscreenTabKey(tabKey);
+      setFullscreenOpen(true);
+    }
+  }, [stage.stage_id, onOpenArtifact]);
 
   const { lines: logLines, scrollRef: logScrollRef, modalScrollRef: logModalScrollRef } = useStageLogs(
     runId,

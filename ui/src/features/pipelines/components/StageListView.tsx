@@ -28,6 +28,8 @@ interface StageListViewProps {
   /** Controlled: callback when a stage row is clicked */
   onStageSelect?: (stageId: string | null) => void;
   onActionComplete?: () => void;
+  /** Delegate fullscreen artifact open to parent for URL sync */
+  onOpenArtifact?: (tabKey: string) => void;
 }
 
 const statusIcon: Record<string, { icon: React.ElementType; color: string }> = {
@@ -66,6 +68,7 @@ export function StageListView({
   selectedStageId,
   onStageSelect,
   onActionComplete,
+  onOpenArtifact,
 }: StageListViewProps) {
   // Track whether user has interacted — skip Collapse animation for URL-driven initial state
   const hasInteracted = useRef(false);
@@ -141,6 +144,7 @@ export function StageListView({
                   runId={runId}
                   allStages={stages}
                   onActionComplete={onActionComplete}
+                  onOpenArtifact={onOpenArtifact}
                 />
               </Box>
             </Collapse>

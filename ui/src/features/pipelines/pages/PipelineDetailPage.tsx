@@ -277,7 +277,7 @@ export function Component() {
             variant="light"
             size="compact-sm"
             leftSection={<IconLayoutList size={14} />}
-            onClick={() => setArtifactsOpen(true)}
+            onClick={() => setArtifactsOpen(true, 'first')}
           >
             Artifacts
           </Button>
@@ -360,6 +360,7 @@ export function Component() {
               selectedStageId={selectedStageId}
               onStageSelect={setSelectedStageId}
               onActionComplete={handleActionComplete}
+              onOpenArtifact={(tabKey) => setArtifactsOpen(true, tabKey)}
             />
           </ScrollArea>
         </Paper>

@@ -31,13 +31,18 @@ export function Component() {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Track whether the user intentionally closed the modal to prevent re-open
+  const [closedManually, setClosedManually] = useState(false);
+
   const handleClickItem = (item: WorkItem) => {
     setSelectedItem(item);
+    setClosedManually(false);
     setSearchParams({ work_item: item.work_item_id }, { replace: true });
     openDetail();
   };
 
   const handleCloseDetail = () => {
+    setClosedManually(true);
     closeDetail();
     setSearchParams({}, { replace: true });
   };
@@ -46,14 +51,18 @@ export function Component() {
   const items = (itemsResp?.data ?? []) as WorkItem[];
   useEffect(() => {
     const workItemId = searchParams.get('work_item');
-    if (workItemId && items.length > 0 && !detailOpened) {
+    if (workItemId && items.length > 0 && !detailOpened && !closedManually) {
       const found = items.find((i) => i.work_item_id === workItemId);
       if (found) {
         setSelectedItem(found);
         openDetail();
       }
     }
-  }, [searchParams, items, openDetail, detailOpened]);
+    // Reset closedManually when the param changes (e.g. new link clicked)
+    if (!workItemId) {
+      setClosedManually(false);
+    }
+  }, [searchParams, items, openDetail, detailOpened, closedManually]);
 
   const columns = useMemo(
     () => [...(board?.columns ?? [])].sort((a, b) => a.position - b.position),
