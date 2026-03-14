@@ -1,7 +1,7 @@
 """Automation CRUD endpoints."""
 
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -78,7 +78,7 @@ async def create_automation(
     existing = await store.get(body.automation_id)
     if existing is not None:
         raise HTTPException(status_code=409, detail="Automation already exists")
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     automation = AutomationDefinition(
         automation_id=body.automation_id,
         name=body.name,
@@ -135,7 +135,7 @@ async def update_automation(
     if automation is None:
         raise HTTPException(status_code=404, detail="Automation not found")
     updates = body.model_dump(exclude_none=True)
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    updates["updated_at"] = datetime.now(UTC).isoformat()
     updated = AutomationDefinition(**{**asdict(automation), **updates})
     await store.update(updated)
     await dispatch_event(
@@ -178,7 +178,7 @@ async def trigger_automation(
     automation_id: str,
     request: Request,
     store: InMemoryAutomationStore = Depends(Provide[AppContainer.automation_store]),  # noqa: B008
-    pipeline_store: Any = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    pipeline_store: Any = Depends(Provide[AppContainer.pipeline_store]),  # noqa: ANN401, B008
 ) -> dict[str, Any]:
     automation = await store.get(automation_id)
     if automation is None:
@@ -214,7 +214,7 @@ async def trigger_automation(
 async def list_automation_runs(
     automation_id: str,
     store: InMemoryAutomationStore = Depends(Provide[AppContainer.automation_store]),  # noqa: B008
-    pipeline_store: Any = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    pipeline_store: Any = Depends(Provide[AppContainer.pipeline_store]),  # noqa: ANN401, B008
 ) -> list[dict[str, Any]]:
     automation = await store.get(automation_id)
     if automation is None:
@@ -228,5 +228,5 @@ async def list_automation_runs(
 def _get_trigger_type(run: Any) -> str:  # noqa: ANN401
     """Extract trigger_type from either a dataclass or dict."""
     if isinstance(run, dict):
-        return run.get("trigger_type", "")
-    return getattr(run, "trigger_type", "")
+        return str(run.get("trigger_type", ""))
+    return str(getattr(run, "trigger_type", ""))

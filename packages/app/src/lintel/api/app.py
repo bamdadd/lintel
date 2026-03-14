@@ -625,7 +625,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         type("_PipelineCompleteHandler", (), {"handle": staticmethod(_on_pipeline_complete)})(),
     )
 
-    app.state._background_tasks: set[asyncio.Task[Any]] = set()  # type: ignore[assignment]
+    background_tasks: set[asyncio.Task[Any]] = set()
+    app.state._background_tasks = background_tasks
     scheduler_task = asyncio.create_task(automation_scheduler.run())
     app.state._background_tasks.add(scheduler_task)
     scheduler_task.add_done_callback(app.state._background_tasks.discard)

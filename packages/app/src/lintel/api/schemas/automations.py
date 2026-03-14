@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from croniter import croniter
+from croniter import croniter  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field, model_validator
 
 from lintel.contracts.types import AutomationTriggerType, ConcurrencyPolicy
@@ -43,7 +43,8 @@ class CreateAutomationRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_trigger_config(self) -> "CreateAutomationRequest":
-        return _validate_trigger_config(self.trigger_type, self.trigger_config, self)
+        _validate_trigger_config(self.trigger_type, self.trigger_config, self)
+        return self
 
 
 class UpdateAutomationRequest(BaseModel):

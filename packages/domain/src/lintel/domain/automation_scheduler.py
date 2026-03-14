@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
-from uuid import UUID
 
-from croniter import croniter
+from croniter import croniter  # type: ignore[import-untyped]
 
 from lintel.contracts.types import AutomationTriggerType, ConcurrencyPolicy
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
+    from uuid import UUID
 
 
 class AutomationScheduler:
@@ -40,7 +40,7 @@ class AutomationScheduler:
     async def tick_cron(self) -> list[str]:
         """Evaluate all cron automations. Returns list of fired automation IDs."""
         all_automations = await self._store.list_all()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         fired: list[str] = []
 
         for auto in all_automations:
@@ -66,11 +66,9 @@ class AutomationScheduler:
         """Check if a cron automation is due to fire."""
         last = self._last_fired.get(automation_id)
         cron = croniter(schedule, now)
-        prev = cron.get_prev(datetime).replace(tzinfo=timezone.utc)
+        prev = cron.get_prev(datetime).replace(tzinfo=UTC)
 
-        if last is not None and last >= prev:
-            return False
-        return True
+        return not (last is not None and last >= prev)
 
     async def _apply_concurrency(
         self,
@@ -83,13 +81,13 @@ class AutomationScheduler:
 
         if auto.concurrency_policy == ConcurrencyPolicy.ALLOW:
             await self._fire_fn(auto, trigger_metadata)
-            self._last_fired[aid] = datetime.now(timezone.utc)
+            self._last_fired[aid] = datetime.now(UTC)
             return True
 
         if active is None:
             run_id = await self._fire_fn(auto, trigger_metadata)
             self._active_runs[aid] = run_id
-            self._last_fired[aid] = datetime.now(timezone.utc)
+            self._last_fired[aid] = datetime.now(UTC)
             return True
 
         if auto.concurrency_policy == ConcurrencyPolicy.SKIP:
@@ -104,7 +102,7 @@ class AutomationScheduler:
             await self._cancel_fn(aid, active)
             run_id = await self._fire_fn(auto, trigger_metadata)
             self._active_runs[aid] = run_id
-            self._last_fired[aid] = datetime.now(timezone.utc)
+            self._last_fired[aid] = datetime.now(UTC)
             return True
 
         return False

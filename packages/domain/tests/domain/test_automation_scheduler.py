@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import UUID
 
@@ -75,7 +75,7 @@ class TestCronEvaluation:
         store.list_all.return_value = [auto]
         fire_fn = AsyncMock()
         scheduler = AutomationScheduler(automation_store=store, fire_fn=fire_fn)
-        scheduler._last_fired["a-1"] = datetime.now(timezone.utc)
+        scheduler._last_fired["a-1"] = datetime.now(UTC)
         await scheduler.tick_cron()
         fire_fn.assert_not_called()
 
@@ -88,7 +88,9 @@ class TestConcurrencyPolicies:
         fire_fn = AsyncMock()
         skip_fn = AsyncMock()
         scheduler = AutomationScheduler(
-            automation_store=store, fire_fn=fire_fn, skip_fn=skip_fn,
+            automation_store=store,
+            fire_fn=fire_fn,
+            skip_fn=skip_fn,
         )
         scheduler._active_runs["a-1"] = "run-123"
         await scheduler.tick_cron()
@@ -123,7 +125,9 @@ class TestConcurrencyPolicies:
         fire_fn = AsyncMock(return_value="run-new")
         cancel_fn = AsyncMock()
         scheduler = AutomationScheduler(
-            automation_store=store, fire_fn=fire_fn, cancel_fn=cancel_fn,
+            automation_store=store,
+            fire_fn=fire_fn,
+            cancel_fn=cancel_fn,
         )
         scheduler._active_runs["a-1"] = "run-123"
         await scheduler.tick_cron()
@@ -180,7 +184,9 @@ class TestEventTriggers:
         fire_fn = AsyncMock()
         skip_fn = AsyncMock()
         scheduler = AutomationScheduler(
-            automation_store=store, fire_fn=fire_fn, skip_fn=skip_fn,
+            automation_store=store,
+            fire_fn=fire_fn,
+            skip_fn=skip_fn,
         )
         scheduler._chain_depths[_CORR_ID] = 3
         event = EventEnvelope(
