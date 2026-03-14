@@ -25,6 +25,16 @@ class TaskBacklogProjection:
         self._tasks: dict[str, dict[str, Any]] = {}
 
     @property
+    def name(self) -> str:
+        return "task_backlog"
+
+    def get_state(self) -> dict[str, Any]:
+        return dict(self._tasks)
+
+    def restore_state(self, state: dict[str, Any]) -> None:
+        self._tasks = dict(state)
+
+    @property
     def handled_event_types(self) -> set[str]:
         return set(self.HANDLED_TYPES)
 

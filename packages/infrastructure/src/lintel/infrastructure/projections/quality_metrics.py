@@ -88,6 +88,63 @@ class QualityMetricsProjection:
         self._commit_records: list[CommitRecord] = []
         self._merge_records: list[MergeRecord] = []
 
+    @property
+    def name(self) -> str:
+        return "quality_metrics"
+
+    def get_state(self) -> dict[str, Any]:
+        from dataclasses import asdict
+
+        return {
+            "coverage_records": [asdict(r) for r in self._coverage_records],
+            "defect_records": [asdict(r) for r in self._defect_records],
+            "commit_records": [asdict(r) for r in self._commit_records],
+            "merge_records": [asdict(r) for r in self._merge_records],
+        }
+
+    def restore_state(self, state: dict[str, Any]) -> None:
+        def _parse_dt(v: Any) -> datetime:
+            return datetime.fromisoformat(v) if isinstance(v, str) else v
+
+        self._coverage_records = [
+            CoverageRecord(
+                project_id=r["project_id"],
+                commit_sha=r["commit_sha"],
+                pr_id=r["pr_id"],
+                coverage_before=r["coverage_before"],
+                coverage_after=r["coverage_after"],
+                occurred_at=_parse_dt(r["occurred_at"]),
+            )
+            for r in state.get("coverage_records", [])
+        ]
+        self._defect_records = [
+            DefectRecord(
+                project_id=r["project_id"],
+                work_item_id=r["work_item_id"],
+                occurred_at=_parse_dt(r["occurred_at"]),
+            )
+            for r in state.get("defect_records", [])
+        ]
+        self._commit_records = [
+            CommitRecord(
+                project_id=r["project_id"],
+                commit_sha=r["commit_sha"],
+                lines_changed=r["lines_changed"],
+                files=r["files"],
+                occurred_at=_parse_dt(r["occurred_at"]),
+            )
+            for r in state.get("commit_records", [])
+        ]
+        self._merge_records = [
+            MergeRecord(
+                project_id=r["project_id"],
+                pr_id=r["pr_id"],
+                files=r["files"],
+                occurred_at=_parse_dt(r["occurred_at"]),
+            )
+            for r in state.get("merge_records", [])
+        ]
+
     # -- Projection protocol ------------------------------------------------
 
     @property
