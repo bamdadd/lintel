@@ -1570,6 +1570,7 @@ name = "lintel-domain"
 version = "0.1.0"
 source = { editable = "packages/domain" }
 dependencies = [
+    { name = "croniter" },
     { name = "langgraph" },
     { name = "lintel-contracts" },
     { name = "structlog" },
@@ -1577,6 +1578,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "croniter", specifier = ">=6.0.0" },
     { name = "langgraph", specifier = ">=0.3" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "structlog", specifier = ">=24.4" },

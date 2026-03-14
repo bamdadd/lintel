@@ -207,6 +207,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     from lintel.infrastructure.persistence.stores import (
         PostgresAgentDefinitionStore,
         PostgresAIProviderStore,
+        PostgresAutomationStore,
         PostgresApprovalRequestStore,
         PostgresAuditEntryStore,
         PostgresChatStore,
@@ -332,6 +333,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "pipeline_store": PostgresPipelineStore(pool),
         "environment_store": PostgresEnvironmentStore(pool),
         "trigger_store": PostgresTriggerStore(pool),
+        "automation_store": PostgresAutomationStore(pool),
         "variable_store": PostgresVariableStore(pool),
         "user_store": PostgresUserStore(pool),
         "team_store": PostgresTeamStore(pool),
