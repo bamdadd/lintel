@@ -495,24 +495,37 @@ async def retry_stage(
         stream_id=f"run:{run_id}",
     )
 
-    # Re-invoke the workflow executor
+    # Re-invoke the workflow executor if the session is still alive
     executor = getattr(request.app.state, "workflow_executor", None)
-    if executor is not None:
+    if executor is not None and run_id in getattr(executor, "_suspended_runs", {}):
         import asyncio
 
-        suspended = getattr(executor, "_suspended_runs", {})
-        if run_id in suspended:
-            # Session alive — resume from checkpoint
-            task = asyncio.create_task(executor.resume(run_id))
-        else:
-            # Session lost (server restart) — re-execute the full workflow
-            task = asyncio.create_task(
-                _redispatch_workflow(executor, updated, request.app.state)
-            )
+        task = asyncio.create_task(executor.resume(run_id))
         bg = getattr(request.app.state, "_background_tasks", set())
         request.app.state._background_tasks = bg
         bg.add(task)
         task.add_done_callback(bg.discard)
+    elif executor is not None:
+        # Session lost (server restart) — mark stage and pipeline as failed
+        failed_stages = []
+        for s in updated.stages:
+            if s.stage_id == stage_id:
+                failed_stages.append(
+                    replace(
+                        s,
+                        status=StageStatus.FAILED,
+                        error="Workflow session expired after server restart. "
+                        "Re-dispatch this work item to start a new pipeline.",
+                    )
+                )
+            else:
+                failed_stages.append(s)
+        updated = replace(
+            updated,
+            stages=tuple(failed_stages),
+            status=PipelineStatus.FAILED,
+        )
+        await store.update(updated)
 
     return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]
 

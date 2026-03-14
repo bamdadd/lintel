@@ -126,12 +126,13 @@ class TestPipelinesAPI:
 
         asyncio.get_event_loop().run_until_complete(_fail_stage())
 
+        # When no suspended session exists, retry marks the stage as failed
         resp = client.post(f"/api/v1/pipelines/retry-run/stages/{stage_id}/retry")
         assert resp.status_code == 200
         result = resp.json()
-        assert result["status"] == "running"
+        assert result["status"] == "failed"
         assert result["retry_count"] == 1
-        assert result["error"] == ""
+        assert "session expired" in result["error"].lower()
 
     def test_retry_stage_rejects_pending(self, client: TestClient) -> None:
         data = _create_pipeline(client, "retry-pending")
