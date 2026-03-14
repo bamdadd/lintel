@@ -50,6 +50,11 @@ class DebugRunNodeRequest(BaseModel):
     credential_ids: list[str] = Field(
         default_factory=list, description="Credential IDs for repo auth"
     )
+    previous_error: str = Field(default="", description="Error from a previous failed run")
+    previous_failed_stage: str = Field(default="", description="Stage that failed in previous run")
+    continue_from_run_id: str = Field(
+        default="", description="Run ID to rehydrate state from (auto-loads outputs)"
+    )
     timeout_seconds: int = Field(default=300, description="Max seconds to wait for node")
 
 
@@ -163,9 +168,36 @@ async def run_node(body: DebugRunNodeRequest, request: Request) -> DebugRunNodeR
         "environment_id": "",
         "workspace_path": body.workspace_path or "/workspace/repo",
         "research_context": body.research_context,
+        "previous_error": body.previous_error,
+        "previous_failed_stage": body.previous_failed_stage,
         "token_usage": [],
         "review_cycles": 0,
     }
+
+    # Rehydrate from a previous run if requested
+    if body.continue_from_run_id and pipeline_store is not None:
+        try:
+            from lintel.domain.workflow_executor import WorkflowExecutor
+
+            executor = WorkflowExecutor.__new__(WorkflowExecutor)
+            executor._app_state = app_state
+            prev_state = await executor._rehydrate_from_run(
+                body.continue_from_run_id,
+            )
+            state.update(prev_state)
+            logger.info(
+                "debug_rehydrated_from_run",
+                run_id=run_id,
+                prev_run_id=body.continue_from_run_id,
+                rehydrated_keys=list(prev_state.keys()),
+            )
+        except Exception:
+            logger.warning(
+                "debug_rehydrate_failed",
+                run_id=run_id,
+                prev_run_id=body.continue_from_run_id,
+                exc_info=True,
+            )
 
     # Build config matching WorkflowExecutor._build_config()
     agent_runtime = getattr(app_state, "agent_runtime", None)

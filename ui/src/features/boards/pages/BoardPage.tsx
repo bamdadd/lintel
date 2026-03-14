@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import {
   Title, Stack, Group, Loader, Center, Text, ActionIcon, Button,
@@ -58,20 +58,25 @@ export function Component() {
 
   // Auto-open work item detail when linked via ?work_item=<id>
   const items = (itemsResp?.data ?? []) as WorkItem[];
+  const workItemParam = searchParams.get('work_item');
   useEffect(() => {
-    const workItemId = searchParams.get('work_item');
-    if (workItemId && items.length > 0 && !detailOpened && !closedManually) {
-      const found = items.find((i) => i.work_item_id === workItemId);
+    if (workItemParam && items.length > 0 && !detailOpened && !closedManually) {
+      const found = items.find((i) => i.work_item_id === workItemParam);
       if (found) {
         setSelectedItem(found);
         openDetail();
       }
     }
-    // Reset closedManually when the param changes (e.g. new link clicked)
-    if (!workItemId) {
+  }, [workItemParam, items, openDetail, detailOpened, closedManually]);
+
+  // Reset closedManually only when a *new* work_item param appears (e.g. new link clicked)
+  const prevWorkItemParam = useRef(workItemParam);
+  useEffect(() => {
+    if (workItemParam && workItemParam !== prevWorkItemParam.current) {
       setClosedManually(false);
     }
-  }, [searchParams, items, openDetail, detailOpened, closedManually]);
+    prevWorkItemParam.current = workItemParam;
+  }, [workItemParam]);
 
   // Derive unique tags and statuses for filter dropdowns
   const allTags = useMemo(() => {

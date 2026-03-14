@@ -61,8 +61,9 @@ export function usePipelineSSE(runId: string | null) {
     };
 
     source.onerror = () => {
+      // Don't close — let EventSource auto-reconnect on transient errors.
+      // It will fire onopen again once reconnected.
       setConnected(false);
-      source.close();
     };
 
     return () => {

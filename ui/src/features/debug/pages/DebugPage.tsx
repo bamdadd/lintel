@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router';
 import {
   Title,
   Stack,
@@ -89,6 +90,10 @@ export function Component() {
   const [selectedCredential, setSelectedCredential] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [researchContext, setResearchContext] = useState('');
+  const [planJson, setPlanJson] = useState('');
+  const [previousError, setPreviousError] = useState('');
+  const [previousFailedStage, setPreviousFailedStage] = useState('');
+  const [continueFromRunId, setContinueFromRunId] = useState('');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<DebugResult | null>(null);
   const [history, setHistory] = useState<DebugResult[]>([]);
@@ -291,6 +296,18 @@ export function Component() {
     };
     if (selectedSandbox) body.sandbox_id = selectedSandbox;
     if (researchContext) body.research_context = researchContext;
+    if (planJson) {
+      try {
+        body.plan = JSON.parse(planJson);
+      } catch {
+        notifications.show({ title: 'Invalid plan JSON', message: 'Could not parse plan', color: 'red' });
+        setRunning(false);
+        return;
+      }
+    }
+    if (previousError) body.previous_error = previousError;
+    if (previousFailedStage) body.previous_failed_stage = previousFailedStage;
+    if (continueFromRunId) body.continue_from_run_id = continueFromRunId.trim();
     const repo = repositories.find((r) => r.repo_id === selectedRepo);
     if (repo) body.repo_url = repo.url;
     if (selectedCredential) body.credential_ids = [selectedCredential];
@@ -454,6 +471,98 @@ export function Component() {
                     value={researchContext}
                     onChange={(e) => setResearchContext(e.currentTarget.value)}
                   />
+                  <Textarea
+                    label="Plan JSON"
+                    placeholder='{"tasks": [...], "summary": "..."}'
+                    minRows={3}
+                    maxRows={6}
+                    autosize
+                    value={planJson}
+                    onChange={(e) => setPlanJson(e.currentTarget.value)}
+                  />
+                  <Divider label="Pipeline Continuation" labelPosition="left" />
+                  <Textarea
+                    label="Previous Error"
+                    placeholder="Error message from a previous failed run"
+                    minRows={2}
+                    maxRows={4}
+                    autosize
+                    value={previousError}
+                    onChange={(e) => setPreviousError(e.currentTarget.value)}
+                  />
+                  <Select
+                    label="Previous Failed Stage"
+                    placeholder="Stage that failed"
+                    data={nodes.map((n) => ({ value: n.name, label: n.name }))}
+                    value={previousFailedStage || null}
+                    onChange={(v) => setPreviousFailedStage(v ?? '')}
+                    clearable
+                  />
+                  <Group gap="xs" align="end">
+                    <Textarea
+                      label="Continue from Run ID"
+                      placeholder="Paste a run ID to auto-load its outputs"
+                      minRows={1}
+                      maxRows={1}
+                      value={continueFromRunId}
+                      onChange={(e) => setContinueFromRunId(e.currentTarget.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <Tooltip label="Load outputs from this run into the fields above">
+                      <Button
+                        variant="light"
+                        size="xs"
+                        disabled={!continueFromRunId}
+                        onClick={async () => {
+                          try {
+                            const resp = await fetch(
+                              `/api/v1/pipelines/${continueFromRunId.trim()}`
+                            );
+                            if (!resp.ok) {
+                              notifications.show({
+                                title: 'Pipeline not found',
+                                message: `GET /pipelines/${continueFromRunId.trim()} returned ${resp.status}`,
+                                color: 'red',
+                              });
+                              return;
+                            }
+                            const data = await resp.json();
+                            const pipeline = data.data ?? data;
+                            for (const stage of pipeline.stages ?? []) {
+                              const outputs = stage.outputs ?? {};
+                              if (stage.status === 'succeeded') {
+                                if (stage.name === 'research' && outputs.research_report) {
+                                  setResearchContext(outputs.research_report);
+                                } else if (stage.name === 'plan' && outputs.plan) {
+                                  setPlanJson(
+                                    typeof outputs.plan === 'string'
+                                      ? outputs.plan
+                                      : JSON.stringify(outputs.plan, null, 2)
+                                  );
+                                }
+                              } else if (stage.status === 'failed' && stage.error) {
+                                setPreviousError(stage.error);
+                                setPreviousFailedStage(stage.name);
+                              }
+                            }
+                            notifications.show({
+                              title: 'Loaded',
+                              message: `Loaded outputs from ${continueFromRunId.slice(0, 12)}`,
+                              color: 'green',
+                            });
+                          } catch {
+                            notifications.show({
+                              title: 'Failed to load',
+                              message: 'Could not fetch pipeline run',
+                              color: 'red',
+                            });
+                          }
+                        }}
+                      >
+                        Load
+                      </Button>
+                    </Tooltip>
+                  </Group>
                 </Stack>
               </Collapse>
 
@@ -462,7 +571,7 @@ export function Component() {
                   running ? <Loader size={16} color="white" /> : <IconPlayerPlay size={16} />
                 }
                 onClick={handleRun}
-                disabled={!selectedNode || running}
+                disabled={!selectedNode}
                 fullWidth
                 size="md"
               >
@@ -581,8 +690,16 @@ export function Component() {
               )}
               <Divider my="xs" />
               <Group gap="xs">
-                <Text size="xs" c="dimmed">
-                  Run ID: {result.run_id.slice(0, 12)}
+                <Text
+                  size="xs"
+                  c="dimmed"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(result.run_id);
+                    notifications.show({ message: 'Run ID copied', color: 'green' });
+                  }}
+                >
+                  Run ID: {result.run_id}
                 </Text>
                 {result.sandbox_id && (
                   <Text size="xs" c="dimmed">

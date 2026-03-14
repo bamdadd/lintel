@@ -4,11 +4,9 @@ from dataclasses import asdict
 from typing import Annotated, Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
 from lintel.contracts.events import (
     ApprovalRequestApproved,
     ApprovalRequestCreated,
@@ -66,7 +64,6 @@ def get_approval_request_store(
 # Request bodies
 # ---------------------------------------------------------------------------
 
-# Legacy alias kept for backward compat
 StoreDep = Annotated[InMemoryApprovalRequestStore, Depends(get_approval_request_store)]
 
 
@@ -93,11 +90,10 @@ class RejectBody(BaseModel):
 
 
 @router.post("/approval-requests", status_code=201)
-@inject
 async def create_approval_request(
     body: CreateApprovalRequestBody,
+    store: StoreDep,
     request: Request,
-    store: InMemoryApprovalRequestStore = Depends(Provide[AppContainer.approval_request_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.approval_id)
     if existing is not None:
@@ -119,11 +115,10 @@ async def create_approval_request(
 
 
 @router.get("/approval-requests")
-@inject
 async def list_approval_requests(
+    store: StoreDep,
     run_id: str | None = None,
     status: ApprovalStatus | None = None,
-    store: InMemoryApprovalRequestStore = Depends(Provide[AppContainer.approval_request_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     items = await store.list_all()
     if run_id is not None:
@@ -134,19 +129,17 @@ async def list_approval_requests(
 
 
 @router.get("/approval-requests/pending")
-@inject
 async def list_pending_approval_requests(
-    store: InMemoryApprovalRequestStore = Depends(Provide[AppContainer.approval_request_store]),  # noqa: B008
+    store: StoreDep,
 ) -> list[dict[str, Any]]:
     items = await store.list_all()
     return [asdict(a) for a in items if a.status == ApprovalStatus.PENDING]
 
 
 @router.get("/approval-requests/{approval_id}")
-@inject
 async def get_approval_request(
     approval_id: str,
-    store: InMemoryApprovalRequestStore = Depends(Provide[AppContainer.approval_request_store]),  # noqa: B008
+    store: StoreDep,
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
@@ -155,12 +148,11 @@ async def get_approval_request(
 
 
 @router.post("/approval-requests/{approval_id}/approve")
-@inject
 async def approve_approval_request(
     approval_id: str,
     body: DecisionBody,
+    store: StoreDep,
     request: Request,
-    store: InMemoryApprovalRequestStore = Depends(Provide[AppContainer.approval_request_store]),  # noqa: B008
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
@@ -187,12 +179,11 @@ async def approve_approval_request(
 
 
 @router.post("/approval-requests/{approval_id}/reject")
-@inject
 async def reject_approval_request(
     approval_id: str,
     body: RejectBody,
+    store: StoreDep,
     request: Request,
-    store: InMemoryApprovalRequestStore = Depends(Provide[AppContainer.approval_request_store]),  # noqa: B008
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:

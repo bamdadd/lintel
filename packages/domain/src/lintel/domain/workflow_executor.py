@@ -183,8 +183,12 @@ class WorkflowExecutor:
                     stage = _dict_to_stage(stage)
                 outputs = stage.outputs if isinstance(stage.outputs, dict) else {}
                 if stage.status == StageStatus.SUCCEEDED and outputs:
-                    if stage.name == "research" and "research_report" in outputs:
-                        result["research_context"] = outputs["research_report"]
+                    if stage.name == "research" and (
+                        "research_report" in outputs or "research_context" in outputs
+                    ):
+                        result["research_context"] = outputs.get(
+                            "research_report", outputs.get("research_context", "")
+                        )
                     elif stage.name == "plan" and "plan" in outputs:
                         result["plan"] = outputs["plan"]
                     elif stage.name == "setup_workspace" and "feature_branch" in outputs:

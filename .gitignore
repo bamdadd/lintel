@@ -24,3 +24,4 @@ coverage.xml
 .DS_Store
 src/lintel/api/static/
 .worktrees/
+.superpowers

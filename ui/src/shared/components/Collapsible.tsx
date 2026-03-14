@@ -11,7 +11,7 @@
  */
 
 import { useId, useState } from 'react';
-import { Collapse, Group, Text, UnstyledButton } from '@mantine/core';
+import { Collapse, Group, Text } from '@mantine/core';
 import { IconChevronDown } from '@tabler/icons-react';
 
 export interface CollapsibleProps {
@@ -46,45 +46,49 @@ export function Collapsible({
 
   return (
     <div data-testid={testId}>
-      {/* ── Toggle button ─────────────────────────────────────────────── */}
-      <UnstyledButton
+      {/* ── Toggle bar ──────────────────────────────────────────────── */}
+      <Group
+        justify="space-between"
+        px="xs"
+        py={6}
+        style={{
+          borderRadius: 'var(--mantine-radius-sm)',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+        className="collapsible-trigger"
+        onClick={() => setOpen((v) => !v)}
+        role="button"
+        tabIndex={0}
         id={triggerId}
         aria-expanded={open}
         aria-controls={regionId}
-        onClick={() => setOpen((v) => !v)}
-        style={{ width: '100%' }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
         data-testid={testId ? `${testId}-trigger` : undefined}
       >
-        <Group
-          justify="space-between"
-          px="xs"
-          py={6}
-          style={{
-            borderRadius: 'var(--mantine-radius-sm)',
-            cursor: 'pointer',
-            userSelect: 'none',
-          }}
-          className="collapsible-trigger"
-        >
-          <Group gap="xs">
-            <Text size="sm" fw={600}>
-              {title}
-            </Text>
-            {badge}
-          </Group>
-
-          {/* Chevron rotates 180° when open */}
-          <IconChevronDown
-            size={16}
-            aria-hidden="true"
-            style={{
-              transition: 'transform 200ms ease',
-              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-              flexShrink: 0,
-            }}
-          />
+        <Group gap="xs">
+          <Text size="sm" fw={600}>
+            {title}
+          </Text>
+          {badge}
         </Group>
-      </UnstyledButton>
+
+        {/* Chevron rotates 180° when open */}
+        <IconChevronDown
+          size={16}
+          aria-hidden="true"
+          style={{
+            transition: 'transform 200ms ease',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            flexShrink: 0,
+          }}
+        />
+      </Group>
 
       {/* ── Animated content region ───────────────────────────────────── */}
       {/*

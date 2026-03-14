@@ -45,8 +45,8 @@ export function useSSEStream(runId: string | null) {
     }
 
     source.onerror = () => {
+      // Don't close — let EventSource auto-reconnect on transient errors.
       setStatus('error');
-      source.close();
     };
 
     return () => source.close();

@@ -106,7 +106,9 @@ function useStageLogs(
       }
     };
 
-    es.onerror = () => es.close();
+    es.onerror = () => {
+      // Let EventSource auto-reconnect on transient errors
+    };
 
     return () => es.close();
   }, [runId, stageId, stageStatus]);

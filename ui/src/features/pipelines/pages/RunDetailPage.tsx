@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center,
 } from '@mantine/core';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconPlayerPlay } from '@tabler/icons-react';
 import { useArtifactsListArtifacts } from '@/generated/api/artifacts/artifacts';
 import { DiffView } from '@/shared/components/DiffView';
 import { useSSEStream } from '../hooks/useSSEStream';
@@ -60,7 +60,17 @@ export function Component() {
           <Title order={2}>Run {runId?.slice(0, 8)}</Title>
           <Badge color={getStatusColor(status)}>{status}</Badge>
         </Group>
-        <Text size="sm" c="dimmed">{events.length} events</Text>
+        <Group gap="sm">
+          <Button
+            variant="light"
+            size="compact-sm"
+            leftSection={<IconPlayerPlay size={14} />}
+            onClick={() => navigate(`/debug?continueFrom=${runId}`)}
+          >
+            Re-run in Debug
+          </Button>
+          <Text size="sm" c="dimmed">{events.length} events</Text>
+        </Group>
       </Group>
 
       {status === 'connecting' && (

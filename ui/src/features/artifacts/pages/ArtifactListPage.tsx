@@ -1,9 +1,11 @@
 import {
   Title, Stack, Table, Loader, Center, Badge, Text, Tabs, Group, TextInput,
-  Modal, ScrollArea, Code, Progress, TypographyStylesProvider,
+  Modal, ScrollArea, Progress, TypographyStylesProvider, Anchor,
 } from '@mantine/core';
 import { useState } from 'react';
+import { Link } from 'react-router';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   useArtifactsListArtifacts,
   useArtifactsListTestResults,
@@ -19,7 +21,6 @@ const artifactTypeColor: Record<string, string> = {
   plan: 'violet',
 };
 
-const markdownTypes = new Set(['research_report', 'plan']);
 
 interface ArtifactItem {
   artifact_id: string;
@@ -100,8 +101,12 @@ export function Component() {
                   <Table.Tr key={a.artifact_id} style={{ cursor: 'pointer' }} onClick={() => setViewArtifact(a)}>
                     <Table.Td><code>{a.path || a.artifact_id}</code></Table.Td>
                     <Table.Td><Badge variant="light" color={artifactTypeColor[a.artifact_type] ?? 'gray'}>{a.artifact_type}</Badge></Table.Td>
-                    <Table.Td><Text size="xs" c="dimmed">{a.run_id?.slice(0, 8)}</Text></Table.Td>
-                    <Table.Td><TimeAgo date={a.created_at} size="sm" /></Table.Td>
+                    <Table.Td>
+                      <Anchor component={Link} to={`/pipelines/${a.run_id}`} size="xs" ff="monospace">
+                        {a.run_id}
+                      </Anchor>
+                    </Table.Td>
+                    <Table.Td><TimeAgo date={a.created_at || (a.metadata as Record<string, unknown>)?.created_at as string} size="sm" /></Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -129,7 +134,11 @@ export function Component() {
                   const passRate = t.total > 0 ? Math.round((t.passed / t.total) * 100) : 0;
                   return (
                     <Table.Tr key={t.result_id}>
-                      <Table.Td><Text size="xs" ff="monospace">{t.run_id?.slice(0, 8)}</Text></Table.Td>
+                      <Table.Td>
+                        <Anchor component={Link} to={`/pipelines/${t.run_id}`} size="xs" ff="monospace">
+                          {t.run_id}
+                        </Anchor>
+                      </Table.Td>
                       <Table.Td><Text size="xs" ff="monospace">{t.stage_id?.slice(0, 8)}</Text></Table.Td>
                       <Table.Td><Badge color={verdictColor[t.verdict] ?? 'gray'}>{t.verdict}</Badge></Table.Td>
                       <Table.Td>
@@ -154,25 +163,25 @@ export function Component() {
         </Tabs.Panel>
       </Tabs>
 
-      <Modal opened={!!viewArtifact} onClose={() => setViewArtifact(null)} title={viewArtifact?.path || viewArtifact?.artifact_type || 'Artifact'} size="xl">
+      <Modal opened={!!viewArtifact} onClose={() => setViewArtifact(null)} title={viewArtifact?.path || viewArtifact?.artifact_type || 'Artifact'} fullScreen>
         {viewArtifact && (
-          <Stack gap="sm">
+          <Stack gap="sm" h="100%">
             <Group gap="md">
               <Badge color={artifactTypeColor[viewArtifact.artifact_type] ?? 'gray'}>{viewArtifact.artifact_type}</Badge>
-              <Text size="sm" c="dimmed">Run: {viewArtifact.run_id}</Text>
-              <Text size="sm" c="dimmed">Work Item: {viewArtifact.work_item_id}</Text>
+              <Anchor component={Link} to={`/pipelines/${viewArtifact.run_id}`} size="sm">
+                Run: {viewArtifact.run_id}
+              </Anchor>
+              <Text size="sm" c="dimmed">Work Item: {viewArtifact.work_item_id?.slice(0, 8)}</Text>
             </Group>
-            <ScrollArea h={400}>
+            <ScrollArea style={{ flex: 1 }}>
               {viewArtifact.artifact_type === 'diff' ? (
-                <DiffView content={viewArtifact.content} maxHeight={380} />
-              ) : markdownTypes.has(viewArtifact.artifact_type) ? (
+                <DiffView content={viewArtifact.content} />
+              ) : (
                 <TypographyStylesProvider>
                   <div className="chat-markdown">
-                    <ReactMarkdown>{viewArtifact.content || 'No content'}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewArtifact.content || 'No content'}</ReactMarkdown>
                   </div>
                 </TypographyStylesProvider>
-              ) : (
-                <Code block>{viewArtifact.content || 'No content'}</Code>
               )}
             </ScrollArea>
           </Stack>
