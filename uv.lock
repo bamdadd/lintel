@@ -12,8 +12,19 @@ members = [
     "lintel",
     "lintel-agents",
     "lintel-contracts",
+    "lintel-coordination",
     "lintel-domain",
+    "lintel-event-bus",
+    "lintel-event-store",
     "lintel-infrastructure",
+    "lintel-models",
+    "lintel-observability",
+    "lintel-persistence",
+    "lintel-pii",
+    "lintel-projections",
+    "lintel-repos",
+    "lintel-sandbox",
+    "lintel-slack",
     "lintel-workflows",
     "lintel-workspace",
 ]
@@ -1502,13 +1513,25 @@ dependencies = [
     { name = "croniter" },
     { name = "dependency-injector" },
     { name = "fastapi" },
+    { name = "fastapi-mcp" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
     { name = "lintel-agents" },
     { name = "lintel-contracts" },
-    { name = "lintel-domain" },
+    { name = "lintel-coordination" },
+    { name = "lintel-event-bus" },
+    { name = "lintel-event-store" },
     { name = "lintel-infrastructure" },
+    { name = "lintel-models" },
+    { name = "lintel-observability" },
+    { name = "lintel-persistence" },
+    { name = "lintel-pii" },
+    { name = "lintel-projections" },
+    { name = "lintel-repos" },
+    { name = "lintel-sandbox" },
+    { name = "lintel-slack" },
     { name = "lintel-workflows" },
+    { name = "nats-py" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "structlog" },
@@ -1520,13 +1543,25 @@ requires-dist = [
     { name = "croniter", specifier = ">=6.0.0" },
     { name = "dependency-injector", specifier = ">=4.48.3" },
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "fastapi-mcp", specifier = ">=0.4.0" },
     { name = "langgraph", specifier = ">=0.3" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0" },
     { name = "lintel-agents", editable = "packages/agents" },
     { name = "lintel-contracts", editable = "packages/contracts" },
-    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-coordination", editable = "packages/coordination" },
+    { name = "lintel-event-bus", editable = "packages/event-bus" },
+    { name = "lintel-event-store", editable = "packages/event-store" },
     { name = "lintel-infrastructure", editable = "packages/infrastructure" },
+    { name = "lintel-models", editable = "packages/models" },
+    { name = "lintel-observability", editable = "packages/observability" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "lintel-pii", editable = "packages/pii" },
+    { name = "lintel-projections", editable = "packages/projections" },
+    { name = "lintel-repos", editable = "packages/repos" },
+    { name = "lintel-sandbox", editable = "packages/sandbox" },
+    { name = "lintel-slack", editable = "packages/slack" },
     { name = "lintel-workflows", editable = "packages/workflows" },
+    { name = "nats-py", specifier = ">=2.9" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.7" },
     { name = "structlog", specifier = ">=24.4" },
@@ -1566,6 +1601,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-coordination"
+version = "0.1.0"
+source = { editable = "packages/coordination" }
+dependencies = [
+    { name = "asyncpg" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "asyncpg", specifier = ">=0.30" }]
+
+[[package]]
 name = "lintel-domain"
 version = "0.1.0"
 source = { editable = "packages/domain" }
@@ -1585,54 +1631,204 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-event-bus"
+version = "0.1.0"
+source = { editable = "packages/event-bus" }
+dependencies = [
+    { name = "lintel-contracts" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-event-store"
+version = "0.1.0"
+source = { editable = "packages/event-store" }
+dependencies = [
+    { name = "asyncpg" },
+    { name = "lintel-contracts" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", specifier = ">=0.30" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-infrastructure"
 version = "0.1.0"
 source = { editable = "packages/infrastructure" }
 dependencies = [
-    { name = "asyncpg" },
-    { name = "boto3" },
-    { name = "cryptography" },
-    { name = "fastapi-mcp" },
+    { name = "httpx" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-models"
+version = "0.1.0"
+source = { editable = "packages/models" }
+dependencies = [
     { name = "httpx" },
     { name = "lintel-contracts" },
-    { name = "lintel-domain" },
     { name = "litellm" },
-    { name = "nats-py" },
-    { name = "opentelemetry-exporter-otlp" },
-    { name = "opentelemetry-sdk" },
-    { name = "presidio-analyzer" },
-    { name = "presidio-anonymizer" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "slack-bolt" },
-    { name = "slack-sdk" },
-    { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
     { name = "tenacity" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "asyncpg", specifier = ">=0.30" },
-    { name = "boto3", specifier = ">=1.35" },
-    { name = "cryptography", specifier = ">=44.0" },
-    { name = "fastapi-mcp", specifier = ">=0.4.0" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "lintel-contracts", editable = "packages/contracts" },
-    { name = "lintel-domain", editable = "packages/domain" },
     { name = "litellm", specifier = ">=1.55" },
-    { name = "nats-py", specifier = ">=2.9" },
-    { name = "opentelemetry-exporter-otlp", specifier = ">=1.29" },
-    { name = "opentelemetry-sdk", specifier = ">=1.29" },
-    { name = "presidio-analyzer", specifier = ">=2.2" },
-    { name = "presidio-anonymizer", specifier = ">=2.2" },
-    { name = "pydantic", specifier = ">=2.10" },
-    { name = "pydantic-settings", specifier = ">=2.7" },
-    { name = "slack-bolt", specifier = ">=1.21" },
-    { name = "slack-sdk", specifier = ">=3.33" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "structlog", specifier = ">=24.4" },
     { name = "tenacity", specifier = ">=9.0" },
+]
+
+[[package]]
+name = "lintel-observability"
+version = "0.1.0"
+source = { editable = "packages/observability" }
+dependencies = [
+    { name = "lintel-contracts" },
+    { name = "opentelemetry-exporter-otlp" },
+    { name = "opentelemetry-sdk" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "opentelemetry-exporter-otlp", specifier = ">=1.29" },
+    { name = "opentelemetry-sdk", specifier = ">=1.29" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-persistence"
+version = "0.1.0"
+source = { editable = "packages/persistence" }
+dependencies = [
+    { name = "asyncpg" },
+    { name = "cryptography" },
+    { name = "lintel-contracts" },
+    { name = "pydantic" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", specifier = ">=0.30" },
+    { name = "cryptography", specifier = ">=44.0" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-pii"
+version = "0.1.0"
+source = { editable = "packages/pii" }
+dependencies = [
+    { name = "lintel-contracts" },
+    { name = "presidio-analyzer" },
+    { name = "presidio-anonymizer" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "presidio-analyzer", specifier = ">=2.2" },
+    { name = "presidio-anonymizer", specifier = ">=2.2" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-projections"
+version = "0.1.0"
+source = { editable = "packages/projections" }
+dependencies = [
+    { name = "asyncpg" },
+    { name = "lintel-contracts" },
+    { name = "lintel-event-bus" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", specifier = ">=0.30" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-event-bus", editable = "packages/event-bus" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-repos"
+version = "0.1.0"
+source = { editable = "packages/repos" }
+dependencies = [
+    { name = "httpx" },
+    { name = "lintel-contracts" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-sandbox"
+version = "0.1.0"
+source = { editable = "packages/sandbox" }
+dependencies = [
+    { name = "httpx" },
+    { name = "lintel-contracts" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-slack"
+version = "0.1.0"
+source = { editable = "packages/slack" }
+dependencies = [
+    { name = "lintel-contracts" },
+    { name = "slack-bolt" },
+    { name = "slack-sdk" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "slack-bolt", specifier = ">=1.21" },
+    { name = "slack-sdk", specifier = ">=3.33" },
+    { name = "structlog", specifier = ">=24.4" },
 ]
 
 [[package]]
@@ -2689,11 +2885,11 @@ wheels = [
 
 [[package]]
 name = "pyjwt"
-version = "2.11.0"
+version = "2.12.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5c/5a/b46fa56bf322901eee5b0454a34343cdbdae202cd421775a8ee4e42fd519/pyjwt-2.11.0.tar.gz", hash = "sha256:35f95c1f0fbe5d5ba6e43f00271c275f7a1a4db1dab27bf708073b75318ea623", size = 98019, upload-time = "2026-01-30T19:59:55.694Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/27/a3b6e5bf6ff856d2509292e95c8f57f0df7017cf5394921fc4e4ef40308a/pyjwt-2.12.1.tar.gz", hash = "sha256:c74a7a2adf861c04d002db713dd85f84beb242228e671280bf709d765b03672b", size = 102564, upload-time = "2026-03-13T19:27:37.25Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/01/c26ce75ba460d5cd503da9e13b21a33804d38c2165dec7b716d06b13010c/pyjwt-2.11.0-py3-none-any.whl", hash = "sha256:94a6bde30eb5c8e04fee991062b534071fd1439ef58d2adc9ccb823e7bcd0469", size = 28224, upload-time = "2026-01-30T19:59:54.539Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/7a/8dd906bd22e79e47397a61742927f6747fe93242ef86645ee9092e610244/pyjwt-2.12.1-py3-none-any.whl", hash = "sha256:28ca37c070cad8ba8cd9790cd940535d40274d22f80ab87f3ac6a713e6e8454c", size = 29726, upload-time = "2026-03-13T19:27:35.677Z" },
 ]
 
 [package.optional-dependencies]

@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.events import CredentialRevoked, CredentialStored
 from lintel.contracts.types import Credential, CredentialType
-from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 

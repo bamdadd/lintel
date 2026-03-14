@@ -177,7 +177,7 @@ async def run_node(body: DebugRunNodeRequest, request: Request) -> DebugRunNodeR
     # Rehydrate from a previous run if requested
     if body.continue_from_run_id and pipeline_store is not None:
         try:
-            from lintel.domain.workflow_executor import WorkflowExecutor
+            from lintel.workflows.workflow_executor import WorkflowExecutor
 
             executor = WorkflowExecutor.__new__(WorkflowExecutor)
             executor._app_state = app_state
@@ -299,7 +299,7 @@ async def _run_node_background(
             new_sandbox_id = state.get("sandbox_id")
             sandbox_mgr = config.get("configurable", {}).get("sandbox_manager")
             if new_sandbox_id and sandbox_mgr:
-                from lintel.infrastructure.models.claude_code import (
+                from lintel.models.claude_code import (
                     refresh_credentials_for_sandbox,
                 )
 

@@ -48,8 +48,8 @@ def container() -> Generator[AppContainerType]:
     from lintel.api.routes.users import InMemoryUserStore
     from lintel.api.routes.variables import InMemoryVariableStore
     from lintel.api.routes.work_items import WorkItemStore
-    from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
-    from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
+    from lintel.event_store.in_memory import InMemoryEventStore
+    from lintel.repos.repository_store import InMemoryRepositoryStore
 
     c = AppContainer()
 

@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.events import (
     PipelineRunCancelled,
     PipelineRunDeleted,
@@ -25,14 +26,13 @@ from lintel.contracts.events import (
     StageReportRegenerated,
 )
 from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
-from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
 
 def _stage_names_for_workflow(workflow_definition_id: str) -> tuple[str, ...]:
     """Look up stage names from the seed data for a given workflow."""
-    from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
+    from lintel.api.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
 
     for wf in DEFAULT_WORKFLOW_DEFINITIONS:
         if wf.definition_id == workflow_definition_id:

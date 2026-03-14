@@ -7,10 +7,10 @@ from typing import Any
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.commands import RevealPII
 from lintel.contracts.events import VaultRevealRequested
 from lintel.contracts.types import ThreadRef
-from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 

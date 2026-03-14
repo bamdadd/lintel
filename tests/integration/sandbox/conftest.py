@@ -56,7 +56,7 @@ async def sandbox(
 ) -> AsyncIterator[tuple[SandboxManager, str]]:
     """Create a real sandbox container and tear it down after the test."""
     from lintel.contracts.types import SandboxConfig, ThreadRef
-    from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+    from lintel.sandbox.docker_backend import DockerSandboxManager
 
     mgr = DockerSandboxManager()
     config = SandboxConfig(network_enabled=True)

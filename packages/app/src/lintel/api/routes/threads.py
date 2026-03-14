@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 
 from lintel.api.deps import get_thread_status_projection
-from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
+from lintel.projections.thread_status import ThreadStatusProjection
 
 router = APIRouter()
 

@@ -23,11 +23,20 @@ asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
 testpaths = [
     "packages/contracts/tests",
-    "packages/domain/tests",
     "packages/agents/tests",
-    "packages/infrastructure/tests",
     "packages/workflows/tests",
     "packages/app/tests",
+    "packages/event-store/tests",
+    "packages/event-bus/tests",
+    "packages/persistence/tests",
+    "packages/sandbox/tests",
+    "packages/pii/tests",
+    "packages/observability/tests",
+    "packages/models/tests",
+    "packages/slack/tests",
+    "packages/repos/tests",
+    "packages/coordination/tests",
+    "packages/projections/tests",
     "tests",
 ]
 
@@ -39,11 +48,21 @@ namespace_packages = true
 explicit_package_bases = true
 mypy_path = [
     "packages/contracts/src",
-    "packages/domain/src",
     "packages/agents/src",
     "packages/infrastructure/src",
     "packages/workflows/src",
     "packages/app/src",
+    "packages/event-store/src",
+    "packages/event-bus/src",
+    "packages/persistence/src",
+    "packages/sandbox/src",
+    "packages/pii/src",
+    "packages/observability/src",
+    "packages/models/src",
+    "packages/slack/src",
+    "packages/repos/src",
+    "packages/coordination/src",
+    "packages/projections/src",
 ]
 
 [[tool.mypy.overrides]]
@@ -53,9 +72,9 @@ follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
 module = [
-    "lintel.infrastructure.event_store.postgres",
-    "lintel.infrastructure.event_store.migrate",
-    "lintel.infrastructure.vault.postgres_vault",
+    "lintel.event_store.postgres",
+    "lintel.event_store.migrate",
+    "lintel.persistence.vault.postgres_vault",
 ]
 disallow_untyped_calls = false
 

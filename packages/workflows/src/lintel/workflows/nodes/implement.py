@@ -495,7 +495,7 @@ async def _implement_tdd(
     await tracker.append_log("implement", f"Lint: {lint_command[:60]}")
 
     # Install deps first
-    from lintel.domain.skills.discover_test_command import discover_test_command
+    from lintel.api.domain.skills.discover_test_command import discover_test_command
 
     try:
         discovery = await discover_test_command(sandbox_manager, sandbox_id, workspace_path)
@@ -1119,8 +1119,8 @@ async def _run_tests(
     workspace_path: str,
 ) -> tuple[str, int]:
     """Run tests in the sandbox. Returns (output, exit_code)."""
+    from lintel.api.domain.skills.discover_test_command import discover_test_command
     from lintel.contracts.types import SandboxJob
-    from lintel.domain.skills.discover_test_command import discover_test_command
     from lintel.workflows.nodes._stage_tracking import StageTracker
     from lintel.workflows.nodes.test_code import _build_changed_tests_command
 

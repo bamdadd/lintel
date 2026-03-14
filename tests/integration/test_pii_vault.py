@@ -9,7 +9,7 @@ from cryptography.fernet import Fernet
 import pytest
 
 from lintel.contracts.types import ThreadRef
-from lintel.infrastructure.vault.postgres_vault import PostgresPIIVault
+from lintel.persistence.vault.postgres_vault import PostgresPIIVault
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

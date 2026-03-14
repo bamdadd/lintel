@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from lintel.api.deps import get_event_store, get_task_backlog_projection
 from lintel.contracts.events import EVENT_TYPE_MAP, EventEnvelope
 from lintel.contracts.protocols import EventStore
-from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
+from lintel.projections.task_backlog import TaskBacklogProjection
 
 router = APIRouter()
 
@@ -85,7 +85,7 @@ async def list_all_events(
                     offset,
                 )
             total = count_row["count"]
-            from lintel.infrastructure.event_store.postgres import _row_to_event
+            from lintel.event_store.postgres import _row_to_event
 
             items = [_envelope_to_dict(_row_to_event(r)) for r in rows]
         return PaginatedEventsResponse(items=items, total=total, limit=limit, offset=offset)

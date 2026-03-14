@@ -1,0 +1,17 @@
+[project]
+name = "lintel-coordination"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.30",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/lintel/coordination"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""

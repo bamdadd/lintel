@@ -8,12 +8,12 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.events import (
     WorkflowDefinitionCreated,
     WorkflowDefinitionRemoved,
     WorkflowDefinitionUpdated,
 )
-from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -52,7 +52,7 @@ def _wf_to_dict(wf: object) -> dict[str, Any]:
 def get_workflow_defs(request: Request) -> dict[str, dict[str, Any]]:
     """Get workflow definitions store from app state."""
     if not hasattr(request.app.state, "workflow_definitions"):
-        from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
+        from lintel.api.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
 
         defs: dict[str, dict[str, Any]] = {}
         for wf in DEFAULT_WORKFLOW_DEFINITIONS:

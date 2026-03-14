@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request
 import structlog
 
 from lintel.api.deps import get_projection_engine
-from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
+from lintel.projections.engine import InMemoryProjectionEngine
 
 logger = structlog.get_logger()
 
@@ -65,7 +65,7 @@ async def refresh_claude_credentials(request: Request) -> dict[str, Any]:
 
     On macOS reads from Keychain, on Linux reads from ~/.claude/.credentials.json.
     """
-    from lintel.infrastructure.models.claude_code import (
+    from lintel.models.claude_code import (
         _inject_credentials_into_sandbox,
         _read_host_credentials,
         _validate_credentials_json,
@@ -112,7 +112,7 @@ async def claude_credentials_status(request: Request) -> dict[str, Any]:
     import json as _json
 
     from lintel.contracts.types import AIProviderType
-    from lintel.infrastructure.models.claude_code import _read_host_credentials
+    from lintel.models.claude_code import _read_host_credentials
 
     # Check if any AI provider is claude_code
     ai_store = getattr(request.app.state, "ai_provider_store", None)

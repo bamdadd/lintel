@@ -13,6 +13,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.events import (
     ArchitectureDecisionCreated,
     ArchitectureDecisionRemoved,
@@ -53,7 +54,6 @@ from lintel.contracts.types import (
     RiskLevel,
     Strategy,
 )
-from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 
@@ -960,7 +960,7 @@ async def list_regulation_templates() -> list[dict[str, Any]]:
     """List all well-known regulation templates that can be added to projects."""
     from dataclasses import asdict
 
-    from lintel.domain.compliance_seed import SEED_REGULATIONS
+    from lintel.api.domain.compliance_seed import SEED_REGULATIONS
 
     results = []
     for reg in SEED_REGULATIONS:
@@ -984,7 +984,7 @@ async def add_regulation_from_template(
     store: Annotated[ComplianceStore, Depends(get_regulation_store)],
 ) -> dict[str, Any]:
     """Add a regulation to a project from a well-known template."""
-    from lintel.domain.compliance_seed import SEED_REGULATIONS
+    from lintel.api.domain.compliance_seed import SEED_REGULATIONS
 
     template = next((r for r in SEED_REGULATIONS if r.regulation_id == body.template_id), None)
     if template is None:

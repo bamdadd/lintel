@@ -8,16 +8,33 @@ Lintel is an open-source AI collaboration infrastructure platform. It orchestrat
 
 ## Workspace Structure
 
-This is a **uv workspace monorepo** with 6 packages under `packages/`:
+This is a **uv workspace monorepo** with 16 packages under `packages/`:
+
+**Core packages:**
 
 | Package | Name | Dependencies | Description |
 |---------|------|-------------|-------------|
 | `packages/contracts/` | `lintel-contracts` | (none) | Pure domain contracts: types, commands, events, Protocol interfaces |
-| `packages/domain/` | `lintel-domain` | contracts | Domain logic, skills, chat routing, pipeline scheduling |
 | `packages/agents/` | `lintel-agents` | contracts | AI agent runtime (roles: planner, coder, reviewer, pm, designer, summarizer) |
-| `packages/infrastructure/` | `lintel-infrastructure` | contracts, domain | Concrete Protocol implementations (postgres, slack, presidio, sandbox, vault) |
 | `packages/workflows/` | `lintel-workflows` | contracts, agents | LangGraph workflow orchestration and graph nodes |
-| `packages/app/` | `lintel` | all above | FastAPI API routes, middleware, composition root |
+| `packages/app/` | `lintel` | all below | FastAPI API routes, middleware, composition root, domain logic |
+
+**Reusable library packages (each independently installable):**
+
+| Package | Name | Dependencies | Description |
+|---------|------|-------------|-------------|
+| `packages/event-store/` | `lintel-event-store` | contracts | Append-only event persistence (Postgres + in-memory) |
+| `packages/event-bus/` | `lintel-event-bus` | contracts | In-memory pub/sub event bus |
+| `packages/projections/` | `lintel-projections` | contracts, event-bus | Read-model projection engine and concrete projections |
+| `packages/persistence/` | `lintel-persistence` | contracts | Generic CRUD/dict stores, vault |
+| `packages/sandbox/` | `lintel-sandbox` | contracts | Docker-based code execution sandboxes |
+| `packages/pii/` | `lintel-pii` | contracts | PII detection/anonymization (presidio) |
+| `packages/observability/` | `lintel-observability` | contracts | OpenTelemetry tracing/metrics/logging |
+| `packages/models/` | `lintel-models` | contracts | LLM provider routing (litellm) |
+| `packages/slack/` | `lintel-slack` | contracts | Slack channel adapter |
+| `packages/repos/` | `lintel-repos` | contracts | GitHub repository provider |
+| `packages/coordination/` | `lintel-coordination` | (asyncpg only) | Database advisory locks |
+| `packages/infrastructure/` | `lintel-infrastructure` | (residual) | MCP tool client only — will be dissolved |
 
 Each package has `src/lintel/<pkg>/` source and colocated `tests/` directory. The `lintel` namespace is shared across packages via implicit namespace packages (no `__init__.py` in `src/lintel/`).
 
@@ -32,11 +49,20 @@ make install            # Install all deps (uv sync --all-extras --all-packages)
 make test               # Run all tests (pass ARGS= for extra pytest flags)
 make test-affected      # Run tests only for packages changed since BASE_REF
 make test-contracts     # Run contracts package tests
-make test-domain        # Run domain package tests
 make test-agents        # Run agents package tests
-make test-infrastructure # Run infrastructure package tests
 make test-workflows     # Run workflows package tests
 make test-app           # Run app package tests
+make test-event-store   # Run event-store package tests
+make test-event-bus     # Run event-bus package tests
+make test-persistence   # Run persistence package tests
+make test-sandbox       # Run sandbox package tests
+make test-pii           # Run PII package tests
+make test-observability # Run observability package tests
+make test-models        # Run models package tests
+make test-slack         # Run slack package tests
+make test-repos         # Run repos package tests
+make test-coordination  # Run coordination package tests
+make test-projections   # Run projections package tests
 make test-unit          # Run all package tests (parallelised)
 make test-integration   # Run integration tests only
 make test-e2e           # Run e2e tests only
@@ -58,26 +84,27 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 
 **Event-sourced CQRS** with clean architecture boundaries enforced by workspace package dependencies:
 
-- `packages/contracts/` — Pure domain contracts (no I/O). Types, commands, events, and Protocol interfaces that define service boundaries. Domain code depends only on these abstractions.
-- `packages/domain/` — Domain logic, chat routing, pipeline scheduling, skills
+- `packages/contracts/` — Pure domain contracts (no I/O). Types, commands, events, and Protocol interfaces that define service boundaries.
 - `packages/agents/` — AI agent definitions and runtime
-- `packages/workflows/` — LangGraph workflow orchestration with `workflows/nodes/` for graph nodes
-- `packages/infrastructure/` — Concrete implementations of Protocol interfaces:
-  - `channels/slack/` — Slack integration (slack-bolt)
-  - `event_store/` — PostgreSQL event store (asyncpg/SQLAlchemy async)
-  - `models/` — LLM provider abstraction (litellm)
-  - `pii/` — PII detection/anonymization (presidio)
-  - `sandbox/` — Isolated code execution environments
-  - `vault/` — Secret management (cryptography)
-  - `repos/` — Repository access
-  - `observability/` — OpenTelemetry tracing
+- `packages/workflows/` — LangGraph workflow orchestration with `workflows/nodes/` for graph nodes, workflow executor, graph compiler
+- `packages/event-store/` — Append-only event persistence (Postgres + in-memory)
+- `packages/event-bus/` — In-memory pub/sub event bus with subscriptions
+- `packages/projections/` — Read-model projection engine and concrete projections
+- `packages/persistence/` — Generic CRUD/dict stores, vault
+- `packages/sandbox/` — Docker-based isolated code execution
+- `packages/pii/` — PII detection/anonymization (presidio)
+- `packages/observability/` — OpenTelemetry tracing/metrics/logging
+- `packages/models/` — LLM provider routing (litellm)
+- `packages/slack/` — Slack channel adapter (slack-bolt)
+- `packages/repos/` — GitHub repository provider
+- `packages/coordination/` — Database advisory locks
 - `packages/app/` — FastAPI routes, middleware, dependency injection (composition root)
 
 **Key patterns:**
 - `ThreadRef` (workspace_id, channel_id, thread_ts) is the canonical workflow instance identifier
 - Commands are frozen dataclasses expressing intent; events record facts
 - `EventEnvelope` wraps all events with metadata (correlation_id, causation, timestamps)
-- Infrastructure implements Protocol interfaces — never import infrastructure from domain/contracts
+- Library packages implement Protocol interfaces from contracts — never import app from library packages
 - pytest uses `--import-mode=importlib` — do NOT add `__init__.py` to test directories
 
 ## Dependency Injection
@@ -187,7 +214,7 @@ This gives visibility into the full request lifecycle: HTTP status, chat routing
   - Unit tests for new domain logic in `packages/<pkg>/tests/`
   - Integration tests when the feature touches infrastructure in `tests/integration/`
 - **Test the package you changed, not everything:** During development, run per-package tests for fast feedback:
-  - `make test-contracts`, `make test-domain`, `make test-agents`, `make test-infrastructure`, `make test-workflows`, `make test-app`
+  - `make test-contracts`, `make test-agents`, `make test-workflows`, `make test-app`, `make test-event-store`, `make test-event-bus`, `make test-persistence`, `make test-pii`, `make test-models`, etc.
   - Or use `make test-affected BASE_REF=main` to auto-detect affected packages
   - Only run `make test-unit` or `make all` as a final check before committing
 - **Do NOT add `__init__.py` to test directories** — pytest uses `--import-mode=importlib` and `__init__.py` in tests causes namespace collisions across packages.

@@ -1,0 +1,517 @@
+"""Docker-based sandbox backend with defense-in-depth security."""
+
+from __future__ import annotations
+
+import asyncio
+import os
+from typing import TYPE_CHECKING, Any
+from uuid import uuid4
+
+from lintel.contracts.errors import (
+    SandboxExecutionError,
+    SandboxNotFoundError,
+    SandboxTimeoutError,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from lintel.contracts.types import (
+        SandboxConfig,
+        SandboxJob,
+        SandboxResult,
+        SandboxStatus,
+        ThreadRef,
+    )
+
+
+class DockerSandboxManager:
+    """Implements SandboxManager protocol using Docker containers."""
+
+    def __init__(self) -> None:
+        self._containers: dict[str, Any] = {}
+        self._client: Any | None = None
+
+    def _get_client(self) -> Any:  # noqa: ANN401
+        if self._client is None:
+            import docker  # type: ignore[import-untyped]
+
+            self._client = docker.from_env()
+        return self._client
+
+    def _get_container(self, sandbox_id: str) -> Any:  # noqa: ANN401
+        container = self._containers.get(sandbox_id)
+        if container is None:
+            # Recovery: look up by label in Docker (survives server restarts)
+            container = self._recover_container(sandbox_id)
+        if container is None:
+            raise SandboxNotFoundError(sandbox_id)
+        return container
+
+    def _recover_container(self, sandbox_id: str) -> Any | None:  # noqa: ANN401
+        """Try to find a running container by its lintel.sandbox_id label."""
+        import structlog
+
+        log = structlog.get_logger()
+        client = self._get_client()
+        containers = client.containers.list(
+            all=True,
+            filters={"label": f"lintel.sandbox_id={sandbox_id}"},
+        )
+        if containers:
+            container = containers[0]
+            self._containers[sandbox_id] = container
+            log.info(
+                "sandbox_recovered_from_docker",
+                sandbox_id=sandbox_id[:12],
+                container_id=container.short_id,
+            )
+            return container
+        log.warning("sandbox_recovery_failed", sandbox_id=sandbox_id[:12])
+        return None
+
+    async def create(
+        self,
+        config: SandboxConfig,
+        thread_ref: ThreadRef,
+    ) -> str:
+        sandbox_id = str(uuid4())
+        client = self._get_client()
+
+        environment = dict(config.environment) if config.environment else {}
+
+        try:
+            await asyncio.to_thread(client.images.get, config.image)
+        except Exception:
+            await asyncio.to_thread(client.images.pull, config.image)
+
+        create_kwargs: dict[str, Any] = {
+            "image": config.image,
+            "command": "sleep infinity",
+            "detach": True,
+            "cap_drop": ["ALL"],
+            "security_opt": ["no-new-privileges:true"],
+            "read_only": False,
+            "network_mode": "bridge" if config.network_enabled else "none",
+            "mem_limit": config.memory_limit,
+            "nano_cpus": config.cpu_quota * 10000,
+            "cpuset_cpus": f"0-{max(0, config.cpu_quota // 100000 - 1)}",
+            "pids_limit": 256,
+            "tmpfs": {
+                "/tmp": "size=200m,exec,uid=1000,gid=1000",
+            },
+            "user": "vscode",
+            "environment": environment,
+            "labels": {
+                "lintel.sandbox_id": sandbox_id,
+                "lintel.thread_ref": thread_ref.stream_id,
+                "lintel.image": config.image,
+                "lintel.network_enabled": str(config.network_enabled),
+                "lintel.workspace_id": thread_ref.workspace_id,
+                "lintel.channel_id": thread_ref.channel_id,
+            },
+        }
+
+        # Workspace volume (disk-backed, not tmpfs)
+        import docker as docker_lib
+
+        workspace_vol = f"lintel-workspace-{sandbox_id}"
+        create_kwargs.setdefault("mounts", []).append(
+            docker_lib.types.Mount(
+                target="/workspace",
+                source=workspace_vol,
+                type="volume",
+                read_only=False,
+            )
+        )
+
+        # Bind mounts (e.g. ~/.claude for Claude Code credentials)
+        if config.mounts:
+            create_kwargs["mounts"].extend(
+                docker_lib.types.Mount(
+                    target=target,
+                    source=source,
+                    type=mount_type,
+                    read_only=True,
+                )
+                for source, target, mount_type in config.mounts
+            )
+            # cap_drop=ALL removes DAC_READ_SEARCH, which blocks reading bind mounts
+            create_kwargs["cap_add"] = ["DAC_READ_SEARCH"]
+
+        # Ensure DNS works in bridge mode (Docker Desktop may not propagate host DNS)
+        if config.network_enabled:
+            create_kwargs["dns"] = ["8.8.8.8", "8.8.4.4"]
+
+        container = await asyncio.to_thread(
+            client.containers.create,
+            **create_kwargs,
+        )
+        try:
+            await asyncio.to_thread(container.start)
+            # Fix ownership on the Docker volume (created as root, container runs as vscode)
+            chown_cmd = "chown -R vscode:vscode /workspace"
+            await asyncio.to_thread(container.exec_run, chown_cmd, user="root")
+        except Exception:
+            # Clean up the container and volume on failure to avoid zombies
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                await asyncio.to_thread(container.remove, force=True)
+            with contextlib.suppress(Exception):
+                vol = await asyncio.to_thread(client.volumes.get, f"lintel-workspace-{sandbox_id}")
+                await asyncio.to_thread(vol.remove, force=True)
+            raise
+        self._containers[sandbox_id] = container
+
+        return sandbox_id
+
+    async def execute(
+        self,
+        sandbox_id: str,
+        job: SandboxJob,
+    ) -> SandboxResult:
+        from lintel.contracts.types import SandboxResult
+
+        container = self._get_container(sandbox_id)
+
+        async def _run() -> SandboxResult:
+            exec_result = await asyncio.to_thread(
+                container.exec_run,
+                cmd=["/bin/sh", "-c", job.command],
+                workdir=job.workdir or "/workspace",
+                demux=True,
+            )
+            stdout_bytes, stderr_bytes = exec_result.output
+            return SandboxResult(
+                exit_code=exec_result.exit_code,
+                stdout=(stdout_bytes or b"").decode("utf-8", errors="replace"),
+                stderr=(stderr_bytes or b"").decode("utf-8", errors="replace"),
+            )
+
+        try:
+            return await asyncio.wait_for(_run(), timeout=job.timeout_seconds)
+        except TimeoutError as exc:
+            raise SandboxTimeoutError(
+                f"Command timed out after {job.timeout_seconds}s: {job.command}"
+            ) from exc
+        except Exception as exc:
+            err_msg = str(exc)
+            if "is not running" in err_msg or "is restarting" in err_msg:
+                raise SandboxExecutionError(
+                    f"Sandbox {sandbox_id[:12]} is not running: {err_msg}"
+                ) from exc
+            raise
+
+    async def execute_stream(
+        self,
+        sandbox_id: str,
+        job: SandboxJob,
+    ) -> AsyncIterator[str]:
+        """Execute a command and yield stdout/stderr lines as they arrive.
+
+        Streams output using the Docker low-level API exec_create/exec_start.
+        Yields complete lines (stripping empty ones). The final item is a
+        sentinel ``__EXIT:<code>__`` so callers can detect success/failure.
+
+        Raises SandboxTimeoutError if a chunk read exceeds job.timeout_seconds.
+        """
+        container = self._get_container(sandbox_id)
+        api = container.client.api
+
+        exec_id = await asyncio.to_thread(
+            api.exec_create,
+            container.id,
+            ["/bin/sh", "-c", job.command],
+            workdir=job.workdir or "/workspace",
+        )
+        output_gen = await asyncio.to_thread(
+            api.exec_start,
+            exec_id,
+            stream=True,
+            demux=True,
+        )
+
+        async def _stream() -> AsyncIterator[str]:
+            stdout_buf = ""
+            stderr_buf = ""
+
+            def _next_chunk() -> tuple[bytes | None, bytes | None] | None:
+                try:
+                    return next(output_gen)  # type: ignore[no-any-return]
+                except StopIteration:
+                    return None
+
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(
+                        asyncio.to_thread(_next_chunk),
+                        timeout=job.timeout_seconds,
+                    )
+                except TimeoutError as exc:
+                    raise SandboxTimeoutError(
+                        f"Command timed out after {job.timeout_seconds}s: {job.command}"
+                    ) from exc
+
+                if chunk is None:
+                    break
+
+                stdout_bytes, stderr_bytes = chunk
+
+                if stdout_bytes:
+                    stdout_buf += stdout_bytes.decode("utf-8", errors="replace")
+                if stderr_bytes:
+                    stderr_buf += stderr_bytes.decode("utf-8", errors="replace")
+
+                # Yield complete lines from stdout buffer
+                while "\n" in stdout_buf:
+                    line, stdout_buf = stdout_buf.split("\n", 1)
+                    if line.strip():
+                        yield line
+
+                # Yield complete lines from stderr buffer
+                while "\n" in stderr_buf:
+                    line, stderr_buf = stderr_buf.split("\n", 1)
+                    if line.strip():
+                        yield line
+
+            # Flush remaining buffers
+            if stdout_buf.strip():
+                yield stdout_buf
+            if stderr_buf.strip():
+                yield stderr_buf
+
+            # Emit exit code sentinel
+            inspect = await asyncio.to_thread(api.exec_inspect, exec_id)
+            exit_code = inspect.get("ExitCode", -1)
+            yield f"__EXIT:{exit_code}__"
+
+        return _stream()
+
+    async def read_file(self, sandbox_id: str, path: str) -> str:
+        # Use cat via execute — more reliable than get_archive on mounted volumes
+        from lintel.contracts.types import SandboxJob
+
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(command=f"cat {path}", timeout_seconds=10),
+        )
+        if result.exit_code != 0:
+            raise SandboxExecutionError(f"Failed to read {path}: {result.stderr}")
+        return result.stdout
+
+    async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
+        import io
+        import tarfile
+
+        from lintel.contracts.types import SandboxJob
+
+        dest_dir = os.path.dirname(path) or "/"
+        await self.execute(
+            sandbox_id,
+            SandboxJob(command=f"mkdir -p {dest_dir}", timeout_seconds=10),
+        )
+
+        # Use Docker put_archive API to write files of any size (avoids ARG_MAX
+        # shell limits that break exec-based writes for files > ~100KB).
+        container = self._get_container(sandbox_id)
+        file_bytes = content.encode("utf-8")
+        filename = os.path.basename(path)
+
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tar:
+            info = tarfile.TarInfo(name=filename)
+            info.size = len(file_bytes)
+            info.uid = 1000
+            info.gid = 1000
+            tar.addfile(info, io.BytesIO(file_bytes))
+        buf.seek(0)
+
+        await asyncio.to_thread(container.put_archive, dest_dir, buf)
+
+    async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
+        from lintel.contracts.types import SandboxJob
+
+        result = await self.execute(
+            sandbox_id, SandboxJob(command=f"ls -1 {path}", timeout_seconds=10)
+        )
+        if result.exit_code != 0:
+            raise SandboxExecutionError(f"Failed to list {path}: {result.stderr}")
+        return [f for f in result.stdout.strip().split("\n") if f]
+
+    async def get_status(self, sandbox_id: str) -> SandboxStatus:
+        from lintel.contracts.types import SandboxStatus
+
+        container = self._get_container(sandbox_id)
+        await asyncio.to_thread(container.reload)
+        state: str = container.status
+        status_map: dict[str, SandboxStatus] = {
+            "created": SandboxStatus.CREATING,
+            "running": SandboxStatus.RUNNING,
+            "paused": SandboxStatus.RUNNING,
+            "restarting": SandboxStatus.RUNNING,
+            "removing": SandboxStatus.DESTROYED,
+            "exited": SandboxStatus.COMPLETED,
+            "dead": SandboxStatus.FAILED,
+        }
+        return status_map.get(state, SandboxStatus.FAILED)
+
+    async def get_logs(self, sandbox_id: str, tail: int = 200) -> str:
+        container = self._get_container(sandbox_id)
+        raw: bytes = await asyncio.to_thread(
+            container.logs,
+            stdout=True,
+            stderr=True,
+            tail=tail,
+        )
+        return raw.decode("utf-8", errors="replace")
+
+    async def collect_artifacts(
+        self, sandbox_id: str, workdir: str = "/workspace"
+    ) -> dict[str, Any]:
+        from lintel.contracts.types import SandboxJob
+
+        # Try to find git repos under the workdir
+        find_result = await self.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"find {workdir} -name .git -type d -maxdepth 3 2>/dev/null | head -1",
+                timeout_seconds=10,
+            ),
+        )
+        git_dir = find_result.stdout.strip()
+        repo_dir = git_dir.rsplit("/.git", 1)[0] if git_dir else workdir
+
+        # Stage all changes (including new untracked files) so they appear
+        # in the diff.  `git add -N` marks new files as "intent to add"
+        # without staging content, but `git add -A` followed by
+        # `git diff --cached` is more reliable for capturing everything.
+        await self.execute(
+            sandbox_id,
+            SandboxJob(command="git add -A", workdir=repo_dir, timeout_seconds=10),
+        )
+
+        # Exclude noisy lock files from the diff
+        exclude = "':!*.lock' ':!package-lock.json' ':!uv.lock' ':!bun.lock'"
+
+        # Show all changes vs the base branch (committed + staged).
+        # After git add -A above, all changes are staged, so we diff
+        # against origin/main to capture everything in one shot.
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "git diff --cached origin/main"
+                    f" -- . {exclude} 2>/dev/null"
+                    " || git diff --cached main"
+                    f" -- . {exclude} 2>/dev/null"
+                    f" || git diff --cached -- . {exclude}"
+                ),
+                workdir=repo_dir,
+            ),
+        )
+        return {"type": "diff", "content": result.stdout, "exit_code": result.exit_code}
+
+    async def reconnect_network(self, sandbox_id: str) -> None:
+        """Reconnect the sandbox container to the bridge network."""
+        container = self._get_container(sandbox_id)
+        client = self._get_client()
+        await asyncio.to_thread(container.reload)
+        networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
+        if "bridge" not in networks:
+            bridge = await asyncio.to_thread(client.networks.get, "bridge")
+            await asyncio.to_thread(bridge.connect, container)
+
+    async def disconnect_network(self, sandbox_id: str) -> None:
+        """Disconnect the sandbox container from all networks."""
+        container = self._get_container(sandbox_id)
+        client = self._get_client()
+        await asyncio.to_thread(container.reload)
+        networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
+        for net_name in networks:
+            if net_name == "none":
+                continue
+            network = await asyncio.to_thread(client.networks.get, net_name)
+            await asyncio.to_thread(network.disconnect, container)
+
+    async def destroy(self, sandbox_id: str) -> None:
+        container = self._containers.pop(sandbox_id, None)
+        if container is None:
+            # Try to find by label (e.g. after server restart)
+            try:
+                client = self._get_client()
+                matches = await asyncio.to_thread(
+                    client.containers.list,
+                    filters={"label": f"lintel.sandbox_id={sandbox_id}"},
+                    all=True,
+                )
+                if matches:
+                    container = matches[0]
+            except Exception:
+                # Docker not available (e.g. inside a sandbox container) — nothing to destroy
+                return
+        if container:
+            await asyncio.to_thread(container.remove, force=True)
+        # Clean up the disk-backed workspace volume
+        try:
+            client = self._get_client()
+            vol = await asyncio.to_thread(client.volumes.get, f"lintel-workspace-{sandbox_id}")
+            await asyncio.to_thread(vol.remove, force=True)
+        except Exception:
+            pass  # Volume may not exist or Docker unavailable
+
+    async def recover_containers(self) -> list[dict[str, Any]]:
+        """Re-attach to containers from previous runs using Docker labels.
+
+        Returns a list of metadata dicts for each recovered container,
+        reconstructed from Docker labels.
+        """
+        client = self._get_client()
+        containers = await asyncio.to_thread(
+            client.containers.list,
+            filters={"label": "lintel.sandbox_id"},
+            all=True,
+        )
+        recovered: list[dict[str, Any]] = []
+        for container in containers:
+            labels = container.labels
+            sandbox_id = labels.get("lintel.sandbox_id", "")
+            if sandbox_id and sandbox_id not in self._containers:
+                status: str = container.status
+                if status == "created":
+                    # Container was never started — try to start it
+                    import contextlib
+
+                    import structlog
+
+                    _logger = structlog.get_logger()
+                    try:
+                        await asyncio.to_thread(container.start)
+                        chown_cmd = "chown -R vscode:vscode /workspace"
+                        await asyncio.to_thread(container.exec_run, chown_cmd, user="root")
+                        status = "running"
+                    except Exception:
+                        _logger.warning(
+                            "recover_created_container_failed",
+                            sandbox_id=sandbox_id[:12],
+                        )
+                        with contextlib.suppress(Exception):
+                            await asyncio.to_thread(container.remove, force=True)
+                        continue
+                if status in ("running", "paused", "restarting"):
+                    self._containers[sandbox_id] = container
+                    recovered.append(
+                        {
+                            "sandbox_id": sandbox_id,
+                            "image": labels.get("lintel.image", ""),
+                            "network_enabled": labels.get("lintel.network_enabled") == "True",
+                            "workspace_id": labels.get("lintel.workspace_id", ""),
+                            "channel_id": labels.get("lintel.channel_id", ""),
+                            "status": status,
+                            "container_id": container.short_id,
+                        }
+                    )
+                else:
+                    # Dead/exited containers — clean up
+                    await asyncio.to_thread(container.remove, force=True)
+        return recovered

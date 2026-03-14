@@ -23,6 +23,8 @@ if TYPE_CHECKING:
         SandboxJob,
         SandboxResult,
         SandboxStatus,
+        SkillDescriptor,
+        SkillResult,
         ThreadRef,
     )
 
@@ -393,6 +395,19 @@ class StepMetricsRecorder(Protocol):
         model_id: str,
         tokens: int,
     ) -> None: ...
+
+
+class Skill(Protocol):
+    """A single executable skill."""
+
+    @property
+    def descriptor(self) -> SkillDescriptor: ...
+
+    async def execute(
+        self,
+        inputs: dict[str, Any],
+        context: dict[str, Any],
+    ) -> SkillResult: ...
 
 
 class SkillRegistry(Protocol):

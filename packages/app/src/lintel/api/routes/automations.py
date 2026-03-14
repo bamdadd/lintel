@@ -9,6 +9,7 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from lintel.api.container import AppContainer
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.api.schemas.automations import CreateAutomationRequest, UpdateAutomationRequest
 from lintel.contracts.events import (
     AutomationCreated,
@@ -19,7 +20,6 @@ from lintel.contracts.events import (
     AutomationUpdated,
 )
 from lintel.contracts.types import AutomationDefinition, PipelineRun
-from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 

@@ -1,0 +1,25 @@
+[project]
+name = "lintel-persistence"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "lintel-contracts",
+    "structlog>=24.4",
+    "asyncpg>=0.30",
+    "sqlalchemy[asyncio]>=2.0",
+    "pydantic>=2.10",
+    "cryptography>=44.0",
+]
+
+[tool.uv.sources]
+lintel-contracts = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/lintel/persistence"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""

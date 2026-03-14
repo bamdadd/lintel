@@ -7,13 +7,13 @@ New route handlers should prefer ``Depends(Provide[AppContainer.X])`` with
 
 from fastapi import Request
 
+from lintel.api.domain.command_dispatcher import InMemoryCommandDispatcher
 from lintel.contracts.protocols import EventStore
-from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
-from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
-from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
-from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
-from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
-from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
+from lintel.projections.engine import InMemoryProjectionEngine
+from lintel.projections.quality_metrics import QualityMetricsProjection
+from lintel.projections.task_backlog import TaskBacklogProjection
+from lintel.projections.thread_status import ThreadStatusProjection
+from lintel.repos.repository_store import InMemoryRepositoryStore
 
 
 def get_quality_metrics_projection(request: Request) -> QualityMetricsProjection:

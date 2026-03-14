@@ -1,4 +1,4 @@
-.PHONY: help install test test-affected test-contracts test-domain test-agents test-infrastructure test-workflows test-app test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
+.PHONY: help install test test-affected test-contracts test-agents test-workflows test-app test-event-store test-event-bus test-persistence test-sandbox test-pii test-observability test-models test-slack test-repos test-coordination test-projections test-unit test-postgres test-integration test-e2e lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -21,14 +21,8 @@ test-affected: ## Run tests only for packages affected since BASE_REF (default: 
 test-contracts: ## Run contracts package tests
 	uv run --package lintel-contracts pytest packages/contracts/tests/ -v
 
-test-domain: ## Run domain package tests
-	uv run --package lintel-domain pytest packages/domain/tests/ -v
-
 test-agents: ## Run agents package tests
 	uv run --package lintel-agents pytest packages/agents/tests/ -v
-
-test-infrastructure: ## Run infrastructure package tests
-	uv run --package lintel-infrastructure pytest packages/infrastructure/tests/ -v
 
 test-workflows: ## Run workflows package tests
 	uv run --package lintel-workflows pytest packages/workflows/tests/ -v
@@ -36,11 +30,41 @@ test-workflows: ## Run workflows package tests
 test-app: ## Run app package tests (in-memory only)
 	uv run --package lintel pytest packages/app/tests/ -v
 
+test-event-store: ## Run event-store package tests
+	uv run pytest packages/event-store/tests/ -v
+
+test-event-bus: ## Run event-bus package tests
+	uv run pytest packages/event-bus/tests/ -v
+
+test-persistence: ## Run persistence package tests
+	uv run pytest packages/persistence/tests/ -v
+
+test-pii: ## Run PII package tests
+	uv run pytest packages/pii/tests/ -v
+
+test-observability: ## Run observability package tests
+	uv run pytest packages/observability/tests/ -v
+
+test-models: ## Run models package tests
+	uv run pytest packages/models/tests/ -v
+
+test-slack: ## Run slack package tests
+	uv run pytest packages/slack/tests/ -v
+
+test-repos: ## Run repos package tests
+	uv run pytest packages/repos/tests/ -v
+
+test-coordination: ## Run coordination package tests
+	uv run pytest packages/coordination/tests/ -v
+
+test-projections: ## Run projections package tests
+	uv run pytest packages/projections/tests/ -v
+
 test-unit: ## Run unit tests (in-memory only, parallelised)
-	uv run pytest packages/contracts/tests/ packages/domain/tests/ packages/agents/tests/ packages/workflows/tests/ packages/infrastructure/tests/ packages/app/tests/ -v -n auto
+	uv run pytest packages/contracts/tests/ packages/agents/tests/ packages/workflows/tests/ packages/app/tests/ packages/event-store/tests/ packages/event-bus/tests/ packages/persistence/tests/ packages/sandbox/tests/ packages/pii/tests/ packages/observability/tests/ packages/models/tests/ packages/slack/tests/ packages/repos/tests/ packages/coordination/tests/ packages/projections/tests/ -v -n auto
 
 test-postgres: ## Run unit tests against both memory and postgres backends
-	uv run pytest packages/contracts/tests/ packages/domain/tests/ packages/agents/tests/ packages/workflows/tests/ packages/infrastructure/tests/ packages/app/tests/ -v --run-postgres
+	uv run pytest packages/contracts/tests/ packages/agents/tests/ packages/workflows/tests/ packages/app/tests/ packages/event-store/tests/ packages/event-bus/tests/ packages/persistence/tests/ packages/sandbox/tests/ packages/pii/tests/ packages/observability/tests/ packages/models/tests/ packages/slack/tests/ packages/repos/tests/ packages/coordination/tests/ packages/projections/tests/ -v --run-postgres
 
 test-integration: migrate ## Run integration tests (requires postgres + migrations)
 	uv run pytest tests/integration -v
@@ -56,7 +80,7 @@ lint: ## Check linting and formatting
 	uv run ruff format --check packages/ tests/
 
 typecheck: ## Run mypy strict type checking
-	uv run mypy -p lintel.contracts -p lintel.domain -p lintel.agents -p lintel.infrastructure -p lintel.workflows -p lintel.api
+	uv run mypy -p lintel.contracts -p lintel.agents -p lintel.workflows -p lintel.api -p lintel.event_store -p lintel.event_bus -p lintel.persistence -p lintel.sandbox -p lintel.pii -p lintel.observability -p lintel.models -p lintel.slack -p lintel.repos -p lintel.coordination -p lintel.projections
 
 format: ## Auto-fix formatting and lint
 	uv run ruff format packages/ tests/
@@ -82,7 +106,7 @@ serve-db: db-up migrate ## Start dev server with PostgreSQL storage
 
 migrate: ## Run event store migrations
 	LINTEL_DB_DSN=$${LINTEL_DB_DSN:-postgresql://lintel:lintel@localhost:5432/lintel} \
-		uv run python -m lintel.infrastructure.event_store.migrate
+		uv run python -m lintel.event_store.migrate
 
 all: lint typecheck test-unit test-postgres test-integration ui-build ## Run lint, typecheck, tests, and UI build
 

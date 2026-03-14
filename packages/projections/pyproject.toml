@@ -1,0 +1,24 @@
+[project]
+name = "lintel-projections"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "lintel-contracts",
+    "lintel-event-bus",
+    "structlog>=24.4",
+    "asyncpg>=0.30",
+]
+
+[tool.uv.sources]
+lintel-contracts = { workspace = true }
+lintel-event-bus = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/lintel/projections"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""

@@ -305,7 +305,7 @@ async def _create_pull_request(
             if hasattr(cred_type, "value"):
                 cred_type = cred_type.value
             if cred_type == "github_token" and secret:
-                from lintel.infrastructure.repos.github_provider import (
+                from lintel.repos.github_provider import (
                     GitHubRepoProvider,
                 )
 

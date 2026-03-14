@@ -83,23 +83,23 @@ from lintel.api.routes.triggers import InMemoryTriggerStore
 from lintel.api.routes.users import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
 from lintel.api.routes.work_items import WorkItemStore
-from lintel.infrastructure.event_bus.in_memory import InMemoryEventBus
-from lintel.infrastructure.event_store.in_memory import InMemoryEventStore
-from lintel.infrastructure.projections.audit import AuditProjection
-from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
-from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
-from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
-from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
-from lintel.infrastructure.repos.github_provider import GitHubRepoProvider
-from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
-from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+from lintel.event_bus.in_memory import InMemoryEventBus
+from lintel.event_store.in_memory import InMemoryEventStore
+from lintel.projections.audit import AuditProjection
+from lintel.projections.engine import InMemoryProjectionEngine
+from lintel.projections.quality_metrics import QualityMetricsProjection
+from lintel.projections.task_backlog import TaskBacklogProjection
+from lintel.projections.thread_status import ThreadStatusProjection
+from lintel.repos.github_provider import GitHubRepoProvider
+from lintel.repos.repository_store import InMemoryRepositoryStore
+from lintel.sandbox.docker_backend import DockerSandboxManager
 
 
 async def _seed_defaults(stores: dict[str, Any]) -> None:
     """Seed built-in agent definitions and skills into stores."""
     import dataclasses
 
-    from lintel.domain.seed import DEFAULT_AGENTS, DEFAULT_SKILLS
+    from lintel.api.domain.seed import DEFAULT_AGENTS, DEFAULT_SKILLS
 
     agent_store = stores["agent_definition_store"]
     for agent in DEFAULT_AGENTS:
@@ -200,11 +200,11 @@ def _dc_to_dict(obj: Any) -> dict[str, Any]:  # noqa: ANN401
 
 def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     """Create all Postgres-backed stores."""
-    from lintel.infrastructure.event_store.postgres import PostgresEventStore
-    from lintel.infrastructure.persistence.dict_store import (
+    from lintel.event_store.postgres import PostgresEventStore
+    from lintel.persistence.dict_store import (
         PostgresComplianceStore as PgCompliance,
     )
-    from lintel.infrastructure.persistence.stores import (
+    from lintel.persistence.stores import (
         PostgresAgentDefinitionStore,
         PostgresAIProviderStore,
         PostgresApprovalRequestStore,
@@ -231,10 +231,10 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         PostgresVariableStore,
         PostgresWorkItemStore,
     )
-    from lintel.infrastructure.persistence.stores import (
+    from lintel.persistence.stores import (
         PostgresBoardStore as _PgBoardStore,
     )
-    from lintel.infrastructure.persistence.stores import (
+    from lintel.persistence.stores import (
         PostgresTagStore as _PgTagStore,
     )
 
@@ -369,14 +369,14 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Configure structured logging so structlog output appears in console
-    from lintel.infrastructure.observability.logging import configure_logging
+    from lintel.observability.logging import configure_logging
 
     log_level = os.environ.get("LINTEL_LOG_LEVEL", "INFO").upper()
     configure_logging(log_level=log_level, log_format="console")
 
     # Configure OpenTelemetry tracing and metrics
-    from lintel.infrastructure.observability.metrics import configure_metrics
-    from lintel.infrastructure.observability.tracing import configure_tracing
+    from lintel.observability.metrics import configure_metrics
+    from lintel.observability.tracing import configure_tracing
 
     otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     configure_tracing(otel_endpoint=otel_endpoint)
@@ -408,10 +408,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         setattr(app.state, name, store)
 
     # Wire command dispatcher
-    from lintel.domain.chat_router import ChatRouter
-    from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
-    from lintel.domain.workflow_executor import WorkflowExecutor
-    from lintel.infrastructure.models.router import DefaultModelRouter
+    from lintel.api.domain.chat_router import ChatRouter
+    from lintel.api.domain.command_dispatcher import InMemoryCommandDispatcher
+    from lintel.models.router import DefaultModelRouter
+    from lintel.workflows.workflow_executor import WorkflowExecutor
 
     dispatcher = InMemoryCommandDispatcher()
     event_store = stores["event_store"]
@@ -457,7 +457,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             interrupt_before=approval_nodes or None,
         )
 
-    from lintel.infrastructure.observability.step_metrics import OtelStepMetricsRecorder
+    from lintel.observability.step_metrics import OtelStepMetricsRecorder
 
     executor = WorkflowExecutor(
         event_store=event_store,
@@ -558,7 +558,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Start automation scheduler
     import asyncio
 
-    from lintel.domain.automation_scheduler import AutomationScheduler
+    from lintel.api.domain.automation_scheduler import AutomationScheduler
 
     async def _fire_automation(
         auto: Any,  # noqa: ANN401

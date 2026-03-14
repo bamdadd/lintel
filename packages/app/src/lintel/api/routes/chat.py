@@ -16,9 +16,10 @@ import structlog
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lintel.domain.chat_router import ChatRouterResult
+    from lintel.api.domain.chat_router import ChatRouterResult
 
 
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.commands import StartWorkflow
 from lintel.contracts.events import (
     ConversationCreated,
@@ -38,7 +39,6 @@ from lintel.contracts.types import (
     WorkItemStatus,
     WorkItemType,
 )
-from lintel.domain.event_dispatcher import dispatch_event
 
 logger = structlog.get_logger()
 

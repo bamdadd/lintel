@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.api.routes.ai_providers import (
     InMemoryAIProviderStore,  # noqa: TC001
 )
@@ -22,7 +23,6 @@ from lintel.contracts.events import (
     ModelUpdated,
 )
 from lintel.contracts.types import Model, ModelAssignment, ModelAssignmentContext
-from lintel.domain.event_dispatcher import dispatch_event
 
 router = APIRouter()
 

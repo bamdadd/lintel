@@ -4,10 +4,20 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "lintel-contracts",
-    "lintel-domain",
     "lintel-agents",
     "lintel-infrastructure",
     "lintel-workflows",
+    "lintel-event-store",
+    "lintel-event-bus",
+    "lintel-persistence",
+    "lintel-sandbox",
+    "lintel-pii",
+    "lintel-observability",
+    "lintel-models",
+    "lintel-slack",
+    "lintel-repos",
+    "lintel-coordination",
+    "lintel-projections",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -17,14 +27,26 @@ dependencies = [
     "structlog>=24.4",
     "dependency-injector>=4.48.3",
     "croniter>=6.0.0",
+    "fastapi-mcp>=0.4.0",
+    "nats-py>=2.9",
 ]
 
 [tool.uv.sources]
 lintel-contracts = { workspace = true }
-lintel-domain = { workspace = true }
 lintel-agents = { workspace = true }
 lintel-infrastructure = { workspace = true }
 lintel-workflows = { workspace = true }
+lintel-event-store = { workspace = true }
+lintel-event-bus = { workspace = true }
+lintel-persistence = { workspace = true }
+lintel-sandbox = { workspace = true }
+lintel-pii = { workspace = true }
+lintel-observability = { workspace = true }
+lintel-models = { workspace = true }
+lintel-slack = { workspace = true }
+lintel-repos = { workspace = true }
+lintel-coordination = { workspace = true }
+lintel-projections = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

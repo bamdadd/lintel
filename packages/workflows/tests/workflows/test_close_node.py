@@ -120,7 +120,7 @@ async def test_close_creates_pr_with_github_token() -> None:
     state = _make_state(credential_ids=["cred-1"])
 
     with patch(
-        "lintel.infrastructure.repos.github_provider.GitHubRepoProvider",
+        "lintel.repos.github_provider.GitHubRepoProvider",
         return_value=mock_provider,
     ):
         result = await close_workflow(state, config)
@@ -167,7 +167,7 @@ async def test_close_creates_pr_with_review_comment() -> None:
     )
 
     with patch(
-        "lintel.infrastructure.repos.github_provider.GitHubRepoProvider",
+        "lintel.repos.github_provider.GitHubRepoProvider",
         return_value=mock_provider,
     ):
         result = await close_workflow(state, config)
@@ -201,7 +201,7 @@ async def test_close_injects_token_into_remote_url() -> None:
     state = _make_state(credential_ids=["cred-1"])
 
     with patch(
-        "lintel.infrastructure.repos.github_provider.GitHubRepoProvider",
+        "lintel.repos.github_provider.GitHubRepoProvider",
         return_value=mock_provider,
     ):
         await close_workflow(state, config)

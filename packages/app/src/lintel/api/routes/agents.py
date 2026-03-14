@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.commands import ScheduleAgentStep
 from lintel.contracts.data_models import AgentDefinitionData
 from lintel.contracts.events import (
@@ -17,7 +18,6 @@ from lintel.contracts.events import (
     AgentDefinitionUpdated,
 )
 from lintel.contracts.types import AgentRole, ThreadRef
-from lintel.domain.event_dispatcher import dispatch_event
 
 _VALID_ROLES = frozenset(role.value for role in AgentRole)
 

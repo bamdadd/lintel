@@ -9,10 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
+from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.contracts.events import RepositoryRegistered, RepositoryRemoved, RepositoryUpdated
 from lintel.contracts.types import Repository, RepoStatus
-from lintel.domain.event_dispatcher import dispatch_event
-from lintel.infrastructure.repos.repository_store import InMemoryRepositoryStore
+from lintel.repos.repository_store import InMemoryRepositoryStore
 
 router = APIRouter()
 
