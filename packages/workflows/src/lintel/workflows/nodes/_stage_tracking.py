@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -10,6 +11,9 @@ if TYPE_CHECKING:
 import structlog
 
 logger = structlog.get_logger()
+
+StageSuccessHook = Callable[[str, dict[str, object] | None], Awaitable[None]]
+StageFailureHook = Callable[[str, str], Awaitable[None]]
 
 # Map LangGraph node names to pipeline stage names.
 NODE_TO_STAGE: dict[str, str] = {
@@ -50,11 +54,20 @@ def _pattern_matches(pattern: str, event: str) -> bool:
 class StageTracker:
     """Encapsulates pipeline stage lifecycle operations for a LangGraph node run."""
 
-    def __init__(self, config: Mapping[str, Any], state: Mapping[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        config: Mapping[str, Any],
+        state: Mapping[str, Any] | None = None,
+        *,
+        on_success: StageSuccessHook | None = None,
+        on_failure: StageFailureHook | None = None,
+    ) -> None:
         self._config = config
         self._state = state
         self._run_id: str | None = None
         self._pipeline_store: Any | None = _SENTINEL
+        self._on_success = on_success
+        self._on_failure = on_failure
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -170,6 +183,17 @@ class StageTracker:
         status = "failed" if error else "succeeded"
         await self._update_stage(stage_name, status, outputs=outputs, error=error)
         await self._dispatch_notifications(stage_name, status)
+        # Lifecycle hooks
+        if error and self._on_failure is not None:
+            try:
+                await self._on_failure(node_name, error)
+            except Exception:
+                logger.warning("on_failure_hook_error", node_name=node_name)
+        elif not error and self._on_success is not None:
+            try:
+                await self._on_success(node_name, outputs)
+            except Exception:
+                logger.warning("on_success_hook_error", node_name=node_name)
 
     async def log_llm_context(
         self,
