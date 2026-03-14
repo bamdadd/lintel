@@ -197,6 +197,9 @@ def _dc_to_dict(obj: Any) -> dict[str, Any]:  # noqa: ANN401
 def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     """Create all Postgres-backed stores."""
     from lintel.infrastructure.event_store.postgres import PostgresEventStore
+    from lintel.infrastructure.persistence.dict_store import (
+        PostgresComplianceStore as PgCompliance,
+    )
     from lintel.infrastructure.persistence.stores import (
         PostgresAgentDefinitionStore,
         PostgresAIProviderStore,
@@ -340,18 +343,18 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "sandbox_store": PostgresSandboxStore(pool),
         "tag_store": _TagStoreAdapter(_PgTagStore(pool)),
         "board_store": _BoardStoreAdapter(_PgBoardStore(pool)),
-        # Compliance & Governance stores (in-memory for now; Postgres CRUD store can be added)
-        "regulation_store": ComplianceStore("regulation_id"),
-        "compliance_policy_store": ComplianceStore("policy_id"),
-        "procedure_store": ComplianceStore("procedure_id"),
-        "practice_store": ComplianceStore("practice_id"),
-        "strategy_store": ComplianceStore("strategy_id"),
-        "kpi_store": ComplianceStore("kpi_id"),
-        "experiment_store": ComplianceStore("experiment_id"),
-        "compliance_metric_store": ComplianceStore("metric_id"),
-        "knowledge_entry_store": ComplianceStore("entry_id"),
-        "knowledge_extraction_store": ComplianceStore("run_id"),
-        "architecture_decision_store": ComplianceStore("decision_id"),
+        # Compliance & Governance stores (Postgres-backed)
+        "regulation_store": PgCompliance(pool, "regulation", "regulation_id"),
+        "compliance_policy_store": PgCompliance(pool, "compliance_policy", "policy_id"),
+        "procedure_store": PgCompliance(pool, "procedure", "procedure_id"),
+        "practice_store": PgCompliance(pool, "practice", "practice_id"),
+        "strategy_store": PgCompliance(pool, "strategy", "strategy_id"),
+        "kpi_store": PgCompliance(pool, "kpi", "kpi_id"),
+        "experiment_store": PgCompliance(pool, "experiment", "experiment_id"),
+        "compliance_metric_store": PgCompliance(pool, "compliance_metric", "metric_id"),
+        "knowledge_entry_store": PgCompliance(pool, "knowledge_entry", "entry_id"),
+        "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
+        "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
     }
 
 

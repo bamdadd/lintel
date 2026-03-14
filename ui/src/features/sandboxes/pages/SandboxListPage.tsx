@@ -18,6 +18,8 @@ import {
   Text,
   Tabs,
   Code,
+  NumberInput,
+  Progress,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
@@ -111,6 +113,8 @@ export function Component() {
     })),
   ];
 
+  const [batchProgress, setBatchProgress] = useState<{ total: number; done: number; failed: number } | null>(null);
+
   const form = useForm({
     initialValues: {
       preset: '',
@@ -120,6 +124,7 @@ export function Component() {
       image: 'python:3.12-slim',
       network_enabled: false,
       devcontainer_json: DEFAULT_DEVCONTAINER,
+      count: 1,
     },
     validate: {
       devcontainer_json: (v) => {
@@ -156,38 +161,65 @@ export function Component() {
       options: f.options ?? {},
     }));
 
-    createMutation.mutate(
-      {
-        data: {
-          workspace_id: values.workspace_id,
-          channel_id: values.channel_id,
-          thread_ts: values.thread_ts,
+    const count = Math.max(1, Math.min(values.count, 50));
+    const progress = { total: count, done: 0, failed: 0 };
+    setBatchProgress({ ...progress });
+
+    const createOne = () => {
+      const data = {
+        workspace_id: values.workspace_id,
+        channel_id: values.channel_id,
+        thread_ts: `${Date.now()}`,
+        image: devcontainer.image ?? values.image,
+        network_enabled: values.network_enabled,
+        devcontainer: {
+          name: devcontainer.name ?? 'sandbox',
           image: devcontainer.image ?? values.image,
-          network_enabled: values.network_enabled,
-          devcontainer: {
-            name: devcontainer.name ?? 'sandbox',
-            image: devcontainer.image ?? values.image,
-            features,
-            forward_ports: devcontainer.forwardPorts ?? [],
-            post_create_command: devcontainer.postCreateCommand ?? '',
-            post_start_command: devcontainer.postStartCommand ?? '',
-            remote_env: devcontainer.remoteEnv ?? {},
-            customizations: devcontainer.customizations ?? {},
+          features,
+          forward_ports: devcontainer.forwardPorts ?? [],
+          post_create_command: devcontainer.postCreateCommand ?? '',
+          post_start_command: devcontainer.postStartCommand ?? '',
+          remote_env: devcontainer.remoteEnv ?? {},
+          customizations: devcontainer.customizations ?? {},
+        },
+      };
+      return new Promise<void>((resolve) => {
+        createMutation.mutate(
+          { data },
+          {
+            onSuccess: () => {
+              progress.done++;
+              setBatchProgress({ ...progress });
+              resolve();
+            },
+            onError: () => {
+              progress.failed++;
+              setBatchProgress({ ...progress });
+              resolve();
+            },
           },
-        },
-      },
-      {
-        onSuccess: () => {
-          notifications.show({ title: 'Created', message: 'Sandbox created', color: 'green' });
-          void queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes'] });
-          form.reset();
-          close();
-        },
-        onError: () => {
-          notifications.show({ title: 'Error', message: 'Failed to create sandbox', color: 'red' });
-        },
-      },
-    );
+        );
+      });
+    };
+
+    const runBatch = async () => {
+      for (let i = 0; i < count; i++) {
+        await createOne();
+      }
+      void queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes'] });
+      const msg = progress.failed > 0
+        ? `Created ${progress.done}, failed ${progress.failed}`
+        : `Created ${progress.done} sandbox${progress.done > 1 ? 'es' : ''}`;
+      notifications.show({
+        title: progress.failed > 0 ? 'Partial Success' : 'Created',
+        message: msg,
+        color: progress.failed > 0 ? 'yellow' : 'green',
+      });
+      setBatchProgress(null);
+      form.reset();
+      close();
+    };
+    void runBatch();
   });
 
   const handleDestroy = (sandboxId: string) => {
@@ -361,7 +393,29 @@ export function Component() {
                 </Stack>
               </Tabs.Panel>
             </Tabs>
-            <Button type="submit" loading={createMutation.isPending}>Create Sandbox</Button>
+            <NumberInput
+              label="Count"
+              description="Number of sandboxes to create"
+              min={1}
+              max={50}
+              {...form.getInputProps('count')}
+            />
+            {batchProgress && (
+              <Stack gap={4}>
+                <Text size="xs" c="dimmed">
+                  Creating {batchProgress.done + batchProgress.failed} / {batchProgress.total}
+                  {batchProgress.failed > 0 && ` (${batchProgress.failed} failed)`}
+                </Text>
+                <Progress
+                  value={((batchProgress.done + batchProgress.failed) / batchProgress.total) * 100}
+                  color={batchProgress.failed > 0 ? 'yellow' : 'blue'}
+                  animated
+                />
+              </Stack>
+            )}
+            <Button type="submit" loading={!!batchProgress}>
+              Create {form.values.count > 1 ? `${form.values.count} Sandboxes` : 'Sandbox'}
+            </Button>
           </Stack>
         </form>
       </Modal>

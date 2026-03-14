@@ -9,6 +9,51 @@ if TYPE_CHECKING:
     import asyncpg
 
 
+class PostgresComplianceStore:
+    """Postgres-backed store matching the ComplianceStore interface for compliance entities."""
+
+    def __init__(self, pool: asyncpg.Pool, kind: str, id_field: str) -> None:
+        self._store = PostgresDictStore(pool, kind)
+        self._id_field = id_field
+
+    def _to_dict(self, entity: Any) -> dict[str, Any]:  # noqa: ANN401
+        from dataclasses import asdict, fields
+
+        if hasattr(entity, "__dataclass_fields__"):
+            data = asdict(entity)
+            for k, v in data.items():
+                if isinstance(v, (tuple, frozenset)):
+                    data[k] = list(v)
+            return data
+        return dict(entity) if not isinstance(entity, dict) else entity
+
+    async def add(self, entity: Any) -> dict[str, Any]:  # noqa: ANN401
+        data = self._to_dict(entity)
+        entity_id = data[self._id_field]
+        await self._store.put(entity_id, data)
+        return data
+
+    async def get(self, entity_id: str) -> dict[str, Any] | None:
+        return await self._store.get(entity_id)
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return await self._store.list_all()
+
+    async def list_by_project(self, project_id: str) -> list[dict[str, Any]]:
+        return await self._store.list_all(project_id=project_id)
+
+    async def update(self, entity_id: str, data: dict[str, Any]) -> dict[str, Any] | None:
+        existing = await self._store.get(entity_id)
+        if existing is None:
+            return None
+        merged = {**existing, **data}
+        await self._store.put(entity_id, merged)
+        return merged
+
+    async def remove(self, entity_id: str) -> bool:
+        return await self._store.remove(entity_id)
+
+
 class PostgresDictStore:
     """Generic CRUD store for entities stored as plain dicts (not dataclasses)."""
 
