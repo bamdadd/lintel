@@ -148,11 +148,16 @@ export function Component() {
 
     Promise.all(updates).then(
       () => void qc.invalidateQueries({ queryKey: ['/api/v1/work-items'] }),
-      () => {
+      (err: unknown) => {
+        const detail =
+          err && typeof err === 'object' && 'body' in err
+            ? (err as { body?: { detail?: string } }).body?.detail
+            : undefined;
         notifications.show({
-          title: 'Error',
-          message: 'Failed to move work item',
-          color: 'red',
+          title: detail?.includes('WIP limit') ? 'WIP Limit Reached' : 'Error',
+          message: detail ?? 'Failed to move work item',
+          color: detail?.includes('WIP limit') ? 'orange' : 'red',
+          autoClose: detail?.includes('WIP limit') ? 8000 : 5000,
         });
         void qc.invalidateQueries({ queryKey: ['/api/v1/work-items'] });
       },
@@ -232,6 +237,7 @@ export function Component() {
                 columnId={col.column_id}
                 name={col.name}
                 items={colItems}
+                wipLimit={col.wip_limit}
                 onClickItem={handleClickItem}
               />
             );

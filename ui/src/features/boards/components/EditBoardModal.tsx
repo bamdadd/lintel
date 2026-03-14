@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import {
   Modal,
   TextInput,
+  NumberInput,
   Select,
   Button,
   Stack,
   Group,
   ActionIcon,
   Text,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash, IconGripVertical } from '@tabler/icons-react';
@@ -20,6 +22,7 @@ interface ColumnDef {
   id: string;
   name: string;
   work_item_status: string;
+  wip_limit: number;
 }
 
 interface EditBoardModalProps {
@@ -57,14 +60,20 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
       setColumns(
         [...board.columns]
           .sort((a, b) => a.position - b.position)
-          .map((c) => ({ id: c.column_id, name: c.name, work_item_status: c.work_item_status })),
+          .map((c) => ({
+            id: c.column_id,
+            name: c.name,
+            work_item_status: c.work_item_status,
+            wip_limit: c.wip_limit ?? 0,
+          })),
       );
     }
   }, [board]);
 
-  const addColumn = () => setColumns([...columns, { id: tempId(), name: '', work_item_status: '' }]);
+  const addColumn = () =>
+    setColumns([...columns, { id: tempId(), name: '', work_item_status: '', wip_limit: 0 }]);
   const removeColumn = (i: number) => setColumns(columns.filter((_, idx) => idx !== i));
-  const updateColumn = (i: number, field: 'name' | 'work_item_status', value: string) =>
+  const updateColumn = (i: number, field: keyof ColumnDef, value: string | number) =>
     setColumns(columns.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
 
   const handleDragEnd = (result: DropResult) => {
@@ -88,6 +97,7 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
             name: c.name,
             position: i,
             work_item_status: c.work_item_status,
+            wip_limit: c.wip_limit,
           })),
         },
       },
@@ -163,9 +173,20 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
                           data={WORK_ITEM_STATUSES}
                           value={col.work_item_status}
                           onChange={(v) => updateColumn(i, 'work_item_status', v ?? '')}
-                          w={150}
+                          w={140}
                           clearable={false}
                         />
+                        <Tooltip label="WIP limit (0 = unlimited)">
+                          <NumberInput
+                            placeholder="WIP"
+                            value={col.wip_limit}
+                            onChange={(v) => updateColumn(i, 'wip_limit', typeof v === 'number' ? v : 0)}
+                            min={0}
+                            max={100}
+                            w={70}
+                            size="sm"
+                          />
+                        </Tooltip>
                         <ActionIcon color="red" variant="subtle" onClick={() => removeColumn(i)} disabled={columns.length <= 1}>
                           <IconTrash size={16} />
                         </ActionIcon>

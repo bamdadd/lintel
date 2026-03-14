@@ -6,6 +6,7 @@ interface BoardColumn {
   name: string;
   position: number;
   work_item_status: string;
+  wip_limit: number;
 }
 
 export interface Board {
