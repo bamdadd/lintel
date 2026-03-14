@@ -17,7 +17,6 @@ def _envelope_to_dict(e: EventEnvelope) -> dict[str, Any]:
     return {
         "event_id": str(e.event_id),
         "event_type": e.event_type,
-        "stream_id": getattr(e, "stream_id", None),
         "payload": e.payload,
         "occurred_at": (
             e.occurred_at.isoformat()
@@ -66,7 +65,9 @@ async def list_all_events(
     Optionally filter by event_type.
     """
     if event_type:
-        all_events = await event_store.read_by_event_type(event_type, from_position=0, limit=10000)
+        all_events = await event_store.read_by_event_type(
+            event_type, from_position=0, limit=10000
+        )
     else:
         all_events = await event_store.read_all(from_position=0, limit=10000)
 

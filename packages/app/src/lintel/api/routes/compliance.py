@@ -28,7 +28,6 @@ from lintel.contracts.events import (
     PracticeRemoved,
     PracticeUpdated,
     ProjectUpdated,
-    ProjectUpdated,
     ProcedureCreated,
     ProcedureRemoved,
     ProcedureUpdated,
