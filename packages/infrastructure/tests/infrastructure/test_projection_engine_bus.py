@@ -30,9 +30,14 @@ def _make_event(event_type: str = "TestEvent") -> EventEnvelope:
 
 
 class _FakeProjection:
-    def __init__(self, event_types: set[str]) -> None:
+    def __init__(self, event_types: set[str], projection_name: str = "fake") -> None:
         self._handled_event_types = event_types
+        self._name = projection_name
         self.projected: list[EventEnvelope] = []
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     @property
     def handled_event_types(self) -> set[str]:
@@ -43,6 +48,12 @@ class _FakeProjection:
 
     async def rebuild(self, events: list[EventEnvelope]) -> None:
         self.projected = list(events)
+
+    def get_state(self) -> dict[str, object]:
+        return {}
+
+    def restore_state(self, state: dict[str, object]) -> None:
+        pass
 
 
 class TestProjectionEngineBusSubscription:

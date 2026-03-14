@@ -27,6 +27,16 @@ class ThreadStatusProjection:
         self._state: dict[str, dict[str, Any]] = {}
 
     @property
+    def name(self) -> str:
+        return "thread_status"
+
+    def get_state(self) -> dict[str, Any]:
+        return dict(self._state)
+
+    def restore_state(self, state: dict[str, Any]) -> None:
+        self._state = dict(state)
+
+    @property
     def handled_event_types(self) -> set[str]:
         return set(self.HANDLED_TYPES)
 
