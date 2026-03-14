@@ -27,6 +27,7 @@ from lintel.api.routes import (
     approvals,
     artifacts,
     audit,
+    automations,
     boards,
     chat,
     compliance,
@@ -52,7 +53,6 @@ from lintel.api.routes import (
     streams,
     teams,
     threads,
-    automations,
     triggers,
     users,
     variables,
@@ -65,6 +65,7 @@ from lintel.api.routes.ai_providers import InMemoryAIProviderStore
 from lintel.api.routes.approval_requests import InMemoryApprovalRequestStore
 from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
 from lintel.api.routes.audit import AuditEntryStore
+from lintel.api.routes.automations import InMemoryAutomationStore
 from lintel.api.routes.boards import BoardStore, TagStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.compliance import ComplianceStore
@@ -78,7 +79,6 @@ from lintel.api.routes.policies import InMemoryPolicyStore
 from lintel.api.routes.projects import ProjectStore
 from lintel.api.routes.skills import InMemorySkillStore
 from lintel.api.routes.teams import InMemoryTeamStore
-from lintel.api.routes.automations import InMemoryAutomationStore
 from lintel.api.routes.triggers import InMemoryTriggerStore
 from lintel.api.routes.users import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
@@ -207,9 +207,9 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     from lintel.infrastructure.persistence.stores import (
         PostgresAgentDefinitionStore,
         PostgresAIProviderStore,
-        PostgresAutomationStore,
         PostgresApprovalRequestStore,
         PostgresAuditEntryStore,
+        PostgresAutomationStore,
         PostgresChatStore,
         PostgresCodeArtifactStore,
         PostgresCredentialStore,
@@ -555,10 +555,86 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
     app.state.container = container
 
+    # Start automation scheduler
+    import asyncio
+
+    from lintel.domain.automation_scheduler import AutomationScheduler
+
+    async def _fire_automation(
+        auto: Any,  # noqa: ANN401
+        metadata: dict[str, Any],
+    ) -> str:
+        """Create a PipelineRun and emit AutomationFired event."""
+        from uuid import uuid4
+
+        from lintel.contracts.events import AutomationFired
+        from lintel.contracts.types import PipelineRun
+
+        run_id = str(uuid4())
+        pipeline_run = PipelineRun(
+            run_id=run_id,
+            project_id=auto.project_id,
+            work_item_id="",
+            workflow_definition_id=auto.trigger_config.get("workflow_definition_id", ""),
+            trigger_type=f"automation:{auto.automation_id}",
+        )
+        await stores["pipeline_store"].add(pipeline_run)
+        event = AutomationFired(
+            payload={
+                "resource_id": auto.automation_id,
+                "pipeline_run_id": run_id,
+                "trigger_type": metadata.get("trigger", "unknown"),
+            },
+        )
+        await event_bus.publish(event)
+        return run_id
+
+    automation_scheduler = AutomationScheduler(
+        automation_store=stores["automation_store"],
+        fire_fn=_fire_automation,
+    )
+
+    # Subscribe event-triggered automations to EventBus
+    all_automations = await stores["automation_store"].list_all()
+
+    async def _on_event(event: Any) -> None:  # noqa: ANN401
+        await automation_scheduler.handle_event(event)
+
+    event_types: set[str] = set()
+    for auto in all_automations:
+        if auto.trigger_type == "event" and auto.enabled:
+            for et in auto.trigger_config.get("event_types", []):
+                event_types.add(et)
+    if event_types:
+        await event_bus.subscribe(
+            frozenset(event_types),
+            type("_AutoEventHandler", (), {"handle": staticmethod(_on_event)})(),
+        )
+
+    # Subscribe to pipeline completion for queue dequeue
+    async def _on_pipeline_complete(event: Any) -> None:  # noqa: ANN401
+        payload = event.payload or {}
+        run_id = payload.get("resource_id", "")
+        trigger = payload.get("trigger_type", "")
+        if trigger.startswith("automation:"):
+            aid = trigger.split(":", 1)[1]
+            await automation_scheduler.mark_run_completed(aid, run_id)
+
+    await event_bus.subscribe(
+        frozenset({"PipelineRunCompleted", "PipelineRunFailed"}),
+        type("_PipelineCompleteHandler", (), {"handle": staticmethod(_on_pipeline_complete)})(),
+    )
+
+    app.state._background_tasks: set[asyncio.Task[Any]] = set()  # type: ignore[assignment]
+    scheduler_task = asyncio.create_task(automation_scheduler.run())
+    app.state._background_tasks.add(scheduler_task)
+    scheduler_task.add_done_callback(app.state._background_tasks.discard)
+
     yield
 
     container.unwire()
     # Cleanup
+    scheduler_task.cancel()
     await engine.stop()
     if db_pool is not None:
         await db_pool.close()
