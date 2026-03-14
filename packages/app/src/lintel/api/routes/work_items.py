@@ -168,10 +168,70 @@ async def update_work_item(
     old_status = item.get("status", "")
     new_status = updates.get("status", "")
     if new_status == "in_progress" and old_status != "in_progress":
+        # Enforce WIP limit before allowing transition
+        project_id = item.get("project_id", "")
+        wip_error = await _check_wip_limit(request, store, project_id, "in_progress")
+        if wip_error:
+            raise HTTPException(status_code=409, detail=wip_error)
         await _trigger_workflow_for_work_item(request, merged, work_item_id)
 
     result = await store.get(work_item_id)
     return result  # type: ignore[return-value]
+
+
+async def _check_wip_limit(
+    request: Request,
+    store: WorkItemStore,
+    project_id: str,
+    target_status: str,
+) -> str | None:
+    """Check if the WIP limit for a board column would be exceeded.
+
+    Returns an error message if the limit is reached, or None if OK.
+    """
+    if not project_id:
+        return None
+
+    board_store = getattr(request.app.state, "board_store", None)
+    if board_store is None:
+        return None
+
+    try:
+        boards = await board_store.list(project_id)
+    except Exception:
+        return None
+
+    # Find the column matching the target status
+    for board in boards:
+        if isinstance(board, dict):
+            columns: list[dict[str, object]] = board.get("columns", [])
+        else:
+            columns = list(getattr(board, "columns", ()))
+        for col in columns:
+            if isinstance(col, dict):
+                col_status = str(col.get("work_item_status", ""))
+                wip_limit = int(col.get("wip_limit", 0))
+                col_name = str(col.get("name", ""))
+            else:
+                col_status = getattr(col, "work_item_status", "")
+                wip_limit = getattr(col, "wip_limit", 0)
+                col_name = getattr(col, "name", "")
+
+            if col_status == target_status and wip_limit > 0:
+                all_items = await store.list_all(project_id=project_id)
+                current_count = sum(
+                    1
+                    for i in all_items
+                    if i.get("status") == target_status
+                )
+                if current_count >= wip_limit:
+                    return (
+                        f"WIP limit reached for '{col_name}': "
+                        f"{current_count}/{wip_limit} items. "
+                        f"Complete or move existing items before "
+                        f"adding more."
+                    )
+    return None
 
 
 async def _trigger_workflow_for_work_item(
