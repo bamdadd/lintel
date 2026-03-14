@@ -19,14 +19,10 @@ def _envelope_to_dict(e: EventEnvelope) -> dict[str, Any]:
         "event_type": e.event_type,
         "payload": e.payload,
         "occurred_at": (
-            e.occurred_at.isoformat()
-            if hasattr(e.occurred_at, "isoformat")
-            else str(e.occurred_at)
+            e.occurred_at.isoformat() if hasattr(e.occurred_at, "isoformat") else str(e.occurred_at)
         ),
         "actor_id": e.actor_id,
-        "actor_type": (
-            e.actor_type.value if hasattr(e.actor_type, "value") else str(e.actor_type)
-        ),
+        "actor_type": (e.actor_type.value if hasattr(e.actor_type, "value") else str(e.actor_type)),
         "correlation_id": str(e.correlation_id) if e.correlation_id else None,
     }
 
@@ -77,13 +73,16 @@ async def list_all_events(
                 rows = await conn.fetch(
                     "SELECT * FROM events WHERE event_type = $1 "
                     "ORDER BY occurred_at DESC LIMIT $2 OFFSET $3",
-                    event_type, limit, offset,
+                    event_type,
+                    limit,
+                    offset,
                 )
             else:
                 count_row = await conn.fetchrow("SELECT count(*) FROM events")
                 rows = await conn.fetch(
                     "SELECT * FROM events ORDER BY occurred_at DESC LIMIT $1 OFFSET $2",
-                    limit, offset,
+                    limit,
+                    offset,
                 )
             total = count_row["count"]
             from lintel.infrastructure.event_store.postgres import _row_to_event
@@ -93,9 +92,7 @@ async def list_all_events(
 
     # Fallback for in-memory store
     if event_type:
-        all_events = await event_store.read_by_event_type(
-            event_type, from_position=0, limit=10000
-        )
+        all_events = await event_store.read_by_event_type(event_type, from_position=0, limit=10000)
     else:
         all_events = await event_store.read_all(from_position=0, limit=10000)
 

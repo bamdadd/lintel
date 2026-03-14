@@ -7,8 +7,8 @@ New route handlers should prefer ``Depends(Provide[AppContainer.X])`` with
 
 from fastapi import Request
 
-from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
 from lintel.contracts.protocols import EventStore
+from lintel.domain.command_dispatcher import InMemoryCommandDispatcher
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection

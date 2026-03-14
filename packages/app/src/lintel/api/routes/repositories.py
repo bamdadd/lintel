@@ -134,7 +134,7 @@ async def list_repository_commits(
     branch: str | None = None,
     limit: int = 20,
     store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
-    repo_provider: Any = Depends(Provide[AppContainer.repo_provider]),  # noqa: B008
+    repo_provider: Any = Depends(Provide[AppContainer.repo_provider]),  # noqa: B008, ANN401
 ) -> list[dict[str, Any]]:
     repo = await store.get(repo_id)
     if repo is None:
@@ -152,7 +152,7 @@ async def list_repository_pull_requests(
     state: str = "open",
     limit: int = 20,
     store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
-    repo_provider: Any = Depends(Provide[AppContainer.repo_provider]),  # noqa: B008
+    repo_provider: Any = Depends(Provide[AppContainer.repo_provider]),  # noqa: B008, ANN401
 ) -> list[dict[str, Any]]:
     repo = await store.get(repo_id)
     if repo is None:
