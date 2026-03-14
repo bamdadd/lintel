@@ -14,6 +14,8 @@ from lintel.contracts.errors import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from lintel.contracts.types import (
         SandboxConfig,
         SandboxJob,
@@ -200,6 +202,91 @@ class DockerSandboxManager:
                     f"Sandbox {sandbox_id[:12]} is not running: {err_msg}"
                 ) from exc
             raise
+
+    async def execute_stream(
+        self,
+        sandbox_id: str,
+        job: SandboxJob,
+    ) -> AsyncIterator[str]:
+        """Execute a command and yield stdout/stderr lines as they arrive.
+
+        Streams output using the Docker low-level API exec_create/exec_start.
+        Yields complete lines (stripping empty ones). The final item is a
+        sentinel ``__EXIT:<code>__`` so callers can detect success/failure.
+
+        Raises SandboxTimeoutError if a chunk read exceeds job.timeout_seconds.
+        """
+        container = self._get_container(sandbox_id)
+        api = container.client.api
+
+        exec_id = await asyncio.to_thread(
+            api.exec_create,
+            container.id,
+            ["/bin/sh", "-c", job.command],
+            workdir=job.workdir or "/workspace",
+        )
+        output_gen = await asyncio.to_thread(
+            api.exec_start,
+            exec_id,
+            stream=True,
+            demux=True,
+        )
+
+        async def _stream() -> AsyncIterator[str]:
+            stdout_buf = ""
+            stderr_buf = ""
+
+            def _next_chunk() -> tuple[bytes | None, bytes | None] | None:
+                try:
+                    return next(output_gen)  # type: ignore[arg-type]
+                except StopIteration:
+                    return None
+
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(
+                        asyncio.to_thread(_next_chunk),
+                        timeout=job.timeout_seconds,
+                    )
+                except TimeoutError as exc:
+                    raise SandboxTimeoutError(
+                        f"Command timed out after {job.timeout_seconds}s: {job.command}"
+                    ) from exc
+
+                if chunk is None:
+                    break
+
+                stdout_bytes, stderr_bytes = chunk
+
+                if stdout_bytes:
+                    stdout_buf += stdout_bytes.decode("utf-8", errors="replace")
+                if stderr_bytes:
+                    stderr_buf += stderr_bytes.decode("utf-8", errors="replace")
+
+                # Yield complete lines from stdout buffer
+                while "\n" in stdout_buf:
+                    line, stdout_buf = stdout_buf.split("\n", 1)
+                    if line.strip():
+                        yield line
+
+                # Yield complete lines from stderr buffer
+                while "\n" in stderr_buf:
+                    line, stderr_buf = stderr_buf.split("\n", 1)
+                    if line.strip():
+                        yield line
+
+            # Flush remaining buffers
+            if stdout_buf.strip():
+                yield stdout_buf
+            if stderr_buf.strip():
+                yield stderr_buf
+
+            # Emit exit code sentinel
+            inspect = await asyncio.to_thread(api.exec_inspect, exec_id)
+            exit_code = inspect.get("ExitCode", -1)
+            yield f"__EXIT:{exit_code}__"
+
+        return _stream()
 
     async def read_file(self, sandbox_id: str, path: str) -> str:
         # Use cat via execute — more reliable than get_archive on mounted volumes
