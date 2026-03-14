@@ -238,7 +238,7 @@ class DockerSandboxManager:
 
             def _next_chunk() -> tuple[bytes | None, bytes | None] | None:
                 try:
-                    return next(output_gen)  # type: ignore[arg-type]
+                    return next(output_gen)  # type: ignore[no-any-return]
                 except StopIteration:
                     return None
 
