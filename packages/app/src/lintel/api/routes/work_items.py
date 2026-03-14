@@ -186,6 +186,11 @@ async def update_work_item(
             raise HTTPException(status_code=409, detail=wip_error)
         await _trigger_workflow_for_work_item(request, merged, work_item_id)
 
+    # Auto-promote: when an item leaves in_progress, check if we should promote another
+    if old_status == "in_progress" and new_status and new_status != "in_progress":
+        project_id = item.get("project_id", "")
+        await _auto_promote_open_items(request, store, project_id)
+
     result = await store.get(work_item_id)
     return result  # type: ignore[return-value]
 
@@ -239,6 +244,84 @@ async def _check_wip_limit(
                         f"adding more."
                     )
     return None
+
+
+async def _auto_promote_open_items(
+    request: Request,
+    store: WorkItemStore,
+    project_id: str,
+) -> None:
+    """If auto_move is on and WIP has capacity, promote the oldest open item."""
+    if not project_id:
+        return
+    board_store = getattr(request.app.state, "board_store", None)
+    if board_store is None:
+        return
+    try:
+        boards = await board_store.list_by_project(project_id)
+    except Exception:
+        return
+
+    # Check if any board has auto_move enabled
+    auto_move = any(
+        (b.get("auto_move", False) if isinstance(b, dict) else getattr(b, "auto_move", False))
+        for b in boards
+    )
+    if not auto_move:
+        return
+
+    # Find WIP limit for in_progress column
+    wip_limit = 0
+    for board in boards:
+        columns = (
+            board.get("columns", []) if isinstance(board, dict) else getattr(board, "columns", ())
+        )
+        for col in columns:
+            col_status = (
+                col.get("work_item_status", "")
+                if isinstance(col, dict)
+                else getattr(col, "work_item_status", "")
+            )
+            if col_status == "in_progress":
+                wip_limit = int(
+                    col.get("wip_limit", 0)
+                    if isinstance(col, dict)
+                    else getattr(col, "wip_limit", 0)
+                )
+                break
+
+    all_items = await store.list_all(project_id=project_id)
+    in_progress_count = sum(1 for i in all_items if i.get("status") == "in_progress")
+
+    if wip_limit != 0 and in_progress_count >= wip_limit:
+        return
+
+    open_items = [i for i in all_items if i.get("status") == "open"]
+    if not open_items:
+        return
+
+    candidate = open_items[0]
+    candidate_id = candidate.get("work_item_id", "")
+    if not candidate_id:
+        return
+
+    candidate["status"] = "in_progress"
+    await store.update(candidate_id, candidate)
+    logger.info("auto_promote_to_in_progress: %s", candidate_id)
+
+    await dispatch_event(
+        request,
+        WorkItemUpdated(
+            payload={
+                "resource_id": candidate_id,
+                "fields": ["status"],
+                "auto_promoted": True,
+            },
+        ),
+        stream_id=f"work_item:{candidate_id}",
+    )
+    # Trigger the workflow for the promoted item
+    await _trigger_workflow_for_work_item(request, candidate, candidate_id)
 
 
 async def _trigger_workflow_for_work_item(

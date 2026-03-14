@@ -249,6 +249,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
                 project_id=data.get("project_id", ""),
                 name=data.get("name", ""),
                 columns=cols,
+                auto_move=data.get("auto_move", False),
             )
             await self._pg.add(entity)
 
@@ -271,6 +272,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
                 project_id=data.get("project_id", ""),
                 name=data.get("name", ""),
                 columns=cols,
+                auto_move=data.get("auto_move", False),
             )
             await self._pg.update(entity)
 

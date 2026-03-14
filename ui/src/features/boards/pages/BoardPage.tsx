@@ -265,10 +265,17 @@ export function Component() {
             checked={board.auto_move ?? false}
             onChange={(e) => {
               if (!boardId) return;
+              const newVal = e.currentTarget.checked;
+              // Optimistic update
+              qc.setQueryData(
+                ['/api/v1/boards', boardId],
+                (old: typeof boardResp) =>
+                  old ? { ...old, data: { ...old.data, auto_move: newVal } } : old,
+              );
               updateBoardMut.mutate(
-                { boardId, data: { auto_move: e.currentTarget.checked } },
+                { boardId, data: { auto_move: newVal } },
                 {
-                  onSuccess: () =>
+                  onError: () =>
                     void qc.invalidateQueries({ queryKey: ['/api/v1/boards', boardId] }),
                 },
               );
