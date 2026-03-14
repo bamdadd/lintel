@@ -211,7 +211,7 @@ async def _check_wip_limit(
         for col in columns:
             if isinstance(col, dict):
                 col_status = str(col.get("work_item_status", ""))
-                wip_limit = int(col.get("wip_limit", 0))
+                wip_limit = int(col.get("wip_limit", 0))  # type: ignore[call-overload]
                 col_name = str(col.get("name", ""))
             else:
                 col_status = getattr(col, "work_item_status", "")
