@@ -271,7 +271,7 @@ class TestNodeFunctions:
     async def test_implement_returns_error_without_sandbox(self) -> None:
         from lintel.workflows.nodes.implement import spawn_implementation
 
-        from tests.workflows.test_implement_node import DummySandboxManager
+        from workflows.test_implement_node import DummySandboxManager
 
         state = ThreadWorkflowState(
             thread_ref="thread:w:c:t",

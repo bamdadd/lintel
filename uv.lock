@@ -14,6 +14,7 @@ members = [
     "lintel-contracts",
     "lintel-domain",
     "lintel-infrastructure",
+    "lintel-workflows",
     "lintel-workspace",
 ]
 
@@ -1474,6 +1475,7 @@ dependencies = [
     { name = "lintel-contracts" },
     { name = "lintel-domain" },
     { name = "lintel-infrastructure" },
+    { name = "lintel-workflows" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "structlog" },
@@ -1489,6 +1491,7 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-infrastructure", editable = "packages/infrastructure" },
+    { name = "lintel-workflows", editable = "packages/workflows" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.7" },
     { name = "structlog", specifier = ">=24.4" },
@@ -1593,6 +1596,25 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "structlog", specifier = ">=24.4" },
     { name = "tenacity", specifier = ">=9.0" },
+]
+
+[[package]]
+name = "lintel-workflows"
+version = "0.1.0"
+source = { editable = "packages/workflows" }
+dependencies = [
+    { name = "langgraph" },
+    { name = "lintel-agents" },
+    { name = "lintel-contracts" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "langgraph", specifier = ">=0.3" },
+    { name = "lintel-agents", editable = "packages/agents" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
 ]
 
 [[package]]

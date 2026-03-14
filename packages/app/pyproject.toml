@@ -7,6 +7,7 @@ dependencies = [
     "lintel-domain",
     "lintel-agents",
     "lintel-infrastructure",
+    "lintel-workflows",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -21,6 +22,7 @@ lintel-contracts = { workspace = true }
 lintel-domain = { workspace = true }
 lintel-agents = { workspace = true }
 lintel-infrastructure = { workspace = true }
+lintel-workflows = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

@@ -1,0 +1,24 @@
+[project]
+name = "lintel-workflows"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "lintel-contracts",
+    "lintel-agents",
+    "structlog>=24.4",
+    "langgraph>=0.3",
+]
+
+[tool.uv.sources]
+lintel-contracts = { workspace = true }
+lintel-agents = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/lintel/workflows"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
