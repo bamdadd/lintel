@@ -17,7 +17,13 @@ async def run_migrations(dsn: str | None = None) -> None:
     )
     conn = await asyncpg.connect(dsn)
     try:
-        migrations_dir = Path(__file__).resolve().parents[4] / "migrations"
+        # Walk up to find the repo root (contains migrations/ and pyproject.toml)
+        p = Path(__file__).resolve()
+        while p != p.parent:
+            if (p / "migrations").is_dir() and (p / "pyproject.toml").is_file():
+                break
+            p = p.parent
+        migrations_dir = p / "migrations"
         for sql_file in sorted(migrations_dir.glob("*.sql")):
             sql = sql_file.read_text()
             await conn.execute(sql)
