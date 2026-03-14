@@ -22,6 +22,23 @@ async def reset_projections(
     return {"status": "projections_reset"}
 
 
+@router.get("/admin/projections")
+async def get_projection_status(
+    engine: Annotated[InMemoryProjectionEngine, Depends(get_projection_engine)],
+) -> list[dict[str, Any]]:
+    """Return status of all registered projections."""
+    from dataclasses import asdict
+
+    statuses = await engine.get_status()
+    result = []
+    for s in statuses:
+        d = asdict(s)
+        if d["last_event_at"] is not None:
+            d["last_event_at"] = d["last_event_at"].isoformat()
+        result.append(d)
+    return result
+
+
 @router.get("/admin/cache-stats")
 async def get_cache_stats(request: Request) -> dict[str, int]:
     """Return model router cache hit/miss statistics."""
