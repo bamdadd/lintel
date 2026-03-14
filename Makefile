@@ -1,4 +1,4 @@
-.PHONY: help install test test-contracts test-app test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
+.PHONY: help install test test-contracts test-domain test-agents test-infrastructure test-workflows test-app test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -12,14 +12,26 @@ test: ## Run all tests (pass ARGS= for extra pytest flags)
 test-contracts: ## Run contracts package tests
 	uv run --package lintel-contracts pytest packages/contracts/tests/ -v
 
+test-domain: ## Run domain package tests
+	uv run --package lintel-domain pytest packages/domain/tests/ -v
+
+test-agents: ## Run agents package tests
+	uv run --package lintel-agents pytest packages/agents/tests/ -v
+
+test-infrastructure: ## Run infrastructure package tests
+	uv run --package lintel-infrastructure pytest packages/infrastructure/tests/ -v
+
+test-workflows: ## Run workflows package tests
+	uv run --package lintel-workflows pytest packages/workflows/tests/ -v
+
 test-app: ## Run app package tests (in-memory only)
 	uv run --package lintel pytest packages/app/tests/ -v
 
 test-unit: ## Run unit tests (in-memory only, parallelised)
-	uv run pytest packages/app/tests/ packages/contracts/tests/ -v -n auto
+	uv run pytest packages/contracts/tests/ packages/domain/tests/ packages/agents/tests/ packages/workflows/tests/ packages/infrastructure/tests/ packages/app/tests/ -v -n auto
 
 test-postgres: ## Run unit tests against both memory and postgres backends
-	uv run pytest packages/app/tests/ -v --run-postgres
+	uv run pytest packages/contracts/tests/ packages/domain/tests/ packages/agents/tests/ packages/workflows/tests/ packages/infrastructure/tests/ packages/app/tests/ -v --run-postgres
 
 test-integration: migrate ## Run integration tests (requires postgres + migrations)
 	uv run pytest tests/integration -v
@@ -35,7 +47,7 @@ lint: ## Check linting and formatting
 	uv run ruff format --check packages/ tests/
 
 typecheck: ## Run mypy strict type checking
-	uv run mypy packages/contracts/src/lintel/contracts/ packages/app/src/lintel/
+	uv run mypy packages/contracts/src/lintel/contracts/ packages/domain/src/lintel/domain/ packages/agents/src/lintel/agents/ packages/infrastructure/src/lintel/infrastructure/ packages/workflows/src/lintel/workflows/ packages/app/src/lintel/
 
 format: ## Auto-fix formatting and lint
 	uv run ruff format packages/ tests/
