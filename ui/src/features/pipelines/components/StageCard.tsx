@@ -14,8 +14,9 @@ import { useCallback, useRef, useEffect, useState } from 'react';
 import {
   Stack, Group, Text, Badge, Button, Paper, Code, ScrollArea,
   Modal, ActionIcon, Tooltip, TypographyStylesProvider, UnstyledButton,
-  useMantineColorScheme,
+  useMantineColorScheme, Tabs as MantineTabs,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import {
   IconCheck, IconX, IconRefresh, IconMaximize,
   IconTerminal, IconFileText, IconListCheck, IconGitMerge, IconEye, IconDatabase,
@@ -251,6 +252,7 @@ export function StageFullscreenModal({
   logModalScrollRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const { colorScheme } = useMantineColorScheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const resolvedCurrentStage = currentStage ?? allStages[0]!;
   const [activeKey, setActiveKeyRaw] = useState(initialTabKey ?? '');
   const setActiveKey = useCallback((key: string) => {
@@ -285,83 +287,132 @@ export function StageFullscreenModal({
         </Group>
       }
       styles={{
-        body: { padding: 0, display: 'flex', height: 'calc(100vh - 60px)' },
+        body: {
+          padding: 0,
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          height: 'calc(100vh - 60px)',
+        },
         header: { borderBottom: `1px solid ${borderColor}` },
       }}
     >
-      {/* ── Sidebar: stages + their artifact links ─────────────────── */}
-      <ScrollArea
-        style={{
-          width: 220,
-          flexShrink: 0,
-          borderRight: `1px solid ${borderColor}`,
-        }}
-        offsetScrollbars
-      >
-        <Stack gap={0}>
-          {grouped.map(({ stage: s, tabs }) => {
-            const isActiveStage = activeTab.stage.stage_id === s.stage_id;
-            return (
-              <div key={s.stage_id}>
-                {/* Stage header */}
-                <Group
-                  gap={6}
+      {/* ── Sidebar / tab bar: stages + their artifact links ────────── */}
+      {isMobile ? (
+        <ScrollArea
+          style={{
+            flexShrink: 0,
+            borderBottom: `1px solid ${borderColor}`,
+          }}
+          offsetScrollbars
+          scrollbarSize={4}
+        >
+          <Group gap={0} wrap="nowrap" px="xs" py={4}>
+            {artifactTabs.map((tab) => {
+              const meta = TAB_META[tab.type];
+              const Icon = meta.icon;
+              const isActive = tab.key === activeTab.key;
+              return (
+                <UnstyledButton
+                  key={tab.key}
+                  onClick={() => setActiveKey(tab.key)}
                   px="sm"
                   py={6}
-                  wrap="nowrap"
                   style={{
-                    backgroundColor: isActiveStage
-                      ? (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)')
+                    flexShrink: 0,
+                    borderBottom: isActive
+                      ? '2px solid var(--mantine-color-blue-5)'
+                      : '2px solid transparent',
+                    backgroundColor: isActive
+                      ? (isDark ? 'var(--mantine-color-dark-5)' : 'var(--mantine-color-gray-1)')
                       : 'transparent',
+                    borderRadius: '4px 4px 0 0',
                   }}
                 >
-                  <Badge
-                    size="xs"
-                    variant="dot"
-                    color={getStatusColor(s.status)}
-                    style={{ flexShrink: 0 }}
+                  <Group gap={4} wrap="nowrap">
+                    <Icon size={13} style={{ opacity: 0.6, flexShrink: 0 }} />
+                    <Text size="xs" fw={isActive ? 600 : 400} truncate>
+                      {meta.label}
+                    </Text>
+                  </Group>
+                </UnstyledButton>
+              );
+            })}
+          </Group>
+        </ScrollArea>
+      ) : (
+        <ScrollArea
+          style={{
+            width: 220,
+            flexShrink: 0,
+            borderRight: `1px solid ${borderColor}`,
+          }}
+          offsetScrollbars
+        >
+          <Stack gap={0}>
+            {grouped.map(({ stage: s, tabs }) => {
+              const isActiveStage = activeTab.stage.stage_id === s.stage_id;
+              return (
+                <div key={s.stage_id}>
+                  {/* Stage header */}
+                  <Group
+                    gap={6}
+                    px="sm"
+                    py={6}
+                    wrap="nowrap"
+                    style={{
+                      backgroundColor: isActiveStage
+                        ? (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)')
+                        : 'transparent',
+                    }}
                   >
-                    {s.name}
-                  </Badge>
-                </Group>
-
-                {/* Artifact links for this stage */}
-                {tabs.map((tab) => {
-                  const meta = TAB_META[tab.type];
-                  const Icon = meta.icon;
-                  const isActive = tab.key === activeTab.key;
-                  return (
-                    <UnstyledButton
-                      key={tab.key}
-                      onClick={() => setActiveKey(tab.key)}
-                      px="sm"
-                      py={5}
-                      pl={28}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        borderLeft: isActive
-                          ? '2px solid var(--mantine-color-blue-5)'
-                          : '2px solid transparent',
-                        backgroundColor: isActive
-                          ? (isDark ? 'var(--mantine-color-dark-5)' : 'var(--mantine-color-gray-1)')
-                          : 'transparent',
-                      }}
+                    <Badge
+                      size="xs"
+                      variant="dot"
+                      color={getStatusColor(s.status)}
+                      style={{ flexShrink: 0 }}
                     >
-                      <Group gap={6} wrap="nowrap">
-                        <Icon size={13} style={{ opacity: 0.6, flexShrink: 0 }} />
-                        <Text size="xs" fw={isActive ? 600 : 400} truncate>
-                          {meta.label}
-                        </Text>
-                      </Group>
-                    </UnstyledButton>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </Stack>
-      </ScrollArea>
+                      {s.name}
+                    </Badge>
+                  </Group>
+
+                  {/* Artifact links for this stage */}
+                  {tabs.map((tab) => {
+                    const meta = TAB_META[tab.type];
+                    const Icon = meta.icon;
+                    const isActive = tab.key === activeTab.key;
+                    return (
+                      <UnstyledButton
+                        key={tab.key}
+                        onClick={() => setActiveKey(tab.key)}
+                        px="sm"
+                        py={5}
+                        pl={28}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          borderLeft: isActive
+                            ? '2px solid var(--mantine-color-blue-5)'
+                            : '2px solid transparent',
+                          backgroundColor: isActive
+                            ? (isDark ? 'var(--mantine-color-dark-5)' : 'var(--mantine-color-gray-1)')
+                            : 'transparent',
+                        }}
+                      >
+                        <Group gap={6} wrap="nowrap">
+                          <Icon size={13} style={{ opacity: 0.6, flexShrink: 0 }} />
+                          <Text size="xs" fw={isActive ? 600 : 400} truncate>
+                            {meta.label}
+                          </Text>
+                        </Group>
+                      </UnstyledButton>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </Stack>
+        </ScrollArea>
+      )}
 
       {/* ── Content area ──────────────────────────────────────────────── */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>

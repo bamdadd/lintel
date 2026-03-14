@@ -19,11 +19,12 @@ import {
   ActionIcon,
   Box,
 } from '@mantine/core';
-import { IconProgress, IconGitBranch, IconExternalLink, IconPencil } from '@tabler/icons-react';
+import { IconProgress, IconGitBranch, IconExternalLink, IconPencil, IconArrowRight } from '@tabler/icons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '@/features/chat/chat-markdown.css';
 import { notifications } from '@mantine/notifications';
+import { useNavigate } from 'react-router';
 import { useUpdateWorkItem, useDeleteWorkItem, usePipelinesForWorkItem } from '../api';
 import type { WorkItem } from '../api';
 import { useQueryClient } from '@tanstack/react-query';
@@ -61,6 +62,7 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
   const [tags, setTags] = useState<string[]>([]);
 
   const [editingDescription, setEditingDescription] = useState(false);
+  const navigate = useNavigate();
   const updateMut = useUpdateWorkItem();
   const deleteMut = useDeleteWorkItem();
   const qc = useQueryClient();
@@ -122,6 +124,35 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
           </Badge>
           <StatusBadge status={item.status} size="xs" />
         </Group>
+
+        {/* ── Last pipeline status banner ──────────────────────────────── */}
+        {pipelines && pipelines.length > 0 && (() => {
+          const last = pipelines[0]!;
+          return (
+            <Button
+              variant="light"
+              color={
+                last.status === 'completed' ? 'green'
+                  : last.status === 'failed' ? 'red'
+                  : last.status === 'running' ? 'blue'
+                  : 'gray'
+              }
+              fullWidth
+              justify="space-between"
+              rightSection={<IconArrowRight size={14} />}
+              onClick={() => {
+                onClose();
+                navigate(`/pipelines/${last.run_id}`);
+              }}
+            >
+              <Group gap="xs">
+                <IconProgress size={14} />
+                <Text size="sm">Pipeline {last.run_id.slice(0, 8)}</Text>
+                <StatusBadge status={last.status} size="xs" />
+              </Group>
+            </Button>
+          );
+        })()}
 
         <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
 

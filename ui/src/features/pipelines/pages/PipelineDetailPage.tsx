@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, ScrollArea, Box,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconArrowLeft, IconPlayerStop, IconLayoutList } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
@@ -23,6 +24,7 @@ export function Component() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Sync expanded stage and artifacts modal with URL search params
   const selectedStageId = searchParams.get('stage') ?? null;
@@ -207,7 +209,7 @@ export function Component() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between">
+      <Stack gap="xs">
         <Group gap="sm">
           <Button
             variant="subtle"
@@ -222,7 +224,7 @@ export function Component() {
             {(pipeline.status as string) ?? 'unknown'}
           </Badge>
         </Group>
-        <Group gap="sm">
+        <Group gap="sm" wrap="wrap">
           {(pipeline.trigger_type as string)?.startsWith('chat:') && (
             <Button
               variant="light"
@@ -287,57 +289,59 @@ export function Component() {
             Event Log
           </Button>
         </Group>
-      </Group>
+      </Stack>
 
-      {/* ── Two-column layout: DAG left, Steps right ──────────────────────── */}
+      {/* ── Two-column layout: DAG left, Steps right (steps only on mobile) ── */}
       <Box
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 480px',
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(0, 480px)',
           gap: 'var(--mantine-spacing-md)',
           minHeight: 0,
         }}
       >
-        {/* ── Left: DAG + Timing tabs ─────────────────────────────────────── */}
-        <Box style={{ minWidth: 0 }}>
-          <Tabs defaultValue="dag">
-            <Tabs.List>
-              <Tabs.Tab value="dag">Pipeline DAG</Tabs.Tab>
-              <Tabs.Tab value="timing">Step Timing</Tabs.Tab>
-            </Tabs.List>
+        {/* ── Left: DAG + Timing tabs (hidden on mobile) ──────────────────── */}
+        {!isMobile && (
+          <Box style={{ minWidth: 0 }}>
+            <Tabs defaultValue="dag">
+              <Tabs.List>
+                <Tabs.Tab value="dag">Pipeline DAG</Tabs.Tab>
+                <Tabs.Tab value="timing">Step Timing</Tabs.Tab>
+              </Tabs.List>
 
-            <Tabs.Panel value="dag" pt="md">
-              {dagNodes.length > 0 ? (
-                <PipelineDAG
-                  nodes={dagNodes}
-                  edges={dagEdges}
-                  maxCols={3}
-                  onNodeClick={(nodeId) =>
-                    setSelectedStageId(
-                      nodeId === selectedStageId ? null : nodeId,
-                    )
-                  }
-                />
-              ) : (
-                <Paper withBorder p="md">
-                  <Text c="dimmed">No stages to visualize</Text>
-                </Paper>
-              )}
-            </Tabs.Panel>
+              <Tabs.Panel value="dag" pt="md">
+                {dagNodes.length > 0 ? (
+                  <PipelineDAG
+                    nodes={dagNodes}
+                    edges={dagEdges}
+                    maxCols={3}
+                    onNodeClick={(nodeId) =>
+                      setSelectedStageId(
+                        nodeId === selectedStageId ? null : nodeId,
+                      )
+                    }
+                  />
+                ) : (
+                  <Paper withBorder p="md">
+                    <Text c="dimmed">No stages to visualize</Text>
+                  </Paper>
+                )}
+              </Tabs.Panel>
 
-            <Tabs.Panel value="timing" pt="md">
-              {timingSteps.length > 0 ? (
-                <StepTimingBar steps={timingSteps} />
-              ) : (
-                <Paper withBorder p="md">
-                  <Text c="dimmed">No timing data available</Text>
-                </Paper>
-              )}
-            </Tabs.Panel>
-          </Tabs>
-        </Box>
+              <Tabs.Panel value="timing" pt="md">
+                {timingSteps.length > 0 ? (
+                  <StepTimingBar steps={timingSteps} />
+                ) : (
+                  <Paper withBorder p="md">
+                    <Text c="dimmed">No timing data available</Text>
+                  </Paper>
+                )}
+              </Tabs.Panel>
+            </Tabs>
+          </Box>
+        )}
 
-        {/* ── Right: Steps panel (always visible) ─────────────────────────── */}
+        {/* ── Steps panel (always visible, full width on mobile) ──────────── */}
         <Paper
           withBorder
           radius="md"
