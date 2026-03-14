@@ -2,10 +2,14 @@ import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
   Loader, Center, ActionIcon, Badge, Textarea, MultiSelect,
+  Box, Text, TypographyStylesProvider,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconTrash } from '@tabler/icons-react';
+import { IconTrash, IconPencil } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import '@/features/chat/chat-markdown.css';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { architectureDecisionHooks, regulationHooks } from '../api';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -42,6 +46,70 @@ const statusColor: Record<string, string> = {
   superseded: 'gray',
 };
 
+function MarkdownField({
+  label,
+  value,
+  onChange,
+  editing,
+  onToggle,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  editing: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Box>
+      <Group justify="space-between" mb={4}>
+        <Text size="sm" fw={500}>{label}</Text>
+        <ActionIcon variant="subtle" size="sm" onClick={onToggle} title={editing ? 'Preview' : 'Edit'}>
+          <IconPencil size={14} />
+        </ActionIcon>
+      </Group>
+      {editing ? (
+        <Textarea
+          value={value}
+          onChange={(e) => onChange(e.currentTarget.value)}
+          minRows={3}
+          autosize
+          placeholder="Markdown supported..."
+        />
+      ) : value ? (
+        <Box
+          p="sm"
+          style={{
+            border: '1px solid var(--mantine-color-dark-4)',
+            borderRadius: 'var(--mantine-radius-sm)',
+            cursor: 'pointer',
+          }}
+          onClick={onToggle}
+        >
+          <TypographyStylesProvider>
+            <div className="chat-markdown">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+            </div>
+          </TypographyStylesProvider>
+        </Box>
+      ) : (
+        <Text
+          size="sm"
+          c="dimmed"
+          p="sm"
+          style={{
+            border: '1px dashed var(--mantine-color-dark-4)',
+            borderRadius: 'var(--mantine-radius-sm)',
+            cursor: 'pointer',
+          }}
+          onClick={onToggle}
+        >
+          Click to add {label.toLowerCase()}...
+        </Text>
+      )}
+    </Box>
+  );
+}
+
 export function Component() {
   const { data: projectsResp } = useProjectsListProjects();
   const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
@@ -56,6 +124,10 @@ export function Component() {
   const removeMut = architectureDecisionHooks.useRemove();
   const [creating, setCreating] = useState(false);
   const [editItem, setEditItem] = useState<ADRItem | null>(null);
+  const [editingContext, setEditingContext] = useState(false);
+  const [editingDecision, setEditingDecision] = useState(false);
+  const [editingConsequences, setEditingConsequences] = useState(false);
+  const [editingAlternatives, setEditingAlternatives] = useState(false);
 
   const regulations = (regResp?.data ?? []) as unknown as {
     regulation_id: string;
@@ -123,6 +195,10 @@ export function Component() {
 
   const openEdit = (item: ADRItem) => {
     setEditItem(item);
+    setEditingContext(false);
+    setEditingDecision(false);
+    setEditingConsequences(false);
+    setEditingAlternatives(false);
     editForm.setValues({
       title: item.title,
       status: item.status,
@@ -307,29 +383,33 @@ export function Component() {
               data={STATUS_OPTIONS}
               {...editForm.getInputProps('status')}
             />
-            <Textarea
+            <MarkdownField
               label="Context"
-              autosize
-              minRows={2}
-              {...editForm.getInputProps('context')}
+              value={editForm.values.context}
+              onChange={(v) => editForm.setFieldValue('context', v)}
+              editing={editingContext}
+              onToggle={() => setEditingContext((v) => !v)}
             />
-            <Textarea
+            <MarkdownField
               label="Decision"
-              autosize
-              minRows={2}
-              {...editForm.getInputProps('decision')}
+              value={editForm.values.decision}
+              onChange={(v) => editForm.setFieldValue('decision', v)}
+              editing={editingDecision}
+              onToggle={() => setEditingDecision((v) => !v)}
             />
-            <Textarea
+            <MarkdownField
               label="Consequences"
-              autosize
-              minRows={2}
-              {...editForm.getInputProps('consequences')}
+              value={editForm.values.consequences}
+              onChange={(v) => editForm.setFieldValue('consequences', v)}
+              editing={editingConsequences}
+              onToggle={() => setEditingConsequences((v) => !v)}
             />
-            <Textarea
+            <MarkdownField
               label="Alternatives Considered"
-              autosize
-              minRows={2}
-              {...editForm.getInputProps('alternatives')}
+              value={editForm.values.alternatives}
+              onChange={(v) => editForm.setFieldValue('alternatives', v)}
+              editing={editingAlternatives}
+              onToggle={() => setEditingAlternatives((v) => !v)}
             />
             <TextInput
               label="Superseded By"
