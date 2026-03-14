@@ -5,13 +5,15 @@ from collections.abc import AsyncGenerator
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
 import json
-from typing import Annotated, Any
+from typing import Any
 import uuid
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import (
     PipelineRunCancelled,
     PipelineRunDeleted,
@@ -93,10 +95,11 @@ class CreatePipelineRequest(BaseModel):
 
 
 @router.post("/pipelines", status_code=201)
+@inject
 async def create_pipeline(
     body: CreatePipelineRequest,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.run_id)
     if existing is not None:
@@ -139,8 +142,9 @@ async def create_pipeline(
 
 
 @router.get("/pipelines")
+@inject
 async def list_pipelines(
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     runs = await store.list_all(project_id=project_id)
@@ -148,9 +152,10 @@ async def list_pipelines(
 
 
 @router.get("/pipelines/{run_id}")
+@inject
 async def get_pipeline(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
@@ -159,9 +164,10 @@ async def get_pipeline(
 
 
 @router.get("/pipelines/{run_id}/stages")
+@inject
 async def list_stages(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     run = await store.get(run_id)
     if run is None:
@@ -170,10 +176,11 @@ async def list_stages(
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}")
+@inject
 async def get_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
@@ -185,10 +192,11 @@ async def get_stage(
 
 
 @router.post("/pipelines/{run_id}/cancel")
+@inject
 async def cancel_pipeline(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
@@ -233,10 +241,11 @@ async def cancel_pipeline(
 
 
 @router.delete("/pipelines/{run_id}", status_code=204)
+@inject
 async def delete_pipeline(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> None:
     run = await store.get(run_id)
     if run is None:
@@ -307,10 +316,11 @@ class ReportVersionService:
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}/logs")
+@inject
 async def stream_stage_logs(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> StreamingResponse:
     """Stream stage logs via SSE. Shows stored logs and polls for new ones."""
     run = await store.get(run_id)
@@ -367,9 +377,10 @@ async def stream_stage_logs(
 
 
 @router.get("/pipelines/{run_id}/events")
+@inject
 async def stream_pipeline_events(
     run_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> StreamingResponse:
     """Stream pipeline stage status changes via SSE for real-time UI updates."""
     run = await store.get(run_id)
@@ -419,11 +430,12 @@ async def stream_pipeline_events(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/retry")
+@inject
 async def retry_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Retry a failed or stuck stage. Resets it to running and re-invokes the node."""
     run = await store.get(run_id)
@@ -491,11 +503,12 @@ async def retry_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/reject")
+@inject
 async def reject_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Reject a stage that is waiting for human approval, failing the pipeline."""
     run = await store.get(run_id)
@@ -582,11 +595,12 @@ async def reject_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/approve")
+@inject
 async def approve_stage(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Approve a stage that is waiting for human approval and resume the workflow."""
     import asyncio
@@ -663,12 +677,13 @@ class RegeneratePayload(BaseModel):
 
 
 @router.patch("/pipelines/{run_id}/stages/{stage_id}/report")
+@inject
 async def edit_stage_report(
     run_id: str,
     stage_id: str,
     body: ReportEditPayload,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Edit the report output of a completed or waiting_approval stage."""
     run = await store.get(run_id)
@@ -721,11 +736,12 @@ async def edit_stage_report(
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}/report/versions")
+@inject
 async def list_report_versions(
     run_id: str,
     stage_id: str,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> list[dict[str, object]]:
     """List all versions of a stage report."""
     run = await store.get(run_id)
@@ -738,12 +754,13 @@ async def list_report_versions(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/regenerate")
+@inject
 async def regenerate_stage(
     run_id: str,
     stage_id: str,
     body: RegeneratePayload,
-    store: Annotated[InMemoryPipelineStore, Depends(get_pipeline_store)],
     request: Request,
+    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Re-run a stage with optional guidance, resetting it to running."""
     run = await store.get(run_id)

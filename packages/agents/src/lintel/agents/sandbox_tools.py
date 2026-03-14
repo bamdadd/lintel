@@ -135,7 +135,8 @@ class SandboxToolDispatcher:
         handler = handlers.get(tool_name)
         if handler is None:
             return json.dumps({"error": f"Unknown sandbox tool: {tool_name}"})
-        return await handler(arguments)
+        result: str = await handler(arguments)
+        return result
 
     async def _read_file(self, arguments: dict[str, Any]) -> str:
         content = await self._manager.read_file(self._sandbox_id, arguments["path"])

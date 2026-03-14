@@ -15,10 +15,11 @@ async def ingest_message(
     config: RunnableConfig | None = None,
 ) -> dict[str, Any]:
     """Process message. PII firewall runs before this node."""
-    from lintel.workflows.nodes._stage_tracking import append_log, mark_completed, mark_running
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
-    await mark_running(_config, "ingest", state)
+    tracker = StageTracker(_config)
+    await tracker.mark_running("ingest")
 
     # Log trigger source
     _configurable = _config.get("configurable", {}) if isinstance(_config, dict) else {}
@@ -47,12 +48,12 @@ async def ingest_message(
 
     # Determine and log trigger source
     if trigger_type.startswith("work_item:"):
-        await append_log(_config, "ingest", f"Triggered by work item: `{work_item_id}`", state)
+        await tracker.append_log("ingest", f"Triggered by work item: `{work_item_id}`")
     elif trigger_type.startswith("chat:"):
         conv_id = trigger_type.split(":", 1)[1] if ":" in trigger_type else ""
-        await append_log(_config, "ingest", f"Triggered from chat: `{conv_id}`", state)
+        await tracker.append_log("ingest", f"Triggered from chat: `{conv_id}`")
     elif trigger_type:
-        await append_log(_config, "ingest", f"Trigger: {trigger_type}", state)
+        await tracker.append_log("ingest", f"Trigger: {trigger_type}")
 
     # Log the prompt/request
     messages = state.get("sanitized_messages", [])
@@ -60,9 +61,9 @@ async def ingest_message(
         prompt = messages[0] if isinstance(messages[0], str) else str(messages[0])
         # Truncate long prompts for readability
         display = prompt[:500] + "..." if len(prompt) > 500 else prompt
-        await append_log(_config, "ingest", f"Request: {display}", state)
+        await tracker.append_log("ingest", f"Request: {display}")
 
-    await mark_completed(_config, "ingest", state)
+    await tracker.mark_completed("ingest")
 
     return {
         "current_phase": "ingesting",

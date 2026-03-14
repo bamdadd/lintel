@@ -56,15 +56,11 @@ async def research_codebase(
     config: RunnableConfig,
 ) -> dict[str, Any]:
     """Research the codebase to produce context for the planning stage."""
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        extract_token_usage,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
-    await mark_running(config, "research", state)
-    await append_log(config, "research", "Researching codebase...", state)
+    tracker = StageTracker(config)
+    await tracker.mark_running("research")
+    await tracker.append_log("research", "Researching codebase...")
 
     _configurable = config.get("configurable", {})
     agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
@@ -74,37 +70,31 @@ async def research_codebase(
     # Gather codebase context from sandbox (if available)
     codebase_context = ""
     if sandbox_manager is not None and sandbox_id is not None:
-        await append_log(config, "research", "Reading codebase from sandbox...", state)
+        await tracker.append_log("research", "Reading codebase from sandbox...")
         try:
             workspace_path = state.get("workspace_path") or "/workspace/repo"
             codebase_context = await _gather_context(sandbox_manager, sandbox_id, workspace_path)
         except Exception:
             logger.warning("research_sandbox_context_failed", exc_info=True)
-            await append_log(config, "research", "Failed to read codebase from sandbox", state)
+            await tracker.append_log("research", "Failed to read codebase from sandbox")
             # Continue without codebase context — LLM can still analyse the request
 
     if codebase_context:
-        await append_log(
-            config,
+        await tracker.append_log(
             "research",
             f"Codebase context gathered ({len(codebase_context):,} chars)",
-            state,
         )
     else:
-        await append_log(
-            config,
+        await tracker.append_log(
             "research",
             "No codebase context available — analysing request only",
-            state,
         )
 
     # Without agent runtime, return raw context as research
     if agent_runtime is None:
         logger.warning("research_no_runtime", msg="No AgentRuntime, using raw codebase context")
-        await mark_completed(
-            config,
+        await tracker.mark_completed(
             "research",
-            state,
             outputs={
                 "research_report": codebase_context,
             },
@@ -123,7 +113,7 @@ async def research_codebase(
     label = (
         "Analysing codebase with LLM..." if codebase_context else "Analysing request with LLM..."
     )
-    await append_log(config, "research", label, state)
+    await tracker.append_log("research", label)
 
     from lintel.contracts.types import ThreadRef
 
@@ -137,9 +127,7 @@ async def research_codebase(
         )
 
     # Stream LLM output so partial results appear in stage logs in real-time
-    from lintel.workflows.nodes._stage_tracking import log_llm_context
-
-    await log_llm_context(config, "research", "researcher", "research_codebase", state)
+    await tracker.log_llm_context("research", "researcher", "research_codebase")
 
     _line_buffer: list[str] = []
 
@@ -152,7 +140,7 @@ async def research_codebase(
             line, text = text.split("\n", 1)
             stripped = line.strip()
             if stripped:
-                await append_log(config, "research", stripped, state)
+                await tracker.append_log("research", stripped)
         _line_buffer.clear()
         if text:
             _line_buffer.append(text)
@@ -160,7 +148,7 @@ async def research_codebase(
     async def _on_activity(activity: str) -> None:
         """Forward Claude Code streaming activity to stage logs."""
         if activity:
-            await append_log(config, "research", activity, state)
+            await tracker.append_log("research", activity)
 
     result = await agent_runtime.execute_step_stream(
         thread_ref=thread_ref,
@@ -188,19 +176,15 @@ async def research_codebase(
     # Flush any remaining buffered content
     remaining = "".join(_line_buffer).strip()
     if remaining:
-        await append_log(config, "research", remaining, state)
+        await tracker.append_log("research", remaining)
 
     research_report = result.get("content", "")
-    usage = extract_token_usage("research", result)
+    usage = StageTracker.extract_token_usage(result)
 
-    await append_log(
-        config, "research", f"Research complete ({len(research_report):,} chars)", state
-    )
-    await append_log(
-        config,
+    await tracker.append_log("research", f"Research complete ({len(research_report):,} chars)")
+    await tracker.append_log(
         "research",
         f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
-        state,
     )
 
     logger.info(
@@ -214,7 +198,7 @@ async def research_codebase(
         "token_usage": usage,
         "research_report": research_report,
     }
-    await mark_completed(config, "research", state, outputs=stage_outputs)
+    await tracker.mark_completed("research", outputs=stage_outputs)
 
     return {
         "research_context": research_report,

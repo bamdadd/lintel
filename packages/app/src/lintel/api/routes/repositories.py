@@ -1,13 +1,14 @@
 """Repository CRUD endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.deps import get_repository_store
+from lintel.api.container import AppContainer
 from lintel.contracts.events import RepositoryRegistered, RepositoryRemoved, RepositoryUpdated
 from lintel.contracts.types import Repository, RepoStatus
 from lintel.domain.event_dispatcher import dispatch_event
@@ -37,10 +38,11 @@ class UpdateRepoRequest(BaseModel):
 
 
 @router.post("/repositories", status_code=201)
+@inject
 async def register_repository(
     body: RegisterRepoRequest,
     request: Request,
-    store: Annotated[InMemoryRepositoryStore, Depends(get_repository_store)],
+    store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.repo_id)
     if existing is not None:
@@ -65,17 +67,19 @@ async def register_repository(
 
 
 @router.get("/repositories")
+@inject
 async def list_repositories(
-    store: Annotated[InMemoryRepositoryStore, Depends(get_repository_store)],
+    store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     repos = await store.list_all()
     return [asdict(r) for r in repos]
 
 
 @router.get("/repositories/{repo_id}")
+@inject
 async def get_repository(
     repo_id: str,
-    store: Annotated[InMemoryRepositoryStore, Depends(get_repository_store)],
+    store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
 ) -> dict[str, Any]:
     repo = await store.get(repo_id)
     if repo is None:
@@ -84,11 +88,12 @@ async def get_repository(
 
 
 @router.patch("/repositories/{repo_id}")
+@inject
 async def update_repository(
     repo_id: str,
     body: UpdateRepoRequest,
     request: Request,
-    store: Annotated[InMemoryRepositoryStore, Depends(get_repository_store)],
+    store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
 ) -> dict[str, Any]:
     repo = await store.get(repo_id)
     if repo is None:
@@ -105,10 +110,11 @@ async def update_repository(
 
 
 @router.delete("/repositories/{repo_id}", status_code=204)
+@inject
 async def remove_repository(
     repo_id: str,
     request: Request,
-    store: Annotated[InMemoryRepositoryStore, Depends(get_repository_store)],
+    store: InMemoryRepositoryStore = Depends(Provide[AppContainer.repository_store]),  # noqa: B008
 ) -> None:
     repo = await store.get(repo_id)
     if repo is None:

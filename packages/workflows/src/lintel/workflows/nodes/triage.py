@@ -77,21 +77,17 @@ async def triage_issue(
     config: RunnableConfig,
 ) -> dict[str, Any]:
     """Classify issue type, severity, and route to the right agent."""
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        extract_token_usage,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
-    await mark_running(config, "triage", state)
-    await append_log(config, "triage", "Classifying issue...", state)
+    tracker = StageTracker(config, state)
+    await tracker.mark_running("triage")
+    await tracker.append_log("triage", "Classifying issue...")
 
     agent_runtime: AgentRuntime | None = config.get("configurable", {}).get("agent_runtime")
 
     if agent_runtime is None:
         logger.warning("triage_no_runtime", msg="No AgentRuntime, using default classification")
-        await mark_completed(config, "triage", state)
+        await tracker.mark_completed("triage")
         return {
             "intent": "feature",
             "current_phase": "triaging",
@@ -115,19 +111,17 @@ async def triage_issue(
 
     content = result.get("content", "")
     triage = _parse_triage(content)
-    usage = extract_token_usage("triage", result)
+    usage = StageTracker.extract_token_usage(result)
 
     issue_type = triage.get("type", "feature")
     priority = triage.get("priority", "P2")
     summary = triage.get("summary", "")
 
-    await append_log(config, "triage", f"Type: {issue_type}, Priority: {priority}", state)
-    await append_log(config, "triage", f"Summary: {summary}", state)
-    await append_log(
-        config,
+    await tracker.append_log("triage", f"Type: {issue_type}, Priority: {priority}")
+    await tracker.append_log("triage", f"Summary: {summary}")
+    await tracker.append_log(
         "triage",
         f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
-        state,
     )
 
     logger.info(
@@ -138,7 +132,7 @@ async def triage_issue(
     )
 
     stage_outputs: dict[str, object] = {"token_usage": usage, "triage": triage}
-    await mark_completed(config, "triage", state, outputs=stage_outputs)
+    await tracker.mark_completed("triage", outputs=stage_outputs)
 
     return {
         "intent": issue_type,

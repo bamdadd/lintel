@@ -1,12 +1,14 @@
 """Environment CRUD endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import EnvironmentCreated, EnvironmentRemoved, EnvironmentUpdated
 from lintel.contracts.types import Environment, EnvironmentType
 from lintel.domain.event_dispatcher import dispatch_event
@@ -55,10 +57,11 @@ class UpdateEnvironmentRequest(BaseModel):
 
 
 @router.post("/environments", status_code=201)
+@inject
 async def create_environment(
     body: CreateEnvironmentRequest,
     request: Request,
-    store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
+    store: InMemoryEnvironmentStore = Depends(Provide[AppContainer.environment_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.environment_id)
     if existing is not None:
@@ -79,17 +82,19 @@ async def create_environment(
 
 
 @router.get("/environments")
+@inject
 async def list_environments(
-    store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
+    store: InMemoryEnvironmentStore = Depends(Provide[AppContainer.environment_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     envs = await store.list_all()
     return [asdict(e) for e in envs]
 
 
 @router.get("/environments/{environment_id}")
+@inject
 async def get_environment(
     environment_id: str,
-    store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
+    store: InMemoryEnvironmentStore = Depends(Provide[AppContainer.environment_store]),  # noqa: B008
 ) -> dict[str, Any]:
     env = await store.get(environment_id)
     if env is None:
@@ -98,11 +103,12 @@ async def get_environment(
 
 
 @router.patch("/environments/{environment_id}")
+@inject
 async def update_environment(
     environment_id: str,
     body: UpdateEnvironmentRequest,
     request: Request,
-    store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
+    store: InMemoryEnvironmentStore = Depends(Provide[AppContainer.environment_store]),  # noqa: B008
 ) -> dict[str, Any]:
     env = await store.get(environment_id)
     if env is None:
@@ -119,10 +125,11 @@ async def update_environment(
 
 
 @router.delete("/environments/{environment_id}", status_code=204)
+@inject
 async def delete_environment(
     environment_id: str,
     request: Request,
-    store: Annotated[InMemoryEnvironmentStore, Depends(get_environment_store)],
+    store: InMemoryEnvironmentStore = Depends(Provide[AppContainer.environment_store]),  # noqa: B008
 ) -> None:
     env = await store.get(environment_id)
     if env is None:

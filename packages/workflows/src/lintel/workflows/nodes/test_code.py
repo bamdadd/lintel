@@ -26,13 +26,10 @@ async def run_tests(
     """Run the project test suite in the sandbox and report results."""
     from lintel.contracts.types import SandboxJob
     from lintel.domain.skills.discover_test_command import discover_test_command
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
+    tracker = StageTracker(_config, state)
     sandbox_manager: SandboxManager | None = _config.get("configurable", {}).get("sandbox_manager")
 
     # Fall back to runtime registry after LangGraph interrupt/resume
@@ -42,12 +39,12 @@ async def run_tests(
 
         sandbox_manager = get_sandbox_manager(run_id)
 
-    await mark_running(_config, "test", state)
+    await tracker.mark_running("test")
 
     sandbox_id = state.get("sandbox_id")
     if not sandbox_id or sandbox_manager is None:
         logger.warning("test_skipped_no_sandbox")
-        await mark_completed(_config, "test", state, error="No sandbox available")
+        await tracker.mark_completed("test", error="No sandbox available")
         return {
             "current_phase": "reviewing",
             "agent_outputs": [
@@ -64,17 +61,15 @@ async def run_tests(
         logger.warning("test_reconnect_network_failed")
 
     # Discover how to run tests via skill
-    await append_log(_config, "test", "Discovering test command...", state)
+    await tracker.append_log("test", "Discovering test command...")
     try:
         discovery = await discover_test_command(sandbox_manager, sandbox_id, workdir)
     except Exception:
-        from lintel.workflows.nodes._error_handling import handle_node_error
+        from lintel.workflows.nodes._error_handling import WorkflowErrorHandler
 
         logger.exception("test_discovery_failed")
-        await mark_completed(
-            _config, "test", state, error="Test discovery failed — sandbox unavailable"
-        )
-        return await handle_node_error(
+        await tracker.mark_completed("test", error="Test discovery failed — sandbox unavailable")
+        return await WorkflowErrorHandler.handle(
             state, "test", Exception("Test discovery failed — sandbox unavailable")
         )
     test_command = discovery["test_command"]
@@ -82,7 +77,7 @@ async def run_tests(
 
     # Run setup commands (dep install, etc.)
     for cmd in setup_commands:
-        await append_log(_config, "test", f"Setup: {cmd[:80]}", state)
+        await tracker.append_log("test", f"Setup: {cmd[:80]}")
         await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(command=cmd, workdir=workdir, timeout_seconds=180),
@@ -96,14 +91,12 @@ async def run_tests(
     )
     if changed_test_cmd:
         test_command = changed_test_cmd
-        await append_log(
-            _config,
+        await tracker.append_log(
             "test",
             f"Running changed tests: {test_command[:80]}",
-            state,
         )
     else:
-        await append_log(_config, "test", f"Running: {test_command}", state)
+        await tracker.append_log("test", f"Running: {test_command}")
     try:
         result = await sandbox_manager.execute(
             sandbox_id,
@@ -114,16 +107,14 @@ async def run_tests(
             ),
         )
     except Exception:
-        from lintel.workflows.nodes._error_handling import handle_node_error
+        from lintel.workflows.nodes._error_handling import WorkflowErrorHandler
 
         logger.exception("test_sandbox_execute_failed")
-        await mark_completed(
-            _config,
+        await tracker.mark_completed(
             "test",
-            state,
             error="Sandbox execution failed",
         )
-        return await handle_node_error(
+        return await WorkflowErrorHandler.handle(
             state,
             "test",
             Exception("Sandbox execution failed"),
@@ -134,9 +125,9 @@ async def run_tests(
     output = result.stdout + result.stderr
 
     # Log test output to stage
-    await append_log(_config, "test", f"Exit code: {result.exit_code}", state)
+    await tracker.append_log("test", f"Exit code: {result.exit_code}")
     for line in output.strip().split("\n")[:30]:
-        await append_log(_config, "test", line, state)
+        await tracker.append_log("test", line)
 
     # Truncate long output
     if len(output) > 5000:
@@ -174,10 +165,8 @@ async def run_tests(
     except Exception:
         logger.warning("test_disconnect_network_failed")
 
-    await mark_completed(
-        _config,
+    await tracker.mark_completed(
         "test",
-        state,
         error="" if passed else f"Tests failed (exit {result.exit_code})",
     )
     return {

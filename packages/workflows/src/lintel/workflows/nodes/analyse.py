@@ -39,15 +39,11 @@ async def analyse_code(
     config: RunnableConfig,
 ) -> dict[str, Any]:
     """Analyse the codebase or context to inform the next step."""
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        extract_token_usage,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
-    await mark_running(config, "analyse", state)
-    await append_log(config, "analyse", "Analysing code...", state)
+    tracker = StageTracker(config)
+    await tracker.mark_running("analyse")
+    await tracker.append_log("analyse", "Analysing code...")
 
     _configurable = config.get("configurable", {})
     agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
@@ -56,7 +52,7 @@ async def analyse_code(
 
     if agent_runtime is None:
         logger.warning("analyse_no_runtime", msg="No AgentRuntime, using stub analysis")
-        await mark_completed(config, "analyse", state)
+        await tracker.mark_completed("analyse")
         return {
             "current_phase": "analysing",
             "agent_outputs": [{"node": "analyse", "summary": "Analysis complete (no LLM)"}],
@@ -65,7 +61,7 @@ async def analyse_code(
     # Gather codebase context if sandbox is available
     codebase_context = ""
     if sandbox_manager is not None and sandbox_id is not None:
-        await append_log(config, "analyse", "Reading codebase from sandbox...", state)
+        await tracker.append_log("analyse", "Reading codebase from sandbox...")
         try:
             from lintel.workflows.nodes._codebase_context import gather_codebase_context
 
@@ -73,15 +69,13 @@ async def analyse_code(
             codebase_context = await gather_codebase_context(
                 sandbox_manager, sandbox_id, repo_path=workspace_path
             )
-            await append_log(
-                config,
+            await tracker.append_log(
                 "analyse",
                 f"Codebase context: {len(codebase_context):,} chars",
-                state,
             )
         except Exception:
             logger.warning("analyse_context_failed", exc_info=True)
-            await append_log(config, "analyse", "Failed to read codebase context", state)
+            await tracker.append_log("analyse", "Failed to read codebase context")
 
     messages_list = state.get("sanitized_messages", [])
     user_request = "\n".join(messages_list) if messages_list else "No description provided."
@@ -105,7 +99,7 @@ async def analyse_code(
             workspace_id="lintel-chat", channel_id="chat", thread_ts=thread_ref_str
         )
 
-    await append_log(config, "analyse", "Running analysis with LLM...", state)
+    await tracker.append_log("analyse", "Running analysis with LLM...")
 
     # Stream LLM output for real-time log visibility
     _line_buffer: list[str] = []
@@ -117,7 +111,7 @@ async def analyse_code(
             line, text = text.split("\n", 1)
             stripped = line.strip()
             if stripped:
-                await append_log(config, "analyse", stripped, state)
+                await tracker.append_log("analyse", stripped)
         _line_buffer.clear()
         if text:
             _line_buffer.append(text)
@@ -137,22 +131,18 @@ async def analyse_code(
 
     remaining = "".join(_line_buffer).strip()
     if remaining:
-        await append_log(config, "analyse", remaining, state)
+        await tracker.append_log("analyse", remaining)
 
     analysis = result.get("content", "")
-    usage = extract_token_usage("analyse", result)
+    usage = StageTracker.extract_token_usage(result)
 
-    await append_log(
-        config,
+    await tracker.append_log(
         "analyse",
         f"Analysis complete ({len(analysis):,} chars)",
-        state,
     )
-    await append_log(
-        config,
+    await tracker.append_log(
         "analyse",
         f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
-        state,
     )
 
     logger.info(
@@ -163,7 +153,7 @@ async def analyse_code(
     )
 
     stage_outputs: dict[str, object] = {"token_usage": usage, "analysis": analysis}
-    await mark_completed(config, "analyse", state, outputs=stage_outputs)
+    await tracker.mark_completed("analyse", outputs=stage_outputs)
 
     return {
         "analysis_context": analysis,

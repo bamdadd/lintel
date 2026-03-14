@@ -1,12 +1,14 @@
 """Credential management endpoints (SSH keys and GitHub tokens)."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import CredentialRevoked, CredentialStored
 from lintel.contracts.types import Credential, CredentialType
 from lintel.domain.event_dispatcher import dispatch_event
@@ -60,7 +62,7 @@ class InMemoryCredentialStore:
 
 
 def get_credential_store(request: Request) -> InMemoryCredentialStore:
-    """Get credential store from app state."""
+    """Kept for backward compat."""
     return request.app.state.credential_store  # type: ignore[no-any-return]
 
 
@@ -84,10 +86,11 @@ class UpdateCredentialRequest(BaseModel):
 
 
 @router.post("/credentials", status_code=201)
+@inject
 async def store_credential(
     request: Request,
     body: StoreCredentialRequest,
-    store: Annotated[InMemoryCredentialStore, Depends(get_credential_store)],
+    store: InMemoryCredentialStore = Depends(Provide[AppContainer.credential_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Store an SSH key or GitHub token."""
     existing = await store.get(body.credential_id)
@@ -118,8 +121,9 @@ async def store_credential(
 
 
 @router.get("/credentials")
+@inject
 async def list_credentials(
-    store: Annotated[InMemoryCredentialStore, Depends(get_credential_store)],
+    store: InMemoryCredentialStore = Depends(Provide[AppContainer.credential_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """List all credentials (secrets masked)."""
     creds = await store.list_all()
@@ -127,9 +131,10 @@ async def list_credentials(
 
 
 @router.get("/credentials/{credential_id}")
+@inject
 async def get_credential(
     credential_id: str,
-    store: Annotated[InMemoryCredentialStore, Depends(get_credential_store)],
+    store: InMemoryCredentialStore = Depends(Provide[AppContainer.credential_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Get a credential by ID (secret masked)."""
     cred = await store.get(credential_id)
@@ -139,9 +144,10 @@ async def get_credential(
 
 
 @router.get("/credentials/repo/{repo_id}")
+@inject
 async def list_credentials_for_repo(
     repo_id: str,
-    store: Annotated[InMemoryCredentialStore, Depends(get_credential_store)],
+    store: InMemoryCredentialStore = Depends(Provide[AppContainer.credential_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """List credentials applicable to a specific repo."""
     creds = await store.list_by_repo(repo_id)
@@ -149,10 +155,11 @@ async def list_credentials_for_repo(
 
 
 @router.delete("/credentials/{credential_id}", status_code=204)
+@inject
 async def revoke_credential(
     credential_id: str,
     request: Request,
-    store: Annotated[InMemoryCredentialStore, Depends(get_credential_store)],
+    store: InMemoryCredentialStore = Depends(Provide[AppContainer.credential_store]),  # noqa: B008
 ) -> None:
     """Revoke and delete a credential."""
     cred = await store.get(credential_id)

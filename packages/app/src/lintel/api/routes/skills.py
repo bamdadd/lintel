@@ -1,12 +1,14 @@
 """Skill registration and invocation endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import SkillInvoked, SkillRegistered, SkillRemoved, SkillUpdated
 from lintel.contracts.types import SkillCategory, SkillDescriptor, SkillExecutionMode, SkillResult
 from lintel.domain.event_dispatcher import dispatch_event
@@ -78,7 +80,7 @@ class InMemorySkillStore:
 
 
 def get_skill_store(request: Request) -> InMemorySkillStore:
-    """Read the skill store from app state."""
+    """Kept for backward compat."""
     return request.app.state.skill_store  # type: ignore[no-any-return]
 
 
@@ -116,10 +118,11 @@ class InvokeSkillRequest(BaseModel):
 
 
 @router.post("/skills", status_code=201)
+@inject
 async def register_skill(
     body: RegisterSkillRequest,
     request: Request,
-    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.list_skills()
     if body.skill_id in existing:
@@ -146,8 +149,9 @@ async def register_skill(
 
 
 @router.get("/skills")
+@inject
 async def list_skills(
-    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     skills = await store.list_skills()
     return [
@@ -157,9 +161,10 @@ async def list_skills(
 
 
 @router.get("/skills/{skill_id}")
+@inject
 async def get_skill(
     skill_id: str,
-    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
 ) -> dict[str, Any]:
     skills = await store.list_skills()
     if skill_id not in skills:
@@ -176,11 +181,12 @@ class UpdateSkillRequest(BaseModel):
 
 
 @router.patch("/skills/{skill_id}")
+@inject
 async def update_skill(
     skill_id: str,
     body: UpdateSkillRequest,
     request: Request,
-    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Update a registered skill."""
     skills = await store.list_skills()
@@ -206,10 +212,11 @@ async def update_skill(
 
 
 @router.delete("/skills/{skill_id}", status_code=204)
+@inject
 async def delete_skill(
     skill_id: str,
     request: Request,
-    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
 ) -> None:
     """Delete a registered skill."""
     try:
@@ -222,11 +229,12 @@ async def delete_skill(
 
 
 @router.post("/skills/{skill_id}/invoke")
+@inject
 async def invoke_skill(
     skill_id: str,
     body: InvokeSkillRequest,
     request: Request,
-    store: Annotated[InMemorySkillStore, Depends(get_skill_store)],
+    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
 ) -> dict[str, Any]:
     try:
         result = await store.invoke(

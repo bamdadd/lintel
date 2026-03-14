@@ -2,11 +2,13 @@
 
 from dataclasses import asdict
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Any
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from lintel.api.container import AppContainer
 from lintel.contracts.types import AuditEntry
 
 router = APIRouter()
@@ -42,7 +44,7 @@ class AuditEntryStore:
 
 
 def get_audit_entry_store(request: Request) -> AuditEntryStore:
-    """Get audit entry store from app state."""
+    """Kept for backward compat."""
     return request.app.state.audit_entry_store  # type: ignore[no-any-return]
 
 
@@ -58,9 +60,10 @@ class CreateAuditEntryRequest(BaseModel):
 
 
 @router.post("/audit", status_code=201)
+@inject
 async def record_audit_entry(
     body: CreateAuditEntryRequest,
-    store: Annotated[AuditEntryStore, Depends(get_audit_entry_store)],
+    store: AuditEntryStore = Depends(Provide[AppContainer.audit_entry_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.entry_id)
     if existing is not None:
@@ -88,8 +91,9 @@ class PaginatedAuditResponse(BaseModel):
 
 
 @router.get("/audit")
+@inject
 async def list_audit_entries(
-    store: Annotated[AuditEntryStore, Depends(get_audit_entry_store)],
+    store: AuditEntryStore = Depends(Provide[AppContainer.audit_entry_store]),  # noqa: B008
     actor_id: str | None = None,
     resource_type: str | None = None,
     resource_id: str | None = None,
@@ -114,9 +118,10 @@ async def list_audit_entries(
 
 
 @router.get("/audit/{entry_id}")
+@inject
 async def get_audit_entry(
     entry_id: str,
-    store: Annotated[AuditEntryStore, Depends(get_audit_entry_store)],
+    store: AuditEntryStore = Depends(Provide[AppContainer.audit_entry_store]),  # noqa: B008
 ) -> dict[str, Any]:
     entry = await store.get(entry_id)
     if entry is None:

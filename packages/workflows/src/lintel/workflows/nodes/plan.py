@@ -78,15 +78,11 @@ def _build_thread_ref(raw: str) -> ThreadRef:
 
 async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[str, Any]:
     """Generate work plan using the Planner agent via AgentRuntime."""
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        extract_token_usage,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
-    await mark_running(config, "plan", state)
-    await append_log(config, "plan", "Generating implementation plan...", state)
+    tracker = StageTracker(config)
+    await tracker.mark_running("plan")
+    await tracker.append_log("plan", "Generating implementation plan...")
 
     _configurable = config.get("configurable", {})
     agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
@@ -95,7 +91,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
 
     if agent_runtime is None:
         logger.warning("plan_node_no_runtime", msg="AgentRuntime not available, using stub plan")
-        await mark_completed(config, "plan", state)
+        await tracker.mark_completed("plan")
         return {
             "plan": {
                 "tasks": [{"title": t} for t in ["Implement feature", "Write tests", "Create PR"]],
@@ -112,11 +108,9 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     research_context = state.get("research_context", "")
     if research_context:
         logger.info("plan_using_research_context", chars=len(research_context))
-        await append_log(
-            config,
+        await tracker.append_log(
             "plan",
             f"Using research context ({len(research_context):,} chars)",
-            state,
         )
 
     # Truncate research context to avoid overwhelming the planner
@@ -133,9 +127,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
 
     thread_ref = _build_thread_ref(state.get("thread_ref", ""))
 
-    from lintel.workflows.nodes._stage_tracking import log_llm_context
-
-    await log_llm_context(config, "plan", "planner", "plan_work", state)
+    await tracker.log_llm_context("plan", "planner", "plan_work")
 
     # Stream LLM output so partial results appear in stage logs in real-time
     _line_buffer: list[str] = []
@@ -148,7 +140,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             line, text = text.split("\n", 1)
             stripped = line.strip()
             if stripped:
-                await append_log(config, "plan", stripped, state)
+                await tracker.append_log("plan", stripped)
         _line_buffer.clear()
         if text:
             _line_buffer.append(text)
@@ -156,7 +148,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     async def _on_activity(activity: str) -> None:
         """Forward Claude Code streaming activity to stage logs."""
         if activity:
-            await append_log(config, "plan", activity, state)
+            await tracker.append_log("plan", activity)
 
     result = await agent_runtime.execute_step_stream(
         thread_ref=thread_ref,
@@ -175,27 +167,25 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     # Flush remaining buffer
     remaining = "".join(_line_buffer).strip()
     if remaining:
-        await append_log(config, "plan", remaining, state)
+        await tracker.append_log("plan", remaining)
 
     content = result.get("content", "")
     plan = _parse_plan(content)
     plan["intent"] = state.get("intent", "feature")
-    usage = extract_token_usage("plan", result)
+    usage = StageTracker.extract_token_usage(result)
 
     # Log plan tasks for visibility
     summary = plan.get("summary", "")
     tasks = plan.get("tasks", [])
-    await append_log(config, "plan", f"Plan: {summary}", state)
+    await tracker.append_log("plan", f"Plan: {summary}")
     for i, task in enumerate(tasks, 1):
         title = task.get("title", task) if isinstance(task, dict) else str(task)
         complexity = task.get("complexity", "") if isinstance(task, dict) else ""
         suffix = f" [{complexity}]" if complexity else ""
-        await append_log(config, "plan", f"  {i}. {title}{suffix}", state)
-    await append_log(
-        config,
+        await tracker.append_log("plan", f"  {i}. {title}{suffix}")
+    await tracker.append_log(
         "plan",
         f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
-        state,
     )
 
     logger.info(
@@ -211,7 +201,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         "token_usage": usage,
         "plan": plan,
     }
-    await mark_completed(config, "plan", state, outputs=stage_outputs)
+    await tracker.mark_completed("plan", outputs=stage_outputs)
     return {
         "plan": plan,
         "current_phase": "awaiting_spec_approval",

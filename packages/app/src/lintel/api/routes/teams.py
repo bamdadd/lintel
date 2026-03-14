@@ -1,12 +1,14 @@
 """Team CRUD endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import TeamCreated, TeamRemoved, TeamUpdated
 from lintel.contracts.types import Team
 from lintel.domain.event_dispatcher import dispatch_event
@@ -37,7 +39,7 @@ class InMemoryTeamStore:
 
 
 def get_team_store(request: Request) -> InMemoryTeamStore:
-    """Get team store from app state."""
+    """Kept for backward compat."""
     return request.app.state.team_store  # type: ignore[no-any-return]
 
 
@@ -62,10 +64,11 @@ def _team_to_dict(team: Team) -> dict[str, Any]:
 
 
 @router.post("/teams", status_code=201)
+@inject
 async def create_team(
     body: CreateTeamRequest,
     request: Request,
-    store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
+    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.team_id)
     if existing is not None:
@@ -86,17 +89,19 @@ async def create_team(
 
 
 @router.get("/teams")
+@inject
 async def list_teams(
-    store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
+    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     teams = await store.list_all()
     return [_team_to_dict(t) for t in teams]
 
 
 @router.get("/teams/{team_id}")
+@inject
 async def get_team(
     team_id: str,
-    store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
+    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
 ) -> dict[str, Any]:
     team = await store.get(team_id)
     if team is None:
@@ -105,11 +110,12 @@ async def get_team(
 
 
 @router.patch("/teams/{team_id}")
+@inject
 async def update_team(
     team_id: str,
     body: UpdateTeamRequest,
     request: Request,
-    store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
+    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
 ) -> dict[str, Any]:
     team = await store.get(team_id)
     if team is None:
@@ -130,10 +136,11 @@ async def update_team(
 
 
 @router.delete("/teams/{team_id}", status_code=204)
+@inject
 async def delete_team(
     team_id: str,
     request: Request,
-    store: Annotated[InMemoryTeamStore, Depends(get_team_store)],
+    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
 ) -> None:
     team = await store.get(team_id)
     if team is None:

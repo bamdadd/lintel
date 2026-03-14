@@ -126,13 +126,10 @@ async def spawn_implementation(
     config: RunnableConfig | None = None,
 ) -> dict[str, Any]:
     """Generate code, write files, run tests, fix until green."""
-    from lintel.workflows.nodes._stage_tracking import (
-        append_log,
-        mark_completed,
-        mark_running,
-    )
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
+    tracker = StageTracker(_config, state)
     _configurable = _config.get("configurable", {})
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
     agent_runtime: AgentRuntime | None = _configurable.get("agent_runtime")
@@ -156,16 +153,16 @@ async def spawn_implementation(
         sandbox_id=state.get("sandbox_id", ""),
     )
 
-    await mark_running(_config, "implement", state)
-    await append_log(_config, "implement", "Starting implementation", state)
+    await tracker.mark_running("implement")
+    await tracker.append_log("implement", "Starting implementation")
 
     if sandbox_manager is None:
-        await mark_completed(_config, "implement", state, error="No sandbox manager available")
+        await tracker.mark_completed("implement", error="No sandbox manager available")
         return {"error": "No sandbox manager available", "current_phase": "closed"}
 
     sandbox_id = state.get("sandbox_id")
     if not sandbox_id:
-        await mark_completed(_config, "implement", state, error="No sandbox available")
+        await tracker.mark_completed("implement", error="No sandbox available")
         return {
             "error": "No sandbox available — setup_workspace must run first",
             "current_phase": "closed",
@@ -209,9 +206,7 @@ async def spawn_implementation(
         sandbox_manager, sandbox_id, workspace_path, all_file_paths
     )
     if file_contents:
-        await append_log(
-            _config, "implement", f"Pre-read {len(file_contents)} file(s) from plan", state
-        )
+        await tracker.append_log("implement", f"Pre-read {len(file_contents)} file(s) from plan")
 
     file_context = _build_file_context(file_contents)
     research_context = state.get("research_context", "")
@@ -250,9 +245,7 @@ async def spawn_implementation(
         # Detect provider to choose execution strategy
         is_claude_code, _provider, _model_name = await _resolve_coder_policy(agent_runtime)
 
-        from lintel.workflows.nodes._stage_tracking import log_llm_context
-
-        await log_llm_context(_config, "implement", "coder", "implement_generate", state)
+        await tracker.log_llm_context("implement", "coder", "implement_generate")
 
         if is_claude_code:
             # ---- Claude Code TDD path ----
@@ -289,10 +282,11 @@ async def spawn_implementation(
     rebase_warning = ""
     base_branch = state.get("repo_branch", "main")
     if base_branch:
-        from lintel.workflows.nodes._git_helpers import rebase_on_upstream
+        from lintel.workflows.nodes._git_helpers import GitOperations
 
         try:
-            rebase_result = await rebase_on_upstream(sandbox_manager, sandbox_id, base_branch)
+            git_ops = GitOperations(sandbox_manager, sandbox_id)
+            rebase_result = await git_ops.rebase_on_upstream(base_branch)
             if not rebase_result["success"]:
                 rebase_warning = rebase_result["message"]
         except Exception:
@@ -300,14 +294,15 @@ async def spawn_implementation(
             rebase_warning = "Rebase failed — sandbox may be unavailable"
 
     # Collect artifacts
-    await append_log(_config, "implement", "Collecting artifacts...", state)
+    await tracker.append_log("implement", "Collecting artifacts...")
     try:
         artifacts = await sandbox_manager.collect_artifacts(sandbox_id, workdir=workspace_path)
     except Exception:
-        from lintel.workflows.nodes._error_handling import handle_node_error
+        from lintel.workflows.nodes._error_handling import WorkflowErrorHandler
 
-        await mark_completed(_config, "implement", state, error="Failed to collect artifacts")
-        return await handle_node_error(state, "implement", Exception("Failed to collect artifacts"))
+        await tracker.mark_completed("implement", error="Failed to collect artifacts")
+        err = Exception("Failed to collect artifacts")
+        return await WorkflowErrorHandler.handle(state, "implement", err)
 
     outputs: list[dict[str, Any]] = [{"node": "implement", "output": agent_output}]
     # Emit test verdict so _check_phase and close can see it
@@ -350,11 +345,11 @@ async def spawn_implementation(
     if diff_text:
         stage_outputs["diff"] = diff_text[:50000]
     if agent_runtime is not None and not test_passed:
-        await mark_completed(
-            _config, "implement", state, outputs=stage_outputs or None, error="Tests failed"
+        await tracker.mark_completed(
+            "implement", outputs=stage_outputs or None, error="Tests failed"
         )
     else:
-        await mark_completed(_config, "implement", state, outputs=stage_outputs or None)
+        await tracker.mark_completed("implement", outputs=stage_outputs or None)
 
     result_dict: dict[str, Any] = {
         "current_phase": "reviewing",
@@ -416,9 +411,10 @@ async def _implement_tdd(
     Returns (agent_output, test_passed, total_usage).
     """
     from lintel.contracts.types import AgentRole
-    from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
-    await append_log(config, "implement", "Using Claude Code TDD mode", state)
+    tracker = StageTracker(config, state)
+    await tracker.append_log("implement", "Using Claude Code TDD mode")
 
     # Discover test/lint commands for the project
     (
@@ -428,8 +424,8 @@ async def _implement_tdd(
         test_single_command,
     ) = await _discover_dev_commands(sandbox_manager, sandbox_id, workspace_path)
 
-    await append_log(config, "implement", f"Test: {test_command[:60]}", state)
-    await append_log(config, "implement", f"Lint: {lint_command[:60]}", state)
+    await tracker.append_log("implement", f"Test: {test_command[:60]}")
+    await tracker.append_log("implement", f"Lint: {lint_command[:60]}")
 
     # Install deps first
     from lintel.domain.skills.discover_test_command import discover_test_command
@@ -439,7 +435,7 @@ async def _implement_tdd(
         from lintel.contracts.types import SandboxJob
 
         for cmd in discovery.get("setup_commands", []):
-            await append_log(config, "implement", f"Setup: {cmd[:60]}", state)
+            await tracker.append_log("implement", f"Setup: {cmd[:60]}")
             await sandbox_manager.execute(
                 sandbox_id,
                 SandboxJob(command=cmd, workdir=workspace_path, timeout_seconds=180),
@@ -473,13 +469,13 @@ async def _implement_tdd(
         typecheck_command=typecheck_command,
         test_single_command=test_single_command,
     )
-    await append_log(config, "implement", f"Skill: {skill_id} (TDD)", state)
+    await tracker.append_log("implement", f"Skill: {skill_id} (TDD)")
 
-    await append_log(config, "implement", "Starting TDD implementation...", state)
+    await tracker.append_log("implement", "Starting TDD implementation...")
 
     async def _on_activity(activity: str) -> None:
         if activity:
-            await append_log(config, "implement", activity, state)
+            await tracker.append_log("implement", activity)
 
     try:
         result = await agent_runtime.execute_step(
@@ -494,14 +490,12 @@ async def _implement_tdd(
             sandbox_id=sandbox_id,
             on_activity=_on_activity,
         )
-        usage = extract_token_usage("implement_tdd", result)
+        usage = StageTracker.extract_token_usage(result)
         content = result.get("content", "")
-        await append_log(
-            config, "implement", f"TDD session complete ({len(content):,} chars)", state
-        )
+        await tracker.append_log("implement", f"TDD session complete ({len(content):,} chars)")
     except Exception:
         logger.exception("implement_tdd_failed")
-        await append_log(config, "implement", "TDD session failed", state)
+        await tracker.append_log("implement", "TDD session failed")
         return "Implementation failed.", False, []
 
     # Detect "no changes" — LLM concluded everything was already done
@@ -517,10 +511,10 @@ async def _implement_tdd(
     )
     changed_files = [f for f in diff_check.stdout.strip().split("\n") if f.strip()]
     if not changed_files:
-        await append_log(config, "implement", "No files changed — skipping tests", state)
+        await tracker.append_log("implement", "No files changed — skipping tests")
         return "No changes made.", True, [usage]
 
-    await append_log(config, "implement", f"{len(changed_files)} file(s) changed", state)
+    await tracker.append_log("implement", f"{len(changed_files)} file(s) changed")
 
     # Test/fix loop — give the LLM a chance to fix failures
     test_passed = False
@@ -531,16 +525,12 @@ async def _implement_tdd(
         )
         if test_exit == 0:
             test_passed = True
-            await append_log(config, "implement", "Tests: PASSED", state)
+            await tracker.append_log("implement", "Tests: PASSED")
             break
 
         if attempt < MAX_TDD_FIX_ATTEMPTS:
-            await append_log(
-                config,
-                "implement",
-                f"Tests failed (attempt {attempt + 1}/{MAX_TDD_FIX_ATTEMPTS}) — fixing...",
-                state,
-            )
+            msg = f"Tests failed (attempt {attempt + 1}/{MAX_TDD_FIX_ATTEMPTS}) — fixing..."
+            await tracker.append_log("implement", msg)
             await _log_test_output(test_output, config, state)
             try:
                 fix_result = await agent_runtime.execute_step(
@@ -561,16 +551,16 @@ async def _implement_tdd(
                     sandbox_id=sandbox_id,
                     on_activity=_on_activity,
                 )
-                fix_usage = extract_token_usage("implement_tdd_fix", fix_result)
+                fix_usage = StageTracker.extract_token_usage(fix_result)
                 usage["input_tokens"] += fix_usage.get("input_tokens", 0)
                 usage["output_tokens"] += fix_usage.get("output_tokens", 0)
             except Exception:
                 logger.exception("implement_tdd_fix_failed")
-                await append_log(config, "implement", "Fix attempt failed", state)
+                await tracker.append_log("implement", "Fix attempt failed")
                 break
 
     if not test_passed:
-        await append_log(config, "implement", "Tests still failing after fix attempts", state)
+        await tracker.append_log("implement", "Tests still failing after fix attempts")
         await _log_test_output(test_output, config, state)
 
     # Verify lint
@@ -579,12 +569,10 @@ async def _implement_tdd(
     )
     lint_passed = lint_exit == 0
     if lint_passed:
-        await append_log(config, "implement", "Lint: PASSED", state)
+        await tracker.append_log("implement", "Lint: PASSED")
     else:
-        await append_log(config, "implement", "Lint: FAILED", state)
-        await append_log(
-            config, "implement", lint_output[-2000:] if lint_output else "No output", state
-        )
+        await tracker.append_log("implement", "Lint: FAILED")
+        await tracker.append_log("implement", lint_output[-2000:] if lint_output else "No output")
 
     all_passed = test_passed and lint_passed
     if all_passed:
@@ -745,14 +733,15 @@ async def _implement_structured(
     Returns (agent_output, test_passed, total_usage).
     """
     from lintel.contracts.types import AgentRole
-    from lintel.workflows.nodes._stage_tracking import append_log, extract_token_usage
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
+    tracker = StageTracker(config, state)
     total_usage: list[dict[str, Any]] = []
 
-    await append_log(config, "implement", "Skill: structured-generate (JSON)", state)
+    await tracker.append_log("implement", "Skill: structured-generate (JSON)")
 
     # --- Phase 1: Generate code (single LLM call, no tools) ---
-    await append_log(config, "implement", "Generating code...", state)
+    await tracker.append_log("implement", "Generating code...")
     try:
         gen_result = await agent_runtime.execute_step(
             thread_ref=thread_ref,
@@ -766,31 +755,31 @@ async def _implement_structured(
             max_iterations=1,
         )
         gen_content = gen_result.get("content", "")
-        usage = extract_token_usage("implement_generate", gen_result)
+        usage = StageTracker.extract_token_usage(gen_result)
         total_usage.append(usage)
 
         files_to_write = _parse_file_output(gen_content)
         if not files_to_write:
-            await append_log(config, "implement", "No files generated — fallback to tools", state)
+            await tracker.append_log("implement", "No files generated — fallback to tools")
             files_to_write = {}
     except Exception:
         logger.exception("implement_generate_failed")
-        await append_log(config, "implement", "Code generation failed", state)
+        await tracker.append_log("implement", "Code generation failed")
         files_to_write = {}
 
     # --- Phase 2: Write files to sandbox ---
     if files_to_write:
-        await append_log(config, "implement", f"Writing {len(files_to_write)} file(s)", state)
+        await tracker.append_log("implement", f"Writing {len(files_to_write)} file(s)")
         for rel_path, content in files_to_write.items():
             abs_path = f"{workspace_path}/{rel_path}" if not rel_path.startswith("/") else rel_path
             try:
                 await sandbox_manager.write_file(sandbox_id, abs_path, content)
                 lines = content.count("\n") + 1
                 fname = rel_path.split("/")[-1]
-                await append_log(config, "implement", f"  wrote {fname} ({lines} lines)", state)
+                await tracker.append_log("implement", f"  wrote {fname} ({lines} lines)")
             except Exception:
                 logger.warning("implement_write_failed", path=rel_path)
-                await append_log(config, "implement", f"  FAILED: {rel_path}", state)
+                await tracker.append_log("implement", f"  FAILED: {rel_path}")
 
     # --- Phase 3: Run tests, fix if broken ---
     test_passed = False
@@ -800,16 +789,12 @@ async def _implement_structured(
         )
         if test_exit == 0:
             test_passed = True
-            await append_log(config, "implement", "Tests passed", state)
+            await tracker.append_log("implement", "Tests passed")
             break
 
         if attempt < MAX_FIX_ATTEMPTS:
-            await append_log(
-                config,
-                "implement",
-                f"Tests failed (attempt {attempt + 1}/{MAX_FIX_ATTEMPTS}) — fixing...",
-                state,
-            )
+            fix_msg = f"Tests failed (attempt {attempt + 1}/{MAX_FIX_ATTEMPTS}) — fixing..."
+            await tracker.append_log("implement", fix_msg)
             # Log test output so failures are visible in the pipeline UI
             await _log_test_output(test_output, config, state)
             try:
@@ -823,15 +808,15 @@ async def _implement_structured(
                     config,
                     state,
                 )
-                fix_usage = extract_token_usage("implement_fix", fix_result)
+                fix_usage = StageTracker.extract_token_usage(fix_result)
                 total_usage.append(fix_usage)
             except Exception:
                 logger.exception("implement_fix_failed")
-                await append_log(config, "implement", "Fix attempt failed", state)
+                await tracker.append_log("implement", "Fix attempt failed")
                 break
 
     if not test_passed:
-        await append_log(config, "implement", "Tests still failing after fix attempts", state)
+        await tracker.append_log("implement", "Tests still failing after fix attempts")
         await _log_test_output(test_output, config, state)
 
     # Verify lint
@@ -840,12 +825,10 @@ async def _implement_structured(
     )
     lint_passed = lint_exit == 0
     if lint_passed:
-        await append_log(config, "implement", "Final lint: PASSED", state)
+        await tracker.append_log("implement", "Final lint: PASSED")
     else:
-        await append_log(config, "implement", "Final lint: FAILED", state)
-        await append_log(
-            config, "implement", lint_output[-2000:] if lint_output else "No output", state
-        )
+        await tracker.append_log("implement", "Final lint: FAILED")
+        await tracker.append_log("implement", lint_output[-2000:] if lint_output else "No output")
 
     all_passed = test_passed and lint_passed
     if all_passed:
@@ -870,8 +853,9 @@ async def _log_test_output(
     state: ThreadWorkflowState,
 ) -> None:
     """Log test output to pipeline stage logs, extracting the failure summary."""
-    from lintel.workflows.nodes._stage_tracking import append_log
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
+    tracker = StageTracker(config, state)
     if not test_output.strip():
         return
 
@@ -897,7 +881,7 @@ async def _log_test_output(
     if len(summary) > 3000:
         summary = summary[:3000] + "\n...(truncated)"
 
-    await append_log(config, "implement", f"Test output:\n```\n{summary}\n```", state)
+    await tracker.append_log("implement", f"Test output:\n```\n{summary}\n```")
 
 
 def _parse_thread_ref(raw: str) -> ThreadRef:
@@ -1037,8 +1021,10 @@ async def _run_tests(
     """Run tests in the sandbox. Returns (output, exit_code)."""
     from lintel.contracts.types import SandboxJob
     from lintel.domain.skills.discover_test_command import discover_test_command
-    from lintel.workflows.nodes._stage_tracking import append_log
+    from lintel.workflows.nodes._stage_tracking import StageTracker
     from lintel.workflows.nodes.test_code import _build_changed_tests_command
+
+    tracker = StageTracker(config, state)
 
     # Pull latest from origin before running tests so we pick up any
     # fixes that landed on the base branch after the sandbox was created.
@@ -1052,7 +1038,7 @@ async def _run_tests(
                 timeout_seconds=60,
             ),
         )
-        await append_log(config, "implement", f"git pull: {pull_result.stdout[:80]}", state)
+        await tracker.append_log("implement", f"git pull: {pull_result.stdout[:80]}")
     except Exception:
         logger.warning("implement_git_pull_failed")
 
@@ -1068,7 +1054,7 @@ async def _run_tests(
 
     # Run setup (dep install)
     for cmd in setup_commands:
-        await append_log(config, "implement", f"Setup: {cmd[:60]}", state)
+        await tracker.append_log("implement", f"Setup: {cmd[:60]}")
         await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(command=cmd, workdir=workspace_path, timeout_seconds=180),
@@ -1079,7 +1065,7 @@ async def _run_tests(
     if changed_cmd:
         test_command = changed_cmd
 
-    await append_log(config, "implement", f"Running tests: {test_command[:80]}", state)
+    await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
     try:
         result = await sandbox_manager.execute(
             sandbox_id,
@@ -1105,8 +1091,9 @@ async def _run_lint(
 ) -> tuple[str, int]:
     """Run lint in the sandbox. Returns (output, exit_code)."""
     from lintel.contracts.types import SandboxJob
-    from lintel.workflows.nodes._stage_tracking import append_log
+    from lintel.workflows.nodes._stage_tracking import StageTracker
 
+    tracker = StageTracker(config, state)
     (
         _test_command,
         lint_command,
@@ -1114,7 +1101,7 @@ async def _run_lint(
         _test_single_command,
     ) = await _discover_dev_commands(sandbox_manager, sandbox_id, workspace_path)
 
-    await append_log(config, "implement", f"Running lint: {lint_command[:80]}", state)
+    await tracker.append_log("implement", f"Running lint: {lint_command[:80]}")
     try:
         result = await sandbox_manager.execute(
             sandbox_id,
@@ -1144,7 +1131,9 @@ async def _fix_failures(
     """Give the LLM test failures and let it fix with a focused tool loop."""
     from lintel.agents.sandbox_tools import sandbox_tool_schemas
     from lintel.contracts.types import AgentRole
-    from lintel.workflows.nodes._stage_tracking import append_log
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+
+    tracker = StageTracker(config, state)
 
     async def _on_tool_call(
         iteration: int,
@@ -1154,7 +1143,7 @@ async def _fix_failures(
     ) -> None:
         short_name = tool_name.replace("sandbox_", "")
         preview = _format_tool_preview(short_name, tool_args, tool_result)
-        await append_log(config, "implement", f"  fix [{iteration}] {short_name}: {preview}", state)
+        await tracker.append_log("implement", f"  fix [{iteration}] {short_name}: {preview}")
 
     return await agent_runtime.execute_step(
         thread_ref=thread_ref,

@@ -1,12 +1,14 @@
 """Agent operation endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.commands import ScheduleAgentStep
 from lintel.contracts.data_models import AgentDefinitionData
 from lintel.contracts.events import (
@@ -57,7 +59,7 @@ class AgentDefinitionStore:
 def get_agent_definition_store(
     request: Request,
 ) -> AgentDefinitionStore:
-    """Get agent definition store from app state."""
+    """Kept for backward compat."""
     if not hasattr(request.app.state, "agent_definition_store"):
         request.app.state.agent_definition_store = AgentDefinitionStore()
     return request.app.state.agent_definition_store  # type: ignore[no-any-return]
@@ -142,14 +144,12 @@ class UpdateAgentDefinitionRequest(BaseModel):
     role: str | None = None
 
 
-AgentDefStoreDep = Annotated[AgentDefinitionStore, Depends(get_agent_definition_store)]
-
-
 @router.post("/agents/definitions", status_code=201)
+@inject
 async def create_agent_definition(
     body: CreateAgentDefinitionRequest,
-    store: AgentDefStoreDep,
     request: Request,
+    store: AgentDefinitionStore = Depends(Provide[AppContainer.agent_definition_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Create a custom agent definition."""
     definition = body.model_dump()
@@ -169,17 +169,19 @@ async def create_agent_definition(
 
 
 @router.get("/agents/definitions")
+@inject
 async def list_agent_definitions(
-    store: AgentDefStoreDep,
+    store: AgentDefinitionStore = Depends(Provide[AppContainer.agent_definition_store]),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """List all custom agent definitions."""
     return await store.list_all()
 
 
 @router.get("/agents/definitions/{agent_id}")
+@inject
 async def get_agent_definition(
     agent_id: str,
-    store: AgentDefStoreDep,
+    store: AgentDefinitionStore = Depends(Provide[AppContainer.agent_definition_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Get a specific custom agent definition."""
     definition = await store.get(agent_id)
@@ -192,11 +194,12 @@ async def get_agent_definition(
 
 
 @router.patch("/agents/definitions/{agent_id}")
+@inject
 async def update_agent_definition(
     agent_id: str,
     body: UpdateAgentDefinitionRequest,
-    store: AgentDefStoreDep,
     request: Request,
+    store: AgentDefinitionStore = Depends(Provide[AppContainer.agent_definition_store]),  # noqa: B008
 ) -> dict[str, Any]:
     """Update a custom agent definition (partial)."""
     updates = body.model_dump(exclude_none=True)
@@ -216,10 +219,11 @@ async def update_agent_definition(
 
 
 @router.delete("/agents/definitions/{agent_id}", status_code=204)
+@inject
 async def delete_agent_definition(
     agent_id: str,
-    store: AgentDefStoreDep,
     request: Request,
+    store: AgentDefinitionStore = Depends(Provide[AppContainer.agent_definition_store]),  # noqa: B008
 ) -> None:
     """Delete a custom agent definition."""
     try:

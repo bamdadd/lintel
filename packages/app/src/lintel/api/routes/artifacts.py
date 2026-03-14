@@ -1,12 +1,14 @@
 """Code artifact and test result endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.types import CodeArtifact, TestResult, TestVerdict
 
 router = APIRouter()
@@ -111,9 +113,10 @@ class CreateTestResultRequest(BaseModel):
 
 
 @router.post("/artifacts", status_code=201)
+@inject
 async def create_artifact(
     body: CreateCodeArtifactRequest,
-    store: Annotated[CodeArtifactStore, Depends(get_code_artifact_store)],
+    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.artifact_id)
     if existing is not None:
@@ -132,8 +135,9 @@ async def create_artifact(
 
 
 @router.get("/artifacts")
+@inject
 async def list_artifacts(
-    store: Annotated[CodeArtifactStore, Depends(get_code_artifact_store)],
+    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
     work_item_id: str | None = None,
     run_id: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -142,9 +146,10 @@ async def list_artifacts(
 
 
 @router.get("/artifacts/{artifact_id}")
+@inject
 async def get_artifact(
     artifact_id: str,
-    store: Annotated[CodeArtifactStore, Depends(get_code_artifact_store)],
+    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
 ) -> dict[str, Any]:
     artifact = await store.get(artifact_id)
     if artifact is None:
@@ -156,9 +161,10 @@ async def get_artifact(
 
 
 @router.post("/test-results", status_code=201)
+@inject
 async def create_test_result(
     body: CreateTestResultRequest,
-    store: Annotated[TestResultStore, Depends(get_test_result_store)],
+    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.result_id)
     if existing is not None:
@@ -182,8 +188,9 @@ async def create_test_result(
 
 
 @router.get("/test-results")
+@inject
 async def list_test_results(
-    store: Annotated[TestResultStore, Depends(get_test_result_store)],
+    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
     run_id: str | None = None,
 ) -> list[dict[str, Any]]:
     results = await store.list_all(run_id=run_id)
@@ -191,9 +198,10 @@ async def list_test_results(
 
 
 @router.get("/test-results/{result_id}")
+@inject
 async def get_test_result(
     result_id: str,
-    store: Annotated[TestResultStore, Depends(get_test_result_store)],
+    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
 ) -> dict[str, Any]:
     result = await store.get(result_id)
     if result is None:

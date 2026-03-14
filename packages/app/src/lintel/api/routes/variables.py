@@ -1,12 +1,14 @@
 """Variable CRUD endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.api.container import AppContainer
 from lintel.contracts.events import VariableCreated, VariableRemoved, VariableUpdated
 from lintel.contracts.types import Variable
 from lintel.domain.event_dispatcher import dispatch_event
@@ -54,7 +56,7 @@ class InMemoryVariableStore:
 
 
 def get_variable_store(request: Request) -> InMemoryVariableStore:
-    """Get variable store from app state."""
+    """Kept for backward compat."""
     return request.app.state.variable_store  # type: ignore[no-any-return]
 
 
@@ -102,10 +104,11 @@ def _serialize(variable: Variable) -> dict[str, Any]:
 
 
 @router.post("/variables", status_code=201)
+@inject
 async def create_variable(
     body: CreateVariableRequest,
     request: Request,
-    store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
+    store: InMemoryVariableStore = Depends(Provide[AppContainer.variable_store]),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.variable_id)
     if existing is not None:
@@ -127,8 +130,9 @@ async def create_variable(
 
 
 @router.get("/variables")
+@inject
 async def list_variables(
-    store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
+    store: InMemoryVariableStore = Depends(Provide[AppContainer.variable_store]),  # noqa: B008
     environment_id: str | None = None,
 ) -> list[dict[str, Any]]:
     variables = await store.list_all(
@@ -138,9 +142,10 @@ async def list_variables(
 
 
 @router.get("/variables/{variable_id}")
+@inject
 async def get_variable(
     variable_id: str,
-    store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
+    store: InMemoryVariableStore = Depends(Provide[AppContainer.variable_store]),  # noqa: B008
 ) -> dict[str, Any]:
     variable = await store.get(variable_id)
     if variable is None:
@@ -149,11 +154,12 @@ async def get_variable(
 
 
 @router.patch("/variables/{variable_id}")
+@inject
 async def update_variable(
     variable_id: str,
     body: UpdateVariableRequest,
     request: Request,
-    store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
+    store: InMemoryVariableStore = Depends(Provide[AppContainer.variable_store]),  # noqa: B008
 ) -> dict[str, Any]:
     variable = await store.get(variable_id)
     if variable is None:
@@ -170,10 +176,11 @@ async def update_variable(
 
 
 @router.delete("/variables/{variable_id}", status_code=204)
+@inject
 async def delete_variable(
     variable_id: str,
     request: Request,
-    store: Annotated[InMemoryVariableStore, Depends(get_variable_store)],
+    store: InMemoryVariableStore = Depends(Provide[AppContainer.variable_store]),  # noqa: B008
 ) -> None:
     variable = await store.get(variable_id)
     if variable is None:

@@ -54,7 +54,7 @@ class StageTracker:
         self._config = config
         self._state = state
         self._run_id: str | None = None
-        self._pipeline_store: Any | None = _SENTINEL  # type: ignore[assignment]
+        self._pipeline_store: Any | None = _SENTINEL
 
     # ------------------------------------------------------------------
     # Internal helpers
