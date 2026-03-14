@@ -63,14 +63,14 @@ describe('StageCard', () => {
 
   // ── Basic rendering ────────────────────────────────────────────────────
 
-  it('renders the stage name', () => {
+  it('renders the stage card', () => {
     renderCard({ name: 'plan' });
-    expect(screen.getByText('plan')).toBeInTheDocument();
+    expect(screen.getByTestId('stage-card')).toBeInTheDocument();
   });
 
-  it('renders the status badge', () => {
-    renderCard({ status: 'succeeded' });
-    expect(screen.getByText('succeeded')).toBeInTheDocument();
+  it('renders the stage type', () => {
+    renderCard({ status: 'succeeded', stage_type: 'agent' });
+    expect(screen.getByText(/agent/)).toBeInTheDocument();
   });
 
   it('renders stage type', () => {

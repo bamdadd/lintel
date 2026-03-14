@@ -549,6 +549,33 @@ async def cleanup_workspace(
         raise HTTPException(status_code=404, detail="Sandbox not found") from None
 
 
+@router.post("/sandboxes/cleanup-unassigned")
+async def cleanup_unassigned_sandboxes(request: Request) -> dict[str, Any]:
+    """Destroy all sandboxes that are not assigned to a pipeline."""
+    store = request.app.state.sandbox_store
+    manager = request.app.state.sandbox_manager
+    all_sandboxes = await store.list_all()
+    unassigned = [s for s in all_sandboxes if not s.get("pipeline_id")]
+    destroyed: list[str] = []
+    failed: list[str] = []
+    for s in unassigned:
+        sid = s.get("sandbox_id", "")
+        if not sid:
+            continue
+        try:
+            await manager.destroy(sid)
+            await store.remove(sid)
+            await dispatch_event(
+                request,
+                SandboxDestroyed(payload={"resource_id": sid}),
+                stream_id=f"sandbox:{sid}",
+            )
+            destroyed.append(sid)
+        except Exception:
+            failed.append(sid)
+    return {"destroyed": len(destroyed), "failed": len(failed), "ids": destroyed}
+
+
 @router.delete("/sandboxes/{sandbox_id}", status_code=204)
 async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
     """Destroy a sandbox."""

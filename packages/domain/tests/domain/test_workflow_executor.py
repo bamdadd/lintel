@@ -544,7 +544,7 @@ async def test_auto_move_disabled_sets_status_failed() -> None:
 
 
 async def test_auto_promote_moves_open_item_to_in_progress() -> None:
-    """Auto_move promotes oldest open item when WIP has capacity."""
+    """Auto_move promotes top-of-board open item when WIP has capacity."""
     event_store = AsyncMock()
 
     async def fake_astream(*_a: object, **_kw: object) -> AsyncGenerator[dict[str, object]]:
@@ -553,15 +553,28 @@ async def test_auto_promote_moves_open_item_to_in_progress() -> None:
     graph = _make_graph(fake_astream)
 
     completed_item = {"work_item_id": "wi-1", "status": "in_progress", "project_id": "p1"}
-    open_item = {"work_item_id": "wi-2", "status": "open", "project_id": "p1"}
+    # wi-3 is at position 0 (top), wi-2 is at position 1 — wi-3 should be promoted
+    open_item_bottom = {
+        "work_item_id": "wi-2",
+        "status": "open",
+        "project_id": "p1",
+        "column_position": 1,
+    }
+    open_item_top = {
+        "work_item_id": "wi-3",
+        "status": "open",
+        "project_id": "p1",
+        "column_position": 0,
+    }
 
     work_item_store = AsyncMock()
     work_item_store.get = AsyncMock(return_value=completed_item)
-    # After wi-1 is closed, list_all returns wi-1 as closed + wi-2 as open
+    # list_all returns wi-2 first but wi-3 has lower position
     work_item_store.list_all = AsyncMock(
         return_value=[
             {**completed_item, "status": "closed"},
-            open_item,
+            open_item_bottom,
+            open_item_top,
         ]
     )
 
@@ -600,5 +613,6 @@ async def test_auto_promote_moves_open_item_to_in_progress() -> None:
     executor = WorkflowExecutor(event_store=event_store, graph=graph, app_state=app_state)
     await executor.execute(command)
 
-    # wi-2 should have been promoted to in_progress
-    assert open_item["status"] == "in_progress"
+    # wi-3 (top of board, position 0) should be promoted, not wi-2 (position 1)
+    assert open_item_top["status"] == "in_progress"
+    assert open_item_bottom["status"] == "open"

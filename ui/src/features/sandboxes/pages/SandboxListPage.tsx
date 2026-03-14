@@ -251,32 +251,69 @@ export function Component() {
         </Group>
         <Group gap="xs">
           {sandboxes.length > 0 && (
-            <Button
-              variant="light"
-              color="red"
-              leftSection={<IconTrashX size={16} />}
-              onClick={() => {
-                const ids = sandboxes.map((s) => s.sandbox_id);
-                let completed = 0;
-                for (const id of ids) {
-                  destroyMutation.mutate(
-                    { sandboxId: id },
-                    {
-                      onSuccess: () => {
-                        completed++;
-                        if (completed === ids.length) {
-                          notifications.show({ title: 'Destroyed', message: `Removed ${ids.length} sandboxes`, color: 'orange' });
-                          void queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes'] });
-                          setSelectedSandbox(null);
-                        }
+            <>
+              <Button
+                variant="light"
+                color="orange"
+                leftSection={<IconTrash size={16} />}
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/v1/sandboxes/cleanup-unassigned', {
+                      method: 'POST',
+                    });
+                    const data = await res.json() as { destroyed: number; failed: number };
+                    notifications.show({
+                      title: 'Cleanup Complete',
+                      message: data.destroyed > 0
+                        ? `Removed ${data.destroyed} unassigned sandbox${data.destroyed > 1 ? 'es' : ''}${data.failed > 0 ? `, ${data.failed} failed` : ''}`
+                        : 'No unassigned sandboxes to clean up',
+                      color: data.failed > 0 ? 'yellow' : 'green',
+                    });
+                    void queryClient.invalidateQueries({ queryKey: ['/api/v1/sandboxes'] });
+                  } catch {
+                    notifications.show({
+                      title: 'Error',
+                      message: 'Failed to cleanup sandboxes',
+                      color: 'red',
+                    });
+                  }
+                }}
+              >
+                Cleanup Unassigned
+              </Button>
+              <Button
+                variant="light"
+                color="red"
+                leftSection={<IconTrashX size={16} />}
+                onClick={() => {
+                  const ids = sandboxes.map((s) => s.sandbox_id);
+                  let completed = 0;
+                  for (const id of ids) {
+                    destroyMutation.mutate(
+                      { sandboxId: id },
+                      {
+                        onSuccess: () => {
+                          completed++;
+                          if (completed === ids.length) {
+                            notifications.show({
+                              title: 'Destroyed',
+                              message: `Removed ${ids.length} sandboxes`,
+                              color: 'orange',
+                            });
+                            void queryClient.invalidateQueries({
+                              queryKey: ['/api/v1/sandboxes'],
+                            });
+                            setSelectedSandbox(null);
+                          }
+                        },
                       },
-                    },
-                  );
-                }
-              }}
-            >
-              Destroy All
-            </Button>
+                    );
+                  }
+                }}
+              >
+                Destroy All
+              </Button>
+            </>
           )}
           <Button onClick={open}>Create Sandbox</Button>
         </Group>

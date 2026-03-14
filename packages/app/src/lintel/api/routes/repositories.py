@@ -142,7 +142,8 @@ async def list_repository_commits(
     if repo_provider is None:
         raise HTTPException(status_code=503, detail="Repository provider not configured")
     ref = branch or repo.default_branch
-    return await repo_provider.list_commits(repo.url, ref, limit)
+    result: list[dict[str, Any]] = await repo_provider.list_commits(repo.url, ref, limit)
+    return result
 
 
 @router.get("/repositories/{repo_id}/pull-requests")
@@ -159,4 +160,5 @@ async def list_repository_pull_requests(
         raise HTTPException(status_code=404, detail="Repository not found")
     if repo_provider is None:
         raise HTTPException(status_code=503, detail="Repository provider not configured")
-    return await repo_provider.list_pull_requests(repo.url, state, limit)
+    result: list[dict[str, Any]] = await repo_provider.list_pull_requests(repo.url, state, limit)
+    return result

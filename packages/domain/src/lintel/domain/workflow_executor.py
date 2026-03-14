@@ -980,7 +980,8 @@ class WorkflowExecutor:
                 ]
                 if not open_items:
                     return
-                # Pick the first open item (oldest by insertion order)
+                # Pick the item at the top of the board column (lowest position)
+                open_items.sort(key=lambda i: i.get("column_position", 0))
                 candidate = open_items[0]
                 candidate_id = candidate.get("work_item_id", "")
                 if not candidate_id:

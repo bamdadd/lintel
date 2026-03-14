@@ -501,7 +501,7 @@ async def retry_stage(
         import asyncio
 
         task = asyncio.create_task(executor.resume(run_id))
-        bg = getattr(request.app.state, "_background_tasks", set())
+        bg: set[asyncio.Task[None]] = getattr(request.app.state, "_background_tasks", set())
         request.app.state._background_tasks = bg
         bg.add(task)
         task.add_done_callback(bg.discard)
