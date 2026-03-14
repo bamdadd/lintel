@@ -31,6 +31,16 @@ testpaths = [
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = [
+    "packages/contracts/src",
+    "packages/domain/src",
+    "packages/agents/src",
+    "packages/infrastructure/src",
+    "packages/workflows/src",
+    "packages/app/src",
+]
 
 [[tool.mypy.overrides]]
 module = ["asyncpg", "asyncpg.*"]
@@ -52,6 +62,7 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
+    "pytest-testmon>=2.1",
     "testcontainers[postgres,nats]>=4.9",
     "ruff>=0.8",
     "mypy>=1.13",

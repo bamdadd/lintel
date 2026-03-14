@@ -1,4 +1,4 @@
-.PHONY: help install test test-contracts test-domain test-agents test-infrastructure test-workflows test-app test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
+.PHONY: help install test test-affected test-contracts test-domain test-agents test-infrastructure test-workflows test-app test-unit test-postgres test-integration test-e2e test-sandbox lint typecheck format serve serve-db db-up db-down migrate all ui-install ui-dev ui-build ui-generate ui-test dev ollama-pull ollama-serve sandbox-image
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -8,6 +8,15 @@ install: ## Install all dependencies
 
 test: ## Run all tests (pass ARGS= for extra pytest flags)
 	uv run pytest $(ARGS)
+
+test-affected: ## Run tests only for packages affected since BASE_REF (default: origin/main)
+	@AFFECTED=$$(./scripts/affected-packages.sh $(BASE_REF)); \
+	echo "Affected packages: $$AFFECTED"; \
+	for pkg in $$AFFECTED; do \
+		dir=$$(echo $$pkg | sed 's/^lintel-//;s/^lintel$$/app/'); \
+		echo "--- Testing $$pkg (packages/$$dir/tests/) ---"; \
+		uv run pytest packages/$$dir/tests/ -v || exit 1; \
+	done
 
 test-contracts: ## Run contracts package tests
 	uv run --package lintel-contracts pytest packages/contracts/tests/ -v
@@ -47,7 +56,7 @@ lint: ## Check linting and formatting
 	uv run ruff format --check packages/ tests/
 
 typecheck: ## Run mypy strict type checking
-	uv run mypy packages/contracts/src/lintel/contracts/ packages/domain/src/lintel/domain/ packages/agents/src/lintel/agents/ packages/infrastructure/src/lintel/infrastructure/ packages/workflows/src/lintel/workflows/ packages/app/src/lintel/
+	uv run mypy -p lintel.contracts -p lintel.domain -p lintel.agents -p lintel.infrastructure -p lintel.workflows -p lintel.api
 
 format: ## Auto-fix formatting and lint
 	uv run ruff format packages/ tests/
