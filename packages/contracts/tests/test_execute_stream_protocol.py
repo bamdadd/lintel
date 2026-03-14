@@ -4,11 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lintel.contracts.protocols import SandboxManager
-from lintel.contracts.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus, ThreadRef
-
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
+
+    from lintel.contracts.protocols import SandboxManager
+
+from lintel.contracts.types import (
+    SandboxConfig,
+    SandboxJob,
+    SandboxResult,
+    SandboxStatus,
+    ThreadRef,
+)
 
 
 class TestExecuteStreamProtocolConformance:
@@ -23,9 +30,7 @@ class TestExecuteStreamProtocolConformance:
             async def execute(self, sandbox_id: str, job: SandboxJob) -> SandboxResult:
                 return SandboxResult(exit_code=0)
 
-            async def execute_stream(
-                self, sandbox_id: str, job: SandboxJob
-            ) -> AsyncIterator[str]:
+            async def execute_stream(self, sandbox_id: str, job: SandboxJob) -> AsyncIterator[str]:
                 return self._stream()
 
             async def _stream(self) -> AsyncIterator[str]:
@@ -75,9 +80,7 @@ class TestExecuteStreamProtocolConformance:
             async def execute(self, sandbox_id: str, job: SandboxJob) -> SandboxResult:
                 return SandboxResult(exit_code=0)
 
-            async def execute_stream(
-                self, sandbox_id: str, job: SandboxJob
-            ) -> AsyncIterator[str]:
+            async def execute_stream(self, sandbox_id: str, job: SandboxJob) -> AsyncIterator[str]:
                 return self._stream()
 
             async def _stream(self) -> AsyncIterator[str]:

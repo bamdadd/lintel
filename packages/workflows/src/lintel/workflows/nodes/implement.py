@@ -18,12 +18,13 @@ testing, linting, and incremental git commits.
 from __future__ import annotations
 
 import json
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 import structlog
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from langchain_core.runnables import RunnableConfig
 
     from lintel.agents.runtime import AgentRuntime

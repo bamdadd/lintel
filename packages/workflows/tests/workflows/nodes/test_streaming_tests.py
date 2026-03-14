@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 from lintel.workflows.nodes.implement import _stream_execute_with_logging
 

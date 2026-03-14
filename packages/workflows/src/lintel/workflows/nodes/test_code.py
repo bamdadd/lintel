@@ -97,6 +97,7 @@ async def run_tests(
         )
     else:
         await tracker.append_log("test", f"Running: {test_command}")
+
     async def _log_test_line(line: str) -> None:
         await tracker.append_log("test", line)
 
@@ -177,9 +178,7 @@ async def run_tests(
                 "node": "test",
                 "verdict": verdict,
                 "exit_code": exit_code,
-                "summary": (
-                    f"Tests {verdict}" + (f" (exit {exit_code})" if not passed else "")
-                ),
+                "summary": (f"Tests {verdict}" + (f" (exit {exit_code})" if not passed else "")),
                 "output": output,
             }
         ],
