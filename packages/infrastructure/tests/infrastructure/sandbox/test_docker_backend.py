@@ -6,6 +6,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+try:
+    import docker as _docker
+    _docker.from_env().ping()
+    _has_docker = True
+except Exception:
+    _has_docker = False
+
+pytestmark = pytest.mark.skipif(not _has_docker, reason="Docker daemon not available")
+
 from lintel.contracts.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,

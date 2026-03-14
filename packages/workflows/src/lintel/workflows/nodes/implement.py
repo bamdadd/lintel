@@ -834,6 +834,36 @@ async def _implement_structured(
         await tracker.append_log("implement", lint_output[-2000:] if lint_output else "No output")
 
     all_passed = test_passed and lint_passed
+
+    # Push branch after implement so progress is preserved across restarts
+    feature_branch = state.get("feature_branch", "")
+    if feature_branch:
+        from lintel.contracts.types import SandboxJob as _SJ
+
+        await tracker.append_log("implement", f"Pushing branch {feature_branch}...")
+        try:
+            push_result = await sandbox_manager.execute(
+                sandbox_id,
+                _SJ(
+                    command=(
+                        f"git add -A && git diff --cached --quiet"
+                        f" || git commit -m 'wip: implement stage progress'"
+                        f" && git push --force-with-lease -u origin {feature_branch} 2>&1"
+                    ),
+                    workdir=workspace_path,
+                    timeout_seconds=60,
+                ),
+            )
+            push_out = (push_result.stdout + push_result.stderr).strip()
+            await tracker.append_log(
+                "implement",
+                f"Push: {'OK' if push_result.exit_code == 0 else 'FAILED'}"
+                f" — {push_out[-100:] if push_out else 'no output'}",
+            )
+        except Exception:
+            logger.warning("implement_push_failed", exc_info=True)
+            await tracker.append_log("implement", "Push failed (exception)")
+
     if all_passed:
         agent_output = "Implementation complete."
     elif not test_passed and not lint_passed:
@@ -1036,7 +1066,11 @@ async def _run_tests(
         pull_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
-                command=f"git pull --rebase origin {base_branch} 2>&1 || true",
+                command=(
+                    "git stash -q 2>/dev/null;"
+                    f" git pull --rebase origin {base_branch} 2>&1 || true;"
+                    " git stash pop -q 2>/dev/null || true"
+                ),
                 workdir=workspace_path,
                 timeout_seconds=60,
             ),
@@ -1084,6 +1118,15 @@ async def _run_tests(
         return "Test execution failed", 1
 
     output = result.stdout + result.stderr
+
+    # Stream test output to stage logs so it's visible in the UI
+    verdict = "PASSED" if result.exit_code == 0 else "FAILED"
+    await tracker.append_log("implement", f"Tests: {verdict}")
+    for line in output.splitlines()[-30:]:
+        stripped = line.strip()
+        if stripped:
+            await tracker.append_log("implement", stripped)
+
     if len(output) > 5000:
         output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
 
@@ -1109,6 +1152,31 @@ async def _run_lint(
         _test_single_command,
     ) = await _discover_dev_commands(sandbox_manager, sandbox_id, workspace_path)
 
+    # Auto-fix lint issues before checking (ruff format + ruff check --fix)
+    format_command = (
+        "make format"
+        if "format:" in (await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command="grep -c 'format:' Makefile 2>/dev/null || echo 0",
+                workdir=workspace_path,
+                timeout_seconds=5,
+            ),
+        )).stdout
+        else 'ruff check --fix . 2>/dev/null; ruff format . 2>/dev/null; true'
+    )
+    await tracker.append_log("implement", f"Auto-fixing lint: {format_command[:60]}")
+    try:
+        fix_result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command=format_command, workdir=workspace_path, timeout_seconds=120),
+        )
+        if fix_result.stdout.strip():
+            for line in fix_result.stdout.strip().splitlines()[-10:]:
+                await tracker.append_log("implement", line.strip())
+    except Exception:
+        logger.warning("implement_lint_fix_failed")
+
     await tracker.append_log("implement", f"Running lint: {lint_command[:80]}")
     try:
         result = await sandbox_manager.execute(
@@ -1120,6 +1188,16 @@ async def _run_lint(
         return "Lint execution failed", 1
 
     output = result.stdout + result.stderr
+
+    # Stream lint output to stage logs
+    verdict = "PASSED" if result.exit_code == 0 else "FAILED"
+    await tracker.append_log("implement", f"Lint: {verdict}")
+    if result.exit_code != 0:
+        for line in output.splitlines()[-20:]:
+            stripped = line.strip()
+            if stripped:
+                await tracker.append_log("implement", stripped)
+
     if len(output) > 5000:
         output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
 

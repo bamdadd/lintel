@@ -236,6 +236,21 @@ async def setup_workspace(
     repo_branch = state.get("repo_branch", "main")
     feature_branch = state.get("feature_branch", "")
     work_item_id = state.get("work_item_id", "")
+
+    # Reuse branch from previous pipeline run (stored on work item)
+    if not feature_branch and work_item_id:
+        app_state = _configurable.get("app_state")
+        wi_store = getattr(app_state, "work_item_store", None) if app_state else None
+        if wi_store is not None:
+            try:
+                wi = await wi_store.get(work_item_id)
+                if wi is not None:
+                    bn = wi.get("branch_name", "") if isinstance(wi, dict) else getattr(wi, "branch_name", "")
+                    if bn:
+                        feature_branch = bn
+                        logger.info("setup_workspace_reusing_branch", branch=bn)
+            except Exception:
+                logger.warning("setup_workspace_branch_lookup_failed", exc_info=True)
     run_id = state.get("run_id", "")
 
     # Each pipeline run gets its own directory so runs don't collide
@@ -521,20 +536,36 @@ async def setup_workspace(
             "setup_workspace", f"Repo verified: {verify_result.stdout.strip()[:200]}"
         )
 
-        # Create and checkout feature branch
-        await tracker.append_log("setup_workspace", f"Creating branch: {feature_branch}")
+        # Create or checkout feature branch (reuse remote branch if it exists)
+        await tracker.append_log("setup_workspace", f"Setting up branch: {feature_branch}")
         branch_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
-                command=f"cd {repo_path} && git checkout -b {feature_branch}",
+                command=(
+                    f"cd {repo_path}"
+                    f" && git fetch origin {feature_branch} 2>/dev/null"
+                    f" && git checkout {feature_branch} 2>/dev/null"
+                    f" || git checkout -b {feature_branch}"
+                ),
                 timeout_seconds=30,
             ),
         )
         if branch_result.exit_code != 0:
             await tracker.append_log(
                 "setup_workspace",
-                f"Branch creation failed (exit {branch_result.exit_code}): {branch_result.stderr}",
+                f"Branch setup failed (exit {branch_result.exit_code}): {branch_result.stderr}",
             )
+        else:
+            # Log whether we reused an existing branch
+            out = branch_result.stdout + branch_result.stderr
+            if "already exists" in out or "Switched to branch" in out:
+                await tracker.append_log(
+                    "setup_workspace", f"Reusing existing branch: {feature_branch}"
+                )
+            else:
+                await tracker.append_log(
+                    "setup_workspace", f"Created new branch: {feature_branch}"
+                )
 
         # Clone additional repos (if multi-repo project)
         additional_repos = [u for u in repo_urls[1:] if u] if len(repo_urls) > 1 else []
@@ -584,6 +615,27 @@ async def setup_workspace(
             work_item_id,
         )
         # TODO: emit AuditEntry when store injection is available
+
+        # Update work item with feature branch so re-dispatch reuses it
+        work_item_store = _configurable.get("app_state")
+        if work_item_store is not None:
+            work_item_store = getattr(work_item_store, "work_item_store", None)
+        if work_item_store is not None and work_item_id:
+            try:
+                item = await work_item_store.get(work_item_id)
+                if item is not None:
+                    if isinstance(item, dict):
+                        item["branch_name"] = feature_branch
+                    else:
+                        from dataclasses import replace as _replace
+
+                        item = _replace(item, branch_name=feature_branch)
+                    await work_item_store.update(work_item_id, item)
+                    await tracker.append_log(
+                        "setup_workspace", f"Work item updated with branch: {feature_branch}"
+                    )
+            except Exception:
+                logger.warning("setup_workspace_update_work_item_failed", exc_info=True)
 
         await tracker.mark_completed(
             "setup_workspace",
