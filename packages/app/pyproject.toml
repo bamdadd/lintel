@@ -18,6 +18,8 @@ dependencies = [
     "lintel-repos",
     "lintel-coordination",
     "lintel-projections",
+    "lintel-api-support",
+    "lintel-users",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -47,6 +49,8 @@ lintel-slack = { workspace = true }
 lintel-repos = { workspace = true }
 lintel-coordination = { workspace = true }
 lintel-projections = { workspace = true }
+lintel-api-support = { workspace = true }
+lintel-users = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
