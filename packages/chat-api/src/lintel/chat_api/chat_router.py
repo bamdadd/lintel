@@ -546,16 +546,22 @@ class ChatRouter:
             tool_calls: list[dict[str, object]] = tool_calls_raw
             try:
                 tool_results = await self._handle_tool_calls(tool_calls, mcp_tools)
-                # Add assistant message with tool calls + tool results, then get final reply
-                messages.append({"role": "assistant", "content": str(result.get("content", ""))})
+                # Add assistant message with tool_calls so the provider sees the full turn
+                assistant_msg: dict[str, object] = {
+                    "role": "assistant",
+                    "content": str(result.get("content", "") or ""),
+                    "tool_calls": tool_calls,
+                }
+                messages.append(assistant_msg)
                 messages.extend(tool_results)
                 result = await self._model_router.call_model(
                     policy,
                     messages=messages,
+                    tools=clean_tools,
                     api_base=api_base,
                 )
             except Exception:
-                logger.warning("mcp_tool_round_trip_failed")
+                logger.exception("mcp_tool_round_trip_failed")
 
         return str(result.get("content", "Sorry, I couldn't generate a response."))
 

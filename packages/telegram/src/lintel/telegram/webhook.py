@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Header, HTTPException, Request
 import structlog
@@ -10,6 +11,88 @@ import structlog
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+
+async def _dispatch_inbound_message(
+    request: Request,
+    inbound: Any,
+    adapter: Any,
+) -> None:
+    """Create or find a conversation and route the message through ChatService."""
+    from lintel.chat_api.service import ChatService
+
+    chat_store = getattr(request.app.state, "chat_store", None)
+    chat_router = getattr(request.app.state, "chat_router", None)
+    if chat_store is None or chat_router is None:
+        logger.warning("telegram.dispatch.missing_deps", has_store=chat_store is not None)
+        return
+
+    # Use a stable conversation ID from channel_type + chat_id + thread_id
+    conv_key = f"tg:{inbound.channel_id}:{inbound.thread_id}"
+
+    # Look for existing conversation with this key
+    all_convs = await chat_store.list_all()
+    conv = None
+    for c in all_convs:
+        if c.get("external_thread_id") == conv_key:
+            conv = c
+            break
+
+    if conv is None:
+        # Create a new conversation
+        conversation_id = uuid4().hex
+        conv = await chat_store.create(
+            conversation_id=conversation_id,
+            user_id=inbound.sender_id,
+            display_name=f"Telegram:{inbound.sender_id}",
+            project_id=None,
+        )
+        await chat_store.update_fields(
+            conversation_id, external_thread_id=conv_key, source="telegram"
+        )
+    else:
+        conversation_id = conv["conversation_id"]
+
+    # Store the user message
+    await chat_store.add_message(
+        conversation_id,
+        user_id=inbound.sender_id,
+        display_name=f"Telegram:{inbound.sender_id}",
+        role="user",
+        content=inbound.text,
+    )
+
+    # Classify and handle
+    svc = ChatService(request, chat_store)
+    model_policy, api_base = await svc.resolve_model(None)
+    result = await chat_router.classify(
+        inbound.text,
+        model_policy=model_policy,
+        api_base=api_base,
+        enabled_workflows=svc.get_enabled_workflows(),
+    )
+
+    reply = await svc.handle_classified_message(
+        conversation_id,
+        inbound.text,
+        result,
+        model_policy,
+        api_base,
+    )
+
+    # Send the reply back to Telegram
+    if reply:
+        from lintel.contracts.types import ThreadRef
+
+        thread_ref = ThreadRef(
+            workspace_id="telegram",
+            channel_id=inbound.channel_id,
+            thread_ts=inbound.thread_id,
+        )
+        try:
+            await adapter.send_message(thread_ref, reply)
+        except Exception:
+            logger.exception("telegram.send_reply_failed", chat_id=inbound.channel_id)
 
 
 @router.post("/channels/telegram/webhook")
@@ -76,14 +159,18 @@ async def telegram_webhook(
         # Update type not handled or filtered out (e.g. non-mentioned group message)
         return {"ok": True}
 
-    # Dispatch to the coordination layer via channel registry if available
-    channel_registry = getattr(request.app.state, "channel_registry", None)
-    if channel_registry is not None:
-        logger.info(
-            "telegram.message.received",
-            chat_id=inbound.channel_id,
-            thread_id=inbound.thread_id,
-            sender_id=inbound.sender_id,
-        )
+    logger.info(
+        "telegram.message.received",
+        chat_id=inbound.channel_id,
+        thread_id=inbound.thread_id,
+        sender_id=inbound.sender_id,
+        text=inbound.text[:100],
+    )
+
+    # Dispatch through ChatService
+    try:
+        await _dispatch_inbound_message(request, inbound, adapter)
+    except Exception:
+        logger.exception("telegram.dispatch_failed", chat_id=inbound.channel_id)
 
     return {"ok": True}

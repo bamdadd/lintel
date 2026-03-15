@@ -169,7 +169,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     # Register Slack adapter if configured (placeholder - real Slack adapter
     # is initialized elsewhere via Bolt)
 
-    # Register Telegram adapter if credentials are available
+    # Register Telegram adapter: try env vars first, then fall back to credential store
     telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if telegram_token:
         from lintel.telegram.adapter import TelegramChannelAdapter
@@ -183,6 +183,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
         channel_registry.register(ChannelType.TELEGRAM, telegram_adapter)
         app.state.telegram_adapter = telegram_adapter
+    else:
+        # Restore from credential store (token saved via Settings > Channels UI)
+        from lintel.settings_api.channels_router import restore_telegram_from_store
+
+        await restore_telegram_from_store(app)
 
     chat_router = ChatRouter(
         model_router=model_router,
@@ -340,10 +345,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state._background_tasks.add(scheduler_task)
     scheduler_task.add_done_callback(app.state._background_tasks.discard)
 
+    # Start Telegram polling if adapter is configured
+    telegram_adapter = getattr(app.state, "telegram_adapter", None)
+    if telegram_adapter is not None:
+        from lintel.settings_api.channels_router import start_telegram_polling
+
+        await start_telegram_polling(app, telegram_adapter)
+
     yield
 
     container.unwire()
     scheduler_task.cancel()
+    from lintel.settings_api.channels_router import stop_telegram_polling
+
+    await stop_telegram_polling(app)
     await engine.stop()
     if db_pool is not None:
         await db_pool.close()
