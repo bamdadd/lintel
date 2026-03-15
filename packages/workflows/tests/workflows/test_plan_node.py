@@ -126,12 +126,16 @@ class TestPlanWork:
             {
                 "tasks": [
                     {
-                        "title": "A", "description": "Do A",
-                        "file_paths": ["a.py"], "complexity": "S",
+                        "title": "A",
+                        "description": "Do A",
+                        "file_paths": ["a.py"],
+                        "complexity": "S",
                     },
                     {
-                        "title": "B", "description": "Do B",
-                        "file_paths": ["b.py"], "complexity": "S",
+                        "title": "B",
+                        "description": "Do B",
+                        "file_paths": ["b.py"],
+                        "complexity": "S",
                     },
                 ],
                 "summary": "A and B",
@@ -156,12 +160,16 @@ class TestPlanWork:
             {
                 "tasks": [
                     {
-                        "title": "A", "description": "Do A",
-                        "file_paths": ["a.py"], "complexity": "S",
+                        "title": "A",
+                        "description": "Do A",
+                        "file_paths": ["a.py"],
+                        "complexity": "S",
                     },
                     {
-                        "title": "B", "description": "Do B",
-                        "file_paths": ["b.py"], "complexity": "S",
+                        "title": "B",
+                        "description": "Do B",
+                        "file_paths": ["b.py"],
+                        "complexity": "S",
                     },
                 ],
                 "summary": "A and B",

@@ -22,9 +22,9 @@ PLAN_SYSTEM_PROMPT = """\
 You are a senior software planner. Given a feature request or bug report and \
 research context, produce a detailed implementation plan.
 
-You have access to tools to read files and explore the repository. \
-USE THEM to verify file paths and understand code structure before planning. \
-Do NOT guess — explore the codebase and plan based on what you find.
+You will be given research context with codebase details. Use the file paths \
+and patterns from the research to produce your plan. \
+Reference actual file paths from the context provided.
 
 Output ONLY valid JSON. No markdown fences, no explanation, no narration.
 
@@ -173,6 +173,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         if activity:
             await tracker.append_log("plan", activity)
 
+    # tools=[] prevents MCP tool injection — planner works from research context
     result = await agent_runtime.execute_step(
         thread_ref=thread_ref,
         agent_role=AgentRole.PLANNER,
@@ -181,6 +182,8 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             {"role": "system", "content": PLAN_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
+        tools=[],
+        max_iterations=1,
         on_activity=_on_activity,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
@@ -227,6 +230,8 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
                     ),
                 },
             ],
+            tools=[],
+            max_iterations=1,
             on_activity=_on_activity,
             sandbox_manager=sandbox_manager,
             sandbox_id=sandbox_id,

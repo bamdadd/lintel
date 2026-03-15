@@ -21,9 +21,8 @@ RESEARCH_SYSTEM_PROMPT = """\
 You are a senior software researcher. Your job is to examine a codebase and \
 produce a concise research report that will help a planner write an implementation plan.
 
-You have access to tools to read files, search code, and explore the repository. \
-USE THEM to find actual file paths, class definitions, and code patterns. \
-Do NOT guess or narrate — explore the codebase and report what you find.
+You will be given codebase context including directory structure, file contents, \
+and class/function definitions. Use this context to produce your report.
 
 Output ONLY the research report in markdown. Do NOT narrate your thinking process. \
 Do NOT say "Let me read..." or "Now I'll look at...". Just produce the report.
@@ -154,7 +153,8 @@ async def research_codebase(
             workspace_id="lintel-chat", channel_id="chat", thread_ts=thread_ref_str
         )
 
-    # Use execute_step (with tools) so the agent can explore the codebase
+    # No tools — codebase context is already gathered and included in the prompt.
+    # tools=[] prevents MCP tool injection; tools=None would inject all MCP tools.
     await tracker.log_llm_context("research", "researcher", "research_codebase")
 
     async def _on_activity(activity: str) -> None:
@@ -179,6 +179,8 @@ async def research_codebase(
                 ),
             },
         ],
+        tools=[],
+        max_iterations=1,
         on_activity=_on_activity,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
