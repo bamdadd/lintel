@@ -346,12 +346,12 @@ def build_extract_integration_patterns_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(IntegrationPatternState)
 
     # Nodes
-    g.add_node("scan_repo", scan_repo_node)  # type: ignore[call-overload]
-    g.add_node("classify_integrations", classify_integrations_node)  # type: ignore[call-overload]
-    g.add_node("build_graph", build_graph_node)  # type: ignore[call-overload]
-    g.add_node("detect_antipatterns", detect_antipatterns_node)  # type: ignore[call-overload]
-    g.add_node("persist_results", persist_results_node)  # type: ignore[call-overload]
-    g.add_node("error", error_node)  # type: ignore[call-overload]
+    g.add_node("scan_repo", scan_repo_node)  # type: ignore  # langgraph overloads
+    g.add_node("classify_integrations", classify_integrations_node)  # type: ignore
+    g.add_node("build_graph", build_graph_node)  # type: ignore
+    g.add_node("detect_antipatterns", detect_antipatterns_node)  # type: ignore
+    g.add_node("persist_results", persist_results_node)  # type: ignore
+    g.add_node("error", error_node)  # type: ignore
 
     # Entry
     g.set_entry_point("scan_repo")
