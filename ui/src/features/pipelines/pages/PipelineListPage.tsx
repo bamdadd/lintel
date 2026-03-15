@@ -20,6 +20,7 @@ import {
   usePipelinesCancelPipeline,
 } from '@/generated/api/pipelines/pipelines';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
+import { useWorkflowDefinitionsListWorkflowDefinitions } from '@/generated/api/workflow-definitions/workflow-definitions';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
 import { StatusBadge, getStatusColor } from '@/shared/components/StatusBadge';
@@ -89,8 +90,17 @@ export function Component() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
+  const { data: workflowsResp } = useWorkflowDefinitionsListWorkflowDefinitions();
+
   const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
+
+  const workflowOptions = (Array.isArray(workflowsResp?.data) ? workflowsResp.data : [])
+    .map((w: Record<string, unknown>) => ({
+      value: String(w.definition_id ?? ''),
+      label: String(w.name ?? w.definition_id ?? ''),
+    }))
+    .filter((o) => o.value !== '');
 
   const form = useForm({
     initialValues: { project_id: '', workflow_definition_id: '', trigger: 'manual' },
@@ -321,7 +331,7 @@ export function Component() {
         <form onSubmit={handleCreate}>
           <Stack gap="sm">
             <Select label="Project" placeholder="Select project" data={projectOptions} searchable {...form.getInputProps('project_id')} />
-            <TextInput label="Workflow Definition ID" placeholder="workflow-id" {...form.getInputProps('workflow_definition_id')} />
+            <Select label="Workflow" placeholder="Select workflow" data={workflowOptions} searchable {...form.getInputProps('workflow_definition_id')} />
             <Select label="Trigger" data={[{ value: 'manual', label: 'Manual' }, { value: 'webhook', label: 'Webhook' }, { value: 'schedule', label: 'Schedule' }]} {...form.getInputProps('trigger')} />
             <Button type="submit" loading={createMut.isPending}>Start Pipeline</Button>
           </Stack>

@@ -141,8 +141,8 @@ export function AutomationFormModal({
 
   const workflowOptions = (Array.isArray(workflowsResp?.data) ? workflowsResp.data : [])
     .map((w: Record<string, unknown>) => ({
-      value: String(w.workflow_id ?? ''),
-      label: String(w.name ?? w.workflow_id ?? ''),
+      value: String(w.definition_id ?? ''),
+      label: String(w.name ?? w.definition_id ?? ''),
     }))
     .filter((o) => o.value !== '');
 
