@@ -557,6 +557,14 @@ async def _implement_tdd(
         if activity:
             await tracker.append_log("implement", activity)
 
+    # Claude Code has its own tool loop — pass no tools so it uses native agentic mode.
+    # Other providers (Bedrock, Anthropic API) need sandbox tools for the runtime tool loop.
+    from lintel.agents.sandbox_tools import sandbox_tool_schemas
+
+    policy = await agent_runtime._model_router.select_model(AgentRole.CODER, "implement_generate")
+    is_native_claude_code = policy.provider == "claude_code"
+    tdd_tools = None if is_native_claude_code else sandbox_tool_schemas()
+
     try:
         result = await agent_runtime.execute_step(
             thread_ref=thread_ref,
@@ -566,6 +574,7 @@ async def _implement_tdd(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
+            tools=tdd_tools,
             sandbox_manager=sandbox_manager,
             sandbox_id=sandbox_id,
             on_activity=_on_activity,
@@ -614,6 +623,9 @@ async def _implement_tdd(
             await tracker.append_log("implement", msg)
             await _log_test_output(test_output, config, state)
             try:
+                fix_tools = None if is_native_claude_code else sandbox_tool_schemas(
+                    exclude={"sandbox_list_files", "sandbox_execute_command"},
+                )
                 fix_result = await agent_runtime.execute_step(
                     thread_ref=thread_ref,
                     agent_role=AgentRole.CODER,
@@ -628,6 +640,7 @@ async def _implement_tdd(
                             ),
                         },
                     ],
+                    tools=fix_tools,
                     sandbox_manager=sandbox_manager,
                     sandbox_id=sandbox_id,
                     on_activity=_on_activity,
