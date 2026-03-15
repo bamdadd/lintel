@@ -1175,7 +1175,7 @@ async def _auto_format(
 
     await tracker.append_log("implement", "Auto-fixing lint: make format")
     try:
-        result = await sandbox_manager.execute(
+        await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
                 command="make format 2>&1 | tail -5",
@@ -1188,8 +1188,7 @@ async def _auto_format(
             sandbox_id,
             SandboxJob(
                 command=(
-                    "ruff check --fix --unsafe-fixes . 2>/dev/null;"
-                    " ruff format . 2>/dev/null; true"
+                    "ruff check --fix --unsafe-fixes . 2>/dev/null; ruff format . 2>/dev/null; true"
                 ),
                 workdir=workspace_path,
                 timeout_seconds=30,
@@ -1243,10 +1242,7 @@ async def _failures_in_agent_files(
     )
     agent_files = {f.strip() for f in result.stdout.strip().split("\n") if f.strip()}
 
-    for failed in failed_files:
-        if failed in agent_files:
-            return True
-    return False
+    return any(failed in agent_files for failed in failed_files)
 
 
 async def _run_tests(
@@ -1260,7 +1256,6 @@ async def _run_tests(
     from lintel.sandbox.types import SandboxJob
     from lintel.skills_api.domain.discover_test_command import discover_test_command
     from lintel.workflows.nodes._stage_tracking import StageTracker
-    from lintel.workflows.nodes.test_code import _build_changed_tests_command
 
     tracker = StageTracker(config, state)
 
@@ -1308,7 +1303,12 @@ async def _run_tests(
     await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
     try:
         output, exit_code = await _stream_execute_with_logging(
-            sandbox_manager, sandbox_id, test_command, workspace_path, 600, _log_test_line,
+            sandbox_manager,
+            sandbox_id,
+            test_command,
+            workspace_path,
+            600,
+            _log_test_line,
         )
     except Exception:
         logger.warning("implement_test_execute_failed")
@@ -1389,8 +1389,7 @@ async def _run_lint(
             sandbox_id,
             SandboxJob(
                 command=(
-                    "ruff check --fix --unsafe-fixes . 2>/dev/null;"
-                    " ruff format . 2>/dev/null; true"
+                    "ruff check --fix --unsafe-fixes . 2>/dev/null; ruff format . 2>/dev/null; true"
                 ),
                 workdir=workspace_path,
                 timeout_seconds=30,
