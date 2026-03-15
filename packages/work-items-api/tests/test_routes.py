@@ -1,26 +1,9 @@
 """Tests for work items API."""
 
-from typing import TYPE_CHECKING
-
 from fastapi.testclient import TestClient
-import pytest
-
-from lintel.api.app import create_app
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 
 
-@pytest.fixture()
-def client() -> "Generator[TestClient]":
-    with TestClient(create_app()) as c:
-        yield c
-
-
-def _create_work_item(
-    client: TestClient,
-    work_item_id: str = "wi1",
-) -> dict:
+def _create_work_item(client: TestClient, work_item_id: str = "wi1") -> dict:  # type: ignore[type-arg]
     return client.post(
         "/api/v1/work-items",
         json={
@@ -49,10 +32,7 @@ class TestWorkItemsAPI:
         assert data["title"] == "Do something"
         assert data["status"] == "open"
 
-    def test_create_work_item_duplicate_returns_409(
-        self,
-        client: TestClient,
-    ) -> None:
+    def test_create_work_item_duplicate_returns_409(self, client: TestClient) -> None:
         _create_work_item(client, "dup")
         resp = client.post(
             "/api/v1/work-items",
@@ -82,10 +62,7 @@ class TestWorkItemsAPI:
         assert resp.status_code == 200
         assert resp.json()["work_item_id"] == "wi1"
 
-    def test_get_work_item_not_found_returns_404(
-        self,
-        client: TestClient,
-    ) -> None:
+    def test_get_work_item_not_found_returns_404(self, client: TestClient) -> None:
         resp = client.get("/api/v1/work-items/missing")
         assert resp.status_code == 404
 

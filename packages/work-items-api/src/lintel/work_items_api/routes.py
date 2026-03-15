@@ -7,12 +7,11 @@ import logging
 from typing import Annotated, Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
 from lintel.contracts.types import ThreadRef
 from lintel.domain.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
 from lintel.domain.types import (
@@ -23,6 +22,7 @@ from lintel.domain.types import (
     WorkItemType,
 )
 from lintel.persistence.data_models import WorkItemData
+from lintel.work_items_api.store import WorkItemStore
 from lintel.workflows.types import (
     PipelineRun,
     PipelineStatus,
@@ -33,42 +33,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-
-class WorkItemStore:
-    """In-memory work-item store."""
-
-    def __init__(self) -> None:
-        self._data: dict[str, dict[str, Any]] = {}
-
-    async def add(self, work_item: WorkItem) -> None:
-        data = asdict(work_item)
-        validated = WorkItemData.model_validate(data)
-        self._data[work_item.work_item_id] = validated.model_dump()
-
-    async def get(self, work_item_id: str) -> dict[str, Any] | None:
-        return self._data.get(work_item_id)
-
-    async def list_all(self, *, project_id: str | None = None) -> list[dict[str, Any]]:
-        items = list(self._data.values())
-        if project_id is not None:
-            items = [i for i in items if i["project_id"] == project_id]
-        return items
-
-    async def update(self, work_item_id: str, data: dict[str, Any]) -> None:
-        validated = WorkItemData.model_validate(data)
-        self._data[work_item_id] = validated.model_dump()
-
-    async def remove(self, work_item_id: str) -> None:
-        self._data.pop(work_item_id, None)
-
-
-def get_work_item_store(request: Request) -> WorkItemStore:
-    """Get work-item store from app state (kept for backward compat)."""
-    return request.app.state.work_item_store  # type: ignore[no-any-return]
-
-
-# DI-wired alias — routes decorated with @inject use this directly.
-WorkItemStoreDep = Depends(Provide[AppContainer.work_item_store])
+work_item_store_provider = StoreProvider()
 
 
 class CreateWorkItemRequest(BaseModel):
@@ -99,11 +64,10 @@ class UpdateWorkItemRequest(BaseModel):
 
 
 @router.post("/work-items", status_code=201)
-@inject
 async def create_work_item(
     body: CreateWorkItemRequest,
     request: Request,
-    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
+    store: WorkItemStore = Depends(work_item_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.work_item_id)
     if existing is not None:
@@ -137,19 +101,17 @@ async def create_work_item(
 
 
 @router.get("/work-items")
-@inject
 async def list_work_items(
     project_id: Annotated[str | None, Query()] = None,
-    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
+    store: WorkItemStore = Depends(work_item_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     return await store.list_all(project_id=project_id)
 
 
 @router.get("/work-items/{work_item_id}")
-@inject
 async def get_work_item(
     work_item_id: str,
-    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
+    store: WorkItemStore = Depends(work_item_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(work_item_id)
     if item is None:
@@ -158,12 +120,11 @@ async def get_work_item(
 
 
 @router.patch("/work-items/{work_item_id}")
-@inject
 async def update_work_item(
     work_item_id: str,
     body: UpdateWorkItemRequest,
     request: Request,
-    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
+    store: WorkItemStore = Depends(work_item_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(work_item_id)
     if item is None:
@@ -334,7 +295,6 @@ async def _trigger_workflow_for_work_item(
     work_item_id: str,
 ) -> None:
     """Dispatch a workflow when a work item moves to in_progress."""
-    from lintel.api.routes.pipelines import _stage_names_for_workflow
     from lintel.workflows.commands import StartWorkflow
 
     project_id = item.get("project_id", "")
@@ -350,13 +310,12 @@ async def _trigger_workflow_for_work_item(
     }.get(work_type, "feature_to_pr")
 
     # Check if the workflow is enabled
-    from lintel.api.routes.workflow_definitions import get_workflow_defs
-
-    defs = get_workflow_defs(request)
-    wf = defs.get(workflow_type)
-    if wf is not None and not wf.get("enabled", True):
-        logger.info("workflow_disabled_skipping_trigger: %s", workflow_type)
-        return
+    defs_store = getattr(request.app.state, "workflow_definitions", None)
+    if defs_store is not None:
+        wf = defs_store.get(workflow_type)
+        if wf is not None and not wf.get("enabled", True):
+            logger.info("workflow_disabled_skipping_trigger: %s", workflow_type)
+            return
 
     run_id = uuid4().hex
     trigger_id = uuid4().hex
@@ -383,6 +342,8 @@ async def _trigger_workflow_for_work_item(
     # Create pipeline run
     pipeline_store = getattr(request.app.state, "pipeline_store", None)
     if pipeline_store:
+        from lintel.api.routes.pipelines import _stage_names_for_workflow  # type: ignore[attr-defined]
+
         stage_names = _stage_names_for_workflow(workflow_type)
         stages = tuple(
             Stage(stage_id=uuid4().hex, name=name, stage_type=name) for name in stage_names
@@ -403,7 +364,7 @@ async def _trigger_workflow_for_work_item(
         except Exception:
             logger.warning("pipeline_run_creation_failed", exc_info=True)
 
-    # Resolve repo context from project — look up repo_ids to get actual URLs
+    # Resolve repo context from project
     project_store = getattr(request.app.state, "project_store", None)
     repo_store = getattr(request.app.state, "repository_store", None)
     repo_url = ""
@@ -416,7 +377,6 @@ async def _trigger_workflow_for_work_item(
             if project:
                 repo_branch = project.get("default_branch", "main")
                 credential_ids = tuple(project.get("credential_ids", ()))
-                # Resolve repo IDs to URLs (same logic as chat route)
                 repo_ids = project.get("repo_ids", ())
                 if isinstance(repo_ids, (list, tuple)) and repo_ids and repo_store:
                     first_repo = await repo_store.get(repo_ids[0])
@@ -495,11 +455,10 @@ async def _trigger_workflow_for_work_item(
 
 
 @router.delete("/work-items/{work_item_id}", status_code=204)
-@inject
 async def remove_work_item(
     work_item_id: str,
     request: Request,
-    store: WorkItemStore = Depends(Provide[AppContainer.work_item_store]),  # noqa: B008
+    store: WorkItemStore = Depends(work_item_store_provider),  # noqa: B008
 ) -> None:
     item = await store.get(work_item_id)
     if item is None:
