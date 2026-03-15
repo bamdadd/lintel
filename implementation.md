@@ -1,5 +1,34 @@
 # Implementation Log
 
+## Route Splits: sandboxes-api, ai-providers-api, experimentation-api
+
+### Completed Steps
+1. Split `sandboxes-api/routes.py` into `sandboxes.py` (lifecycle), `execution.py` (execute/logs), `files.py` (read/write/tree/cleanup) — committed as `3a8b723`
+2. Split `ai-providers-api/routes.py` into `providers.py` (CRUD + default), `models.py` (model discovery), `api_keys.py` (API key update) — committed as `c654ee3`
+3. Split `experimentation-api/routes.py` into `kpis.py`, `experiments.py`, `metrics.py` — committed as `b967ef9`
+
+### Deviations from Plan
+- `ai-providers-api`: `model_store_provider` and `ai_provider_store_provider` were both declared in `providers.py` (rather than routes.py) so all sub-modules share the exact same `StoreProvider` objects via import, avoiding the Python function-default capture problem with `Depends()`.
+- `ai-providers-api`: Updated test patch path from `lintel.ai_providers_api.routes.httpx.AsyncClient` to `lintel.ai_providers_api.models.httpx.AsyncClient` since httpx now lives in `models.py`.
+
+### Files Created
+- `packages/sandboxes-api/src/lintel/sandboxes_api/sandboxes.py`
+- `packages/sandboxes-api/src/lintel/sandboxes_api/execution.py`
+- `packages/sandboxes-api/src/lintel/sandboxes_api/files.py`
+- `packages/ai-providers-api/src/lintel/ai_providers_api/providers.py`
+- `packages/ai-providers-api/src/lintel/ai_providers_api/models.py`
+- `packages/ai-providers-api/src/lintel/ai_providers_api/api_keys.py`
+- `packages/experimentation-api/src/lintel/experimentation_api/kpis.py`
+- `packages/experimentation-api/src/lintel/experimentation_api/experiments.py`
+- `packages/experimentation-api/src/lintel/experimentation_api/metrics.py`
+
+### Test Results
+- sandboxes-api: 13 passed
+- ai-providers-api: 24 passed
+- experimentation-api: 8 passed
+
+---
+
 ## Phase 5: Extract 6 Large/Complex Packages
 
 ### Completed Steps
