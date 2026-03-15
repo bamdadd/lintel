@@ -372,6 +372,7 @@ export function Component() {
         initialTabKey={artifactParam ?? undefined}
         onTabChange={(tabKey) => setArtifactsOpen(true, tabKey)}
         allStages={stages}
+        runId={runId}
       />
     </Stack>
   );

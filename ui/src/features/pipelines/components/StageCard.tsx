@@ -243,7 +243,8 @@ function groupTabsByStage(tabs: ArtifactTab[], allStages: StageItem[]) {
 
 export function StageFullscreenModal({
   opened, onClose, initialTabKey, allStages, currentStage,
-  logLines = [], liveLogsAvailable = false, logModalScrollRef, onTabChange,
+  logLines: parentLogLines = [], liveLogsAvailable: parentLiveLogsAvailable = false,
+  logModalScrollRef: parentLogModalScrollRef, onTabChange, runId,
 }: {
   opened: boolean;
   onClose: () => void;
@@ -254,6 +255,7 @@ export function StageFullscreenModal({
   logLines?: string[];
   liveLogsAvailable?: boolean;
   logModalScrollRef?: React.RefObject<HTMLDivElement | null>;
+  runId?: string;
 }) {
   const { colorScheme } = useMantineColorScheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -267,6 +269,23 @@ export function StageFullscreenModal({
   useEffect(() => {
     if (opened && initialTabKey) setActiveKeyRaw(initialTabKey);
   }, [initialTabKey, opened]);
+
+  // Self-contained SSE for logs when opened from the page level (no parent logLines)
+  // Parse activeKey to find which stage's logs are being viewed
+  const activeLogsStageId = activeKey.startsWith('logs:') ? activeKey.slice(5) : null;
+  const activeLogsStage = activeLogsStageId
+    ? allStages.find((s) => s.stage_id === activeLogsStageId)
+    : null;
+  const ownSse = useStageLogs(
+    runId,
+    opened && activeLogsStage?.status === 'running' ? activeLogsStageId : null,
+    activeLogsStage?.status,
+  );
+
+  // Prefer parent-provided live logs (from StageCard), fall back to own SSE
+  const liveLogsAvailable = parentLiveLogsAvailable || ownSse.lines.length > 0;
+  const logLines = parentLiveLogsAvailable ? parentLogLines : ownSse.lines;
+  const logModalScrollRef = parentLiveLogsAvailable ? parentLogModalScrollRef : ownSse.modalScrollRef;
 
   const artifactTabs = buildArtifactTabs(allStages, resolvedCurrentStage, liveLogsAvailable);
   const grouped = groupTabsByStage(artifactTabs, allStages);
