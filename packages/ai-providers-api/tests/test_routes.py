@@ -292,7 +292,7 @@ class TestAIProvidersAPI:
                 ],
             },
         )
-        with patch("lintel.ai_providers_api.routes.httpx.AsyncClient") as mock_cls:
+        with patch("lintel.ai_providers_api.models.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.get.return_value = mock_response
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
