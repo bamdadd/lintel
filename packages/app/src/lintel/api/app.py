@@ -33,7 +33,6 @@ from lintel.api.routes import (
     compliance,
     credentials,
     debug,
-    environments,
     events,
     experimentation,
     health,
@@ -66,7 +65,6 @@ from lintel.api.routes.boards import BoardStore, TagStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.compliance import ComplianceStore
 from lintel.api.routes.credentials import InMemoryCredentialStore
-from lintel.api.routes.environments import InMemoryEnvironmentStore
 from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
 from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.api.routes.pipelines import InMemoryPipelineStore
@@ -82,6 +80,11 @@ from lintel.notifications_api.routes import (
     notification_rule_store_provider,
 )
 from lintel.notifications_api.store import NotificationRuleStore
+from lintel.environments_api.routes import (
+    router as environments_router,
+    environment_store_provider,
+)
+from lintel.environments_api.store import InMemoryEnvironmentStore
 from lintel.users.routes import router as users_router, user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
@@ -560,6 +563,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     team_store_provider.override(stores["team_store"])
     policy_store_provider.override(stores["policy_store"])
     notification_rule_store_provider.override(stores["notification_rule_store"])
+    environment_store_provider.override(stores["environment_store"])
     app.state.container = container
 
     # Start automation scheduler
@@ -689,7 +693,7 @@ def create_app() -> FastAPI:
     app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
     app.include_router(work_items.router, prefix="/api/v1", tags=["work-items"])
     app.include_router(pipelines.router, prefix="/api/v1", tags=["pipelines"])
-    app.include_router(environments.router, prefix="/api/v1", tags=["environments"])
+    app.include_router(environments_router, prefix="/api/v1", tags=["environments"])
     app.include_router(triggers.router, prefix="/api/v1", tags=["triggers"])
     app.include_router(automations.router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables.router, prefix="/api/v1", tags=["variables"])
