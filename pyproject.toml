@@ -66,6 +66,8 @@ testpaths = [
     "packages/sandboxes-api/tests",
     "packages/pipelines-api/tests",
     "packages/chat-api/tests",
+    "packages/memory/tests",
+    "packages/memory-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -122,6 +124,8 @@ mypy_path = [
     "packages/sandboxes-api/src",
     "packages/pipelines-api/src",
     "packages/chat-api/src",
+    "packages/memory/src",
+    "packages/memory-api/src",
 ]
 
 [[tool.mypy.overrides]]
@@ -149,4 +153,5 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "pre-commit>=4.0",
+    "qdrant-client>=1.9",
 ]
