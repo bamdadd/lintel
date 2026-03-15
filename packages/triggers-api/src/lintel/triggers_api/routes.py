@@ -4,60 +4,18 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import TriggerCreated, TriggerRemoved, TriggerUpdated
 from lintel.domain.types import Trigger, TriggerType
+from lintel.triggers_api.store import InMemoryTriggerStore
 
 router = APIRouter()
 
-
-# ---------------------------------------------------------------------------
-# In-memory store
-# ---------------------------------------------------------------------------
-
-
-class InMemoryTriggerStore:
-    """Simple in-memory store for triggers."""
-
-    def __init__(self) -> None:
-        self._triggers: dict[str, Trigger] = {}
-
-    async def add(self, trigger: Trigger) -> None:
-        self._triggers[trigger.trigger_id] = trigger
-
-    async def get(self, trigger_id: str) -> Trigger | None:
-        return self._triggers.get(trigger_id)
-
-    async def list_all(
-        self,
-        project_id: str | None = None,
-    ) -> list[Trigger]:
-        items = list(self._triggers.values())
-        if project_id is not None:
-            items = [t for t in items if t.project_id == project_id]
-        return items
-
-    async def update(self, trigger: Trigger) -> None:
-        if trigger.trigger_id not in self._triggers:
-            msg = f"Trigger {trigger.trigger_id} not found"
-            raise KeyError(msg)
-        self._triggers[trigger.trigger_id] = trigger
-
-    async def remove(self, trigger_id: str) -> None:
-        if trigger_id not in self._triggers:
-            msg = f"Trigger {trigger_id} not found"
-            raise KeyError(msg)
-        del self._triggers[trigger_id]
-
-
-def get_trigger_store(request: Request) -> InMemoryTriggerStore:
-    """Kept for backward compat."""
-    return request.app.state.trigger_store  # type: ignore[no-any-return]
+trigger_store_provider = StoreProvider()
 
 
 # ---------------------------------------------------------------------------
@@ -86,11 +44,10 @@ class UpdateTriggerRequest(BaseModel):
 
 
 @router.post("/triggers", status_code=201)
-@inject
 async def create_trigger(
     body: CreateTriggerRequest,
     request: Request,
-    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
+    store: InMemoryTriggerStore = Depends(trigger_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.trigger_id)
     if existing is not None:
@@ -113,9 +70,8 @@ async def create_trigger(
 
 
 @router.get("/triggers")
-@inject
 async def list_triggers(
-    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
+    store: InMemoryTriggerStore = Depends(trigger_store_provider),  # noqa: B008
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     triggers = await store.list_all(project_id=project_id)
@@ -123,10 +79,9 @@ async def list_triggers(
 
 
 @router.get("/triggers/{trigger_id}")
-@inject
 async def get_trigger(
     trigger_id: str,
-    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
+    store: InMemoryTriggerStore = Depends(trigger_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     trigger = await store.get(trigger_id)
     if trigger is None:
@@ -135,12 +90,11 @@ async def get_trigger(
 
 
 @router.patch("/triggers/{trigger_id}")
-@inject
 async def update_trigger(
     trigger_id: str,
     body: UpdateTriggerRequest,
     request: Request,
-    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
+    store: InMemoryTriggerStore = Depends(trigger_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     trigger = await store.get(trigger_id)
     if trigger is None:
@@ -157,11 +111,10 @@ async def update_trigger(
 
 
 @router.delete("/triggers/{trigger_id}", status_code=204)
-@inject
 async def delete_trigger(
     trigger_id: str,
     request: Request,
-    store: InMemoryTriggerStore = Depends(Provide[AppContainer.trigger_store]),  # noqa: B008
+    store: InMemoryTriggerStore = Depends(trigger_store_provider),  # noqa: B008
 ) -> None:
     trigger = await store.get(trigger_id)
     if trigger is None:
