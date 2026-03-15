@@ -39,6 +39,14 @@ testpaths = [
     "packages/projections/tests",
     "packages/api-support/tests",
     "packages/users/tests",
+    "packages/teams/tests",
+    "packages/policies-api/tests",
+    "packages/notifications-api/tests",
+    "packages/environments-api/tests",
+    "packages/variables-api/tests",
+    "packages/credentials-api/tests",
+    "packages/audit-api/tests",
+    "packages/approval-requests-api/tests",
     "tests",
 ]
 
@@ -67,6 +75,14 @@ mypy_path = [
     "packages/projections/src",
     "packages/api-support/src",
     "packages/users/src",
+    "packages/teams/src",
+    "packages/policies-api/src",
+    "packages/notifications-api/src",
+    "packages/environments-api/src",
+    "packages/variables-api/src",
+    "packages/credentials-api/src",
+    "packages/audit-api/src",
+    "packages/approval-requests-api/src",
 ]
 
 [[tool.mypy.overrides]]

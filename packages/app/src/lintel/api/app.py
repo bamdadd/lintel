@@ -51,7 +51,6 @@ from lintel.api.routes import (
     settings,
     skills,
     streams,
-    teams,
     threads,
     triggers,
     variables,
@@ -77,8 +76,9 @@ from lintel.api.routes.pipelines import InMemoryPipelineStore
 from lintel.api.routes.policies import InMemoryPolicyStore
 from lintel.api.routes.projects import ProjectStore
 from lintel.api.routes.skills import InMemorySkillStore
-from lintel.api.routes.teams import InMemoryTeamStore
 from lintel.api.routes.triggers import InMemoryTriggerStore
+from lintel.teams.routes import router as teams_router, team_store_provider
+from lintel.teams.store import InMemoryTeamStore
 from lintel.users.routes import router as users_router, user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
@@ -554,6 +554,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         modules=["lintel.api.deps"],
     )
     user_store_provider.override(stores["user_store"])
+    team_store_provider.override(stores["team_store"])
     app.state.container = container
 
     # Start automation scheduler
@@ -688,7 +689,7 @@ def create_app() -> FastAPI:
     app.include_router(automations.router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables.router, prefix="/api/v1", tags=["variables"])
     app.include_router(users_router, prefix="/api/v1", tags=["users"])
-    app.include_router(teams.router, prefix="/api/v1", tags=["teams"])
+    app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
     app.include_router(policies.router, prefix="/api/v1", tags=["policies"])
     app.include_router(notifications.router, prefix="/api/v1", tags=["notifications"])
     app.include_router(audit.router, prefix="/api/v1", tags=["audit"])

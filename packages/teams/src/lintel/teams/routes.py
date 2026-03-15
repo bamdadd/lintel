@@ -4,43 +4,18 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import TeamCreated, TeamRemoved, TeamUpdated
 from lintel.domain.types import Team
+from lintel.teams.store import InMemoryTeamStore
 
 router = APIRouter()
 
-
-class InMemoryTeamStore:
-    """Simple in-memory store for teams."""
-
-    def __init__(self) -> None:
-        self._teams: dict[str, Team] = {}
-
-    async def add(self, team: Team) -> None:
-        self._teams[team.team_id] = team
-
-    async def get(self, team_id: str) -> Team | None:
-        return self._teams.get(team_id)
-
-    async def list_all(self) -> list[Team]:
-        return list(self._teams.values())
-
-    async def update(self, team: Team) -> None:
-        self._teams[team.team_id] = team
-
-    async def remove(self, team_id: str) -> None:
-        del self._teams[team_id]
-
-
-def get_team_store(request: Request) -> InMemoryTeamStore:
-    """Kept for backward compat."""
-    return request.app.state.team_store  # type: ignore[no-any-return]
+team_store_provider: StoreProvider = StoreProvider()
 
 
 class CreateTeamRequest(BaseModel):
@@ -64,11 +39,10 @@ def _team_to_dict(team: Team) -> dict[str, Any]:
 
 
 @router.post("/teams", status_code=201)
-@inject
 async def create_team(
     body: CreateTeamRequest,
     request: Request,
-    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
+    store: InMemoryTeamStore = Depends(team_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.team_id)
     if existing is not None:
@@ -89,19 +63,17 @@ async def create_team(
 
 
 @router.get("/teams")
-@inject
 async def list_teams(
-    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
+    store: InMemoryTeamStore = Depends(team_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     teams = await store.list_all()
     return [_team_to_dict(t) for t in teams]
 
 
 @router.get("/teams/{team_id}")
-@inject
 async def get_team(
     team_id: str,
-    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
+    store: InMemoryTeamStore = Depends(team_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     team = await store.get(team_id)
     if team is None:
@@ -110,12 +82,11 @@ async def get_team(
 
 
 @router.patch("/teams/{team_id}")
-@inject
 async def update_team(
     team_id: str,
     body: UpdateTeamRequest,
     request: Request,
-    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
+    store: InMemoryTeamStore = Depends(team_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     team = await store.get(team_id)
     if team is None:
@@ -136,11 +107,10 @@ async def update_team(
 
 
 @router.delete("/teams/{team_id}", status_code=204)
-@inject
 async def delete_team(
     team_id: str,
     request: Request,
-    store: InMemoryTeamStore = Depends(Provide[AppContainer.team_store]),  # noqa: B008
+    store: InMemoryTeamStore = Depends(team_store_provider),  # noqa: B008
 ) -> None:
     team = await store.get(team_id)
     if team is None:
