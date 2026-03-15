@@ -2,13 +2,13 @@ import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
   Loader, Center, ActionIcon, Badge, Switch, NumberInput, TagsInput,
-  Textarea, Text, Tabs, Alert,
+  Textarea, Text, Tabs, Alert, Divider,
 } from '@mantine/core';
 import { Link } from 'react-router';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconPlug, IconAlertCircle, IconPencil, IconCheck } from '@tabler/icons-react';
+import { IconTrash, IconAlertCircle, IconPencil, IconCheck } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useModelsListModels,
@@ -90,15 +90,18 @@ export function Component() {
 
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<ModelItem | null>(null);
-  const [assignModal, setAssignModal] = useState<string | null>(null);
-  const { data: assignModalAssignmentsResp } = useModelsListModelAssignments(assignModal ?? '', {
-    query: { enabled: !!assignModal },
-  });
-  const assignedIds = new Set(
-    ((assignModalAssignmentsResp?.data ?? []) as ModelAssignmentItem[]).map((a) => `${a.context}:${a.context_id}`),
-  );
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  const { data: editAssignmentsResp } = useModelsListModelAssignments(
+    editItem?.model_id ?? '',
+    { query: { enabled: !!editItem } },
+  );
+  const assignedIds = new Set(
+    ((editAssignmentsResp?.data ?? []) as ModelAssignmentItem[]).map(
+      (a) => `${a.context}:${a.context_id}`,
+    ),
+  );
 
   const { data: workflowDefsResp } = useWorkflowDefinitionsListWorkflowDefinitions();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -229,6 +232,7 @@ export function Component() {
       capabilities: m.capabilities ?? [],
       config: m.config ? JSON.stringify(m.config, null, 2) : '',
     });
+    assignForm.reset();
   };
 
   const handleEdit = editForm.onSubmit((values) => {
@@ -281,31 +285,73 @@ export function Component() {
   };
 
   const handleAssign = assignForm.onSubmit((values) => {
-    if (!assignModal) return;
+    if (!editItem) return;
+    const modelId = editItem.model_id;
     createAssignMut.mutate(
-      { modelId: assignModal, data: { ...values, context: values.context as ModelAssignmentContext } },
+      { modelId, data: { ...values, context: values.context as ModelAssignmentContext } },
       {
         onSuccess: () => {
           notifications.show({ title: 'Assigned', message: 'Model assignment created', color: 'green' });
           void qc.invalidateQueries({ queryKey: ['/api/v1/models'] });
-          void qc.invalidateQueries({ queryKey: [`/api/v1/models/${assignModal}/assignments`] });
-          assignForm.reset(); setAssignModal(null);
+          void qc.invalidateQueries({ queryKey: [`/api/v1/models/${modelId}/assignments`] });
+          assignForm.reset();
         },
-        onError: () => notifications.show({ title: 'Error', message: 'Failed to create assignment', color: 'red' }),
+        onError: () => notifications.show({
+          title: 'Error', message: 'Failed to create assignment', color: 'red',
+        }),
       },
     );
   });
+
+  const handleAssignAllRoles = () => {
+    if (!editItem) return;
+    const modelId = editItem.model_id;
+    const promises = AGENT_ROLES.map((role) =>
+      createAssignMut.mutateAsync({
+        modelId,
+        data: {
+          context: 'agent_role',
+          context_id: role.value,
+          priority: assignForm.values.priority,
+        },
+      }),
+    );
+    Promise.all(promises).then(() => {
+      notifications.show({
+        title: 'Assigned',
+        message: `Model assigned to all ${AGENT_ROLES.length} agent roles`,
+        color: 'green',
+      });
+      void qc.invalidateQueries({ queryKey: ['/api/v1/models'] });
+      void qc.invalidateQueries({ queryKey: [`/api/v1/models/${modelId}/assignments`] });
+      assignForm.reset();
+    }).catch(() => {
+      notifications.show({ title: 'Error', message: 'Failed to assign to some roles', color: 'red' });
+    });
+  };
 
   return (
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Models</Title>
-        <Button onClick={() => { if (models.length === 0) form.setFieldValue('is_default', true); open(); }} disabled={!hasProviders}>Add Model</Button>
+        <Button
+          onClick={() => {
+            if (models.length === 0) form.setFieldValue('is_default', true);
+            open();
+          }}
+          disabled={!hasProviders}
+        >
+          Add Model
+        </Button>
       </Group>
 
       {!hasProviders && (
         <Alert icon={<IconAlertCircle size={16} />} title="No AI providers configured" color="yellow">
-          You need to <Link to="../ai-providers" style={{ color: 'inherit', textDecoration: 'underline' }}>add an AI provider</Link> before you can add models.
+          You need to{' '}
+          <Link to="../ai-providers" style={{ color: 'inherit', textDecoration: 'underline' }}>
+            add an AI provider
+          </Link>{' '}
+          before you can add models.
         </Alert>
       )}
 
@@ -376,14 +422,13 @@ export function Component() {
                 </Table.Td>
                 <Table.Td>{m.is_default && <Badge color="blue">Default</Badge>}</Table.Td>
                 <Table.Td>
-                  <Group gap={4}>
-                    <ActionIcon variant="subtle" onClick={(e) => { e.stopPropagation(); setAssignModal(m.model_id); }}>
-                      <IconPlug size={16} />
-                    </ActionIcon>
-                    <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(m.model_id); }}>
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
+                  <ActionIcon
+                    color="red"
+                    variant="subtle"
+                    onClick={(e) => { e.stopPropagation(); handleDelete(m.model_id); }}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
                 </Table.Td>
               </Table.Tr>
             ))}
@@ -406,7 +451,6 @@ export function Component() {
                 form.setFieldValue('name', '');
                 form.setFieldValue('max_tokens', 4096);
                 form.setFieldValue('temperature', 0.0);
-                // Auto-set default if this is the first model
                 if (models.length === 0) {
                   form.setFieldValue('is_default', true);
                 }
@@ -415,10 +459,20 @@ export function Component() {
             {hasModelDiscovery ? (
               <Select
                 label="Model"
-                placeholder={loadingAvailable ? `Loading models from ${isBedrockProvider ? 'Bedrock' : 'Ollama'}...` : 'Select a model'}
+                placeholder={
+                  loadingAvailable
+                    ? `Loading models from ${isBedrockProvider ? 'Bedrock' : 'Ollama'}...`
+                    : 'Select a model'
+                }
                 data={availableModelOptions}
                 searchable
-                nothingFoundMessage={loadingAvailable ? 'Loading...' : isBedrockProvider ? 'No models found — check your AWS credentials and region' : 'No models found — pull models in Ollama first'}
+                nothingFoundMessage={
+                  loadingAvailable
+                    ? 'Loading...'
+                    : isBedrockProvider
+                      ? 'No models found — check your AWS credentials and region'
+                      : 'No models found — pull models in Ollama first'
+                }
                 value={form.values.model_name}
                 onChange={handleAvailableModelSelect}
                 error={form.errors.model_name}
@@ -430,12 +484,26 @@ export function Component() {
                 }
               />
             ) : (
-              <TextInput label="Model Name" placeholder="claude-sonnet-4-20250514" description="The litellm model identifier" {...form.getInputProps('model_name')} />
+              <TextInput
+                label="Model Name"
+                placeholder="claude-sonnet-4-20250514"
+                description="The litellm model identifier"
+                {...form.getInputProps('model_name')}
+              />
             )}
-            <TextInput label="Display Name" placeholder="e.g. Qwen (think off), Fast Claude..." description="A friendly name to identify this model in the UI" {...form.getInputProps('name')} />
+            <TextInput
+              label="Display Name"
+              placeholder="e.g. Qwen (think off), Fast Claude..."
+              description="A friendly name to identify this model in the UI"
+              {...form.getInputProps('name')}
+            />
             <Group grow>
               <NumberInput label="Max Tokens" min={1} {...form.getInputProps('max_tokens')} />
-              <NumberInput label="Temperature" min={0} max={2} step={0.1} decimalScale={1} {...form.getInputProps('temperature')} />
+              <NumberInput
+                label="Temperature"
+                min={0} max={2} step={0.1} decimalScale={1}
+                {...form.getInputProps('temperature')}
+              />
             </Group>
             <TagsInput label="Capabilities" placeholder="coding, planning, review..." {...form.getInputProps('capabilities')} />
             <Switch label="Set as default model" {...form.getInputProps('is_default', { type: 'checkbox' })} />
@@ -445,8 +513,13 @@ export function Component() {
         </form>
       </Modal>
 
-      {/* Edit Modal */}
-      <Modal opened={!!editItem} onClose={() => setEditItem(null)} title={`Edit: ${editItem?.name ?? ''}`} size="lg">
+      {/* Edit Modal (details + assignments) */}
+      <Modal
+        opened={!!editItem}
+        onClose={() => { setEditItem(null); assignForm.reset(); }}
+        title={`Edit: ${editItem?.name ?? ''}`}
+        size="lg"
+      >
         {editItem && (
           <Tabs defaultValue="details">
             <Tabs.List>
@@ -461,99 +534,107 @@ export function Component() {
                   <TextInput label="Model Name" {...editForm.getInputProps('model_name')} />
                   <Group grow>
                     <NumberInput label="Max Tokens" min={1} {...editForm.getInputProps('max_tokens')} />
-                    <NumberInput label="Temperature" min={0} max={2} step={0.1} decimalScale={1} {...editForm.getInputProps('temperature')} />
+                    <NumberInput
+                      label="Temperature"
+                      min={0} max={2} step={0.1} decimalScale={1}
+                      {...editForm.getInputProps('temperature')}
+                    />
                   </Group>
                   <TagsInput label="Capabilities" {...editForm.getInputProps('capabilities')} />
                   <Switch label="Default model" {...editForm.getInputProps('is_default', { type: 'checkbox' })} />
-                  <Textarea label="Config (JSON)" minRows={2} styles={{ input: { fontFamily: 'monospace' } }} {...editForm.getInputProps('config')} />
+                  <Textarea
+                    label="Config (JSON)"
+                    minRows={2}
+                    styles={{ input: { fontFamily: 'monospace' } }}
+                    {...editForm.getInputProps('config')}
+                  />
                   <Button type="submit" loading={updateMut.isPending}>Save</Button>
                 </Stack>
               </form>
             </Tabs.Panel>
 
             <Tabs.Panel value="assignments" pt="sm">
-              <AssignmentsList modelId={editItem.model_id} onDelete={(id) => {
-                deleteAssignMut.mutate({ assignmentId: id }, {
-                  onSuccess: () => {
-                    void qc.invalidateQueries({ queryKey: [`/api/v1/models/${editItem.model_id}/assignments`] });
-                    notifications.show({ title: 'Removed', message: 'Assignment removed', color: 'orange' });
-                  },
-                });
-              }} />
+              <Stack gap="md">
+                <AssignmentsList modelId={editItem.model_id} onDelete={(id) => {
+                  deleteAssignMut.mutate({ assignmentId: id }, {
+                    onSuccess: () => {
+                      void qc.invalidateQueries({
+                        queryKey: [`/api/v1/models/${editItem.model_id}/assignments`],
+                      });
+                      notifications.show({ title: 'Removed', message: 'Assignment removed', color: 'orange' });
+                    },
+                  });
+                }} />
+
+                <Divider label="Add assignment" labelPosition="center" />
+
+                <form onSubmit={handleAssign}>
+                  <Stack gap="sm">
+                    <Select
+                      label="Context"
+                      data={CONTEXT_OPTIONS}
+                      {...assignForm.getInputProps('context')}
+                      onChange={(val) => {
+                        assignForm.setFieldValue('context', val ?? 'task');
+                        assignForm.setFieldValue('context_id', '');
+                      }}
+                    />
+                    {assignForm.values.context === 'agent_role' ? (
+                      <Select
+                        label="Agent Role"
+                        data={AGENT_ROLES.filter(
+                          (r) => !assignedIds.has(`agent_role:${r.value}`),
+                        )}
+                        searchable
+                        placeholder="Select an agent role"
+                        {...assignForm.getInputProps('context_id')}
+                      />
+                    ) : assignForm.values.context === 'workflow_step'
+                        || assignForm.values.context === 'pipeline_step' ? (
+                      <Select
+                        label="Step"
+                        data={workflowStepOptions.map((g) => ({
+                          ...g,
+                          items: g.items.filter(
+                            (i) => !assignedIds.has(`${assignForm.values.context}:${i.value}`),
+                          ),
+                        })).filter((g) => g.items.length > 0)}
+                        searchable
+                        placeholder="Select a workflow step"
+                        {...assignForm.getInputProps('context_id')}
+                      />
+                    ) : (
+                      <TextInput
+                        label="Context ID"
+                        placeholder="Step or task identifier"
+                        description="The specific item this model is assigned to"
+                        {...assignForm.getInputProps('context_id')}
+                      />
+                    )}
+                    <NumberInput
+                      label="Priority"
+                      description="Higher = preferred"
+                      min={0}
+                      {...assignForm.getInputProps('priority')}
+                    />
+                    <Group>
+                      <Button type="submit" loading={createAssignMut.isPending}>Assign</Button>
+                      {assignForm.values.context === 'agent_role' && (
+                        <Button
+                          variant="light"
+                          loading={createAssignMut.isPending}
+                          onClick={handleAssignAllRoles}
+                        >
+                          Assign to All Roles
+                        </Button>
+                      )}
+                    </Group>
+                  </Stack>
+                </form>
+              </Stack>
             </Tabs.Panel>
           </Tabs>
         )}
-      </Modal>
-
-      {/* Assign Modal */}
-      <Modal opened={!!assignModal} onClose={() => { setAssignModal(null); assignForm.reset(); }} title="Assign Model">
-        <form onSubmit={handleAssign}>
-          <Stack gap="sm">
-            <Select
-              label="Context"
-              data={CONTEXT_OPTIONS}
-              {...assignForm.getInputProps('context')}
-              onChange={(val) => {
-                assignForm.setFieldValue('context', val ?? 'task');
-                assignForm.setFieldValue('context_id', '');
-              }}
-            />
-            {assignForm.values.context === 'agent_role' ? (
-              <Select
-                label="Agent Role"
-                data={AGENT_ROLES.filter((r) => !assignedIds.has(`agent_role:${r.value}`))}
-                searchable
-                placeholder="Select an agent role"
-                {...assignForm.getInputProps('context_id')}
-              />
-            ) : assignForm.values.context === 'workflow_step' || assignForm.values.context === 'pipeline_step' ? (
-              <Select
-                label="Step"
-                data={workflowStepOptions.map((g) => ({
-                  ...g,
-                  items: g.items.filter((i) => !assignedIds.has(`${assignForm.values.context}:${i.value}`)),
-                })).filter((g) => g.items.length > 0)}
-                searchable
-                placeholder="Select a workflow step"
-                {...assignForm.getInputProps('context_id')}
-              />
-            ) : (
-              <TextInput
-                label="Context ID"
-                placeholder="Step or task identifier"
-                description="The specific item this model is assigned to"
-                {...assignForm.getInputProps('context_id')}
-              />
-            )}
-            <NumberInput label="Priority" description="Higher = preferred" min={0} {...assignForm.getInputProps('priority')} />
-            <Button type="submit" loading={createAssignMut.isPending}>Assign</Button>
-            {assignForm.values.context === 'agent_role' && (
-              <Button
-                variant="light"
-                loading={createAssignMut.isPending}
-                onClick={() => {
-                  if (!assignModal) return;
-                  const promises = AGENT_ROLES.map((role) =>
-                    createAssignMut.mutateAsync({
-                      modelId: assignModal,
-                      data: { context: 'agent_role', context_id: role.value, priority: assignForm.values.priority },
-                    }),
-                  );
-                  Promise.all(promises).then(() => {
-                    notifications.show({ title: 'Assigned', message: `Model assigned to all ${AGENT_ROLES.length} agent roles`, color: 'green' });
-                    void qc.invalidateQueries({ queryKey: ['/api/v1/models'] });
-                    void qc.invalidateQueries({ queryKey: [`/api/v1/models/${assignModal}/assignments`] });
-                    assignForm.reset(); setAssignModal(null);
-                  }).catch(() => {
-                    notifications.show({ title: 'Error', message: 'Failed to assign to some roles', color: 'red' });
-                  });
-                }}
-              >
-                Assign to All Roles
-              </Button>
-            )}
-          </Stack>
-        </form>
       </Modal>
     </Stack>
   );
@@ -577,7 +658,9 @@ function AssignmentsList({ modelId, onDelete }: { modelId: string; onDelete: (id
       <Table.Tbody>
         {assignments.map((a) => (
           <Table.Tr key={a.assignment_id}>
-            <Table.Td><Badge color={contextColor[a.context] ?? 'gray'} variant="light">{a.context}</Badge></Table.Td>
+            <Table.Td>
+              <Badge color={contextColor[a.context] ?? 'gray'} variant="light">{a.context}</Badge>
+            </Table.Td>
             <Table.Td><Text size="sm" ff="monospace">{a.context_id}</Text></Table.Td>
             <Table.Td>{a.priority}</Table.Td>
             <Table.Td>
