@@ -88,8 +88,10 @@ class TestPlanArtifactStorage:
         mock_runtime = AsyncMock()
         valid_plan = (
             '{"tasks": ['
-            '{"title": "Do X", "description": "X desc", "file_paths": ["x.py"], "complexity": "S"}, '
-            '{"title": "Do Y", "description": "Y desc", "file_paths": ["y.py"], "complexity": "S"}'
+            '{"title": "Do X", "description": "X desc",'
+            ' "file_paths": ["x.py"], "complexity": "S"}, '
+            '{"title": "Do Y", "description": "Y desc",'
+            ' "file_paths": ["y.py"], "complexity": "S"}'
             '], "summary": "Do X and Y"}'
         )
         mock_runtime.execute_step.return_value = {

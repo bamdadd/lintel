@@ -27,7 +27,10 @@ class TestValidateResearchReport:
         assert errors == []
 
     def test_too_short(self) -> None:
-        content = "## Relevant Files\n## Current Architecture\n## Key Patterns\n## Impact Analysis\n## Recommendations\n"
+        content = (
+            "## Relevant Files\n## Current Architecture\n"
+            "## Key Patterns\n## Impact Analysis\n## Recommendations\n"
+        )
         errors = validate_research_report(content)
         assert any("too short" in e.lower() for e in errors)
 
@@ -80,7 +83,9 @@ class TestValidatePlan:
 
     def test_single_task_rejected(self) -> None:
         plan = {
-            "tasks": [{"title": "Do everything", "description": "All of it", "file_paths": ["x.py"]}],
+            "tasks": [
+                {"title": "Do everything", "description": "All of it", "file_paths": ["x.py"]},
+            ],
             "summary": "Do it",
         }
         errors = validate_plan(plan)
