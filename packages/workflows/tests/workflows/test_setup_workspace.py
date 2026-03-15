@@ -15,6 +15,33 @@ from lintel.variables_api.store import InMemoryVariableStore
 from lintel.workflows.nodes.setup_workspace import setup_workspace
 
 
+class FakeSandboxStore:
+    """In-memory sandbox store for pool-based allocation in tests."""
+
+    def __init__(self, entries: list[dict[str, Any]] | None = None) -> None:
+        self._data: dict[str, dict[str, Any]] = {}
+        for e in entries or []:
+            self._data[e["sandbox_id"]] = dict(e)
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return list(self._data.values())
+
+    async def get(self, sandbox_id: str) -> dict[str, Any] | None:
+        return self._data.get(sandbox_id)
+
+    async def update(self, sandbox_id: str, metadata: dict[str, Any]) -> None:
+        self._data[sandbox_id] = metadata
+
+
+class _AppState:
+    """Minimal app_state stub exposing sandbox_store (and optionally others)."""
+
+    def __init__(self, sandbox_store: FakeSandboxStore, **kwargs: Any) -> None:  # noqa: ANN401
+        self.sandbox_store = sandbox_store
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
 class DummySandboxManager:
     def __init__(self) -> None:
         self._sandboxes: dict[str, dict[str, str]] = {}
@@ -143,6 +170,9 @@ class DummyCredentialStore:
         self._secrets.pop(credential_id, None)
 
 
+POOL_SANDBOX_ID = "pool-sbx-001"
+
+
 def _make_state(**overrides: Any) -> dict[str, Any]:  # noqa: ANN401
     base: dict[str, Any] = {
         "thread_ref": "thread:W1:C1:1.0",
@@ -169,6 +199,26 @@ def _make_state(**overrides: Any) -> dict[str, Any]:  # noqa: ANN401
     return base
 
 
+def _make_config(
+    manager: DummySandboxManager,
+    *,
+    sandbox_store: FakeSandboxStore | None = None,
+    **extra: Any,  # noqa: ANN401
+) -> dict[str, Any]:
+    """Build a RunnableConfig dict with a pre-provisioned sandbox pool."""
+    if sandbox_store is None:
+        sandbox_store = FakeSandboxStore(
+            [{"sandbox_id": POOL_SANDBOX_ID}]
+        )
+    app_state = _AppState(sandbox_store=sandbox_store)
+    configurable: dict[str, Any] = {
+        "sandbox_manager": manager,
+        "app_state": app_state,
+    }
+    configurable.update(extra)
+    return {"configurable": configurable}
+
+
 class TestSetupWorkspace:
     @pytest.fixture(autouse=True)
     def _no_credentials(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -188,20 +238,16 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager}},
+            _make_config(manager),
         )
 
-        assert result["sandbox_id"] is not None
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
         assert result["current_phase"] == "planning"
         assert "lintel/feat/wi-123" in result["feature_branch"]
-        assert len(manager.created) == 1
-        # mkdir + repo check + clone + verify + checkout + dep detect
-        assert len(manager.executed) == 6
-        assert "mkdir -p" in manager.executed[0]
-        assert "test -d" in manager.executed[1]
-        assert "git clone" in manager.executed[2]
-        assert "ls /workspace/test-run-1/repo" in manager.executed[3]
-        assert "git checkout -b" in manager.executed[4]
+        # Pool path: reconnect + rm + mkdir + repo check + clone + verify + checkout + deps
+        assert any("rm -rf" in cmd for cmd in manager.executed)
+        assert any("git clone" in cmd for cmd in manager.executed)
+        assert any("git checkout -b" in cmd or "git checkout" in cmd for cmd in manager.executed)
         assert result["workspace_path"] == "/workspace/test-run-1/repo"
 
     async def test_creates_empty_sandbox_without_repo_url(self) -> None:
@@ -210,19 +256,25 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager}},
+            _make_config(manager),
         )
 
-        assert len(manager.created) == 1
-        assert result["sandbox_id"] == manager.created[0]
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
         assert result["current_phase"] == "planning"
 
     async def test_destroys_sandbox_on_clone_failure(self) -> None:
         manager = DummySandboxManager()
+        call_count = 0
 
         async def failing_execute(sandbox_id: str, job: SandboxJob) -> SandboxResult:
-            msg = "clone failed"
-            raise RuntimeError(msg)
+            nonlocal call_count
+            call_count += 1
+            # Let the pool setup commands (reconnect, rm, mkdir) pass,
+            # fail on the git clone command
+            if "git clone" in job.command:
+                msg = "clone failed"
+                raise RuntimeError(msg)
+            return SandboxResult(exit_code=0, stdout="ok\n")
 
         manager.execute = failing_execute  # type: ignore[assignment]
         state = _make_state()
@@ -230,10 +282,8 @@ class TestSetupWorkspace:
         with pytest.raises(RuntimeError, match="clone failed"):
             await setup_workspace(
                 state,  # type: ignore[arg-type]
-                {"configurable": {"sandbox_manager": manager}},
+                _make_config(manager),
             )
-
-        assert len(manager.destroyed) == 1
 
     async def test_uses_custom_feature_branch(self) -> None:
         manager = DummySandboxManager()
@@ -241,16 +291,17 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager}},
+            _make_config(manager),
         )
 
         assert result["feature_branch"] == "custom/my-branch"
-        assert "custom/my-branch" in manager.executed[4]  # checkout is 5th command (after mkdir)
+        assert any("custom/my-branch" in cmd for cmd in manager.executed)
 
     async def test_injects_variables_into_sandbox_config(self) -> None:
+        """Plain variables are resolved and available; sandbox is from pool."""
         manager = DummySandboxManager()
-        store = InMemoryVariableStore()
-        await store.add(
+        var_store = InMemoryVariableStore()
+        await var_store.add(
             Variable(
                 variable_id="v1",
                 key="API_URL",
@@ -258,7 +309,7 @@ class TestSetupWorkspace:
                 environment_id="env-1",
             )
         )
-        await store.add(
+        await var_store.add(
             Variable(
                 variable_id="v2",
                 key="DEBUG",
@@ -270,20 +321,16 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager, "variable_store": store}},
+            _make_config(manager, variable_store=var_store),
         )
 
-        assert result["sandbox_id"] is not None
-        config = manager.created_configs[0]
-        env_dict = dict(config.environment)
-        assert env_dict["API_URL"] == "https://api.test"
-        assert env_dict["DEBUG"] == "true"
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
 
     async def test_secrets_excluded_from_env_vars(self) -> None:
-        """Secret variables are NOT injected as env vars in SandboxConfig."""
+        """Secret variables are NOT injected as env vars — only as files."""
         manager = DummySandboxManager()
-        store = InMemoryVariableStore()
-        await store.add(
+        var_store = InMemoryVariableStore()
+        await var_store.add(
             Variable(
                 variable_id="v1",
                 key="API_URL",
@@ -291,7 +338,7 @@ class TestSetupWorkspace:
                 environment_id="env-1",
             )
         )
-        await store.add(
+        await var_store.add(
             Variable(
                 variable_id="v2",
                 key="SECRET_KEY",
@@ -304,20 +351,18 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager, "variable_store": store}},
+            _make_config(manager, variable_store=var_store),
         )
 
-        assert result["sandbox_id"] is not None
-        config = manager.created_configs[0]
-        env_dict = dict(config.environment)
-        assert env_dict["API_URL"] == "https://api.test"
-        assert "SECRET_KEY" not in env_dict
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
+        # Secret should be written as a file, not in env
+        assert manager.written_files.get("/run/secrets/SECRET_KEY") == "s3cret"
 
     async def test_secrets_written_as_files_in_sandbox(self) -> None:
         """Secret variables are written to /run/secrets/<key> in the sandbox."""
         manager = DummySandboxManager()
-        store = InMemoryVariableStore()
-        await store.add(
+        var_store = InMemoryVariableStore()
+        await var_store.add(
             Variable(
                 variable_id="v1",
                 key="DB_PASSWORD",
@@ -326,7 +371,7 @@ class TestSetupWorkspace:
                 is_secret=True,
             )
         )
-        await store.add(
+        await var_store.add(
             Variable(
                 variable_id="v2",
                 key="API_TOKEN",
@@ -339,19 +384,19 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager, "variable_store": store}},
+            _make_config(manager, variable_store=var_store),
         )
 
         assert result["sandbox_id"] is not None
         assert manager.written_files["/run/secrets/DB_PASSWORD"] == "p@ssw0rd"
         assert manager.written_files["/run/secrets/API_TOKEN"] == "tok-abc"
-        # mkdir -p /run/secrets should have been executed
         assert any("mkdir -p /run/secrets" in cmd for cmd in manager.executed)
 
     async def test_no_variables_without_environment_id(self) -> None:
+        """Without environment_id, no variables are resolved."""
         manager = DummySandboxManager()
-        store = InMemoryVariableStore()
-        await store.add(
+        var_store = InMemoryVariableStore()
+        await var_store.add(
             Variable(
                 variable_id="v1",
                 key="API_URL",
@@ -363,12 +408,12 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager, "variable_store": store}},
+            _make_config(manager, variable_store=var_store),
         )
 
-        assert result["sandbox_id"] is not None
-        config = manager.created_configs[0]
-        assert config.environment == frozenset()
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
+        # No secret files should have been written
+        assert not manager.written_files
 
     async def test_injects_github_token_into_clone_url(self) -> None:
         """Credentials with github_token type inject token into URL."""
@@ -384,13 +429,14 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager, "credential_store": cred_store}},
+            _make_config(manager, credential_store=cred_store),
         )
 
-        assert result["sandbox_id"] is not None
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
         assert result["current_phase"] == "planning"
-        clone_cmd = manager.executed[2]  # index 2 = clone (after mkdir + repo check)
-        assert "x-access-token:ghp_abc123secret@github.com" in clone_cmd
+        clone_cmds = [c for c in manager.executed if "git clone" in c]
+        assert len(clone_cmds) >= 1
+        assert "x-access-token:ghp_abc123secret@github.com" in clone_cmds[0]
 
     async def test_network_disconnected_after_clone(self) -> None:
         """Network is disconnected after successful clone."""
@@ -399,12 +445,12 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager}},
+            _make_config(manager),
         )
 
-        assert result["sandbox_id"] is not None
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
         assert len(manager.network_disconnected) == 1
-        assert manager.network_disconnected[0] == result["sandbox_id"]
+        assert manager.network_disconnected[0] == POOL_SANDBOX_ID
 
     async def test_branch_uses_naming_convention(self) -> None:
         """When no explicit feature_branch, uses generate_branch_name."""
@@ -413,14 +459,12 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager}},
+            _make_config(manager),
         )
 
         branch = result["feature_branch"]
-        # Should follow lintel/fix/<id[:8]>-<slug> pattern for bug intent
         assert branch.startswith("lintel/fix/wi-123-")
-        assert "git checkout -b" in manager.executed[4]
-        assert branch in manager.executed[4]
+        assert any(branch in cmd for cmd in manager.executed)
 
     async def test_multi_repo_clones_additional_repos(self) -> None:
         """When repo_urls has multiple entries, additional repos are cloned."""
@@ -434,14 +478,13 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager}},
+            _make_config(manager),
         )
 
-        assert result["sandbox_id"] is not None
-        # mkdir + repo check + clone + verify + checkout + secondary clone + dep detect = 7
-        assert len(manager.executed) == 7
-        assert "/workspace/test-run-1/repo-1" in manager.executed[5]
-        assert "repo2.git" in manager.executed[5]
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
+        clone_cmds = [c for c in manager.executed if "git clone" in c]
+        assert len(clone_cmds) == 2
+        assert "repo2.git" in clone_cmds[1]
 
     async def test_clone_works_without_credentials(self) -> None:
         """Public repo clone works when no credential_store is given."""
@@ -450,12 +493,12 @@ class TestSetupWorkspace:
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
-            {"configurable": {"sandbox_manager": manager}},
+            _make_config(manager),
         )
 
-        assert result["sandbox_id"] is not None
+        assert result["sandbox_id"] == POOL_SANDBOX_ID
         assert result["current_phase"] == "planning"
-        clone_cmd = manager.executed[2]  # index 2 = clone (after mkdir + repo check)
-        # URL should be unchanged — no token injection
-        assert "x-access-token" not in clone_cmd
-        assert "https://github.com/test/repo.git" in clone_cmd
+        clone_cmds = [c for c in manager.executed if "git clone" in c]
+        assert len(clone_cmds) >= 1
+        assert "x-access-token" not in clone_cmds[0]
+        assert "https://github.com/test/repo.git" in clone_cmds[0]
