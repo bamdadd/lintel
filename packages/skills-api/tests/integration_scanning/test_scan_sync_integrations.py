@@ -1,5 +1,7 @@
 """Tests for synchronous integration pattern scanning."""
 
+from pathlib import Path
+
 import pytest
 
 from lintel.skills_api.integration_scanning import scan_sync_integrations
@@ -32,7 +34,7 @@ async def test_detects_grpc_channel(sample_files: dict) -> None:
 
 
 @pytest.mark.asyncio
-async def test_empty_files_returns_empty(tmp_path) -> None:
+async def test_empty_files_returns_empty(tmp_path: Path) -> None:
     empty_file = tmp_path / "empty.py"
     empty_file.write_text("")
     results = await scan_sync_integrations([str(empty_file)])

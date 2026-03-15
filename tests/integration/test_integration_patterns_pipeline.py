@@ -31,14 +31,13 @@ def _fixture_files() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-async def test_scan_sync_finds_http_calls():
+async def test_scan_sync_finds_http_calls() -> None:
     """Scan fixture files and verify requests/httpx patterns found in service_a and service_c."""
     files = _fixture_files()
     results = await scan_sync_integrations(files)
 
     assert len(results) >= 1
 
-    source_files = {r["source_file"] for r in results}
     # service_a uses requests.get, service_c uses requests.get/post and httpx.AsyncClient
     service_a_hits = [r for r in results if "service_a" in r["source_file"]]
     service_c_hits = [r for r in results if "service_c" in r["source_file"]]
@@ -51,7 +50,7 @@ async def test_scan_sync_finds_http_calls():
         assert hit["protocol"] == "http"
 
 
-async def test_scan_async_finds_kafka():
+async def test_scan_async_finds_kafka() -> None:
     """Scan fixture files and verify Kafka patterns found in service_b."""
     files = _fixture_files()
     results = await scan_async_integrations(files)
@@ -63,7 +62,7 @@ async def test_scan_async_finds_kafka():
     assert len(kafka_hits) >= 1, "Expected kafka protocol in service_b results"
 
 
-async def test_scan_db_finds_sqlalchemy():
+async def test_scan_db_finds_sqlalchemy() -> None:
     """Scan fixture files and verify SQLAlchemy found in service_a."""
     files = _fixture_files()
     results = await scan_db_integrations(files)
@@ -75,7 +74,7 @@ async def test_scan_db_finds_sqlalchemy():
     assert "sqlalchemy" in db_types
 
 
-async def test_scan_file_blob_finds_s3():
+async def test_scan_file_blob_finds_s3() -> None:
     """Scan fixture files and verify boto3 S3 found in service_b."""
     files = _fixture_files()
     results = await scan_file_blob_integrations(files)
@@ -92,7 +91,7 @@ async def test_scan_file_blob_finds_s3():
 # ---------------------------------------------------------------------------
 
 
-async def test_build_graph_from_fixtures():
+async def test_build_graph_from_fixtures() -> None:
     """Run all scanners on fixture files, build dependency graph, verify structure."""
     files = _fixture_files()
 
@@ -123,7 +122,7 @@ async def test_build_graph_from_fixtures():
 # ---------------------------------------------------------------------------
 
 
-async def test_detect_antipatterns_from_fixtures():
+async def test_detect_antipatterns_from_fixtures() -> None:
     """Build graph from fixtures, detect antipatterns, verify service_c flagged."""
     files = _fixture_files()
 
@@ -165,7 +164,7 @@ async def test_detect_antipatterns_from_fixtures():
 # ---------------------------------------------------------------------------
 
 
-async def test_full_pipeline_end_to_end():
+async def test_full_pipeline_end_to_end() -> None:
     """Run all scanners, build graph, detect antipatterns -- verify complete result."""
     files = _fixture_files()
     assert len(files) >= 3, f"Expected at least 3 fixture files, found {len(files)}"

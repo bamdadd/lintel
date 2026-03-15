@@ -6,7 +6,11 @@ and mocked dependencies (StageTracker, scanners, etc.).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from lintel.workflows.extract_integration_patterns import (
     IntegrationPatternState,
@@ -19,7 +23,7 @@ from lintel.workflows.extract_integration_patterns import (
 )
 
 
-def _make_state(**overrides) -> IntegrationPatternState:
+def _make_state(**overrides: object) -> IntegrationPatternState:
     base: dict = {
         "repository_id": "repo-1",
         "repo_path": "/tmp/test-repo",
@@ -37,11 +41,11 @@ def _make_state(**overrides) -> IntegrationPatternState:
     return base  # type: ignore[return-value]
 
 
-def _make_config():
+def _make_config() -> dict[str, dict[str, str]]:
     return {"configurable": {"thread_id": "test-thread"}}
 
 
-def _mock_stage_tracker():
+def _mock_stage_tracker() -> MagicMock:
     """Return a mock StageTracker that silently accepts all calls."""
     tracker = MagicMock()
     tracker.mark_running = AsyncMock()
@@ -55,7 +59,7 @@ def _mock_stage_tracker():
 # ---------------------------------------------------------------------------
 
 
-async def test_scan_repo_node_collects_files(tmp_path):
+async def test_scan_repo_node_collects_files(tmp_path: Path) -> None:
     """Mock the repo directory with known .py files and verify scan_results is populated."""
     # Create real files so os.walk finds them
     svc_dir = tmp_path / "service_a"
@@ -86,7 +90,7 @@ async def test_scan_repo_node_collects_files(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-async def test_classify_integrations_node_deduplicates():
+async def test_classify_integrations_node_deduplicates() -> None:
     """Provide duplicate raw matches in scan_results and verify deduplication."""
     duplicate_match = {
         "source_file": "/repo/service_a/main.py",
@@ -121,7 +125,7 @@ async def test_classify_integrations_node_deduplicates():
 # ---------------------------------------------------------------------------
 
 
-async def test_build_graph_node_computes_coupling():
+async def test_build_graph_node_computes_coupling() -> None:
     """Provide classified_edges via scan_results and verify graph_data structure."""
     scan_results = {
         "sync_integrations": [
@@ -175,7 +179,7 @@ async def test_build_graph_node_computes_coupling():
 # ---------------------------------------------------------------------------
 
 
-async def test_detect_antipatterns_node_finds_issues():
+async def test_detect_antipatterns_node_finds_issues() -> None:
     """Provide a graph with a known antipattern and verify it is detected."""
     # Build a graph with tight coupling: one service has efferent > threshold
     nodes = [{"name": "svc_chatty"}, {"name": "target_a"}, {"name": "target_b"}]
@@ -235,7 +239,7 @@ async def test_detect_antipatterns_node_finds_issues():
 # ---------------------------------------------------------------------------
 
 
-async def test_persist_results_node_sets_complete():
+async def test_persist_results_node_sets_complete() -> None:
     """Provide full state and verify status becomes 'completed'."""
     state = _make_state(
         repository_id="repo-42",
@@ -262,7 +266,7 @@ async def test_persist_results_node_sets_complete():
 # ---------------------------------------------------------------------------
 
 
-def test_graph_compiles():
+def test_graph_compiles() -> None:
     """build_extract_integration_patterns_graph returns a compilable graph."""
     graph = build_extract_integration_patterns_graph()
     assert graph is not None
