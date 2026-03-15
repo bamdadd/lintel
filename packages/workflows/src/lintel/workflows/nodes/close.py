@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -15,6 +16,25 @@ if TYPE_CHECKING:
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()
+
+_SOURCE_RE = re.compile(
+    r"^\*{0,2}Source:?\*{0,2}\s*"  # **Source:** or Source:
+    r"(?:docs/requirements/)?"
+    r"(REQ-\d+)"  # capture REQ-NNN
+    r"[- ]?(.*)",  # rest is slug/description
+)
+
+
+def _clean_commit_message(raw: str) -> str:
+    """Turn ``**Source:** docs/requirements/REQ-024-foo-bar`` into ``[REQ-024] foo bar``."""
+    m = _SOURCE_RE.match(raw)
+    if not m:
+        return raw
+    req_id = m.group(1)
+    slug = m.group(2).strip().rstrip(".md").replace("-", " ").strip()
+    if slug:
+        return f"[{req_id}] {slug}"
+    return f"[{req_id}]"
 
 
 async def close_workflow(
@@ -95,7 +115,8 @@ async def close_workflow(
     # Commit any uncommitted changes
     await tracker.append_log("close", "Committing changes...")
     messages = state.get("sanitized_messages", [])
-    commit_msg = messages[0][:72] if messages else "lintel: implement feature"
+    raw_msg = messages[0][:72] if messages else "lintel: implement feature"
+    commit_msg = _clean_commit_message(raw_msg)
     # Escape double quotes in commit message for shell safety
     safe_msg = commit_msg.replace('"', '\\"')
 
