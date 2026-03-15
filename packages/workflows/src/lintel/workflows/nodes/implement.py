@@ -331,6 +331,10 @@ async def spawn_implementation(
     diff_text = artifacts.get("content", "") if isinstance(artifacts, dict) else ""
     if diff_text:
         code_artifact_store = _configurable.get("code_artifact_store")
+        if code_artifact_store is None:
+            _app = _configurable.get("app_state")
+            if _app is not None:
+                code_artifact_store = getattr(_app, "code_artifact_store", None)
         if code_artifact_store is not None:
             from uuid import uuid4
 
@@ -346,8 +350,11 @@ async def spawn_implementation(
             )
             try:
                 await code_artifact_store.add(artifact)
+                logger.info("code_artifact_stored", artifact_id=artifact.artifact_id)
             except Exception:
-                logger.warning("code_artifact_persist_failed")
+                logger.warning("code_artifact_persist_failed", exc_info=True)
+        else:
+            logger.warning("code_artifact_store_not_available")
 
     stage_outputs: dict[str, object] = {}
     if total_usage:
@@ -597,7 +604,7 @@ async def _implement_tdd(
     diff_check = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
-            command="git diff --name-only origin/main 2>/dev/null | head -20",
+            command="git diff --name-only origin/main..HEAD 2>/dev/null | head -20",
             workdir=workspace_path,
             timeout_seconds=10,
         ),
@@ -626,8 +633,12 @@ async def _implement_tdd(
             await tracker.append_log("implement", msg)
             await _log_test_output(test_output, config, state)
             try:
-                fix_tools = None if is_native_claude_code else sandbox_tool_schemas(
-                    exclude={"sandbox_list_files", "sandbox_execute_command"},
+                fix_tools = (
+                    None
+                    if is_native_claude_code
+                    else sandbox_tool_schemas(
+                        exclude={"sandbox_list_files", "sandbox_execute_command"},
+                    )
                 )
                 fix_result = await agent_runtime.execute_step(
                     thread_ref=thread_ref,
