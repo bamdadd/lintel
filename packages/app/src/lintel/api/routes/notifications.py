@@ -10,12 +10,12 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import (
+from lintel.domain.events import (
     NotificationRuleCreated,
     NotificationRuleRemoved,
     NotificationRuleUpdated,
 )
-from lintel.contracts.types import NotificationChannel, NotificationRule
+from lintel.domain.types import NotificationChannel, NotificationRule
 
 router = APIRouter()
 

@@ -4,12 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from lintel.contracts.commands import (
-    GrantApproval,
-    ProcessIncomingMessage,
-    RejectApproval,
-)
 from lintel.contracts.types import ThreadRef
+from lintel.slack.commands import GrantApproval, ProcessIncomingMessage, RejectApproval
 
 
 def translate_message_event(

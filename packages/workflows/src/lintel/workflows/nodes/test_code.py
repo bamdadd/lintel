@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ async def run_tests(
 ) -> dict[str, Any]:
     """Run the project test suite in the sandbox and report results."""
     from lintel.api.domain.skills.discover_test_command import discover_test_command
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
@@ -146,7 +146,7 @@ async def run_tests(
     if test_result_store is not None:
         from uuid import uuid4
 
-        from lintel.contracts.types import TestResult, TestVerdict
+        from lintel.domain.types import TestResult, TestVerdict
 
         test_result_record = TestResult(
             result_id=str(uuid4()),
@@ -198,7 +198,7 @@ async def _build_changed_tests_command(
 
     Returns a pytest command or None (falls back to full suite).
     """
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     # 1. Find ALL changed files vs main
     result = await sandbox_manager.execute(

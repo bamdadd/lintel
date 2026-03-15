@@ -5,7 +5,7 @@ from uuid import uuid4
 from croniter import croniter  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field, model_validator
 
-from lintel.contracts.types import AutomationTriggerType, ConcurrencyPolicy
+from lintel.domain.types import AutomationTriggerType, ConcurrencyPolicy
 
 
 def _validate_trigger_config(

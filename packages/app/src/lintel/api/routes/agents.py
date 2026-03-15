@@ -8,16 +8,17 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.commands import ScheduleAgentStep
-from lintel.contracts.data_models import AgentDefinitionData
-from lintel.contracts.events import (
+from lintel.agents.commands import ScheduleAgentStep
+from lintel.agents.events import (
     AgentDefinitionCreated,
     AgentDefinitionRemoved,
     AgentDefinitionUpdated,
 )
-from lintel.contracts.types import AgentRole, ThreadRef
+from lintel.agents.types import AgentRole
+from lintel.api.container import AppContainer
+from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.contracts.types import ThreadRef
+from lintel.persistence.data_models import AgentDefinitionData
 
 _VALID_ROLES = frozenset(role.value for role in AgentRole)
 

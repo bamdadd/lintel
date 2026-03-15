@@ -269,13 +269,13 @@ class TestNodeFunctions:
         assert len(result["plan"]["tasks"]) > 0
 
     async def test_implement_returns_error_without_sandbox(self) -> None:
-        from lintel.contracts.errors import SandboxNotFoundError
-        from lintel.contracts.types import (
+        from lintel.contracts.types import ThreadRef  # noqa: TC001
+        from lintel.sandbox.errors import SandboxNotFoundError
+        from lintel.sandbox.types import (
             SandboxConfig,
             SandboxJob,
             SandboxResult,
             SandboxStatus,
-            ThreadRef,
         )
         from lintel.workflows.nodes.implement import spawn_implementation
 

@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from lintel.contracts.projections import ProjectionState, ProjectionStatus
+from lintel.projections.types import ProjectionState, ProjectionStatus
 
 
 class TestProjectionState:

@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import ArtifactStored, TestRunCompleted
-from lintel.contracts.types import CodeArtifact, TestResult, TestVerdict
+from lintel.domain.events import ArtifactStored, TestRunCompleted
+from lintel.domain.types import CodeArtifact, TestResult, TestVerdict
 
 router = APIRouter()
 
@@ -30,6 +30,9 @@ class CodeArtifactStore:
 
     async def get(self, artifact_id: str) -> CodeArtifact | None:
         return self._artifacts.get(artifact_id)
+
+    async def remove(self, artifact_id: str) -> bool:
+        return self._artifacts.pop(artifact_id, None) is not None
 
     async def list_all(
         self,
@@ -56,6 +59,9 @@ class TestResultStore:
 
     async def get(self, result_id: str) -> TestResult | None:
         return self._results.get(result_id)
+
+    async def remove(self, result_id: str) -> bool:
+        return self._results.pop(result_id, None) is not None
 
     async def list_all(self, *, run_id: str | None = None) -> list[TestResult]:
         results = list(self._results.values())
@@ -171,6 +177,18 @@ async def get_artifact(
     return asdict(artifact)
 
 
+@router.delete("/artifacts/{artifact_id}", status_code=204)
+@inject
+async def delete_artifact(
+    artifact_id: str,
+    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
+) -> None:
+    artifact = await store.get(artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    await store.remove(artifact_id)
+
+
 # --- Test result endpoints ---
 
 
@@ -233,3 +251,15 @@ async def get_test_result(
     if result is None:
         raise HTTPException(status_code=404, detail="Test result not found")
     return _test_result_to_dict(result)
+
+
+@router.delete("/test-results/{result_id}", status_code=204)
+@inject
+async def delete_test_result(
+    result_id: str,
+    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
+) -> None:
+    result = await store.get(result_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Test result not found")
+    await store.remove(result_id)

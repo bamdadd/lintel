@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import EnvironmentCreated, EnvironmentRemoved, EnvironmentUpdated
-from lintel.contracts.types import Environment, EnvironmentType
+from lintel.domain.events import EnvironmentCreated, EnvironmentRemoved, EnvironmentUpdated
+from lintel.domain.types import Environment, EnvironmentType
 
 router = APIRouter()
 

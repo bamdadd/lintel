@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 logger = structlog.get_logger()
 
@@ -152,7 +152,7 @@ class SandboxToolDispatcher:
         return json.dumps(files)
 
     async def _execute_command(self, arguments: dict[str, Any]) -> str:
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         result = await self._manager.execute(
             self._sandbox_id,

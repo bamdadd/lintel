@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lintel.contracts.types import PolicyAction
+from lintel.domain.types import PolicyAction
 
 if TYPE_CHECKING:
     from lintel.api.routes.policies import InMemoryPolicyStore

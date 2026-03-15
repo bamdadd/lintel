@@ -8,21 +8,20 @@ from uuid import uuid4
 
 import structlog
 
-from lintel.contracts.events import (
-    AgentStepCompleted,
-    AgentStepStarted,
-    ModelCallCompleted,
-    ModelSelected,
-)
+from lintel.agents.events import AgentStepCompleted, AgentStepStarted
 from lintel.contracts.types import ActorType
+from lintel.models.events import ModelCallCompleted, ModelSelected
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from uuid import UUID
 
-    from lintel.contracts.protocols import EventStore, ModelRouter, SandboxManager
-    from lintel.contracts.types import AgentRole, ThreadRef
+    from lintel.agents.types import AgentRole
+    from lintel.contracts.protocols import EventStore
+    from lintel.contracts.types import ThreadRef
     from lintel.infrastructure.mcp.tool_client import MCPToolClient
+    from lintel.models.protocols import ModelRouter
+    from lintel.sandbox.protocols import SandboxManager
 
 logger = structlog.get_logger()
 

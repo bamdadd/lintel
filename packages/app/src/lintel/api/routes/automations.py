@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
 from lintel.api.schemas.automations import CreateAutomationRequest, UpdateAutomationRequest
-from lintel.contracts.events import (
+from lintel.domain.events import (
     AutomationCreated,
     AutomationDisabled,
     AutomationEnabled,
@@ -19,7 +19,8 @@ from lintel.contracts.events import (
     AutomationRemoved,
     AutomationUpdated,
 )
-from lintel.contracts.types import AutomationDefinition, PipelineRun
+from lintel.domain.types import AutomationDefinition
+from lintel.workflows.types import PipelineRun
 
 router = APIRouter()
 

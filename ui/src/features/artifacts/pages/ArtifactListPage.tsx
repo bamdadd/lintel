@@ -1,7 +1,9 @@
 import {
   Title, Stack, Table, Loader, Center, Badge, Text, Tabs, Group, TextInput,
-  Modal, ScrollArea, Progress, TypographyStylesProvider, Anchor,
+  Modal, ScrollArea, Progress, TypographyStylesProvider, Anchor, ActionIcon,
 } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import ReactMarkdown from 'react-markdown';
@@ -9,7 +11,10 @@ import remarkGfm from 'remark-gfm';
 import {
   useArtifactsListArtifacts,
   useArtifactsListTestResults,
+  getArtifactsListArtifactsQueryKey,
+  getArtifactsListTestResultsQueryKey,
 } from '@/generated/api/artifacts/artifacts';
+import { customInstance } from '@/shared/api/client';
 import { DiffView } from '@/shared/components/DiffView';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
@@ -49,10 +54,21 @@ interface TestResultItem {
 const verdictColor: Record<string, string> = { passed: 'green', failed: 'red', error: 'orange', skipped: 'gray' };
 
 export function Component() {
+  const queryClient = useQueryClient();
   const { data: artifactsResp, isLoading: artLoading } = useArtifactsListArtifacts();
   const { data: testsResp, isLoading: testsLoading } = useArtifactsListTestResults();
   const [filter, setFilter] = useState('');
   const [viewArtifact, setViewArtifact] = useState<ArtifactItem | null>(null);
+
+  const deleteArtifact = async (artifactId: string) => {
+    await customInstance(`/api/v1/artifacts/${artifactId}`, { method: 'DELETE' });
+    queryClient.invalidateQueries({ queryKey: getArtifactsListArtifactsQueryKey() });
+  };
+
+  const deleteTestResult = async (resultId: string) => {
+    await customInstance(`/api/v1/test-results/${resultId}`, { method: 'DELETE' });
+    queryClient.invalidateQueries({ queryKey: getArtifactsListTestResultsQueryKey() });
+  };
 
   if (artLoading || testsLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -94,6 +110,7 @@ export function Component() {
                   <Table.Th>Type</Table.Th>
                   <Table.Th>Run</Table.Th>
                   <Table.Th>Created</Table.Th>
+                  <Table.Th w={50} />
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -107,6 +124,16 @@ export function Component() {
                       </Anchor>
                     </Table.Td>
                     <Table.Td><TimeAgo date={a.created_at || (a.metadata as Record<string, unknown>)?.created_at as string} size="sm" /></Table.Td>
+                    <Table.Td>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); deleteArtifact(a.artifact_id); }}
+                      >
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
@@ -127,6 +154,7 @@ export function Component() {
                   <Table.Th>Results</Table.Th>
                   <Table.Th>Pass Rate</Table.Th>
                   <Table.Th>Created</Table.Th>
+                  <Table.Th w={50} />
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -154,6 +182,16 @@ export function Component() {
                         <Text size="xs" ta="center">{passRate}%</Text>
                       </Table.Td>
                       <Table.Td><TimeAgo date={t.created_at} size="sm" /></Table.Td>
+                      <Table.Td>
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          size="sm"
+                          onClick={() => deleteTestResult(t.result_id)}
+                        >
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </Table.Td>
                     </Table.Tr>
                   );
                 })}

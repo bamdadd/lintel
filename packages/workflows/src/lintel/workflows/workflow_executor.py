@@ -10,19 +10,22 @@ from uuid import uuid4
 
 import structlog
 
-from lintel.contracts.events import (
+from lintel.domain.events import (
+    WorkItemCompleted,
+    WorkItemUpdated,
+)
+from lintel.workflows.events import (
     PipelineRunCompleted,
     PipelineRunFailed,
     PipelineRunStarted,
     PipelineStageCompleted,
-    WorkItemCompleted,
-    WorkItemUpdated,
 )
 
 if TYPE_CHECKING:
-    from lintel.contracts.commands import StartWorkflow
-    from lintel.contracts.protocols import EventStore, StepMetricsRecorder
-    from lintel.contracts.types import Stage
+    from lintel.contracts.protocols import EventStore
+    from lintel.observability.protocols import StepMetricsRecorder
+    from lintel.workflows.commands import StartWorkflow
+    from lintel.workflows.types import Stage
 
 logger = structlog.get_logger()
 
@@ -31,7 +34,7 @@ def _dict_to_stage(d: dict[str, Any]) -> Stage:
     """Convert a plain dict to a Stage dataclass instance."""
     from dataclasses import fields as dc_fields
 
-    from lintel.contracts.types import Stage, StageStatus
+    from lintel.workflows.types import Stage, StageStatus
 
     valid = {f.name for f in dc_fields(Stage)}
     filtered = {k: v for k, v in d.items() if k in valid}
@@ -165,7 +168,7 @@ class WorkflowExecutor:
 
     async def _rehydrate_from_run(self, prev_run_id: str) -> dict[str, Any]:
         """Load stage outputs from a previous run and map them to workflow state keys."""
-        from lintel.contracts.types import StageStatus
+        from lintel.workflows.types import StageStatus
 
         result: dict[str, Any] = {}
         if self._app_state is None:
@@ -621,7 +624,7 @@ class WorkflowExecutor:
         if approval_store is None:
             return
         try:
-            from lintel.contracts.types import ApprovalRequest
+            from lintel.domain.types import ApprovalRequest
             from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
 
             gate_type = NODE_TO_STAGE.get(node_name, node_name)
@@ -656,8 +659,8 @@ class WorkflowExecutor:
             from dataclasses import replace
             from datetime import UTC, datetime
 
-            from lintel.contracts.types import StageStatus
             from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+            from lintel.workflows.types import StageStatus
 
             stage_name = NODE_TO_STAGE.get(node_name, node_name)
             run = await pipeline_store.get(run_id)
@@ -709,7 +712,7 @@ class WorkflowExecutor:
             from dataclasses import replace
             from datetime import UTC, datetime
 
-            from lintel.contracts.types import StageStatus
+            from lintel.workflows.types import StageStatus
 
             run = await pipeline_store.get(run_id)
             if run is None:
@@ -778,7 +781,7 @@ class WorkflowExecutor:
 
             run = await pipeline_store.get(run_id)
             if run is not None:
-                from lintel.contracts.types import PipelineStatus
+                from lintel.workflows.types import PipelineStatus
 
                 new_status = PipelineStatus(status)
                 updated = replace(run, status=new_status)
@@ -803,12 +806,12 @@ class WorkflowExecutor:
             run = await pipeline_store.get(run_id)
             if run is None:
                 return "succeeded"
-            from lintel.contracts.types import StageStatus
+            from lintel.workflows.types import StageStatus
 
             for stage in run.stages:
                 s = stage
                 if isinstance(s, dict):
-                    from lintel.contracts.types import Stage
+                    from lintel.workflows.types import Stage
 
                     s = Stage(**s)
                 if s.status in (StageStatus.FAILED,):
@@ -828,7 +831,7 @@ class WorkflowExecutor:
             from dataclasses import replace
             from datetime import UTC, datetime
 
-            from lintel.contracts.types import StageStatus
+            from lintel.workflows.types import StageStatus
 
             run = await pipeline_store.get(run_id)
             if run is None or not run.stages:
@@ -854,7 +857,7 @@ class WorkflowExecutor:
         try:
             from dataclasses import replace
 
-            from lintel.contracts.types import StageStatus
+            from lintel.workflows.types import StageStatus
 
             run = await pipeline_store.get(run_id)
             if run is None:

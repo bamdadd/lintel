@@ -81,6 +81,44 @@ class TestArtifactsAPI:
         assert data["result_id"] == "tr-1"
         assert data["verdict"] == "passed"
 
+    def test_delete_artifact(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/artifacts",
+            json={
+                "artifact_id": "art-del",
+                "work_item_id": "wi-1",
+                "run_id": "run-1",
+                "artifact_type": "source",
+            },
+        )
+        resp = client.delete("/api/v1/artifacts/art-del")
+        assert resp.status_code == 204
+        assert client.get("/api/v1/artifacts/art-del").status_code == 404
+
+    def test_delete_artifact_not_found(self, client: TestClient) -> None:
+        resp = client.delete("/api/v1/artifacts/nonexistent")
+        assert resp.status_code == 404
+
+    def test_delete_test_result(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/test-results",
+            json={
+                "result_id": "tr-del",
+                "run_id": "run-1",
+                "stage_id": "stage-1",
+                "verdict": "passed",
+                "total": 1,
+                "passed": 1,
+            },
+        )
+        resp = client.delete("/api/v1/test-results/tr-del")
+        assert resp.status_code == 204
+        assert client.get("/api/v1/test-results/tr-del").status_code == 404
+
+    def test_delete_test_result_not_found(self, client: TestClient) -> None:
+        resp = client.delete("/api/v1/test-results/nonexistent")
+        assert resp.status_code == 404
+
     def test_get_test_result_not_found(
         self,
         client: TestClient,

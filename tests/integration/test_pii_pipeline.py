@@ -9,11 +9,11 @@ import asyncpg
 from cryptography.fernet import Fernet
 import pytest
 
-from lintel.contracts.events import ThreadMessageReceived
 from lintel.contracts.types import ActorType, ThreadRef
 from lintel.event_store.postgres import PostgresEventStore
 from lintel.persistence.vault.postgres_vault import PostgresPIIVault
 from lintel.pii.presidio_firewall import PresidioFirewall
+from lintel.slack.events import ThreadMessageReceived
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

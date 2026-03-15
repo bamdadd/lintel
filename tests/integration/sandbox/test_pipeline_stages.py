@@ -24,7 +24,7 @@ from tests.integration.sandbox.fake_runtime import (
 
 if TYPE_CHECKING:
     from lintel.agents.runtime import AgentRuntime
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 pytestmark = pytest.mark.usefixtures("_check_sandbox_prereqs")
 
@@ -46,7 +46,7 @@ class SandboxProject:
 
     async def setup(self) -> None:
         """Copy fixture project into sandbox and init git repo."""
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         await self.mgr.execute(
             self.sandbox_id,
@@ -72,7 +72,7 @@ class SandboxProject:
 
     async def install_deps(self) -> None:
         """Install Python deps so tests can run."""
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         await self.mgr.execute(
             self.sandbox_id,
@@ -87,7 +87,7 @@ class SandboxProject:
 
     async def cat(self, path: str) -> str:
         """Read a file from the sandbox."""
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         r = await self.mgr.execute(
             self.sandbox_id,
@@ -97,7 +97,7 @@ class SandboxProject:
 
     async def git_log(self) -> list[str]:
         """Return list of one-line commit messages."""
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         r = await self.mgr.execute(
             self.sandbox_id,
@@ -355,7 +355,7 @@ async def test_close_creates_pr(runner: StageRunner) -> None:
 
 async def test_close_creates_pr_with_local_remote(runner: StageRunner) -> None:
     """Close node should create a PR when push succeeds (using a local bare repo)."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes.close import close_workflow
     from lintel.workflows.nodes.implement import spawn_implementation
     from tests.integration.sandbox.fake_runtime import FakeRepoProvider

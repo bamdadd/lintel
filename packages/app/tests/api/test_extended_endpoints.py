@@ -51,8 +51,8 @@ class _StubSandboxManager:
         return sid
 
     async def execute(self, sandbox_id: str, job: object) -> object:
-        from lintel.contracts.errors import SandboxNotFoundError
-        from lintel.contracts.types import SandboxResult
+        from lintel.sandbox.errors import SandboxNotFoundError
+        from lintel.sandbox.types import SandboxResult
 
         if sandbox_id not in self._sandboxes:
             raise SandboxNotFoundError(sandbox_id)
@@ -62,8 +62,8 @@ class _StubSandboxManager:
         self._sandboxes.discard(sandbox_id)
 
     async def get_status(self, sandbox_id: str) -> object:
-        from lintel.contracts.errors import SandboxNotFoundError
-        from lintel.contracts.types import SandboxStatus
+        from lintel.sandbox.errors import SandboxNotFoundError
+        from lintel.sandbox.types import SandboxStatus
 
         if sandbox_id not in self._sandboxes:
             raise SandboxNotFoundError(sandbox_id)

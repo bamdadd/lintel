@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from lintel.contracts.types import ModelPolicy
 from lintel.models.router import DefaultModelRouter
+from lintel.models.types import ModelPolicy
 
 
 def _policy(temperature: float = 0.0) -> ModelPolicy:

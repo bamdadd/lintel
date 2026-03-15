@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope
-    from lintel.contracts.projections import ProjectionState, ProjectionStatus
+    from lintel.projections.types import ProjectionState, ProjectionStatus
 
 
 class Projection(Protocol):

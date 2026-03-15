@@ -28,8 +28,8 @@ if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
     from lintel.agents.runtime import AgentRuntime
-    from lintel.contracts.protocols import SandboxManager
     from lintel.contracts.types import ThreadRef
+    from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()
@@ -334,7 +334,7 @@ async def spawn_implementation(
         if code_artifact_store is not None:
             from uuid import uuid4
 
-            from lintel.contracts.types import CodeArtifact
+            from lintel.domain.types import CodeArtifact
 
             artifact = CodeArtifact(
                 artifact_id=str(uuid4()),
@@ -397,7 +397,7 @@ async def _stream_execute_with_logging(
 
     Returns ``(full_output, exit_code)`` — same contract as the old blocking path.
     """
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     stream_fn = getattr(sandbox_manager, "execute_stream", None)
     if stream_fn is None or not callable(stream_fn):
@@ -440,7 +440,7 @@ async def _resolve_coder_policy(
 
     Returns (is_claude_code, provider, model_name).
     """
-    from lintel.contracts.types import AgentRole
+    from lintel.agents.types import AgentRole
 
     try:
         policy = await agent_runtime._model_router.select_model(
@@ -477,7 +477,7 @@ async def _implement_tdd(
 
     Returns (agent_output, test_passed, total_usage).
     """
-    from lintel.contracts.types import AgentRole
+    from lintel.agents.types import AgentRole
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)
@@ -499,7 +499,7 @@ async def _implement_tdd(
 
     try:
         discovery = await discover_test_command(sandbox_manager, sandbox_id, workspace_path)
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         for cmd in discovery.get("setup_commands", []):
             await tracker.append_log("implement", f"Setup: {cmd[:60]}")
@@ -511,7 +511,7 @@ async def _implement_tdd(
         logger.warning("implement_tdd_setup_failed")
 
     # Configure git for commits inside sandbox
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     await sandbox_manager.execute(
         sandbox_id,
@@ -567,7 +567,7 @@ async def _implement_tdd(
         return "Implementation failed.", False, []
 
     # Detect "no changes" — LLM concluded everything was already done
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     diff_check = await sandbox_manager.execute(
         sandbox_id,
@@ -664,7 +664,7 @@ async def _discover_dev_commands(
 
     Returns (test_command, lint_command, typecheck_command, test_single_command).
     """
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     # Check for Makefile targets
     make_check = await sandbox_manager.execute(
@@ -801,7 +801,7 @@ async def _implement_structured(
 
     Returns (agent_output, test_passed, total_usage).
     """
-    from lintel.contracts.types import AgentRole
+    from lintel.agents.types import AgentRole
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)
@@ -905,7 +905,7 @@ async def _implement_structured(
     # Push branch after implement so progress is preserved across restarts
     feature_branch = state.get("feature_branch", "")
     if feature_branch:
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         await tracker.append_log("implement", f"Pushing branch {feature_branch}...")
         try:
@@ -1059,7 +1059,7 @@ async def _read_guidelines(
     workspace_path: str,
 ) -> str:
     """Read project guidelines (CLAUDE.md, docs/agents.md) from sandbox."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     guidelines = ""
     for guide_file in ("CLAUDE.md", "docs/agents.md"):
@@ -1120,7 +1120,7 @@ async def _run_tests(
 ) -> tuple[str, int]:
     """Run tests in the sandbox. Returns (output, exit_code)."""
     from lintel.api.domain.skills.discover_test_command import discover_test_command
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import StageTracker
     from lintel.workflows.nodes.test_code import _build_changed_tests_command
 
@@ -1209,7 +1209,7 @@ async def _run_lint(
     workspace_path: str,
 ) -> tuple[str, int]:
     """Run lint in the sandbox. Returns (output, exit_code)."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)
@@ -1287,7 +1287,7 @@ async def _fix_failures(
 ) -> dict[str, Any]:
     """Give the LLM test failures and let it fix with a focused tool loop."""
     from lintel.agents.sandbox_tools import sandbox_tool_schemas
-    from lintel.contracts.types import AgentRole
+    from lintel.agents.types import AgentRole
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)

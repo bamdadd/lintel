@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import structlog
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import SandboxManager
-    from lintel.contracts.types import SandboxResult
+    from lintel.sandbox.protocols import SandboxManager
+    from lintel.sandbox.types import SandboxResult
 
 logger = structlog.get_logger()
 
@@ -46,7 +46,7 @@ async def _run(
     timeout: int = 15,
 ) -> str:
     """Run a command in the sandbox and return stdout, or empty string on failure."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     try:
         result: SandboxResult = await sandbox_manager.execute(

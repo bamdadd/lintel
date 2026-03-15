@@ -5,14 +5,15 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from lintel.contracts.events import EventEnvelope, HookLoopDetected, HookTriggered
-from lintel.contracts.types import HookType, WorkflowHook
+from lintel.contracts.events import EventEnvelope
+from lintel.domain.events import HookLoopDetected, HookTriggered
 from lintel.domain.hooks.hook_manager import (
     HookManager,
     _conditions_match,
     _pattern_matches,
     _resolve_params,
 )
+from lintel.domain.types import HookType, WorkflowHook
 
 
 def _make_event(event_type: str, payload: dict[str, Any] | None = None) -> EventEnvelope:

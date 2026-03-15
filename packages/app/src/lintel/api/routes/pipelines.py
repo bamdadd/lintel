@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import (
+from lintel.workflows.events import (
     PipelineRunCancelled,
     PipelineRunDeleted,
     PipelineRunStarted,
@@ -25,7 +25,7 @@ from lintel.contracts.events import (
     StageReportEdited,
     StageReportRegenerated,
 )
-from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
+from lintel.workflows.types import PipelineRun, PipelineStatus, Stage, StageStatus
 
 router = APIRouter()
 
@@ -301,7 +301,7 @@ class ReportVersionService:
         versions_store: dict[str, list[dict[str, object]]] = request.app.state._report_versions
         key = f"{run_id}:{stage_id}"
         versions = versions_store.setdefault(key, [])
-        from lintel.contracts.data_models import ReportVersion
+        from lintel.persistence.data_models import ReportVersion
 
         ver = ReportVersion(
             version=len(versions) + 1,
@@ -571,7 +571,7 @@ async def reject_stage(
         else:
             new_stages.append(s)
 
-    from lintel.contracts.types import PipelineStatus
+    from lintel.workflows.types import PipelineStatus
 
     updated = replace(
         run,
@@ -657,7 +657,7 @@ async def approve_stage(
         else:
             new_stages.append(s)
 
-    from lintel.contracts.types import PipelineStatus
+    from lintel.workflows.types import PipelineStatus
 
     updated = replace(
         run,

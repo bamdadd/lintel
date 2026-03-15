@@ -6,11 +6,11 @@ from typing import Any
 from uuid import uuid4
 
 from lintel.api.domain.delivery_loop.loop_manager import DeliveryLoopManager
-from lintel.contracts.events import (
+from lintel.contracts.events import EventEnvelope
+from lintel.domain.events import (
     DeliveryLoopCompleted,
     DeliveryLoopPhaseTransitioned,
     DeliveryLoopStarted,
-    EventEnvelope,
 )
 
 

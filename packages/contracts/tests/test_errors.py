@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lintel.contracts.errors import (
+from lintel.sandbox.errors import (
     SandboxError,
     SandboxExecutionError,
     SandboxNotFoundError,

@@ -7,7 +7,7 @@ import os
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from lintel.contracts.errors import (
+from lintel.sandbox.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
     SandboxTimeoutError,
@@ -16,13 +16,8 @@ from lintel.contracts.errors import (
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lintel.contracts.types import (
-        SandboxConfig,
-        SandboxJob,
-        SandboxResult,
-        SandboxStatus,
-        ThreadRef,
-    )
+    from lintel.contracts.types import ThreadRef
+    from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
 
 
 class DockerSandboxManager:
@@ -171,7 +166,7 @@ class DockerSandboxManager:
         sandbox_id: str,
         job: SandboxJob,
     ) -> SandboxResult:
-        from lintel.contracts.types import SandboxResult
+        from lintel.sandbox.types import SandboxResult
 
         container = self._get_container(sandbox_id)
 
@@ -290,7 +285,7 @@ class DockerSandboxManager:
 
     async def read_file(self, sandbox_id: str, path: str) -> str:
         # Use cat via execute — more reliable than get_archive on mounted volumes
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         result = await self.execute(
             sandbox_id,
@@ -304,7 +299,7 @@ class DockerSandboxManager:
         import io
         import tarfile
 
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         dest_dir = os.path.dirname(path) or "/"
         await self.execute(
@@ -330,7 +325,7 @@ class DockerSandboxManager:
         await asyncio.to_thread(container.put_archive, dest_dir, buf)
 
     async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         result = await self.execute(
             sandbox_id, SandboxJob(command=f"ls -1 {path}", timeout_seconds=10)
@@ -340,7 +335,7 @@ class DockerSandboxManager:
         return [f for f in result.stdout.strip().split("\n") if f]
 
     async def get_status(self, sandbox_id: str) -> SandboxStatus:
-        from lintel.contracts.types import SandboxStatus
+        from lintel.sandbox.types import SandboxStatus
 
         container = self._get_container(sandbox_id)
         await asyncio.to_thread(container.reload)
@@ -369,7 +364,7 @@ class DockerSandboxManager:
     async def collect_artifacts(
         self, sandbox_id: str, workdir: str = "/workspace"
     ) -> dict[str, Any]:
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         # Try to find git repos under the workdir
         find_result = await self.execute(

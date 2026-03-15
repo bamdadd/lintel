@@ -8,12 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import (
+from lintel.domain.events import (
     ApprovalRequestApproved,
     ApprovalRequestCreated,
     ApprovalRequestRejected,
 )
-from lintel.contracts.types import ApprovalRequest, ApprovalStatus
+from lintel.domain.types import ApprovalRequest, ApprovalStatus
 
 router = APIRouter()
 

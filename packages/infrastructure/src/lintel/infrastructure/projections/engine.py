@@ -10,10 +10,10 @@ import structlog
 
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope
-    from lintel.contracts.projections import Projection, ProjectionStore
     from lintel.contracts.protocols import EventBus, EventStore
+    from lintel.projections.protocols import Projection, ProjectionStore
 
-from lintel.contracts.projections import ProjectionState, ProjectionStatus
+from lintel.projections.types import ProjectionState, ProjectionStatus
 
 logger = structlog.get_logger()
 

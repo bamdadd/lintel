@@ -7,14 +7,9 @@ from uuid import uuid4
 
 import pytest
 
-from lintel.contracts.errors import SandboxNotFoundError
-from lintel.contracts.types import (
-    SandboxConfig,
-    SandboxJob,
-    SandboxResult,
-    SandboxStatus,
-    ThreadRef,
-)
+from lintel.contracts.types import ThreadRef  # noqa: TC001
+from lintel.sandbox.errors import SandboxNotFoundError
+from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
 
 if TYPE_CHECKING:
     from collections.abc import Generator

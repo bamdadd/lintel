@@ -13,18 +13,20 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.data_models import WorkItemData
-from lintel.contracts.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
-from lintel.contracts.types import (
-    PipelineRun,
-    PipelineStatus,
-    Stage,
-    ThreadRef,
+from lintel.contracts.types import ThreadRef
+from lintel.domain.events import WorkItemCreated, WorkItemRemoved, WorkItemUpdated
+from lintel.domain.types import (
     Trigger,
     TriggerType,
     WorkItem,
     WorkItemStatus,
     WorkItemType,
+)
+from lintel.persistence.data_models import WorkItemData
+from lintel.workflows.types import (
+    PipelineRun,
+    PipelineStatus,
+    Stage,
 )
 
 logger = logging.getLogger(__name__)
@@ -333,7 +335,7 @@ async def _trigger_workflow_for_work_item(
 ) -> None:
     """Dispatch a workflow when a work item moves to in_progress."""
     from lintel.api.routes.pipelines import _stage_names_for_workflow
-    from lintel.contracts.commands import StartWorkflow
+    from lintel.workflows.commands import StartWorkflow
 
     project_id = item.get("project_id", "")
     if not project_id:

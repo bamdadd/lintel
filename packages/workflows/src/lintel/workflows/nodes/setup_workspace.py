@@ -12,7 +12,8 @@ if TYPE_CHECKING:
 
     from langchain_core.runnables import RunnableConfig
 
-    from lintel.contracts.protocols import CredentialStore, SandboxManager
+    from lintel.persistence.protocols import CredentialStore
+    from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()
@@ -48,7 +49,7 @@ async def _inject_claude_credentials(
 
     Skips writing if credentials already exist (e.g. via bind mount from host).
     """
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     # Check if credentials token file already exists (not just account info)
     check = await sandbox_manager.execute(
@@ -188,7 +189,7 @@ async def _resolve_credentials(
         if cred.credential_type == "github_token":
             repo_url = _inject_github_token(repo_url, secret)
         elif cred.credential_type == "ssh_key":
-            from lintel.contracts.types import SandboxJob
+            from lintel.sandbox.types import SandboxJob
 
             has_ssh_key = True
             await sandbox_manager.write_file(sandbox_id, "/tmp/ssh_key", secret)
@@ -209,7 +210,9 @@ async def setup_workspace(
     Expects project_id, repo_url, repo_branch, work_item_id, and feature_branch
     to be set in state (populated by the chat route before workflow dispatch).
     """
-    from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef, Variable
+    from lintel.contracts.types import ThreadRef
+    from lintel.domain.types import Variable  # noqa: TC001
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config)
@@ -262,31 +265,79 @@ async def setup_workspace(
     repo_path = f"{workspace_root}/repo"
 
     if not repo_url:
-        # No repo configured — create an empty sandbox so downstream nodes
-        # (research, plan, implement) can still operate on the user's request
-        await tracker.append_log("setup_workspace", "No repository URL — creating empty workspace")
-        thread_ref_str = state["thread_ref"]
-        parts = thread_ref_str.replace("thread:", "").split(":")
-        thread_ref = ThreadRef(
-            workspace_id=parts[0] if len(parts) > 0 else "",
-            channel_id=parts[1] if len(parts) > 1 else "",
-            thread_ts=parts[2] if len(parts) > 2 else "",
+        # No repo configured — acquire a sandbox from the pool so downstream
+        # nodes (research, plan, implement) can still operate on the user's request
+        await tracker.append_log(
+            "setup_workspace", "No repository URL — acquiring sandbox from pool"
         )
-        # Claude Code needs network access to reach the Anthropic API
-        credentials_json = _get_claude_code_credentials_json()
-        sandbox_config = SandboxConfig(network_enabled=bool(credentials_json))
-        sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
+
+        sandbox_store = getattr(app_state, "sandbox_store", None)
+        pool_sandbox_id = ""
+        if sandbox_store is not None:
+            existing = await sandbox_store.list_all()
+            free = [s for s in existing if not s.get("pipeline_id")]
+            if free:
+                pool_sandbox_id = free[0].get("sandbox_id", "")
+
+        if not pool_sandbox_id:
+            from lintel.sandbox.errors import NoSandboxAvailableError
+
+            error_msg = (
+                "No sandbox available in pool. "
+                "Pre-provision sandboxes via the API or wait for one to be released."
+            )
+            await tracker.append_log("setup_workspace", error_msg)
+            await tracker.mark_completed("setup_workspace", error=error_msg)
+            raise NoSandboxAvailableError from None
+
+        # Verify the container still exists
+        try:
+            await sandbox_manager.get_status(pool_sandbox_id)
+        except Exception:
+            from lintel.sandbox.errors import NoSandboxAvailableError
+
+            logger.warning("pool_sandbox_stale id=%s", pool_sandbox_id[:12])
+            error_msg = (
+                "No sandbox available in pool. "
+                "Pre-provision sandboxes via the API or wait for one to be released."
+            )
+            await tracker.append_log("setup_workspace", error_msg)
+            await tracker.mark_completed("setup_workspace", error=error_msg)
+            raise NoSandboxAvailableError from None
+
+        sandbox_id = pool_sandbox_id
+
+        # Allocate to this pipeline
+        run_id_val = state.get("run_id", "")
+        if sandbox_store is not None and run_id_val:
+            try:
+                entry = await sandbox_store.get(sandbox_id)
+                if entry is not None:
+                    entry["pipeline_id"] = run_id_val
+                    await sandbox_store.update(sandbox_id, entry)
+            except Exception:
+                logger.warning("sandbox_allocate_failed", sandbox_id=sandbox_id[:12])
+
+        await sandbox_manager.reconnect_network(sandbox_id)
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(command="rm -rf /workspace/*", workdir="/workspace"),
+        )
         await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(command=f"mkdir -p {repo_path}", timeout_seconds=10),
         )
         # Inject Claude Code credentials so downstream nodes can use the CLI
+        credentials_json = _get_claude_code_credentials_json()
         if credentials_json:
             await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
             await tracker.append_log(
                 "setup_workspace", "Claude Code credentials injected into sandbox"
             )
-        await tracker.append_log("setup_workspace", f"Empty sandbox created: `{sandbox_id[:12]}`")
+        await tracker.append_log(
+            "setup_workspace",
+            f"Using sandbox `{sandbox_id[:12]}` from pool (no repo)",
+        )
         await tracker.mark_completed(
             "setup_workspace",
             outputs={
@@ -320,14 +371,14 @@ async def setup_workspace(
     # Parse thread ref
     thread_ref_str = state["thread_ref"]
     parts = thread_ref_str.replace("thread:", "").split(":")
-    thread_ref = ThreadRef(
+    _thread_ref = ThreadRef(
         workspace_id=parts[0] if len(parts) > 0 else "",
         channel_id=parts[1] if len(parts) > 1 else "",
         thread_ts=parts[2] if len(parts) > 2 else "",
     )
 
     # Resolve environment variables if environment_id is set
-    env_vars: frozenset[tuple[str, str]] = frozenset()
+    _env_vars: frozenset[tuple[str, str]] = frozenset()
     secret_vars: list[Variable] = []
     environment_id = state.get("environment_id", "")
     if environment_id and variable_store is not None:
@@ -343,12 +394,11 @@ async def setup_workspace(
                 )
             else:
                 plain.append((var.key, var.value))
-        env_vars = frozenset(plain)
+        _env_vars = frozenset(plain)
 
-    # Pick an available sandbox from the user-created pool, or create one as fallback
+    # Pick an available sandbox from the pool — fail if none available
     sandbox_store = getattr(app_state, "sandbox_store", None)
     sandbox_id = ""
-    created_sandbox = False
 
     if sandbox_store is not None:
         existing = await sandbox_store.list_all()
@@ -405,34 +455,15 @@ async def setup_workspace(
             f"Using existing sandbox `{sandbox_id[:12]}` from pool (network reconnected)",
         )
     else:
-        await tracker.append_log(
-            "setup_workspace",
-            "No sandboxes in pool — creating a new one (fallback)",
+        from lintel.sandbox.errors import NoSandboxAvailableError
+
+        error_msg = (
+            "No sandbox available in pool. "
+            "Pre-provision sandboxes via the API or wait for one to be released."
         )
-        sandbox_config = SandboxConfig(
-            network_enabled=True,
-            environment=env_vars,
-        )
-        sandbox_id = await sandbox_manager.create(sandbox_config, thread_ref)
-        created_sandbox = True
-        # Register in sandbox store so it appears in the UI
-        if sandbox_store is not None:
-            try:
-                await sandbox_store.add(
-                    sandbox_id,
-                    {
-                        "image": sandbox_config.image,
-                        "network_enabled": sandbox_config.network_enabled,
-                        "workspace_id": thread_ref.workspace_id,
-                        "channel_id": thread_ref.channel_id,
-                    },
-                )
-            except Exception:
-                logger.warning("sandbox_store_add_failed", sandbox_id=sandbox_id[:12])
-        # Inject Claude Code credentials into new sandbox
-        if credentials_json:
-            await _inject_claude_credentials(sandbox_manager, sandbox_id, credentials_json)
-        await tracker.append_log("setup_workspace", f"Sandbox created: `{sandbox_id[:12]}`")
+        await tracker.append_log("setup_workspace", error_msg)
+        await tracker.mark_completed("setup_workspace", error=error_msg)
+        raise NoSandboxAvailableError
 
     try:
         # Inject secret variables as files in /run/secrets/
@@ -657,8 +688,6 @@ async def setup_workspace(
     except Exception:
         logger.exception("workspace_setup_failed")
         await tracker.mark_completed("setup_workspace", error="Workspace setup failed")
-        if created_sandbox:
-            await sandbox_manager.destroy(sandbox_id)
         raise
 
 
@@ -670,7 +699,7 @@ async def _install_project_deps(
     state: ThreadWorkflowState,
 ) -> None:
     """Detect project type and install dependencies while network is available."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)

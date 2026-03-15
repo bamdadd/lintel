@@ -7,9 +7,9 @@ from typing import Any
 from uuid import uuid4
 
 from lintel.contracts.events import EventEnvelope
-from lintel.contracts.projections import ProjectionState
 from lintel.projections.engine import InMemoryProjectionEngine
 from lintel.projections.stores import InMemoryProjectionStore
+from lintel.projections.types import ProjectionState
 
 
 class StubProjection:

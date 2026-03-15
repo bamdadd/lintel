@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-from lintel.contracts.types import SandboxResult
+from lintel.sandbox.types import SandboxResult
 from lintel.workflows.nodes._codebase_context import gather_codebase_context
 
 

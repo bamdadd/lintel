@@ -7,9 +7,11 @@ from uuid import uuid4
 
 import pytest
 
-from lintel.contracts.events import EventEnvelope, ThreadMessageReceived, WorkflowStarted
+from lintel.contracts.events import EventEnvelope
 from lintel.contracts.types import ThreadRef
 from lintel.event_store.in_memory import InMemoryEventStore
+from lintel.slack.events import ThreadMessageReceived
+from lintel.workflows.events import WorkflowStarted
 
 THREAD = ThreadRef("ws1", "ch1", "ts1")
 

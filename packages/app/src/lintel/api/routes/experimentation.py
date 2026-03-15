@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import (
+from lintel.domain.events import (
     ComplianceExperimentCreated,
     ComplianceExperimentRemoved,
     ComplianceExperimentUpdated,
@@ -22,7 +22,7 @@ from lintel.contracts.events import (
     KPIRemoved,
     KPIUpdated,
 )
-from lintel.contracts.types import (
+from lintel.domain.types import (
     KPI,
     ComplianceMetric,
     ComplianceStatus,

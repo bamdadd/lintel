@@ -245,7 +245,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
             self._pg = pg
 
         async def add(self, data: dict[str, Any]) -> None:
-            from lintel.contracts.types import Board, BoardColumn
+            from lintel.domain.types import Board, BoardColumn
 
             cols = tuple(BoardColumn(**c) for c in data.get("columns", []))
             entity = Board(
@@ -268,7 +268,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
             return [_dc_to_dict(i) for i in items]
 
         async def update(self, board_id: str, data: dict[str, Any]) -> None:
-            from lintel.contracts.types import Board, BoardColumn
+            from lintel.domain.types import Board, BoardColumn
 
             cols = tuple(BoardColumn(**c) for c in data.get("columns", []))
             entity = Board(
@@ -288,7 +288,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
             self._pg = pg
 
         async def add(self, data: dict[str, Any]) -> None:
-            from lintel.contracts.types import Tag
+            from lintel.domain.types import Tag
 
             entity = Tag(
                 tag_id=data["tag_id"],
@@ -309,7 +309,7 @@ def _create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
             return [_dc_to_dict(i) for i in items]
 
         async def update(self, tag_id: str, data: dict[str, Any]) -> None:
-            from lintel.contracts.types import Tag
+            from lintel.domain.types import Tag
 
             entity = Tag(
                 tag_id=tag_id,
@@ -469,7 +469,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     app.state.workflow_executor = executor
 
-    from lintel.contracts.commands import StartWorkflow
+    from lintel.workflows.commands import StartWorkflow
 
     dispatcher.register(StartWorkflow, executor.execute)
     app.state.command_dispatcher = dispatcher
@@ -567,8 +567,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         """Create a PipelineRun and emit AutomationFired event."""
         from uuid import uuid4
 
-        from lintel.contracts.events import AutomationFired
-        from lintel.contracts.types import PipelineRun
+        from lintel.domain.events import AutomationFired
+        from lintel.workflows.types import PipelineRun
 
         run_id = str(uuid4())
         pipeline_run = PipelineRun(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock
 
-from lintel.contracts.types import SandboxResult
+from lintel.sandbox.types import SandboxResult
 from lintel.workflows.nodes.review import review_output
 
 

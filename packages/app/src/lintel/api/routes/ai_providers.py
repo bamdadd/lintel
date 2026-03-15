@@ -11,13 +11,13 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import (
+from lintel.models.events import (
     AIProviderApiKeyUpdated,
     AIProviderCreated,
     AIProviderRemoved,
     AIProviderUpdated,
 )
-from lintel.contracts.types import AIProvider, AIProviderType
+from lintel.models.types import AIProvider, AIProviderType
 
 router = APIRouter()
 

@@ -61,7 +61,7 @@ class TestRetryEndpoint:
         import dataclasses
         import os
 
-        from lintel.contracts.types import PipelineStatus
+        from lintel.workflows.types import PipelineStatus
 
         pipeline_store = client.app.state.pipeline_store  # type: ignore[union-attr]
         dsn = os.environ.get("LINTEL_DB_DSN")

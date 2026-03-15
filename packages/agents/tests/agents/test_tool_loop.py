@@ -7,7 +7,9 @@ from unittest.mock import AsyncMock
 
 from lintel.agents.runtime import AgentRuntime
 from lintel.agents.sandbox_tools import SandboxToolDispatcher, sandbox_tool_schemas
-from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
+from lintel.agents.types import AgentRole
+from lintel.contracts.types import ThreadRef
+from lintel.models.types import ModelPolicy
 
 
 def _make_mocks() -> tuple[AsyncMock, AsyncMock]:
@@ -243,7 +245,7 @@ class TestToolLoop:
         event_store, model_router = _make_mocks()
         sandbox_manager = AsyncMock()
 
-        from lintel.contracts.types import SandboxResult
+        from lintel.sandbox.types import SandboxResult
 
         sandbox_manager.execute = AsyncMock(
             return_value=SandboxResult(exit_code=0, stdout="test output\n", stderr="")
@@ -350,7 +352,7 @@ class TestSandboxToolDispatcher:
         sandbox_manager.list_files.assert_awaited_once_with("sandbox-1", "/workspace")
 
     async def test_dispatch_execute_command(self) -> None:
-        from lintel.contracts.types import SandboxResult
+        from lintel.sandbox.types import SandboxResult
 
         sandbox_manager = AsyncMock()
         sandbox_manager.execute = AsyncMock(

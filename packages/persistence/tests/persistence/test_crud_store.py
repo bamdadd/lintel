@@ -112,7 +112,7 @@ class TestToInstance:
 
     def test_ai_provider_type_round_trip(self) -> None:
         """Regression test: provider_type must be AIProviderType, not str."""
-        from lintel.contracts.types import AIProvider, AIProviderType
+        from lintel.models.types import AIProvider, AIProviderType
 
         pool = AsyncMock()
         store = PostgresCrudStore(pool, "ai_provider", "provider_id", AIProvider)

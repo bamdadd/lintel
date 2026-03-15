@@ -8,9 +8,9 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.commands import RevealPII
-from lintel.contracts.events import VaultRevealRequested
 from lintel.contracts.types import ThreadRef
+from lintel.pii.commands import RevealPII
+from lintel.pii.events import VaultRevealRequested
 
 router = APIRouter()
 

@@ -4,19 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-from lintel.contracts.events import (
-    AgentStepCompleted,
-    AgentStepScheduled,
-    AgentStepStarted,
-    HumanApprovalGranted,
-    ThreadMessageReceived,
-    WorkflowAdvanced,
-    WorkflowStarted,
-)
+from lintel.agents.events import AgentStepCompleted, AgentStepScheduled, AgentStepStarted
 from lintel.contracts.types import ThreadRef
+from lintel.domain.events import HumanApprovalGranted
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
+from lintel.slack.events import ThreadMessageReceived
+from lintel.workflows.events import WorkflowAdvanced, WorkflowStarted
 
 
 def _thread_ref() -> ThreadRef:

@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
-from lintel.contracts.projections import ProjectionStatus
 from lintel.projections.engine import InMemoryProjectionEngine
+from lintel.projections.types import ProjectionStatus
 
 
 class TestAdminProjectionsEndpoint:

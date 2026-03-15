@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 from lintel.api.domain.pipeline_scheduler import PipelineScheduler
-from lintel.contracts.types import JobInput, ResourceVersion
+from lintel.domain.types import JobInput, ResourceVersion
 
 
 async def test_tick_schedules_job_with_new_version() -> None:

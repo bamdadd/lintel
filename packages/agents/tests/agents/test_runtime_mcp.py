@@ -8,7 +8,9 @@ from unittest.mock import AsyncMock
 import pytest
 
 from lintel.agents.runtime import AgentRuntime
-from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
+from lintel.agents.types import AgentRole
+from lintel.contracts.types import ThreadRef
+from lintel.models.types import ModelPolicy
 
 
 @pytest.fixture()

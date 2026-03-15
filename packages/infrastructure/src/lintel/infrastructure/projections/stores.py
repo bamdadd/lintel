@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import asyncpg
 
-    from lintel.contracts.projections import ProjectionState
+    from lintel.projections.types import ProjectionState
 
 
 class InMemoryProjectionStore:
@@ -45,7 +45,7 @@ class PostgresProjectionStore:
         await self._inner.put(state.projection_name, data)
 
     async def load(self, projection_name: str) -> ProjectionState | None:
-        from lintel.contracts.projections import ProjectionState as _ProjectionState
+        from lintel.projections.types import ProjectionState as _ProjectionState
 
         data = await self._inner.get(projection_name)
         if data is None:
@@ -54,7 +54,7 @@ class PostgresProjectionStore:
         return _ProjectionState(**data)
 
     async def load_all(self) -> list[ProjectionState]:
-        from lintel.contracts.projections import ProjectionState as _ProjectionState
+        from lintel.projections.types import ProjectionState as _ProjectionState
 
         rows = await self._inner.list_all()
         for r in rows:

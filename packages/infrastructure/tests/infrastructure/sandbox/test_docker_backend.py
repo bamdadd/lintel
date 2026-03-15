@@ -6,13 +6,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lintel.contracts.errors import (
+from lintel.contracts.types import ThreadRef
+from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+from lintel.sandbox.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
     SandboxTimeoutError,
 )
-from lintel.contracts.types import SandboxConfig, SandboxJob, SandboxStatus, ThreadRef
-from lintel.infrastructure.sandbox.docker_backend import DockerSandboxManager
+from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxStatus
 
 try:
     import docker as _docker

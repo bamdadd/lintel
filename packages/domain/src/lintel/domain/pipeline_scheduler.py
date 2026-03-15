@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lintel.contracts.commands import StartWorkflow
 from lintel.contracts.types import ThreadRef
+from lintel.workflows.commands import StartWorkflow
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import CommandDispatcher, EventStore

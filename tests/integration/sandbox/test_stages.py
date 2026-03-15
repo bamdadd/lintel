@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 pytestmark = pytest.mark.usefixtures("_check_sandbox_prereqs")
 
@@ -28,7 +28,7 @@ async def _copy_fixture_to_sandbox(
     workdir: str = "/workspace/repo",
 ) -> None:
     """Copy the fixture project into the sandbox and init a git repo."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     await mgr.execute(
         sandbox_id,
@@ -76,7 +76,7 @@ async def test_run_tests_with_fixture_project(
     sandbox: tuple[SandboxManager, str],
 ) -> None:
     """Full test stage: discover -> setup -> run tests -> parse results."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
     from lintel.skills.discover_test_command import discover_test_command
 
     mgr, sandbox_id = sandbox
@@ -151,7 +151,7 @@ async def test_pytest_parallelism_respects_cpu_limit(
     sandbox: tuple[SandboxManager, str],
 ) -> None:
     """pytest -n auto should use the container's CPU count, not the host's."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     mgr, sandbox_id = sandbox
     workdir = "/workspace/repo"

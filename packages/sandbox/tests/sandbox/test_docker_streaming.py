@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lintel.contracts.errors import SandboxTimeoutError
-from lintel.contracts.types import SandboxJob
 from lintel.sandbox.docker_backend import DockerSandboxManager
+from lintel.sandbox.errors import SandboxTimeoutError
+from lintel.sandbox.types import SandboxJob
 
 
 def _make_manager(container: MagicMock) -> DockerSandboxManager:

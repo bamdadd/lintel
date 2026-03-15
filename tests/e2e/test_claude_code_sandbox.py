@@ -14,8 +14,9 @@ import os
 
 import pytest
 
-from lintel.contracts.types import SandboxConfig, SandboxJob, ThreadRef
+from lintel.contracts.types import ThreadRef
 from lintel.sandbox.docker_backend import DockerSandboxManager
+from lintel.sandbox.types import SandboxConfig, SandboxJob
 
 pytestmark = [
     pytest.mark.e2e,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from lintel.contracts.types import AuditEntry
+    from lintel.domain.types import AuditEntry
 
 from lintel.workflows.nodes._event_helpers import AuditEmitter, emit_audit_entry
 

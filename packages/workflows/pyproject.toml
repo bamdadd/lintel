@@ -5,6 +5,8 @@ requires-python = ">=3.12"
 dependencies = [
     "lintel-contracts",
     "lintel-agents",
+    "lintel-observability",
+    "lintel-sandbox",
     "structlog>=24.4",
     "langgraph>=0.3",
 ]
@@ -12,6 +14,8 @@ dependencies = [
 [tool.uv.sources]
 lintel-contracts = { workspace = true }
 lintel-agents = { workspace = true }
+lintel-observability = { workspace = true }
+lintel-sandbox = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

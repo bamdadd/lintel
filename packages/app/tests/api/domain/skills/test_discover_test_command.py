@@ -9,7 +9,7 @@ from lintel.api.domain.skills.discover_test_command import (
     discover_test_command,
     pick_test_target,
 )
-from lintel.contracts.types import SandboxResult
+from lintel.sandbox.types import SandboxResult
 
 
 def _mock_sandbox(

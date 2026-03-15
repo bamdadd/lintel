@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from lintel.contracts.types import SandboxConfig, SandboxJob, SandboxResult, ThreadRef
+from lintel.contracts.types import ThreadRef
 from lintel.sandbox.docker_backend import DockerSandboxManager
+from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult
 
 
 class TestDockerSandboxManager:

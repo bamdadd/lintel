@@ -114,7 +114,7 @@ class StageTracker:
         if not self.run_id:
             return
 
-        from lintel.contracts.types import Stage
+        from lintel.workflows.types import Stage
 
         pipeline_store = self.pipeline_store
         if pipeline_store is None:
@@ -124,7 +124,7 @@ class StageTracker:
         if run is None:
             return
 
-        from lintel.contracts.types import PipelineRun
+        from lintel.workflows.types import PipelineRun
 
         new_stages: list[Stage] = []
         for s in run.stages:
@@ -215,7 +215,7 @@ class StageTracker:
 
         try:
             router = agent_runtime._model_router
-            from lintel.contracts.types import AgentRole
+            from lintel.agents.types import AgentRole
 
             role_enum = AgentRole(agent_role) if isinstance(agent_role, str) else agent_role
             policy = await router.select_model(role_enum, step_name)
@@ -245,7 +245,7 @@ class StageTracker:
         outputs: dict[str, object] | None = None,
         error: str = "",
     ) -> None:
-        from lintel.contracts.types import Stage, StageStatus
+        from lintel.workflows.types import Stage, StageStatus
 
         pipeline_store = self.pipeline_store
         if pipeline_store is None:
@@ -289,7 +289,7 @@ class StageTracker:
             )
             return
 
-        from lintel.contracts.types import PipelineRun
+        from lintel.workflows.types import PipelineRun
 
         updated = PipelineRun(
             run_id=run.run_id,
@@ -316,7 +316,7 @@ class StageTracker:
         """If a stage was previously completed, archive its data as an attempt and reset."""
         from datetime import UTC, datetime
 
-        from lintel.contracts.types import PipelineRun, Stage, StageAttempt, StageStatus
+        from lintel.workflows.types import PipelineRun, Stage, StageAttempt, StageStatus
 
         pipeline_store = self.pipeline_store
         if pipeline_store is None:

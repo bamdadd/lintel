@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from lintel.contracts.types import (
+from lintel.workflows.nodes._stage_tracking import StageTracker
+from lintel.workflows.types import (
     PipelineRun,
     PipelineStatus,
     Stage,
     StageAttempt,
     StageStatus,
 )
-from lintel.workflows.nodes._stage_tracking import StageTracker
 
 
 class FakePipelineStore:

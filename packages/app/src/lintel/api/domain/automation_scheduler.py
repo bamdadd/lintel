@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from croniter import croniter  # type: ignore[import-untyped]
 
-from lintel.contracts.types import AutomationTriggerType, ConcurrencyPolicy
+from lintel.domain.types import AutomationTriggerType, ConcurrencyPolicy
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine

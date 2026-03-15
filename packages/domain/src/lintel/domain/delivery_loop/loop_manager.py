@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import structlog
 
-from lintel.contracts.types import (
+from lintel.domain.types import (
     DEFAULT_DELIVERY_PHASES,
     DeliveryLoop,
     PhaseTransitionRecord,
@@ -118,7 +118,7 @@ class DeliveryLoopManager:
         self._loops[work_item_id] = loop
 
         if self._event_bus is not None:
-            from lintel.contracts.events import DeliveryLoopStarted
+            from lintel.domain.events import DeliveryLoopStarted
 
             await self._event_bus.publish(
                 DeliveryLoopStarted(
@@ -190,7 +190,7 @@ class DeliveryLoopManager:
         self._loops[work_item_id] = updated
 
         if self._event_bus is not None:
-            from lintel.contracts.events import DeliveryLoopPhaseTransitioned
+            from lintel.domain.events import DeliveryLoopPhaseTransitioned
 
             await self._event_bus.publish(
                 DeliveryLoopPhaseTransitioned(
@@ -236,7 +236,7 @@ class DeliveryLoopManager:
             ms = int((curr.occurred_at - prev.occurred_at).total_seconds() * 1000)
             phase_durations[prev.to_phase] = phase_durations.get(prev.to_phase, 0) + ms
 
-        from lintel.contracts.events import DeliveryLoopCompleted
+        from lintel.domain.events import DeliveryLoopCompleted
 
         await self._event_bus.publish(
             DeliveryLoopCompleted(

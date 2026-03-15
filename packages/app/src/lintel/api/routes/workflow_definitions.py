@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import (
+from lintel.workflows.events import (
     WorkflowDefinitionCreated,
     WorkflowDefinitionRemoved,
     WorkflowDefinitionUpdated,

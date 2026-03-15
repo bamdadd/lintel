@@ -1574,6 +1574,8 @@ version = "0.1.0"
 source = { editable = "packages/agents" }
 dependencies = [
     { name = "lintel-contracts" },
+    { name = "lintel-models" },
+    { name = "lintel-sandbox" },
     { name = "litellm" },
     { name = "structlog" },
 ]
@@ -1581,6 +1583,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-models", editable = "packages/models" },
+    { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "litellm", specifier = ">=1.55" },
     { name = "structlog", specifier = ">=24.4" },
 ]
@@ -1619,6 +1623,9 @@ dependencies = [
     { name = "croniter" },
     { name = "langgraph" },
     { name = "lintel-contracts" },
+    { name = "lintel-models" },
+    { name = "lintel-observability" },
+    { name = "lintel-sandbox" },
     { name = "structlog" },
 ]
 
@@ -1627,6 +1634,9 @@ requires-dist = [
     { name = "croniter", specifier = ">=6.0.0" },
     { name = "langgraph", specifier = ">=0.3" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-models", editable = "packages/models" },
+    { name = "lintel-observability", editable = "packages/observability" },
+    { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
@@ -1684,6 +1694,7 @@ source = { editable = "packages/models" }
 dependencies = [
     { name = "httpx" },
     { name = "lintel-contracts" },
+    { name = "lintel-sandbox" },
     { name = "litellm" },
     { name = "structlog" },
     { name = "tenacity" },
@@ -1693,6 +1704,7 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "litellm", specifier = ">=1.55" },
     { name = "structlog", specifier = ">=24.4" },
     { name = "tenacity", specifier = ">=9.0" },
@@ -1725,6 +1737,8 @@ dependencies = [
     { name = "asyncpg" },
     { name = "cryptography" },
     { name = "lintel-contracts" },
+    { name = "lintel-models" },
+    { name = "lintel-repos" },
     { name = "pydantic" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
@@ -1735,6 +1749,8 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.30" },
     { name = "cryptography", specifier = ">=44.0" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-models", editable = "packages/models" },
+    { name = "lintel-repos", editable = "packages/repos" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "structlog", specifier = ">=24.4" },
@@ -1839,6 +1855,8 @@ dependencies = [
     { name = "langgraph" },
     { name = "lintel-agents" },
     { name = "lintel-contracts" },
+    { name = "lintel-observability" },
+    { name = "lintel-sandbox" },
     { name = "structlog" },
 ]
 
@@ -1847,6 +1865,8 @@ requires-dist = [
     { name = "langgraph", specifier = ">=0.3" },
     { name = "lintel-agents", editable = "packages/agents" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-observability", editable = "packages/observability" },
+    { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 

@@ -14,7 +14,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -55,8 +55,9 @@ async def sandbox(
     _check_sandbox_prereqs: None,
 ) -> AsyncIterator[tuple[SandboxManager, str]]:
     """Create a real sandbox container and tear it down after the test."""
-    from lintel.contracts.types import SandboxConfig, ThreadRef
+    from lintel.contracts.types import ThreadRef
     from lintel.sandbox.docker_backend import DockerSandboxManager
+    from lintel.sandbox.types import SandboxConfig
 
     mgr = DockerSandboxManager()
     config = SandboxConfig(network_enabled=True)

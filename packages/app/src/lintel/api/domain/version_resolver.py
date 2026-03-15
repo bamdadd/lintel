@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lintel.contracts.types import ResourceVersion
+from lintel.domain.types import ResourceVersion
 
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope
     from lintel.contracts.protocols import EventStore
-    from lintel.contracts.types import JobInput
+    from lintel.domain.types import JobInput
 
 
 class VersionResolver:

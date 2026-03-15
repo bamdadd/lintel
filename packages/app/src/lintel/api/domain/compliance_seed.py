@@ -4,7 +4,7 @@ These are templates that can be associated to projects. They cover
 UK/EU financial, health, medical device, and software safety domains.
 """
 
-from lintel.contracts.types import ComplianceStatus, Regulation, RiskLevel
+from lintel.domain.types import ComplianceStatus, Regulation, RiskLevel
 
 # fmt: off
 SEED_REGULATIONS: list[Regulation] = [

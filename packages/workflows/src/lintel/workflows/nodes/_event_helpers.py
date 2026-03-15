@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
-from lintel.contracts.types import AuditEntry
+from lintel.domain.types import AuditEntry
 
 
 @runtime_checkable

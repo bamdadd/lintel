@@ -20,25 +20,23 @@ if TYPE_CHECKING:
 
 
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.commands import StartWorkflow
-from lintel.contracts.events import (
+from lintel.contracts.types import ThreadRef
+from lintel.domain.events import (
     ConversationCreated,
     ConversationDeleted,
     ProjectSelected,
-    WorkflowTriggered,
 )
-from lintel.contracts.types import (
-    ModelPolicy,
-    PipelineRun,
-    PipelineStatus,
-    Stage,
-    ThreadRef,
+from lintel.domain.types import (
     Trigger,
     TriggerType,
     WorkItem,
     WorkItemStatus,
     WorkItemType,
 )
+from lintel.models.types import ModelPolicy
+from lintel.workflows.commands import StartWorkflow
+from lintel.workflows.events import WorkflowTriggered
+from lintel.workflows.types import PipelineRun, PipelineStatus, Stage
 
 logger = structlog.get_logger()
 
@@ -90,7 +88,7 @@ class ChatStore:
         project_id: str | None,
         model_id: str | None = None,
     ) -> dict[str, Any]:
-        from lintel.contracts.data_models import ConversationData
+        from lintel.persistence.data_models import ConversationData
 
         conv = ConversationData(
             conversation_id=conversation_id,
@@ -142,7 +140,7 @@ class ChatStore:
         role: str,
         content: str,
     ) -> dict[str, Any]:
-        from lintel.contracts.data_models import ChatMessage
+        from lintel.persistence.data_models import ChatMessage
 
         conv = self._conversations.get(conversation_id)
         if conv is None:

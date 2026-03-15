@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from lintel.contracts.projections import ProjectionState
 from lintel.infrastructure.projections.stores import PostgresProjectionStore
+from lintel.projections.types import ProjectionState
 
 
 def _make_state(name: str = "test", position: int = 0) -> ProjectionState:

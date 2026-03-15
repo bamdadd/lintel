@@ -4,12 +4,16 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "lintel-contracts",
+    "lintel-models",
+    "lintel-sandbox",
     "structlog>=24.4",
     "litellm>=1.55",
 ]
 
 [tool.uv.sources]
 lintel-contracts = { workspace = true }
+lintel-models = { workspace = true }
+lintel-sandbox = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

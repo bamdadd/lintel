@@ -181,7 +181,7 @@ class AuditProjection:
             or ""
         )
 
-        from lintel.contracts.types import AuditEntry
+        from lintel.domain.types import AuditEntry
 
         entry = AuditEntry(
             entry_id=uuid4().hex,

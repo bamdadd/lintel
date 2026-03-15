@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
+from lintel.agents.types import SkillDescriptor, SkillResult
 from lintel.api.domain.skills.registry import InMemorySkillRegistry
-from lintel.contracts.types import SkillDescriptor, SkillResult
 
 
 @dataclass

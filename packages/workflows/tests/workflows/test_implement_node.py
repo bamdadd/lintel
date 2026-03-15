@@ -5,14 +5,9 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from lintel.contracts.errors import SandboxNotFoundError
-from lintel.contracts.types import (
-    SandboxConfig,
-    SandboxJob,
-    SandboxResult,
-    SandboxStatus,
-    ThreadRef,
-)
+from lintel.contracts.types import ThreadRef  # noqa: TC001
+from lintel.sandbox.errors import SandboxNotFoundError
+from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
 from lintel.workflows.nodes.implement import spawn_implementation
 
 

@@ -7,7 +7,9 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from lintel.agents.runtime import AgentRuntime
-from lintel.contracts.types import AgentRole, ModelPolicy, ThreadRef
+from lintel.agents.types import AgentRole
+from lintel.contracts.types import ThreadRef
+from lintel.models.types import ModelPolicy
 
 
 def _make_mocks() -> tuple[AsyncMock, AsyncMock]:

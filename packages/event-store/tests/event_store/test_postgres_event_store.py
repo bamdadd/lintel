@@ -9,11 +9,7 @@ from uuid import uuid4
 
 import pytest
 
-from lintel.contracts.events import (
-    EventEnvelope,
-    ThreadMessageReceived,
-    WorkflowStarted,
-)
+from lintel.contracts.events import EventEnvelope
 from lintel.contracts.types import ActorType, ThreadRef
 from lintel.event_store.postgres import (
     IdempotencyViolationError,
@@ -21,6 +17,8 @@ from lintel.event_store.postgres import (
     PostgresEventStore,
     _row_to_event,
 )
+from lintel.slack.events import ThreadMessageReceived
+from lintel.workflows.events import WorkflowStarted
 
 # ---------------------------------------------------------------------------
 # _row_to_event unit tests (no DB needed)

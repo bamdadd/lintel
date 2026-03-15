@@ -8,7 +8,7 @@ import pytest
 
 from lintel.api.app import create_app
 from lintel.api.domain.chat_router import ChatRouterResult
-from lintel.contracts.types import ModelPolicy
+from lintel.models.types import ModelPolicy
 
 if TYPE_CHECKING:
     from collections.abc import Generator

@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import VariableCreated, VariableRemoved, VariableUpdated
-from lintel.contracts.types import Variable
+from lintel.domain.events import VariableCreated, VariableRemoved, VariableUpdated
+from lintel.domain.types import Variable
 
 router = APIRouter()
 

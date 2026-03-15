@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-from lintel.contracts.types import SandboxJob, SandboxResult
+from lintel.sandbox.types import SandboxJob, SandboxResult
 from lintel.workflows.nodes._git_helpers import GitOperations, rebase_on_upstream
 
 

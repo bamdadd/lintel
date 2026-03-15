@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock
 
-from lintel.contracts.types import SandboxResult
+from lintel.sandbox.types import SandboxResult
 from lintel.workflows.nodes.close import close_workflow
 
 
@@ -128,6 +128,54 @@ async def test_setup_workspace_skips_all_allocated() -> None:
 
     free = [s for s in await store.list_all() if not s.get("pipeline_id")]
     assert len(free) == 0
+
+
+async def test_setup_workspace_fails_when_no_sandbox_available() -> None:
+    """Setup workspace raises NoSandboxAvailableError when pool is exhausted."""
+    import pytest
+
+    from lintel.sandbox.errors import NoSandboxAvailableError
+    from lintel.workflows.nodes.setup_workspace import setup_workspace
+
+    store = FakeSandboxStore(
+        [
+            {"sandbox_id": "sbx-1", "pipeline_id": "run-a", "image": "test"},
+        ]
+    )
+    sandbox = AsyncMock()
+    from lintel.workflows.types import PipelineRun
+
+    pipeline_store = AsyncMock()
+    pipeline_store.get = AsyncMock(
+        return_value=PipelineRun(
+            run_id="run-1",
+            project_id="proj-1",
+            trigger_type="chat:conv-1",
+            trigger_id="trig-1",
+            status="running",
+            stages=(),
+            work_item_id="wi-1",
+            workflow_definition_id="wf-1",
+        )
+    )
+    pipeline_store.update = AsyncMock()
+
+    app_state = type("AppState", (), {"sandbox_store": store, "work_item_store": None})()
+
+    config: dict[str, Any] = {
+        "configurable": {
+            "sandbox_manager": sandbox,
+            "pipeline_store": pipeline_store,
+            "credential_store": None,
+            "variable_store": None,
+            "app_state": app_state,
+            "run_id": "run-1",
+        }
+    }
+    state = _make_state(repo_url="https://github.com/test/repo")
+
+    with pytest.raises(NoSandboxAvailableError):
+        await setup_workspace(state, config)
 
 
 async def test_allocation_stamps_pipeline_id() -> None:

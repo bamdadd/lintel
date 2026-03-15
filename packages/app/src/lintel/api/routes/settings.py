@@ -6,13 +6,13 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.data_models import ConnectionData
-from lintel.contracts.events import (
+from lintel.domain.events import (
     ConnectionCreated,
     ConnectionRemoved,
     ConnectionUpdated,
     SettingsUpdated,
 )
+from lintel.persistence.data_models import ConnectionData
 
 router = APIRouter()
 
@@ -27,7 +27,7 @@ def get_connections(request: Request) -> dict[str, dict[str, Any]]:
 def get_general_settings(request: Request) -> dict[str, Any]:
     """Get general settings from app state."""
     if not hasattr(request.app.state, "general_settings"):
-        from lintel.contracts.data_models import GeneralSettings
+        from lintel.persistence.data_models import GeneralSettings
 
         request.app.state.general_settings = GeneralSettings().model_dump()
     return request.app.state.general_settings  # type: ignore[no-any-return]

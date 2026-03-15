@@ -6,15 +6,15 @@ to the schema are caught by the type checker and mypy.
 
 from __future__ import annotations
 
-from lintel.contracts.types import (
+from lintel.agents.types import (
     AgentCategory,
     AgentDefinitionRecord,
     AgentRole,
     SkillCategory,
     SkillDefinition,
     SkillExecutionMode,
-    WorkflowDefinitionRecord,
 )
+from lintel.workflows.types import WorkflowDefinitionRecord
 
 # ---------------------------------------------------------------------------
 # Default agent definitions — one per engineering team role

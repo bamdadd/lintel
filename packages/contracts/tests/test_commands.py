@@ -7,16 +7,12 @@ from uuid import UUID
 
 import pytest
 
-from lintel.contracts.commands import (
-    GrantApproval,
-    ProcessIncomingMessage,
-    RejectApproval,
-    RevealPII,
-    ScheduleAgentStep,
-    ScheduleSandboxJob,
-    StartWorkflow,
-)
-from lintel.contracts.types import AgentRole, ThreadRef
+from lintel.agents.commands import ScheduleAgentStep, ScheduleSandboxJob
+from lintel.agents.types import AgentRole
+from lintel.contracts.types import ThreadRef
+from lintel.pii.commands import RevealPII
+from lintel.slack.commands import GrantApproval, ProcessIncomingMessage, RejectApproval
+from lintel.workflows.commands import StartWorkflow
 
 REF = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0")
 

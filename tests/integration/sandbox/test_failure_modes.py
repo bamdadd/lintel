@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from lintel.contracts.errors import (
+from lintel.sandbox.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
     SandboxTimeoutError,
 )
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 pytestmark = pytest.mark.usefixtures("_check_sandbox_prereqs")
 
@@ -35,7 +35,7 @@ async def _exec(
     command: str,
     timeout: int = 10,
 ) -> object:
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     return await mgr.execute(sandbox_id, SandboxJob(command=command, timeout_seconds=timeout))
 

@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-from lintel.contracts.commands import StartWorkflow
 from lintel.contracts.types import ThreadRef
+from lintel.workflows.commands import StartWorkflow
 from lintel.workflows.workflow_executor import WorkflowExecutor
 
 
@@ -128,7 +128,7 @@ async def test_execute_marks_work_item_failed_on_error() -> None:
 
 async def test_execute_marks_running_stages_failed_on_error() -> None:
     """Running stages should be marked failed when the workflow errors."""
-    from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
+    from lintel.workflows.types import PipelineRun, PipelineStatus, Stage, StageStatus
 
     event_store = AsyncMock()
 
@@ -201,8 +201,8 @@ async def test_execute_marks_running_stages_failed_on_error() -> None:
 
 async def test_execute_creates_approval_request_on_interrupt() -> None:
     """REQ-1.1: An ApprovalRequest is created when workflow pauses at an approval gate."""
-    from lintel.contracts.types import (
-        ApprovalRequest,
+    from lintel.domain.types import ApprovalRequest  # noqa: TC001
+    from lintel.workflows.types import (
         PipelineRun,
         PipelineStatus,
         Stage,
@@ -281,7 +281,7 @@ async def test_execute_creates_approval_request_on_interrupt() -> None:
 
 async def test_execute_notifies_chat_on_interrupt() -> None:
     """REQ-1.1: Chat notification sent when workflow pauses for approval."""
-    from lintel.contracts.types import (
+    from lintel.workflows.types import (
         PipelineRun,
         PipelineStatus,
         Stage,
@@ -367,7 +367,7 @@ async def test_execute_notifies_chat_on_interrupt() -> None:
 
 async def test_execute_pauses_at_interrupt() -> None:
     """Graph with interrupt_before should pause and mark stage as waiting_approval."""
-    from lintel.contracts.types import (
+    from lintel.workflows.types import (
         PipelineRun,
         PipelineStatus,
         Stage,

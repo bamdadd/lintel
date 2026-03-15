@@ -32,29 +32,6 @@ class EventEnvelope:
     global_position: int | None = None
 
 
-# --- Channel & Ingestion Events ---
-
-
-@dataclass(frozen=True)
-class ThreadMessageReceived(EventEnvelope):
-    event_type: str = "ThreadMessageReceived"
-
-
-@dataclass(frozen=True)
-class PIIDetected(EventEnvelope):
-    event_type: str = "PIIDetected"
-
-
-@dataclass(frozen=True)
-class PIIAnonymised(EventEnvelope):
-    event_type: str = "PIIAnonymised"
-
-
-@dataclass(frozen=True)
-class PIIResidualRiskBlocked(EventEnvelope):
-    event_type: str = "PIIResidualRiskBlocked"
-
-
 # --- Workflow Events ---
 
 
@@ -73,123 +50,6 @@ class WorkflowAdvanced(EventEnvelope):
     event_type: str = "WorkflowAdvanced"
 
 
-# --- Agent Events ---
-
-
-@dataclass(frozen=True)
-class AgentStepScheduled(EventEnvelope):
-    event_type: str = "AgentStepScheduled"
-
-
-@dataclass(frozen=True)
-class AgentStepStarted(EventEnvelope):
-    event_type: str = "AgentStepStarted"
-
-
-@dataclass(frozen=True)
-class AgentStepCompleted(EventEnvelope):
-    event_type: str = "AgentStepCompleted"
-
-
-@dataclass(frozen=True)
-class ModelSelected(EventEnvelope):
-    event_type: str = "ModelSelected"
-
-
-@dataclass(frozen=True)
-class ModelCallCompleted(EventEnvelope):
-    event_type: str = "ModelCallCompleted"
-
-
-# --- Sandbox Events ---
-
-
-@dataclass(frozen=True)
-class SandboxJobScheduled(EventEnvelope):
-    event_type: str = "SandboxJobScheduled"
-
-
-@dataclass(frozen=True)
-class SandboxCreated(EventEnvelope):
-    event_type: str = "SandboxCreated"
-
-
-@dataclass(frozen=True)
-class SandboxCommandExecuted(EventEnvelope):
-    event_type: str = "SandboxCommandExecuted"
-
-
-@dataclass(frozen=True)
-class SandboxFileWritten(EventEnvelope):
-    event_type: str = "SandboxFileWritten"
-
-
-@dataclass(frozen=True)
-class SandboxArtifactsCollected(EventEnvelope):
-    event_type: str = "SandboxArtifactsCollected"
-
-
-@dataclass(frozen=True)
-class SandboxDestroyed(EventEnvelope):
-    event_type: str = "SandboxDestroyed"
-
-
-# --- Credential Events ---
-
-
-@dataclass(frozen=True)
-class CredentialStored(EventEnvelope):
-    event_type: str = "CredentialStored"
-
-
-@dataclass(frozen=True)
-class CredentialRevoked(EventEnvelope):
-    event_type: str = "CredentialRevoked"
-
-
-# --- Repo Events ---
-
-
-@dataclass(frozen=True)
-class RepositoryRegistered(EventEnvelope):
-    event_type: str = "RepositoryRegistered"
-
-
-@dataclass(frozen=True)
-class RepositoryUpdated(EventEnvelope):
-    event_type: str = "RepositoryUpdated"
-
-
-@dataclass(frozen=True)
-class RepositoryRemoved(EventEnvelope):
-    event_type: str = "RepositoryRemoved"
-
-
-@dataclass(frozen=True)
-class RepoCloned(EventEnvelope):
-    event_type: str = "RepoCloned"
-
-
-@dataclass(frozen=True)
-class BranchCreated(EventEnvelope):
-    event_type: str = "BranchCreated"
-
-
-@dataclass(frozen=True)
-class CommitPushed(EventEnvelope):
-    event_type: str = "CommitPushed"
-
-
-@dataclass(frozen=True)
-class PRCreated(EventEnvelope):
-    event_type: str = "PRCreated"
-
-
-@dataclass(frozen=True)
-class PRCommentAdded(EventEnvelope):
-    event_type: str = "PRCommentAdded"
-
-
 @dataclass(frozen=True)
 class HumanApprovalGranted(EventEnvelope):
     event_type: str = "HumanApprovalGranted"
@@ -200,50 +60,7 @@ class HumanApprovalRejected(EventEnvelope):
     event_type: str = "HumanApprovalRejected"
 
 
-# --- Skill Events ---
-
-
-@dataclass(frozen=True)
-class SkillRegistered(EventEnvelope):
-    event_type: str = "SkillRegistered"
-
-
-@dataclass(frozen=True)
-class SkillUpdated(EventEnvelope):
-    event_type: str = "SkillUpdated"
-
-
-@dataclass(frozen=True)
-class SkillRemoved(EventEnvelope):
-    event_type: str = "SkillRemoved"
-
-
-@dataclass(frozen=True)
-class SkillInvoked(EventEnvelope):
-    event_type: str = "SkillInvoked"
-
-
-@dataclass(frozen=True)
-class SkillSucceeded(EventEnvelope):
-    event_type: str = "SkillSucceeded"
-
-
-@dataclass(frozen=True)
-class SkillFailed(EventEnvelope):
-    event_type: str = "SkillFailed"
-
-
 # --- Security Events ---
-
-
-@dataclass(frozen=True)
-class VaultRevealRequested(EventEnvelope):
-    event_type: str = "VaultRevealRequested"
-
-
-@dataclass(frozen=True)
-class VaultRevealGranted(EventEnvelope):
-    event_type: str = "VaultRevealGranted"
 
 
 @dataclass(frozen=True)
@@ -519,54 +336,6 @@ class TeamRemoved(EventEnvelope):
     event_type: str = "TeamRemoved"
 
 
-# --- AI Provider & Model Events ---
-
-
-@dataclass(frozen=True)
-class AIProviderCreated(EventEnvelope):
-    event_type: str = "AIProviderCreated"
-
-
-@dataclass(frozen=True)
-class AIProviderUpdated(EventEnvelope):
-    event_type: str = "AIProviderUpdated"
-
-
-@dataclass(frozen=True)
-class AIProviderRemoved(EventEnvelope):
-    event_type: str = "AIProviderRemoved"
-
-
-@dataclass(frozen=True)
-class AIProviderApiKeyUpdated(EventEnvelope):
-    event_type: str = "AIProviderApiKeyUpdated"
-
-
-@dataclass(frozen=True)
-class ModelRegistered(EventEnvelope):
-    event_type: str = "ModelRegistered"
-
-
-@dataclass(frozen=True)
-class ModelUpdated(EventEnvelope):
-    event_type: str = "ModelUpdated"
-
-
-@dataclass(frozen=True)
-class ModelRemoved(EventEnvelope):
-    event_type: str = "ModelRemoved"
-
-
-@dataclass(frozen=True)
-class ModelAssignmentCreated(EventEnvelope):
-    event_type: str = "ModelAssignmentCreated"
-
-
-@dataclass(frozen=True)
-class ModelAssignmentRemoved(EventEnvelope):
-    event_type: str = "ModelAssignmentRemoved"
-
-
 # --- Variable Events ---
 
 
@@ -736,24 +505,6 @@ class ProjectSelected(EventEnvelope):
     event_type: str = "ProjectSelected"
 
 
-# --- Agent Definition Events ---
-
-
-@dataclass(frozen=True)
-class AgentDefinitionCreated(EventEnvelope):
-    event_type: str = "AgentDefinitionCreated"
-
-
-@dataclass(frozen=True)
-class AgentDefinitionUpdated(EventEnvelope):
-    event_type: str = "AgentDefinitionUpdated"
-
-
-@dataclass(frozen=True)
-class AgentDefinitionRemoved(EventEnvelope):
-    event_type: str = "AgentDefinitionRemoved"
-
-
 # --- Approval Request Events ---
 
 
@@ -770,14 +521,6 @@ class ApprovalRequestApproved(EventEnvelope):
 @dataclass(frozen=True)
 class ApprovalRequestRejected(EventEnvelope):
     event_type: str = "ApprovalRequestRejected"
-
-
-# --- Audit Events ---
-
-
-@dataclass(frozen=True)
-class AuditRecorded(EventEnvelope):
-    event_type: str = "AuditRecorded"
 
 
 # --- Collaboration Events (Layer 2) ---
@@ -882,24 +625,6 @@ class VariantAssigned(EventEnvelope):
 @dataclass(frozen=True)
 class ExperimentCompleted(EventEnvelope):
     event_type: str = "ExperimentCompleted"
-
-
-# --- Metrics Events (Layer 5) ---
-
-
-@dataclass(frozen=True)
-class DeliveryMetricComputed(EventEnvelope):
-    event_type: str = "DeliveryMetricComputed"
-
-
-@dataclass(frozen=True)
-class AgentPerformanceComputed(EventEnvelope):
-    event_type: str = "AgentPerformanceComputed"
-
-
-@dataclass(frozen=True)
-class HumanPerformanceComputed(EventEnvelope):
-    event_type: str = "HumanPerformanceComputed"
 
 
 # --- Delivery Loop Events (Layer 6) ---
@@ -1113,209 +838,163 @@ class ArchitectureDecisionRemoved(EventEnvelope):
 
 # --- Event Registry ---
 
-EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {
-    cls.event_type: cls
-    for cls in [
-        ThreadMessageReceived,
-        PIIDetected,
-        PIIAnonymised,
-        PIIResidualRiskBlocked,
-        IntentRouted,
-        WorkflowStarted,
-        WorkflowAdvanced,
-        AgentStepScheduled,
-        AgentStepStarted,
-        AgentStepCompleted,
-        ModelSelected,
-        ModelCallCompleted,
-        SkillRegistered,
-        SkillUpdated,
-        SkillRemoved,
-        SkillInvoked,
-        SkillSucceeded,
-        SkillFailed,
-        SandboxJobScheduled,
-        SandboxCreated,
-        SandboxCommandExecuted,
-        SandboxFileWritten,
-        SandboxArtifactsCollected,
-        SandboxDestroyed,
-        CredentialStored,
-        CredentialRevoked,
-        RepositoryRegistered,
-        RepositoryUpdated,
-        RepositoryRemoved,
-        RepoCloned,
-        BranchCreated,
-        CommitPushed,
-        PRCreated,
-        PRCommentAdded,
-        HumanApprovalGranted,
-        HumanApprovalRejected,
-        VaultRevealRequested,
-        VaultRevealGranted,
-        PolicyDecisionRecorded,
-        ProjectCreated,
-        ProjectUpdated,
-        ProjectArchived,
-        ProjectRemoved,
-        WorkItemCreated,
-        WorkItemUpdated,
-        WorkItemCompleted,
-        WorkItemRemoved,
-        PipelineRunStarted,
-        PipelineStageCompleted,
-        PipelineRunCompleted,
-        PipelineRunFailed,
-        PipelineRunCancelled,
-        PipelineRunDeleted,
-        PipelineStageApproved,
-        PipelineStageRejected,
-        PipelineStageRetried,
-        ResourceVersionProduced,
-        ResourceVersionConsumed,
-        EnvironmentCreated,
-        EnvironmentUpdated,
-        EnvironmentRemoved,
-        TriggerCreated,
-        TriggerUpdated,
-        TriggerRemoved,
-        TriggerFired,
-        AutomationCreated,
-        AutomationUpdated,
-        AutomationRemoved,
-        AutomationEnabled,
-        AutomationDisabled,
-        AutomationFired,
-        AutomationSkipped,
-        AutomationCancelled,
-        ArtifactStored,
-        TestRunCompleted,
-        ApprovalRequested,
-        ApprovalExpired,
-        NotificationSent,
-        UserCreated,
-        UserUpdated,
-        UserRemoved,
-        TeamCreated,
-        TeamUpdated,
-        TeamRemoved,
-        AIProviderCreated,
-        AIProviderUpdated,
-        AIProviderRemoved,
-        AIProviderApiKeyUpdated,
-        ModelRegistered,
-        ModelUpdated,
-        ModelRemoved,
-        ModelAssignmentCreated,
-        ModelAssignmentRemoved,
-        VariableCreated,
-        VariableUpdated,
-        VariableRemoved,
-        WorkflowDefinitionCreated,
-        WorkflowDefinitionUpdated,
-        WorkflowDefinitionRemoved,
-        NotificationRuleCreated,
-        NotificationRuleUpdated,
-        NotificationRuleRemoved,
-        MCPServerRegistered,
-        MCPServerUpdated,
-        MCPServerRemoved,
-        PolicyCreated,
-        PolicyUpdated,
-        PolicyRemoved,
-        ConnectionCreated,
-        ConnectionUpdated,
-        ConnectionRemoved,
-        SettingsUpdated,
-        BoardCreated,
-        BoardUpdated,
-        BoardRemoved,
-        TagCreated,
-        TagUpdated,
-        TagRemoved,
-        ConversationCreated,
-        ConversationDeleted,
-        WorkflowTriggered,
-        ProjectSelected,
-        AgentDefinitionCreated,
-        AgentDefinitionUpdated,
-        AgentDefinitionRemoved,
-        ApprovalRequestCreated,
-        ApprovalRequestApproved,
-        ApprovalRequestRejected,
-        AuditRecorded,
-        # Layer 2 — Collaboration
-        TeamMemberAdded,
-        TeamMemberRemoved,
-        TeamMemberRoleChanged,
-        ChannelRegistered,
-        ChannelUpdated,
-        ChannelDisabled,
-        IntegrationRegistered,
-        IntegrationSynced,
-        IntegrationFailed,
-        # Layer 3 — Guardrails
-        GuardrailTriggered,
-        GuardrailEscalated,
-        GuardrailResolved,
-        # Layer 4 — Deployment
-        DeploymentStarted,
-        DeploymentSucceeded,
-        DeploymentFailed,
-        DeploymentRolledBack,
-        ExperimentStarted,
-        VariantAssigned,
-        ExperimentCompleted,
-        # Layer 5 — Metrics
-        DeliveryMetricComputed,
-        AgentPerformanceComputed,
-        HumanPerformanceComputed,
-        # Layer 6 — Delivery Loop
-        DeliveryLoopStarted,
-        DeliveryLoopPhaseTransitioned,
-        LearningCaptured,
-        DeliveryLoopCompleted,
-        # Layer 7 — Workflow Hooks
-        HookTriggered,
-        HookExecutionFailed,
-        HookLoopDetected,
-        # Layer 8 — Compliance Governance
-        RegulationCreated,
-        RegulationUpdated,
-        RegulationRemoved,
-        CompliancePolicyCreated,
-        CompliancePolicyUpdated,
-        CompliancePolicyRemoved,
-        ProcedureCreated,
-        ProcedureUpdated,
-        ProcedureRemoved,
-        PracticeCreated,
-        PracticeUpdated,
-        PracticeRemoved,
-        StrategyCreated,
-        StrategyUpdated,
-        StrategyRemoved,
-        KPICreated,
-        KPIUpdated,
-        KPIRemoved,
-        ComplianceExperimentCreated,
-        ComplianceExperimentUpdated,
-        ComplianceExperimentRemoved,
-        ComplianceMetricCreated,
-        ComplianceMetricUpdated,
-        ComplianceMetricRemoved,
-        KnowledgeEntryCreated,
-        KnowledgeEntryUpdated,
-        KnowledgeEntryRemoved,
-        KnowledgeExtractionStarted,
-        KnowledgeExtractionCompleted,
-        KnowledgeExtractionFailed,
-        ArchitectureDecisionCreated,
-        ArchitectureDecisionUpdated,
-        ArchitectureDecisionRemoved,
-    ]
-}
+EVENT_TYPE_MAP: dict[str, type[EventEnvelope]] = {}
+
+
+def register_events(*classes: type[EventEnvelope]) -> None:
+    """Register event classes into the global EVENT_TYPE_MAP."""
+    for cls in classes:
+        EVENT_TYPE_MAP[cls.event_type] = cls
+
+
+# Register all events defined in this file.
+# As events are moved to domain packages, they will call register_events() themselves.
+register_events(
+    IntentRouted,
+    WorkflowStarted,
+    WorkflowAdvanced,
+    HumanApprovalGranted,
+    HumanApprovalRejected,
+    PolicyDecisionRecorded,
+    ProjectCreated,
+    ProjectUpdated,
+    ProjectArchived,
+    ProjectRemoved,
+    WorkItemCreated,
+    WorkItemUpdated,
+    WorkItemCompleted,
+    WorkItemRemoved,
+    PipelineRunStarted,
+    PipelineStageCompleted,
+    PipelineRunCompleted,
+    PipelineRunFailed,
+    PipelineRunCancelled,
+    PipelineRunDeleted,
+    PipelineStageApproved,
+    PipelineStageRejected,
+    PipelineStageRetried,
+    ResourceVersionProduced,
+    ResourceVersionConsumed,
+    EnvironmentCreated,
+    EnvironmentUpdated,
+    EnvironmentRemoved,
+    TriggerCreated,
+    TriggerUpdated,
+    TriggerRemoved,
+    TriggerFired,
+    AutomationCreated,
+    AutomationUpdated,
+    AutomationRemoved,
+    AutomationEnabled,
+    AutomationDisabled,
+    AutomationFired,
+    AutomationSkipped,
+    AutomationCancelled,
+    ArtifactStored,
+    TestRunCompleted,
+    ApprovalRequested,
+    ApprovalExpired,
+    NotificationSent,
+    UserCreated,
+    UserUpdated,
+    UserRemoved,
+    TeamCreated,
+    TeamUpdated,
+    TeamRemoved,
+    VariableCreated,
+    VariableUpdated,
+    VariableRemoved,
+    WorkflowDefinitionCreated,
+    WorkflowDefinitionUpdated,
+    WorkflowDefinitionRemoved,
+    NotificationRuleCreated,
+    NotificationRuleUpdated,
+    NotificationRuleRemoved,
+    MCPServerRegistered,
+    MCPServerUpdated,
+    MCPServerRemoved,
+    PolicyCreated,
+    PolicyUpdated,
+    PolicyRemoved,
+    ConnectionCreated,
+    ConnectionUpdated,
+    ConnectionRemoved,
+    SettingsUpdated,
+    BoardCreated,
+    BoardUpdated,
+    BoardRemoved,
+    TagCreated,
+    TagUpdated,
+    TagRemoved,
+    ConversationCreated,
+    ConversationDeleted,
+    WorkflowTriggered,
+    ProjectSelected,
+    ApprovalRequestCreated,
+    ApprovalRequestApproved,
+    ApprovalRequestRejected,
+    TeamMemberAdded,
+    TeamMemberRemoved,
+    TeamMemberRoleChanged,
+    ChannelRegistered,
+    ChannelUpdated,
+    ChannelDisabled,
+    IntegrationRegistered,
+    IntegrationSynced,
+    IntegrationFailed,
+    GuardrailTriggered,
+    GuardrailEscalated,
+    GuardrailResolved,
+    DeploymentStarted,
+    DeploymentSucceeded,
+    DeploymentFailed,
+    DeploymentRolledBack,
+    ExperimentStarted,
+    VariantAssigned,
+    ExperimentCompleted,
+    DeliveryLoopStarted,
+    DeliveryLoopPhaseTransitioned,
+    LearningCaptured,
+    DeliveryLoopCompleted,
+    HookTriggered,
+    HookExecutionFailed,
+    HookLoopDetected,
+    RegulationCreated,
+    RegulationUpdated,
+    RegulationRemoved,
+    CompliancePolicyCreated,
+    CompliancePolicyUpdated,
+    CompliancePolicyRemoved,
+    ProcedureCreated,
+    ProcedureUpdated,
+    ProcedureRemoved,
+    PracticeCreated,
+    PracticeUpdated,
+    PracticeRemoved,
+    StrategyCreated,
+    StrategyUpdated,
+    StrategyRemoved,
+    KPICreated,
+    KPIUpdated,
+    KPIRemoved,
+    ComplianceExperimentCreated,
+    ComplianceExperimentUpdated,
+    ComplianceExperimentRemoved,
+    ComplianceMetricCreated,
+    ComplianceMetricUpdated,
+    ComplianceMetricRemoved,
+    KnowledgeEntryCreated,
+    KnowledgeEntryUpdated,
+    KnowledgeEntryRemoved,
+    KnowledgeExtractionStarted,
+    KnowledgeExtractionCompleted,
+    KnowledgeExtractionFailed,
+    ArchitectureDecisionCreated,
+    ArchitectureDecisionUpdated,
+    ArchitectureDecisionRemoved,
+    StageReportEdited,
+    StageReportRegenerated,
+)
 
 
 def deserialize_event(event_type: str, data: dict[str, Any]) -> EventEnvelope:

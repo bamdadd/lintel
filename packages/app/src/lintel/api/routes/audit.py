@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from lintel.api.container import AppContainer
-from lintel.contracts.types import AuditEntry
+from lintel.domain.types import AuditEntry
 
 router = APIRouter()
 

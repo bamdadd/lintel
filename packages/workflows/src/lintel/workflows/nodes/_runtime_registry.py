@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from lintel.agents.runtime import AgentRuntime
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 _registry: dict[str, dict[str, Any]] = {}
 

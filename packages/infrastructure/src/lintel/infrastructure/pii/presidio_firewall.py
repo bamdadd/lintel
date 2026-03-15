@@ -12,8 +12,8 @@ import structlog
 from lintel.infrastructure.pii.placeholder_manager import PlaceholderManager
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import PIIVault
     from lintel.contracts.types import ThreadRef
+    from lintel.pii.protocols import PIIVault
 
 logger = structlog.get_logger()
 

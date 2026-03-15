@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
     from lintel.agents.runtime import AgentRuntime
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,9 @@ async def review_output(
     config: RunnableConfig | None = None,
 ) -> dict[str, Any]:
     """Review implementation artifacts using the reviewer agent."""
-    from lintel.contracts.types import AgentRole, SandboxJob, ThreadRef
+    from lintel.agents.types import AgentRole
+    from lintel.contracts.types import ThreadRef
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}

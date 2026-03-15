@@ -8,16 +8,10 @@ from uuid import uuid4
 import pytest
 
 from lintel.api.routes.variables import InMemoryVariableStore
-from lintel.contracts.types import (
-    Credential,
-    CredentialType,
-    SandboxConfig,
-    SandboxJob,
-    SandboxResult,
-    SandboxStatus,
-    ThreadRef,
-    Variable,
-)
+from lintel.contracts.types import ThreadRef  # noqa: TC001
+from lintel.domain.types import Variable
+from lintel.persistence.types import Credential, CredentialType
+from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
 from lintel.workflows.nodes.setup_workspace import setup_workspace
 
 

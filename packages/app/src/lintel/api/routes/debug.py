@@ -112,7 +112,7 @@ async def run_node(body: DebugRunNodeRequest, request: Request) -> DebugRunNodeR
     pipeline_store = getattr(app_state, "pipeline_store", None)
 
     if pipeline_store is not None:
-        from lintel.contracts.types import PipelineRun, PipelineStatus, Stage, StageStatus
+        from lintel.workflows.types import PipelineRun, PipelineStatus, Stage, StageStatus
 
         stage = Stage(
             stage_id=stage_id,
@@ -341,7 +341,7 @@ async def _run_node_background(
 
     # Update pipeline run with final status and output
     if pipeline_store is not None:
-        from lintel.contracts.types import PipelineStatus, StageStatus
+        from lintel.workflows.types import PipelineStatus, StageStatus
 
         run = await pipeline_store.get(run_id)
         if run is not None:

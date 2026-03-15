@@ -8,10 +8,20 @@ from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from lintel.agents.events import (
+    SkillInvoked,
+    SkillRegistered,
+    SkillRemoved,
+    SkillUpdated,
+)
+from lintel.agents.types import (
+    SkillCategory,
+    SkillDescriptor,
+    SkillExecutionMode,
+    SkillResult,
+)
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import SkillInvoked, SkillRegistered, SkillRemoved, SkillUpdated
-from lintel.contracts.types import SkillCategory, SkillDescriptor, SkillExecutionMode, SkillResult
 
 router = APIRouter()
 

@@ -15,7 +15,7 @@ import structlog
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope
     from lintel.contracts.protocols import EventBus
-    from lintel.contracts.types import WorkflowHook
+    from lintel.domain.types import WorkflowHook
 
 logger = structlog.get_logger()
 
@@ -93,7 +93,7 @@ class HookManager:
                     chain_depth=chain_depth,
                 )
                 if self._event_bus is not None:
-                    from lintel.contracts.events import HookLoopDetected
+                    from lintel.domain.events import HookLoopDetected
 
                     await self._event_bus.publish(
                         HookLoopDetected(
@@ -121,7 +121,7 @@ class HookManager:
             )
 
             if self._event_bus is not None:
-                from lintel.contracts.events import HookTriggered
+                from lintel.domain.events import HookTriggered
 
                 await self._event_bus.publish(
                     HookTriggered(
@@ -145,7 +145,7 @@ class HookManager:
                         exc_info=True,
                     )
                     if self._event_bus is not None:
-                        from lintel.contracts.events import HookExecutionFailed
+                        from lintel.domain.events import HookExecutionFailed
 
                         await self._event_bus.publish(
                             HookExecutionFailed(

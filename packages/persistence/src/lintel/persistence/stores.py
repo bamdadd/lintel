@@ -14,19 +14,17 @@ from lintel.persistence.dict_store import PostgresDictStore
 if TYPE_CHECKING:
     import asyncpg
 
-    from lintel.contracts.types import (
-        AIProvider,
-        Credential,
-        Repository,
-        SkillDescriptor,
-    )
+    from lintel.agents.types import SkillDescriptor
+    from lintel.models.types import AIProvider
+    from lintel.persistence.types import Credential
+    from lintel.repos.types import Repository
 
 
 class PostgresRepositoryStore(PostgresCrudStore):
     """Repository store with get_by_url support."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Repository
+        from lintel.repos.types import Repository
 
         super().__init__(pool, "repository", "repo_id", Repository)
 
@@ -39,7 +37,7 @@ class PostgresAIProviderStore(PostgresCrudStore):
     """AI provider store with API key management."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import AIProvider
+        from lintel.models.types import AIProvider
 
         super().__init__(pool, "ai_provider", "provider_id", AIProvider)
         self._pool_ref = pool
@@ -88,7 +86,7 @@ class PostgresMCPServerStore(PostgresCrudStore):
     """MCP server store."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import MCPServer
+        from lintel.domain.types import MCPServer
 
         super().__init__(pool, "mcp_server", "server_id", MCPServer)
 
@@ -100,7 +98,7 @@ class PostgresCredentialStore(PostgresCrudStore):
     """Credential store with secret management."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Credential
+        from lintel.persistence.types import Credential
 
         super().__init__(pool, "credential", "credential_id", Credential)
         self._pool_ref = pool
@@ -113,7 +111,7 @@ class PostgresCredentialStore(PostgresCrudStore):
         secret: str,
         repo_ids: list[str] | None = None,
     ) -> Credential:
-        from lintel.contracts.types import Credential, CredentialType
+        from lintel.persistence.types import Credential, CredentialType
 
         cred = Credential(
             credential_id=credential_id,
@@ -164,7 +162,7 @@ class PostgresPolicyStore(PostgresCrudStore):
     """Policy store with list_by_project."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Policy
+        from lintel.domain.types import Policy
 
         super().__init__(pool, "policy", "policy_id", Policy)
 
@@ -174,84 +172,84 @@ class PostgresPolicyStore(PostgresCrudStore):
 
 class PostgresEnvironmentStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Environment
+        from lintel.domain.types import Environment
 
         super().__init__(pool, "environment", "environment_id", Environment)
 
 
 class PostgresTeamStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Team
+        from lintel.domain.types import Team
 
         super().__init__(pool, "team", "team_id", Team)
 
 
 class PostgresUserStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import User
+        from lintel.domain.types import User
 
         super().__init__(pool, "user", "user_id", User)
 
 
 class PostgresTriggerStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Trigger
+        from lintel.domain.types import Trigger
 
         super().__init__(pool, "trigger", "trigger_id", Trigger)
 
 
 class PostgresAutomationStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import AutomationDefinition
+        from lintel.domain.types import AutomationDefinition
 
         super().__init__(pool, "automation", "automation_id", AutomationDefinition)
 
 
 class PostgresVariableStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Variable
+        from lintel.domain.types import Variable
 
         super().__init__(pool, "variable", "variable_id", Variable)
 
 
 class PostgresPipelineStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import PipelineRun
+        from lintel.workflows.types import PipelineRun
 
         super().__init__(pool, "pipeline_run", "run_id", PipelineRun)
 
 
 class PostgresApprovalRequestStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import ApprovalRequest
+        from lintel.domain.types import ApprovalRequest
 
         super().__init__(pool, "approval_request", "approval_id", ApprovalRequest)
 
 
 class PostgresNotificationRuleStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import NotificationRule
+        from lintel.domain.types import NotificationRule
 
         super().__init__(pool, "notification_rule", "rule_id", NotificationRule)
 
 
 class PostgresAuditEntryStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import AuditEntry
+        from lintel.domain.types import AuditEntry
 
         super().__init__(pool, "audit_entry", "entry_id", AuditEntry)
 
 
 class PostgresCodeArtifactStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import CodeArtifact
+        from lintel.domain.types import CodeArtifact
 
         super().__init__(pool, "code_artifact", "artifact_id", CodeArtifact)
 
 
 class PostgresTestResultStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import TestResult
+        from lintel.domain.types import TestResult
 
         super().__init__(pool, "test_result", "result_id", TestResult)
 
@@ -263,7 +261,7 @@ class PostgresProjectStore:
         self._store = PostgresDictStore(pool, "project")
 
     async def add(self, project: Any) -> None:  # noqa: ANN401
-        from lintel.contracts.data_models import ProjectData
+        from lintel.persistence.data_models import ProjectData
 
         data = asdict(project)
         for key in ("repo_ids", "credential_ids"):
@@ -279,7 +277,7 @@ class PostgresProjectStore:
         return await self._store.list_all()
 
     async def update(self, project_id: str, data: dict[str, Any]) -> None:
-        from lintel.contracts.data_models import ProjectData
+        from lintel.persistence.data_models import ProjectData
 
         for key in ("repo_ids", "credential_ids"):
             if isinstance(data.get(key), tuple):
@@ -298,7 +296,7 @@ class PostgresWorkItemStore:
         self._store = PostgresDictStore(pool, "work_item")
 
     async def add(self, work_item: Any) -> None:  # noqa: ANN401
-        from lintel.contracts.data_models import WorkItemData
+        from lintel.persistence.data_models import WorkItemData
 
         data = asdict(work_item)
         validated = WorkItemData.model_validate(data)
@@ -313,7 +311,7 @@ class PostgresWorkItemStore:
         return await self._store.list_all()
 
     async def update(self, work_item_id: str, data: dict[str, Any]) -> None:
-        from lintel.contracts.data_models import WorkItemData
+        from lintel.persistence.data_models import WorkItemData
 
         validated = WorkItemData.model_validate(data)
         await self._store.put(work_item_id, validated.model_dump())
@@ -337,7 +335,7 @@ class PostgresChatStore:
         project_id: str | None,
         model_id: str | None = None,
     ) -> dict[str, Any]:
-        from lintel.contracts.data_models import ConversationData
+        from lintel.persistence.data_models import ConversationData
 
         conv = ConversationData(
             conversation_id=conversation_id,
@@ -390,7 +388,7 @@ class PostgresChatStore:
         role: str,
         content: str,
     ) -> dict[str, Any]:
-        from lintel.contracts.data_models import ChatMessage
+        from lintel.persistence.data_models import ChatMessage
 
         conv = await self.get(conversation_id)
         if conv is None:
@@ -472,7 +470,7 @@ class PostgresModelStore(PostgresCrudStore):
     """Postgres-backed model store."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Model
+        from lintel.models.types import Model
 
         super().__init__(pool, "model", "model_id", Model)
 
@@ -484,7 +482,7 @@ class PostgresModelAssignmentStore(PostgresCrudStore):
     """Postgres-backed model assignment store."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import ModelAssignment
+        from lintel.models.types import ModelAssignment
 
         super().__init__(pool, "model_assignment", "assignment_id", ModelAssignment)
 
@@ -512,7 +510,7 @@ class PostgresSkillStore(PostgresCrudStore):
     """Postgres-backed skill store."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import SkillDescriptor
+        from lintel.agents.types import SkillDescriptor
 
         super().__init__(pool, "skill", "name", SkillDescriptor)
         self._skill_ids: dict[str, str] = {}  # skill_id -> name mapping
@@ -528,7 +526,7 @@ class PostgresSkillStore(PostgresCrudStore):
         description: str = "",
         allowed_agent_roles: tuple[str, ...] | list[str] = (),
     ) -> SkillDescriptor:
-        from lintel.contracts.types import SkillDescriptor, SkillExecutionMode
+        from lintel.agents.types import SkillDescriptor, SkillExecutionMode
 
         descriptor = SkillDescriptor(
             name=name,
@@ -564,7 +562,7 @@ class PostgresSkillStore(PostgresCrudStore):
         input_data: dict[str, Any],
         context: dict[str, Any],
     ) -> Any:  # noqa: ANN401
-        from lintel.contracts.types import SkillResult
+        from lintel.agents.types import SkillResult
 
         raw = await self.get(skill_id, raw=True)
         if raw is None:
@@ -594,7 +592,7 @@ class PostgresTagStore(PostgresCrudStore):
     """Postgres-backed tag store."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Tag
+        from lintel.domain.types import Tag
 
         super().__init__(pool, "tag", "tag_id", Tag)
 
@@ -606,7 +604,7 @@ class PostgresBoardStore(PostgresCrudStore):
     """Postgres-backed board store."""
 
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.contracts.types import Board
+        from lintel.domain.types import Board
 
         super().__init__(pool, "board", "board_id", Board)
 

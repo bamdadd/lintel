@@ -11,8 +11,7 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.data_models import BoardData, TagData
-from lintel.contracts.events import (
+from lintel.domain.events import (
     BoardCreated,
     BoardRemoved,
     BoardUpdated,
@@ -20,6 +19,7 @@ from lintel.contracts.events import (
     TagRemoved,
     TagUpdated,
 )
+from lintel.persistence.data_models import BoardData, TagData
 
 router = APIRouter()
 

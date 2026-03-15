@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from lintel.contracts.types import PolicyAction
+from lintel.domain.types import PolicyAction
 from lintel.domain.workflow_executor import WorkflowExecutor
 
 
@@ -41,7 +41,7 @@ class TestPolicyEvaluation:
         executor: WorkflowExecutor,
     ) -> None:
         """Policy with auto_approve action."""
-        from lintel.contracts.types import Policy
+        from lintel.domain.types import Policy
 
         policy = Policy(
             policy_id="p1",
@@ -67,7 +67,7 @@ class TestPolicyEvaluation:
         executor: WorkflowExecutor,
     ) -> None:
         """Policy with block action."""
-        from lintel.contracts.types import Policy
+        from lintel.domain.types import Policy
 
         policy = Policy(
             policy_id="p1",

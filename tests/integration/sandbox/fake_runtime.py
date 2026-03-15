@@ -14,7 +14,8 @@ from uuid import uuid4
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lintel.contracts.types import AgentRole, ModelPolicy
+    from lintel.agents.types import AgentRole
+    from lintel.models.types import ModelPolicy
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +228,7 @@ class FakeModelRouter:
         agent_role: AgentRole,
         step_name: str,
     ) -> ModelPolicy:
-        from lintel.contracts.types import ModelPolicy
+        from lintel.models.types import ModelPolicy
 
         return ModelPolicy(provider="fake", model_name="fake-model")
 

@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from lintel.contracts.types import (
-    AgentRole,
+from lintel.agents.types import AgentRole
+from lintel.models.router import (
+    FALLBACK_POLICY,
+    DefaultModelRouter,
+)
+from lintel.models.types import (
     AIProvider,
     AIProviderType,
     Model,
     ModelAssignment,
     ModelAssignmentContext,
     ModelPolicy,
-)
-from lintel.models.router import (
-    FALLBACK_POLICY,
-    DefaultModelRouter,
 )
 
 

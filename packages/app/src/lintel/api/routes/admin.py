@@ -111,8 +111,8 @@ async def claude_credentials_status(request: Request) -> dict[str, Any]:
     from datetime import UTC, datetime
     import json as _json
 
-    from lintel.contracts.types import AIProviderType
     from lintel.models.claude_code import _read_host_credentials
+    from lintel.models.types import AIProviderType
 
     # Check if any AI provider is claude_code
     ai_store = getattr(request.app.state, "ai_provider_store", None)

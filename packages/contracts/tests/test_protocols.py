@@ -5,24 +5,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from lintel.contracts.protocols import (
-    ChannelAdapter,
-    Deidentifier,
-    DeidentifyResult,
-    EventStore,
-    ModelRouter,
-    PIIVault,
-    RepoProvider,
-    SandboxManager,
-    SkillRegistry,
-)
-from lintel.contracts.types import AgentRole, ModelPolicy, SandboxResult, SandboxStatus, ThreadRef
+from lintel.agents.protocols import SkillRegistry
+from lintel.contracts.protocols import EventStore
+from lintel.pii.protocols import Deidentifier, DeidentifyResult, PIIVault
+from lintel.repos.protocols import RepoProvider
+from lintel.sandbox.protocols import SandboxManager
+from lintel.sandbox.types import SandboxResult, SandboxStatus
+from lintel.slack.protocols import ChannelAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
+    from lintel.contracts.types import ThreadRef
 
 
 class TestProtocolsAreImportable:
@@ -33,12 +29,11 @@ class TestProtocolsAreImportable:
             DeidentifyResult,
             PIIVault,
             ChannelAdapter,
-            ModelRouter,
             SandboxManager,
             RepoProvider,
             SkillRegistry,
         ]
-        assert len(protocols) == 9
+        assert len(protocols) == 8
 
 
 class TestEventStoreConformance:
@@ -111,28 +106,6 @@ class TestChannelAdapterConformance:
         assert channel is not None
 
 
-class TestModelRouterConformance:
-    def test_conformance(self) -> None:
-        class FakeRouter:
-            async def select_model(
-                self,
-                agent_role: AgentRole,
-                workload_type: str,
-            ) -> ModelPolicy:
-                return ModelPolicy(provider="test", model_name="test")
-
-            async def call_model(
-                self,
-                policy: ModelPolicy,
-                messages: list[dict[str, str]],
-                tools: list[dict[str, Any]] | None = None,
-            ) -> dict[str, Any]:
-                return {}
-
-        router: ModelRouter = FakeRouter()  # type: ignore[assignment]
-        assert router is not None
-
-
 class TestDeidentifierConformance:
     def test_conformance(self) -> None:
         @dataclass
@@ -186,7 +159,7 @@ class TestPIIVaultConformance:
 
 class TestSandboxManagerConformance:
     def test_conformance(self) -> None:
-        from lintel.contracts.types import SandboxConfig, SandboxJob
+        from lintel.sandbox.types import SandboxConfig, SandboxJob
 
         class FakeSandbox:
             async def create(

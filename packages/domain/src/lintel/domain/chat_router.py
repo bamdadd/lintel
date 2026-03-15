@@ -12,9 +12,9 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
-    from lintel.contracts.types import ModelPolicy
     from lintel.infrastructure.mcp.tool_client import MCPToolClient
     from lintel.infrastructure.models.router import DefaultModelRouter
+    from lintel.models.types import ModelPolicy
 
 logger = structlog.get_logger()
 
@@ -99,7 +99,7 @@ class ChatRouter:
         api_base: str | None = None,
         enabled_workflows: set[str] | None = None,
     ) -> ChatRouterResult:
-        from lintel.contracts.types import AgentRole
+        from lintel.agents.types import AgentRole
 
         assert self._model_router is not None
         if model_policy is not None:
@@ -458,7 +458,7 @@ class ChatRouter:
                 "Configure an AI provider to enable chat replies."
             )
 
-        from lintel.contracts.types import AgentRole
+        from lintel.agents.types import AgentRole
 
         if model_policy is not None:
             policy = model_policy
@@ -574,7 +574,7 @@ class ChatRouter:
             )
             return
 
-        from lintel.contracts.types import AgentRole
+        from lintel.agents.types import AgentRole
 
         if model_policy is not None:
             policy = model_policy

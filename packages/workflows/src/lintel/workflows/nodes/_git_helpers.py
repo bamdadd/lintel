@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class GitOperations:
            TODO: fetch from origin once ``reconnect_network`` is available on
            ``SandboxManager``.
         """
-        from lintel.contracts.types import SandboxJob
+        from lintel.sandbox.types import SandboxJob
 
         result = await self._sandbox_manager.execute(
             self._sandbox_id,

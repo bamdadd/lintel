@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import TeamCreated, TeamRemoved, TeamUpdated
-from lintel.contracts.types import Team
+from lintel.domain.events import TeamCreated, TeamRemoved, TeamUpdated
+from lintel.domain.types import Team
 
 router = APIRouter()
 

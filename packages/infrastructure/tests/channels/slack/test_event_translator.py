@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from lintel.contracts.commands import GrantApproval, ProcessIncomingMessage, RejectApproval
 from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.channels.slack.event_translator import (
     translate_approval_action,
     translate_message_event,
 )
+from lintel.slack.commands import GrantApproval, ProcessIncomingMessage, RejectApproval
 
 
 class TestTranslateMessageEvent:

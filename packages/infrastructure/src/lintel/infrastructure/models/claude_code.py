@@ -10,13 +10,14 @@ from uuid import uuid4
 
 import structlog
 
-from lintel.contracts.errors import ClaudeCodeCredentialError
-from lintel.contracts.types import SandboxJob, TokenStatus
+from lintel.models.errors import ClaudeCodeCredentialError
+from lintel.models.types import TokenStatus
+from lintel.sandbox.types import SandboxJob
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
 logger = structlog.get_logger()
 

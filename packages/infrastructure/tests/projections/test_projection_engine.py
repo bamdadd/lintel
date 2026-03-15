@@ -6,21 +6,21 @@ from uuid import uuid4
 
 import pytest
 
-from lintel.contracts.events import (
-    AgentStepCompleted,
-    AgentStepScheduled,
-    AgentStepStarted,
-    EventEnvelope,
+from lintel.agents.events import AgentStepCompleted, AgentStepScheduled, AgentStepStarted
+from lintel.contracts.events import EventEnvelope  # noqa: TC001
+from lintel.contracts.types import ThreadRef
+from lintel.domain.events import (
     HumanApprovalGranted,
     HumanApprovalRejected,
-    ThreadMessageReceived,
-    WorkflowAdvanced,
-    WorkflowStarted,
 )
-from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.projections.engine import InMemoryProjectionEngine
 from lintel.infrastructure.projections.task_backlog import TaskBacklogProjection
 from lintel.infrastructure.projections.thread_status import ThreadStatusProjection
+from lintel.slack.events import ThreadMessageReceived
+from lintel.workflows.events import (
+    WorkflowAdvanced,
+    WorkflowStarted,
+)
 
 
 def _make_event(

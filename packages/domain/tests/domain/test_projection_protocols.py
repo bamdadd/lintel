@@ -6,13 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope
-    from lintel.contracts.projections import (
-        Projection,
-        ProjectionEngine,
-        ProjectionState,
-        ProjectionStatus,
-        ProjectionStore,
-    )
+    from lintel.projections.protocols import Projection, ProjectionEngine, ProjectionStore
+    from lintel.projections.types import ProjectionState, ProjectionStatus
 
 
 class FakeProjection:

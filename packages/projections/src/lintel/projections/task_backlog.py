@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from lintel.contracts.data_models import TaskBacklogEntry
+from lintel.persistence.data_models import TaskBacklogEntry
 
 if TYPE_CHECKING:
     from lintel.contracts.events import EventEnvelope

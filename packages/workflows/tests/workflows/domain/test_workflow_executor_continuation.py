@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-from lintel.contracts.commands import StartWorkflow
-from lintel.contracts.types import (
+from lintel.contracts.types import ThreadRef
+from lintel.workflows.commands import StartWorkflow
+from lintel.workflows.types import (
     PipelineRun,
     PipelineStatus,
     Stage,
     StageStatus,
-    ThreadRef,
 )
 from lintel.workflows.workflow_executor import WorkflowExecutor
 

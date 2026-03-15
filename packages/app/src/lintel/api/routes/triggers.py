@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
 from lintel.api.domain.event_dispatcher import dispatch_event
-from lintel.contracts.events import TriggerCreated, TriggerRemoved, TriggerUpdated
-from lintel.contracts.types import Trigger, TriggerType
+from lintel.domain.events import TriggerCreated, TriggerRemoved, TriggerUpdated
+from lintel.domain.types import Trigger, TriggerType
 
 router = APIRouter()
 

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from lintel.contracts.events import (
-    CommitPushed,
-    PRCreated,
+from lintel.contracts.types import ThreadRef
+from lintel.domain.events import (
     TestRunCompleted,
     WorkItemCreated,
 )
-from lintel.contracts.types import ThreadRef
 from lintel.infrastructure.projections.quality_metrics import QualityMetricsProjection
+from lintel.repos.events import CommitPushed, PRCreated
 
 
 def _thread_ref() -> ThreadRef:

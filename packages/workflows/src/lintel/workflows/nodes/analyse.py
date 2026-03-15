@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from lintel.contracts.types import AgentRole
+from lintel.agents.types import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
     from lintel.agents.runtime import AgentRuntime
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()

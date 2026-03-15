@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from lintel.contracts.types import AgentRole
+from lintel.agents.types import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig

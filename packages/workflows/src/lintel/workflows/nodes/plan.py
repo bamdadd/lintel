@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from lintel.contracts.types import AgentRole
+from lintel.agents.types import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
@@ -227,7 +227,7 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
         if _app is not None:
             _artifact_store = getattr(_app, "code_artifact_store", None)
     if _artifact_store is not None:
-        from lintel.contracts.types import CodeArtifact
+        from lintel.domain.types import CodeArtifact
 
         try:
             artifact = CodeArtifact(

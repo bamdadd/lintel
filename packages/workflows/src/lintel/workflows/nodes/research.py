@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from lintel.contracts.types import AgentRole
+from lintel.agents.types import AgentRole
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
     from lintel.agents.runtime import AgentRuntime
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()
@@ -223,7 +223,7 @@ async def research_codebase(
         if _app is not None:
             _artifact_store = getattr(_app, "code_artifact_store", None)
     if _artifact_store is not None:
-        from lintel.contracts.types import CodeArtifact
+        from lintel.domain.types import CodeArtifact
 
         try:
             artifact = CodeArtifact(

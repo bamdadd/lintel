@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
 
-from lintel.contracts.types import SandboxResult
+from lintel.sandbox.types import SandboxResult
 from lintel.workflows.nodes.test_code import run_tests
 
 _STAGE = "lintel.workflows.nodes._stage_tracking"

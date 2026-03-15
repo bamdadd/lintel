@@ -149,7 +149,7 @@ class TestClassifyWithLLM:
     async def test_classify_with_explicit_policy(self) -> None:
         mock_router = AsyncMock()
         mock_router.call_model.return_value = {"content": "ACTION: chat_reply\nREPLY: Hello!"}
-        from lintel.contracts.types import ModelPolicy
+        from lintel.models.types import ModelPolicy
 
         policy = ModelPolicy("test", "test-model", 100, 0.0)
         router = ChatRouter(model_router=mock_router)

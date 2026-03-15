@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import Skill
-    from lintel.contracts.types import SkillDescriptor
+    from lintel.agents.protocols import Skill
+    from lintel.agents.types import SkillDescriptor
 
 
 class InMemorySkillRegistry:

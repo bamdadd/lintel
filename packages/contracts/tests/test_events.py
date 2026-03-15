@@ -8,35 +8,38 @@ from uuid import UUID, uuid4
 
 import pytest
 
+import lintel.agents.events as _agent_events  # noqa: F401  # registers events
+from lintel.agents.events import AgentStepCompleted, AgentStepScheduled, AgentStepStarted
 from lintel.contracts.events import (
     EVENT_TYPE_MAP,
-    AgentStepCompleted,
-    AgentStepScheduled,
-    AgentStepStarted,
-    BranchCreated,
     EventEnvelope,
     HumanApprovalGranted,
     HumanApprovalRejected,
     IntentRouted,
-    ModelCallCompleted,
-    ModelSelected,
-    PIIAnonymised,
-    PIIDetected,
-    PIIResidualRiskBlocked,
     PolicyDecisionRecorded,
-    PRCreated,
-    SandboxArtifactsCollected,
-    SandboxCreated,
-    SandboxDestroyed,
-    SandboxJobScheduled,
-    ThreadMessageReceived,
-    VaultRevealGranted,
-    VaultRevealRequested,
     WorkflowAdvanced,
     WorkflowStarted,
     deserialize_event,
 )
 from lintel.contracts.types import ActorType, ThreadRef
+import lintel.observability.events as _obs_events  # noqa: F401  # registers events
+import lintel.persistence.events as _pers_events  # noqa: F401  # registers events
+from lintel.pii.events import (
+    PIIAnonymised,
+    PIIDetected,
+    PIIResidualRiskBlocked,
+    VaultRevealGranted,
+    VaultRevealRequested,
+)
+from lintel.repos.events import BranchCreated, PRCreated
+from lintel.sandbox.events import (
+    SandboxArtifactsCollected,
+    SandboxCreated,
+    SandboxDestroyed,
+    SandboxJobScheduled,
+)
+import lintel.slack.events as _slack_events  # noqa: F401  # registers events
+from lintel.slack.events import ThreadMessageReceived
 
 
 class TestEventEnvelope:
@@ -117,8 +120,6 @@ class TestConcreteEvents:
             AgentStepScheduled,
             AgentStepStarted,
             AgentStepCompleted,
-            ModelSelected,
-            ModelCallCompleted,
             SandboxJobScheduled,
             SandboxCreated,
             SandboxArtifactsCollected,
@@ -169,7 +170,7 @@ class TestConcreteEvents:
 
 class TestEventTypeMap:
     def test_completeness(self) -> None:
-        assert len(EVENT_TYPE_MAP) == 191
+        assert len(EVENT_TYPE_MAP) == 193
 
     def test_all_keys_match_class_names(self) -> None:
         for key, cls in EVENT_TYPE_MAP.items():

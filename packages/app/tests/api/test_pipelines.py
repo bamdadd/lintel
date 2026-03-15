@@ -116,7 +116,7 @@ class TestPipelinesAPI:
         import asyncio
         from dataclasses import replace as dc_replace
 
-        from lintel.contracts.types import StageStatus
+        from lintel.workflows.types import StageStatus
 
         async def _fail_stage() -> None:
             run = await store.get("retry-run")
@@ -149,7 +149,7 @@ class TestPipelinesAPI:
         import asyncio
         from dataclasses import replace as dc_replace
 
-        from lintel.contracts.types import StageStatus
+        from lintel.workflows.types import StageStatus
 
         async def _succeed_stage() -> None:
             run = await store.get("logs-run")
@@ -184,7 +184,7 @@ class TestPipelinesAPI:
         import asyncio
         from dataclasses import replace as dc_replace
 
-        from lintel.contracts.types import PipelineStatus, StageStatus
+        from lintel.workflows.types import PipelineStatus, StageStatus
 
         async def _wait_stage() -> None:
             run = await store.get("reject-run")
@@ -228,7 +228,7 @@ class TestPipelinesAPI:
         import asyncio
         from dataclasses import replace as dc_replace
 
-        from lintel.contracts.types import StageStatus
+        from lintel.workflows.types import StageStatus
 
         async def _succeed() -> None:
             run = await store.get("edit-run")
@@ -280,7 +280,7 @@ class TestPipelinesAPI:
         import asyncio
         from dataclasses import replace as dc_replace
 
-        from lintel.contracts.types import StageStatus
+        from lintel.workflows.types import StageStatus
 
         async def _succeed() -> None:
             run = await store.get("ver2-run")
@@ -320,7 +320,7 @@ class TestPipelinesAPI:
         import asyncio
         from dataclasses import replace as dc_replace
 
-        from lintel.contracts.types import StageStatus
+        from lintel.workflows.types import StageStatus
 
         async def _succeed() -> None:
             run = await store.get("regen-run")

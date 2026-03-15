@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from lintel.contracts.types import ModelPolicy
+from lintel.models.types import ModelPolicy
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lintel.contracts.types import AgentRole
+    from lintel.agents.types import AgentRole
 
 logger = structlog.get_logger()
 
@@ -128,7 +128,7 @@ class DefaultModelRouter:
         if self._model_assignment_store is None or self._model_store is None:
             return None
         try:
-            from lintel.contracts.types import ModelAssignmentContext
+            from lintel.models.types import ModelAssignmentContext
 
             assignments = await self._model_assignment_store.list_by_context(
                 ModelAssignmentContext.AGENT_ROLE,

@@ -13,13 +13,9 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
 
-from lintel.contracts.types import (
-    SkillDescriptor,
-    SkillExecutionMode,
-    SkillResult,
-)
+from lintel.agents.types import SkillDescriptor, SkillExecutionMode, SkillResult
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +98,7 @@ async def discover_test_command(
 
     Returns ``{"test_command": str, "setup_commands": list[str]}``.
     """
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     # --- Phase 1: Detect project files ---
     detect = await sandbox_manager.execute(
@@ -196,7 +192,7 @@ async def _detect_sandbox_capabilities(
     workdir: str,
 ) -> dict[str, bool]:
     """Probe which services/tools are available in the sandbox."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     probe = await sandbox_manager.execute(
         sandbox_id,
@@ -237,7 +233,7 @@ async def _python_setup_commands(
     Skips setup entirely if the venv already has the project installed
     (i.e. setup_workspace already ran).
     """
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
 
@@ -310,7 +306,7 @@ async def _detect_python_extras(
     - spacy → download en_core_web_sm model
     - nltk → download popular datasets
     """
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     commands: list[str] = []
     path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
@@ -415,7 +411,7 @@ async def _find_make_test_target(
     workdir: str,
 ) -> str | None:
     """Parse Makefile for a test-related target, preferring ``make help``."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     # Try `make help` first
     help_result = await sandbox_manager.execute(
@@ -455,7 +451,7 @@ async def _find_make_affected_target(
     workdir: str,
 ) -> str | None:
     """Find a workspace-aware affected-only test target in the Makefile."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     targets_result = await sandbox_manager.execute(
         sandbox_id,
@@ -489,7 +485,7 @@ async def _find_make_unit_target(
     workdir: str,
 ) -> str | None:
     """Find a unit-test-only Makefile target."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     targets_result = await sandbox_manager.execute(
         sandbox_id,

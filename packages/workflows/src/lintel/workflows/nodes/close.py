@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from langchain_core.runnables import RunnableConfig
 
-    from lintel.contracts.protocols import SandboxManager
+    from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()
@@ -22,7 +22,7 @@ async def close_workflow(
     config: RunnableConfig | None = None,
 ) -> dict[str, Any]:
     """Push the feature branch and create a pull request."""
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
@@ -348,7 +348,7 @@ async def _skip_remaining_stages(
     """Mark all pending/running stages as skipped when pipeline aborts."""
     from dataclasses import replace
 
-    from lintel.contracts.types import StageStatus
+    from lintel.workflows.types import StageStatus
 
     run_id = state.get("run_id", "")
     if not run_id:
@@ -375,7 +375,7 @@ async def _skip_remaining_stages(
         updated_stages = []
         for s in run.stages:
             if isinstance(s, dict):
-                from lintel.contracts.types import Stage
+                from lintel.workflows.types import Stage
 
                 s = Stage(**s)
             if s.status in (StageStatus.PENDING, StageStatus.RUNNING):

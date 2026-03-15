@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from lintel.contracts.protocols import SandboxManager
-    from lintel.contracts.types import SandboxResult
+    from lintel.sandbox.protocols import SandboxManager
+    from lintel.sandbox.types import SandboxResult
 
 pytestmark = pytest.mark.usefixtures("_check_sandbox_prereqs")
 
@@ -23,7 +23,7 @@ async def _exec(
     sandbox: tuple[SandboxManager, str],
     command: str,
 ) -> SandboxResult:
-    from lintel.contracts.types import SandboxJob
+    from lintel.sandbox.types import SandboxJob
 
     mgr, sandbox_id = sandbox
     return await mgr.execute(
@@ -40,7 +40,7 @@ async def test_cpu_affinity_matches_quota(
     pytest-xdist uses sched_getaffinity (not os.cpu_count) to determine
     worker count for -n auto. cpuset_cpus controls this.
     """
-    from lintel.contracts.types import SandboxConfig
+    from lintel.sandbox.types import SandboxConfig
 
     expected_cpus = SandboxConfig().cpu_quota // 100000
 
