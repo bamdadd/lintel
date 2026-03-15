@@ -160,6 +160,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     dispatcher.register(StartWorkflow, executor.execute)
     app.state.command_dispatcher = dispatcher
 
+    # --- Channel registry setup ---
+    from lintel.channels.registry import ChannelRegistry
+
+    channel_registry = ChannelRegistry()
+    app.state.channel_registry = channel_registry
+
+    # Register Slack adapter if configured (placeholder - real Slack adapter
+    # is initialized elsewhere via Bolt)
+
+    # Register Telegram adapter if credentials are available
+    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if telegram_token:
+        from lintel.telegram.adapter import TelegramChannelAdapter
+
+        telegram_secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+        telegram_adapter = TelegramChannelAdapter(
+            bot_token=telegram_token,
+            webhook_secret=telegram_secret,
+        )
+        from lintel.contracts.channel_type import ChannelType
+
+        channel_registry.register(ChannelType.TELEGRAM, telegram_adapter)
+        app.state.telegram_adapter = telegram_adapter
+
     chat_router = ChatRouter(
         model_router=model_router,
         mcp_tool_client=mcp_tool_client,
