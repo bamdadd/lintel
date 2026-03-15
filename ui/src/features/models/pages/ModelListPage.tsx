@@ -2,13 +2,17 @@ import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
   Loader, Center, ActionIcon, Badge, Switch, NumberInput, TagsInput,
-  Textarea, Text, Tabs, Alert, Divider,
+  Textarea, Text, Tabs, Alert, Divider, Paper, ThemeIcon, Tooltip, Box,
+  SimpleGrid,
 } from '@mantine/core';
 import { Link } from 'react-router';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconAlertCircle, IconPencil, IconCheck } from '@tabler/icons-react';
+import {
+  IconTrash, IconAlertCircle, IconPencil, IconCheck, IconPlus,
+  IconCpu, IconBrain,
+} from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useModelsListModels,
@@ -70,6 +74,10 @@ const contextColor: Record<string, string> = {
 
 const providerTypeColor: Record<string, string> = {
   anthropic: 'violet', openai: 'green', azure_openai: 'blue', google: 'red', ollama: 'gray', bedrock: 'orange',
+};
+
+const providerTypeIcon: Record<string, string> = {
+  anthropic: 'A', openai: 'O', azure_openai: 'Az', google: 'G', ollama: 'Ol', bedrock: 'B',
 };
 
 interface ProviderOption {
@@ -331,10 +339,14 @@ export function Component() {
   };
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>Models</Title>
+        <Group gap="xs">
+          <Title order={2}>Models</Title>
+          {models.length > 0 && <Badge variant="light" size="lg">{models.length}</Badge>}
+        </Group>
         <Button
+          leftSection={<IconPlus size={16} />}
           onClick={() => {
             if (models.length === 0) form.setFieldValue('is_default', true);
             open();
@@ -363,77 +375,102 @@ export function Component() {
           onAction={() => { form.setFieldValue('is_default', true); open(); }}
         />
       ) : models.length === 0 ? null : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>Model</Table.Th>
-              <Table.Th>Provider</Table.Th>
-              <Table.Th>Capabilities</Table.Th>
-              <Table.Th>Default</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {models.map((m) => (
-              <Table.Tr key={m.model_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(m)}>
-                <Table.Td onClick={(e) => e.stopPropagation()}>
-                  {renamingId === m.model_id ? (
-                    <Group gap={4}>
-                      <TextInput
-                        size="xs"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.currentTarget.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') submitRename(m.model_id);
-                          if (e.key === 'Escape') setRenamingId(null);
-                        }}
-                        autoFocus
-                        style={{ flex: 1 }}
-                      />
-                      <ActionIcon size="xs" variant="filled" color="green" onClick={() => submitRename(m.model_id)}>
-                        <IconCheck size={12} />
-                      </ActionIcon>
-                    </Group>
-                  ) : (
-                    <Group gap={4}>
-                      <Text size="sm">{m.name}</Text>
-                      <ActionIcon size="xs" variant="subtle" onClick={() => startRename(m)}>
-                        <IconPencil size={12} />
-                      </ActionIcon>
-                    </Group>
-                  )}
-                </Table.Td>
-                <Table.Td><Text size="sm" c="dimmed" ff="monospace">{m.model_name}</Text></Table.Td>
-                <Table.Td>
-                  <Badge color={providerTypeColor[m.provider_type] ?? 'gray'} variant="light">
-                    {m.provider_name || m.provider_type}
-                  </Badge>
-                </Table.Td>
-                <Table.Td>
-                  <Group gap={4}>
-                    {(m.capabilities ?? []).slice(0, 3).map((c: string) => (
-                      <Badge key={c} size="sm" variant="outline">{c}</Badge>
-                    ))}
-                    {(m.capabilities?.length ?? 0) > 3 && (
-                      <Badge size="sm" variant="outline">+{m.capabilities.length - 3}</Badge>
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+          {models.map((m) => (
+            <Paper
+              key={m.model_id}
+              withBorder
+              p="lg"
+              radius="md"
+              style={{
+                cursor: 'pointer',
+                transition: 'transform 150ms ease, box-shadow 150ms ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+              onClick={() => openEdit(m)}
+            >
+              <Group justify="space-between" mb="sm" wrap="nowrap">
+                <Group gap="sm" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                  <ThemeIcon
+                    variant="light"
+                    color={providerTypeColor[m.provider_type] ?? 'gray'}
+                    size="md"
+                    radius="md"
+                  >
+                    <Text size="xs" fw={700}>
+                      {providerTypeIcon[m.provider_type] ?? '?'}
+                    </Text>
+                  </ThemeIcon>
+                  <Box style={{ overflow: 'hidden' }}>
+                    {renamingId === m.model_id ? (
+                      <Group gap={4} onClick={(e) => e.stopPropagation()}>
+                        <TextInput
+                          size="xs"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.currentTarget.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') submitRename(m.model_id);
+                            if (e.key === 'Escape') setRenamingId(null);
+                          }}
+                          autoFocus
+                          style={{ flex: 1 }}
+                        />
+                        <ActionIcon size="xs" variant="filled" color="green" onClick={() => submitRename(m.model_id)}>
+                          <IconCheck size={12} />
+                        </ActionIcon>
+                      </Group>
+                    ) : (
+                      <Group gap={4} wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+                        <Text size="sm" fw={600} truncate>{m.name}</Text>
+                        <ActionIcon size="xs" variant="subtle" onClick={() => startRename(m)}>
+                          <IconPencil size={12} />
+                        </ActionIcon>
+                      </Group>
                     )}
-                  </Group>
-                </Table.Td>
-                <Table.Td>{m.is_default && <Badge color="blue">Default</Badge>}</Table.Td>
-                <Table.Td>
+                    <Text size="xs" c="dimmed" ff="monospace" truncate>{m.model_name}</Text>
+                  </Box>
+                </Group>
+                <Group gap={4} wrap="nowrap">
+                  {m.is_default && (
+                    <Badge color="blue" size="xs">Default</Badge>
+                  )}
                   <ActionIcon
                     color="red"
                     variant="subtle"
+                    size="sm"
                     onClick={(e) => { e.stopPropagation(); handleDelete(m.model_id); }}
                   >
-                    <IconTrash size={16} />
+                    <IconTrash size={14} />
                   </ActionIcon>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+                </Group>
+              </Group>
+
+              <Group gap={4} mb="xs">
+                <Badge color={providerTypeColor[m.provider_type] ?? 'gray'} variant="light" size="xs">
+                  {m.provider_name || m.provider_type}
+                </Badge>
+              </Group>
+
+              {(m.capabilities ?? []).length > 0 && (
+                <Group gap={4}>
+                  {(m.capabilities ?? []).slice(0, 3).map((c: string) => (
+                    <Badge key={c} size="xs" variant="outline" color="gray">{c}</Badge>
+                  ))}
+                  {(m.capabilities?.length ?? 0) > 3 && (
+                    <Badge size="xs" variant="outline" color="gray">+{m.capabilities.length - 3}</Badge>
+                  )}
+                </Group>
+              )}
+            </Paper>
+          ))}
+        </SimpleGrid>
       )}
 
       {/* Create Modal */}
@@ -513,7 +550,7 @@ export function Component() {
         </form>
       </Modal>
 
-      {/* Edit Modal (details + assignments) */}
+      {/* Edit Modal */}
       <Modal
         opened={!!editItem}
         onClose={() => { setEditItem(null); assignForm.reset(); }}

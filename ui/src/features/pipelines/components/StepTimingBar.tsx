@@ -113,7 +113,7 @@ export function StepTimingBar({ steps }: StepTimingBarProps) {
               wrap="nowrap"
               style={{
                 height: ROW_H,
-                borderBottom: '1px solid var(--mantine-color-dark-5)',
+                borderBottom: '1px solid var(--mantine-color-default-border)',
               }}
             >
               <Text
@@ -140,7 +140,7 @@ export function StepTimingBar({ steps }: StepTimingBarProps) {
                       top: 0,
                       bottom: 0,
                       width: 1,
-                      backgroundColor: 'var(--mantine-color-dark-5)',
+                      backgroundColor: 'var(--mantine-color-default-border)',
                     }}
                   />
                 ))}

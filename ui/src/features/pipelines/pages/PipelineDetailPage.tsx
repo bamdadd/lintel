@@ -347,9 +347,9 @@ export function Component() {
           radius="md"
           style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
         >
-          <Group px="md" py="sm" style={(theme) => ({
-            borderBottom: `1px solid ${theme.colors.dark[5]}`,
-          })}>
+          <Group px="md" py="sm" style={{
+            borderBottom: '1px solid var(--mantine-color-default-border)',
+          }}>
             <Text fw={600} size="sm">Steps</Text>
             <Badge size="sm" variant="light">{stages.length}</Badge>
           </Group>

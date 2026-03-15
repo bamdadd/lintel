@@ -352,7 +352,7 @@ export function Component() {
               </Text>
             )}
             {!!selectedNode.data.description && (
-              <Paper p="xs" bg="var(--mantine-color-dark-6)" radius="sm">
+              <Paper p="xs" bg="var(--mantine-color-body)" radius="sm" withBorder>
                 <Text size="xs" fw={500} mb={4}>Description</Text>
                 <Text size="xs" c="dimmed">{String(selectedNode.data.description)}</Text>
               </Paper>
