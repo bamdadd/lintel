@@ -21,27 +21,27 @@ logger = structlog.get_logger(__name__)
 class EventStore(Protocol):
     """Minimal event-store interface expected by the agent."""
 
-    async def append(self, stream_id: str, event: dict) -> None: ...
+    async def append(self, stream_id: str, event: dict[str, Any]) -> None: ...
 
 
 @runtime_checkable
 class EventBus(Protocol):
     """Minimal event-bus interface expected by the agent."""
 
-    async def publish(self, topic: str, payload: dict) -> None: ...
+    async def publish(self, topic: str, payload: dict[str, Any]) -> None: ...
 
 
 class _NullEventStore:
     """No-op event store used when no real store is provided."""
 
-    async def append(self, stream_id: str, event: dict) -> None:
+    async def append(self, stream_id: str, event: dict[str, Any]) -> None:
         pass
 
 
 class _NullEventBus:
     """No-op event bus used when no real bus is provided."""
 
-    async def publish(self, topic: str, payload: dict) -> None:
+    async def publish(self, topic: str, payload: dict[str, Any]) -> None:
         pass
 
 
@@ -180,18 +180,22 @@ class IntegrationScannerAgent:
             "external_api_calls": scan_external_api_calls,
         }
 
+        # TODO: resolve actual file paths from repository_id + file_extensions
+        file_paths: list[str] = []
+
         for key, scanner_fn in scanner_tasks.items():
             try:
-                scan_results[key] = await scanner_fn(
-                    repository_id=self.repository_id,
-                    file_extensions=self.config.file_extensions_filter,
-                )
+                scan_results[key] = await scanner_fn(file_paths)
             except Exception:
                 self._log.exception("scanner_failed", scanner=key)
                 scan_results[key] = []
 
         dependency_graph = await build_dependency_graph(scan_results)
-        antipatterns = await detect_antipatterns(scan_results)
+        antipatterns = await detect_antipatterns(
+            nodes=dependency_graph.get("nodes", []),
+            edges=dependency_graph.get("edges", []),
+            coupling_scores=dependency_graph.get("coupling_scores", []),
+        )
 
         return {
             "scan_results": scan_results,

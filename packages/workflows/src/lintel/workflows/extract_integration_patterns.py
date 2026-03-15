@@ -297,7 +297,10 @@ async def persist_results_node(
     )
 
     await tracker.append_log("persist_results", "Results structured for persistence.")
-    await tracker.mark_completed("persist_results", outputs=payload)
+    await tracker.mark_completed(
+        "persist_results",
+        outputs=payload,  # type: ignore[arg-type]
+    )
 
     return {"status": "completed"}
 
@@ -343,12 +346,12 @@ def build_extract_integration_patterns_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(IntegrationPatternState)
 
     # Nodes
-    g.add_node("scan_repo", scan_repo_node)  # type: ignore[arg-type]
-    g.add_node("classify_integrations", classify_integrations_node)  # type: ignore[arg-type]
-    g.add_node("build_graph", build_graph_node)  # type: ignore[arg-type]
-    g.add_node("detect_antipatterns", detect_antipatterns_node)  # type: ignore[arg-type]
-    g.add_node("persist_results", persist_results_node)  # type: ignore[arg-type]
-    g.add_node("error", error_node)  # type: ignore[arg-type]
+    g.add_node("scan_repo", scan_repo_node)  # type: ignore[call-overload]
+    g.add_node("classify_integrations", classify_integrations_node)  # type: ignore[call-overload]
+    g.add_node("build_graph", build_graph_node)  # type: ignore[call-overload]
+    g.add_node("detect_antipatterns", detect_antipatterns_node)  # type: ignore[call-overload]
+    g.add_node("persist_results", persist_results_node)  # type: ignore[call-overload]
+    g.add_node("error", error_node)  # type: ignore[call-overload]
 
     # Entry
     g.set_entry_point("scan_repo")
