@@ -26,13 +26,19 @@ import {
 } from '@mantine/core';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router';
 import {
   useWorkflowDefinitionsGetWorkflowDefinition,
   useWorkflowDefinitionsCreateWorkflowDefinition,
   useWorkflowDefinitionsUpdateWorkflowDefinition,
 } from '@/generated/api/workflow-definitions/workflow-definitions';
-import { useModelsListModels } from '@/generated/api/models/models';
+import {
+  useModelsListModels,
+  useModelsListAllAssignments,
+  useModelsCreateModelAssignment,
+  useModelsDeleteModelAssignment,
+} from '@/generated/api/models/models';
 import { AgentStepNode } from '../components/nodes/AgentStepNode';
 import { ApprovalGateNode } from '../components/nodes/ApprovalGateNode';
 
@@ -77,6 +83,22 @@ export function Component() {
     value: m.model_id as string,
     label: (m.name ?? m.model_name) as string,
   }));
+  const { data: allAssignmentsResp } = useModelsListAllAssignments();
+  const createAssignMut = useModelsCreateModelAssignment();
+  const deleteAssignMut = useModelsDeleteModelAssignment();
+  const qc = useQueryClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allAssignments = (allAssignmentsResp?.data ?? []) as Array<Record<string, any>>;
+  // Build a lookup: step name → { model_id, assignment_id } for pipeline_step context
+  const stepAssignments = new Map<string, { model_id: string; assignment_id: string }>();
+  for (const a of allAssignments) {
+    if (a.context === 'pipeline_step' || a.context === 'workflow_step') {
+      stepAssignments.set(a.context_id as string, {
+        model_id: a.model_id as string,
+        assignment_id: a.assignment_id as string,
+      });
+    }
+  }
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -282,8 +304,41 @@ export function Component() {
             <Select
               label="Model"
               data={modelOptions}
-              value={String(selectedNode.data.model_id ?? '') || null}
-              onChange={(v) => updateNodeData('model_id', v ?? '')}
+              value={stepAssignments.get(selectedNode.id)?.model_id ?? null}
+              onChange={(newModelId) => {
+                const existing = stepAssignments.get(selectedNode.id);
+                // Remove old assignment if exists
+                if (existing) {
+                  deleteAssignMut.mutate({ assignmentId: existing.assignment_id }, {
+                    onSuccess: () => {
+                      void qc.invalidateQueries({ queryKey: ['/api/v1/model-assignments'] });
+                      if (newModelId) {
+                        createAssignMut.mutate({
+                          modelId: newModelId,
+                          data: { context: 'pipeline_step' as const, context_id: selectedNode.id, priority: 0 },
+                        }, {
+                          onSuccess: () => {
+                            void qc.invalidateQueries({ queryKey: ['/api/v1/model-assignments'] });
+                            notifications.show({ title: 'Updated', message: 'Model assignment updated', color: 'green' });
+                          },
+                        });
+                      } else {
+                        notifications.show({ title: 'Removed', message: 'Model assignment removed', color: 'orange' });
+                      }
+                    },
+                  });
+                } else if (newModelId) {
+                  createAssignMut.mutate({
+                    modelId: newModelId,
+                    data: { context: 'pipeline_step' as const, context_id: selectedNode.id, priority: 0 },
+                  }, {
+                    onSuccess: () => {
+                      void qc.invalidateQueries({ queryKey: ['/api/v1/model-assignments'] });
+                      notifications.show({ title: 'Assigned', message: 'Model assigned to step', color: 'green' });
+                    },
+                  });
+                }
+              }}
               placeholder="Default (no override)"
               clearable
               searchable
