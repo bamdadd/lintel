@@ -3,57 +3,21 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import MCPServerRegistered, MCPServerRemoved, MCPServerUpdated
 from lintel.domain.types import MCPServer
+from lintel.mcp_servers_api.store import InMemoryMCPServerStore
 
 router = APIRouter()
 
-
-class InMemoryMCPServerStore:
-    """In-memory store for MCP server configurations."""
-
-    def __init__(self) -> None:
-        self._servers: dict[str, MCPServer] = {}
-
-    async def add(self, server: MCPServer) -> None:
-        self._servers[server.server_id] = server
-
-    async def get(self, server_id: str) -> MCPServer | None:
-        return self._servers.get(server_id)
-
-    async def list_all(self) -> list[MCPServer]:
-        return list(self._servers.values())
-
-    async def list_enabled(self) -> list[MCPServer]:
-        return [s for s in self._servers.values() if s.enabled]
-
-    async def update(self, server: MCPServer) -> None:
-        if server.server_id not in self._servers:
-            msg = f"MCP server {server.server_id} not found"
-            raise KeyError(msg)
-        self._servers[server.server_id] = server
-
-    async def remove(self, server_id: str) -> None:
-        if server_id not in self._servers:
-            msg = f"MCP server {server_id} not found"
-            raise KeyError(msg)
-        del self._servers[server_id]
-
-
-def get_mcp_server_store(request: Request) -> InMemoryMCPServerStore:
-    return request.app.state.mcp_server_store  # type: ignore[no-any-return]
-
-
-MCPServerStoreDep = Annotated[InMemoryMCPServerStore, Depends(get_mcp_server_store)]
+mcp_server_store_provider = StoreProvider()
 
 
 class CreateMCPServerRequest(BaseModel):
@@ -74,11 +38,10 @@ class UpdateMCPServerRequest(BaseModel):
 
 
 @router.post("/mcp-servers", status_code=201)
-@inject
 async def create_mcp_server(
     body: CreateMCPServerRequest,
     request: Request,
-    store: InMemoryMCPServerStore = Depends(Provide[AppContainer.mcp_server_store]),  # noqa: B008
+    store: InMemoryMCPServerStore = Depends(mcp_server_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Register an MCP server."""
     existing = await store.get(body.server_id)
@@ -102,9 +65,8 @@ async def create_mcp_server(
 
 
 @router.get("/mcp-servers")
-@inject
 async def list_mcp_servers(
-    store: InMemoryMCPServerStore = Depends(Provide[AppContainer.mcp_server_store]),  # noqa: B008
+    store: InMemoryMCPServerStore = Depends(mcp_server_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """List all configured MCP servers."""
     servers = await store.list_all()
@@ -112,10 +74,9 @@ async def list_mcp_servers(
 
 
 @router.get("/mcp-servers/{server_id}")
-@inject
 async def get_mcp_server(
     server_id: str,
-    store: InMemoryMCPServerStore = Depends(Provide[AppContainer.mcp_server_store]),  # noqa: B008
+    store: InMemoryMCPServerStore = Depends(mcp_server_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Get a specific MCP server."""
     server = await store.get(server_id)
@@ -125,12 +86,11 @@ async def get_mcp_server(
 
 
 @router.patch("/mcp-servers/{server_id}")
-@inject
 async def update_mcp_server(
     server_id: str,
     body: UpdateMCPServerRequest,
     request: Request,
-    store: InMemoryMCPServerStore = Depends(Provide[AppContainer.mcp_server_store]),  # noqa: B008
+    store: InMemoryMCPServerStore = Depends(mcp_server_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Update an MCP server's configuration."""
     server = await store.get(server_id)
@@ -150,11 +110,10 @@ async def update_mcp_server(
 
 
 @router.delete("/mcp-servers/{server_id}", status_code=204)
-@inject
 async def delete_mcp_server(
     server_id: str,
     request: Request,
-    store: InMemoryMCPServerStore = Depends(Provide[AppContainer.mcp_server_store]),  # noqa: B008
+    store: InMemoryMCPServerStore = Depends(mcp_server_store_provider),  # noqa: B008
 ) -> None:
     """Remove an MCP server."""
     server = await store.get(server_id)
@@ -169,11 +128,10 @@ async def delete_mcp_server(
 
 
 @router.get("/mcp-servers/{server_id}/tools")
-@inject
 async def list_mcp_server_tools(
     server_id: str,
     request: Request,
-    store: InMemoryMCPServerStore = Depends(Provide[AppContainer.mcp_server_store]),  # noqa: B008
+    store: InMemoryMCPServerStore = Depends(mcp_server_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """Fetch the list of tools from a remote MCP server."""
     server = await store.get(server_id)
