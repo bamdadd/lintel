@@ -1,0 +1,24 @@
+[project]
+name = "lintel-memory-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "lintel-contracts",
+    "lintel-memory",
+    "lintel-api-support",
+    "fastapi>=0.115",
+    "pydantic>=2.0",
+    "structlog>=24.0",
+]
+
+[tool.uv.sources]
+lintel-contracts = { workspace = true }
+lintel-memory = { workspace = true }
+lintel-api-support = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lintel"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

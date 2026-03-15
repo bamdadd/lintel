@@ -53,6 +53,7 @@ from lintel.integration_patterns_api.routes import integration_pattern_store_pro
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
 from lintel.mcp_servers_api.routes import mcp_server_store_provider
 from lintel.mcp_servers_api.store import InMemoryMCPServerStore
+from lintel.memory_api.dependencies import memory_service_provider
 from lintel.models_api.routes import ai_provider_store_provider as models_ai_provider_store_provider
 from lintel.models_api.routes import model_assignment_store_provider, model_store_provider
 from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
@@ -348,3 +349,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     experiment_store_provider.override(stores["experiment_store"])
     compliance_metric_store_provider.override(stores["compliance_metric_store"])
     integration_pattern_store_provider.override(stores["integration_patterns"])
+
+
+def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
+    """Wire the memory service provider with a concrete MemoryService instance."""
+    memory_service_provider.override(memory_service)

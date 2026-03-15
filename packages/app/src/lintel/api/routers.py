@@ -31,6 +31,7 @@ from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.integration_patterns_api import router as integration_patterns_router
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
+from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
 from lintel.notifications_api.routes import router as notifications_router
 from lintel.pipelines_api.routes import router as pipelines_router
@@ -92,6 +93,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(boards_router, prefix="/api/v1", tags=["boards"])
     app.include_router(compliance_router, prefix="/api/v1", tags=["compliance"])
     app.include_router(experimentation_router, prefix="/api/v1", tags=["experimentation"])
+    app.include_router(memory_router, prefix="/api/v1", tags=["memory"])
     app.include_router(integration_patterns_router, prefix="/api/v1", tags=["integration-patterns"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])

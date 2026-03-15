@@ -151,6 +151,7 @@ const navSections: NavSection[] = [
     icon: IconBrain,
     items: [
       { label: 'Knowledge Base', path: '/knowledge', icon: IconBrain },
+      { label: 'Memory', path: '/memory', icon: IconBrain },
     ],
   },
   {
