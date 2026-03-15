@@ -1,34 +1,11 @@
-"""Slack protocol definitions."""
+"""Slack protocol definitions.
+
+The ChannelAdapter protocol has moved to lintel.contracts.channel_adapter.
+This module re-exports it for backward compatibility.
+"""
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from lintel.contracts.channel_adapter import ChannelAdapter
 
-
-class ChannelAdapter(Protocol):
-    """Pluggable channel interface. Slack is the first implementation."""
-
-    async def send_message(
-        self,
-        channel_id: str,
-        thread_ts: str,
-        text: str,
-        blocks: list[dict[str, Any]] | None = None,
-    ) -> dict[str, Any]: ...
-
-    async def update_message(
-        self,
-        channel_id: str,
-        message_ts: str,
-        text: str,
-        blocks: list[dict[str, Any]] | None = None,
-    ) -> dict[str, Any]: ...
-
-    async def send_approval_request(
-        self,
-        channel_id: str,
-        thread_ts: str,
-        gate_type: str,
-        summary: str,
-        callback_id: str,
-    ) -> dict[str, Any]: ...
+__all__ = ["ChannelAdapter"]

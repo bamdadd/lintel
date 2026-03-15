@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from uuid import UUID
 
+    from lintel.contracts.channel_adapter import ChannelAdapter as GenericChannelAdapter
     from lintel.contracts.events import EventEnvelope
     from lintel.contracts.types import ThreadRef
 
@@ -76,26 +77,23 @@ class TestChannelAdapterConformance:
         class FakeChannel:
             async def send_message(
                 self,
-                channel_id: str,
-                thread_ts: str,
+                thread_ref: ThreadRef,
                 text: str,
-                blocks: list[dict[str, Any]] | None = None,
+                **kwargs: object,
             ) -> dict[str, Any]:
                 return {}
 
-            async def update_message(
+            async def send_reply(
                 self,
-                channel_id: str,
-                message_ts: str,
+                thread_ref: ThreadRef,
                 text: str,
-                blocks: list[dict[str, Any]] | None = None,
+                **kwargs: object,
             ) -> dict[str, Any]:
                 return {}
 
             async def send_approval_request(
                 self,
-                channel_id: str,
-                thread_ts: str,
+                thread_ref: ThreadRef,
                 gate_type: str,
                 summary: str,
                 callback_id: str,
@@ -103,6 +101,36 @@ class TestChannelAdapterConformance:
                 return {}
 
         channel: ChannelAdapter = FakeChannel()  # type: ignore[assignment]
+        assert channel is not None
+
+    def test_generic_channel_adapter_conformance(self) -> None:
+        class FakeGenericChannel:
+            async def send_message(
+                self,
+                thread_ref: ThreadRef,
+                text: str,
+                **kwargs: object,
+            ) -> dict[str, Any]:
+                return {}
+
+            async def send_reply(
+                self,
+                thread_ref: ThreadRef,
+                text: str,
+                **kwargs: object,
+            ) -> dict[str, Any]:
+                return {}
+
+            async def send_approval_request(
+                self,
+                thread_ref: ThreadRef,
+                gate_type: str,
+                summary: str,
+                callback_id: str,
+            ) -> dict[str, Any]:
+                return {}
+
+        channel: GenericChannelAdapter = FakeGenericChannel()  # type: ignore[assignment]
         assert channel is not None
 
 

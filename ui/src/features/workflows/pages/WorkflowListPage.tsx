@@ -10,9 +10,14 @@ import {
   Button,
   Group,
   Switch,
+  Box,
+  ThemeIcon,
+  Tooltip,
+  Divider,
 } from '@mantine/core';
 import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { IconGitBranch, IconPlus, IconArrowRight } from '@tabler/icons-react';
 import { useWorkflowDefinitionsListWorkflowDefinitions } from '@/generated/api/workflow-definitions/workflow-definitions';
 import { customInstance } from '@/shared/api/client';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -68,10 +73,13 @@ export function Component() {
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>Workflows</Title>
-        <Button onClick={() => void navigate('/workflows/editor')}>
+        <Group gap="xs">
+          <Title order={2}>Workflows</Title>
+          <Badge variant="light" size="lg">{definitions.length}</Badge>
+        </Group>
+        <Button leftSection={<IconPlus size={16} />} onClick={() => void navigate('/workflows/editor')}>
           New Workflow
         </Button>
       </Group>
@@ -94,14 +102,29 @@ export function Component() {
               <Paper
                 key={id}
                 withBorder
-                p="md"
+                p="lg"
                 radius="md"
-                style={{ cursor: 'pointer', opacity: enabled ? 1 : 0.5 }}
+                style={{
+                  cursor: 'pointer',
+                  opacity: enabled ? 1 : 0.5,
+                  transition: 'transform 150ms ease, box-shadow 150ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 onClick={() => void navigate(`/workflows/editor/${id}`)}
               >
-                <Group gap="xs" mb="sm" justify="space-between">
-                  <Group gap="xs">
-                    <Text fw={600} size="md">{d.name ?? id}</Text>
+                <Group gap="xs" mb="sm" justify="space-between" wrap="nowrap">
+                  <Group gap="xs" wrap="nowrap" style={{ overflow: 'hidden' }}>
+                    <ThemeIcon variant="light" color="indigo" size="sm" radius="xl">
+                      <IconGitBranch size={14} />
+                    </ThemeIcon>
+                    <Text fw={600} size="md" truncate>{d.name ?? id}</Text>
                     {d.is_builtin && (
                       <Badge variant="light" color="gray" size="xs">
                         built-in
@@ -119,23 +142,48 @@ export function Component() {
                     aria-label={`Toggle ${d.name}`}
                   />
                 </Group>
+
                 {d.description && (
-                  <Text size="sm" c="dimmed" lineClamp={2} mb="sm">
+                  <Text size="sm" c="var(--mantine-color-text)" style={{ opacity: 0.7 }} lineClamp={2} mb="sm">
                     {d.description}
                   </Text>
                 )}
-                <Text size="xs" c="dimmed" mb="xs">
-                  {stages.length} stage{stages.length !== 1 ? 's' : ''}
-                </Text>
-                {tags.length > 0 && (
-                  <Group gap={4}>
-                    {tags.map((tag) => (
-                      <Badge key={tag} size="xs" variant="light" color={tagColor(tag)}>
-                        {tag}
-                      </Badge>
-                    ))}
-                  </Group>
+
+                {/* Stage pipeline preview */}
+                {stages.length > 0 && (
+                  <Box mb="sm">
+                    <Group gap={4} wrap="nowrap" style={{ overflow: 'hidden' }}>
+                      {stages.slice(0, 4).map((stage, i) => (
+                        <Group key={stage} gap={4} wrap="nowrap">
+                          {i > 0 && <IconArrowRight size={10} style={{ color: 'var(--mantine-color-dimmed)', flexShrink: 0 }} />}
+                          <Badge size="xs" variant="dot" color="indigo" style={{ flexShrink: 0 }}>
+                            {stage}
+                          </Badge>
+                        </Group>
+                      ))}
+                      {stages.length > 4 && (
+                        <Text size="xs" c="dimmed">+{stages.length - 4}</Text>
+                      )}
+                    </Group>
+                  </Box>
                 )}
+
+                <Divider mb="sm" />
+
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed">
+                    {stages.length} stage{stages.length !== 1 ? 's' : ''}
+                  </Text>
+                  {tags.length > 0 && (
+                    <Group gap={4}>
+                      {tags.map((tag) => (
+                        <Badge key={tag} size="xs" variant="light" color={tagColor(tag)}>
+                          {tag}
+                        </Badge>
+                      ))}
+                    </Group>
+                  )}
+                </Group>
               </Paper>
             );
           })}

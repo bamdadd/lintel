@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from opentelemetry import metrics
+from opentelemetry.metrics import get_meter
 
-meter = metrics.get_meter("lintel.steps")
+meter = get_meter("lintel.steps")
 
 step_duration_histogram = meter.create_histogram(
     name="lintel_step_duration_seconds",

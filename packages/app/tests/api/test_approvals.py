@@ -40,6 +40,7 @@ class TestApprovalAPI:
             "workspace_id": "W1",
             "channel_id": "C1",
             "thread_ts": "123.456",
+            "channel_type": "slack",
         }
 
     def test_reject_approval(self, client: TestClient) -> None:
@@ -63,4 +64,5 @@ class TestApprovalAPI:
             "workspace_id": "W1",
             "channel_id": "C1",
             "thread_ts": "123.456",
+            "channel_type": "slack",
         }

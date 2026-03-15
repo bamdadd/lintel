@@ -1,11 +1,16 @@
+import { useState, useMemo } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
-  Loader, Center, ActionIcon, Badge, Text,
+  Loader, Center, ActionIcon, Badge, Text, Paper, SimpleGrid,
+  SegmentedControl, Box, ThemeIcon, Progress, Tooltip, TextInput as SearchInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconPlayerStop } from '@tabler/icons-react';
+import {
+  IconTrash, IconPlayerStop, IconPlayerPlay, IconCircleCheck,
+  IconCircleX, IconClock, IconSearch, IconFilter,
+} from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import {
@@ -17,7 +22,7 @@ import {
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { StatusBadge, getStatusColor } from '@/shared/components/StatusBadge';
 
 interface PipelineRun {
   run_id: string;
@@ -33,6 +38,44 @@ interface PipelineRun {
 
 interface ProjectItem { project_id: string; name: string; }
 
+function StatusSummaryCard({
+  label, count, total, color, icon, active, onClick,
+}: {
+  label: string; count: number; total: number; color: string;
+  icon: React.ReactNode; active: boolean; onClick: () => void;
+}) {
+  return (
+    <Paper
+      withBorder
+      p="md"
+      radius="md"
+      onClick={onClick}
+      style={{
+        cursor: 'pointer',
+        borderColor: active ? `var(--mantine-color-${color}-5)` : undefined,
+        transition: 'border-color 150ms, transform 150ms',
+        transform: active ? 'scale(1.02)' : 'scale(1)',
+      }}
+    >
+      <Group justify="space-between" mb="xs">
+        <Text size="xs" c="dimmed" tt="uppercase" fw={600} style={{ letterSpacing: '0.05em' }}>
+          {label}
+        </Text>
+        {icon}
+      </Group>
+      <Text size="xl" fw={700}>{count}</Text>
+      {total > 0 && (
+        <Progress
+          value={(count / total) * 100}
+          color={color}
+          size={4}
+          mt="xs"
+          radius="xl"
+        />
+      )}
+    </Paper>
+  );
+}
 
 export function Component() {
   const { data: resp, isLoading } = usePipelinesListPipelines();
@@ -43,6 +86,8 @@ export function Component() {
   const qc = useQueryClient();
   const [opened, { open, close }] = useDisclosure(false);
   const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
   const projectOptions = projects.map((p) => ({ value: p.project_id, label: p.name }));
@@ -53,9 +98,30 @@ export function Component() {
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
-  const runs = [...((resp?.data ?? []) as PipelineRun[])].sort(
+  const allRuns = [...((resp?.data ?? []) as PipelineRun[])].sort(
     (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
   );
+
+  const counts = {
+    running: allRuns.filter((r) => r.status === 'running').length,
+    succeeded: allRuns.filter((r) => r.status === 'succeeded' || r.status === 'completed').length,
+    failed: allRuns.filter((r) => r.status === 'failed' || r.status === 'error').length,
+    pending: allRuns.filter((r) => r.status === 'pending' || r.status === 'waiting_approval').length,
+  };
+
+  const runs = allRuns.filter((r) => {
+    if (statusFilter && r.status !== statusFilter) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      const pName = projects.find((p) => p.project_id === r.project_id)?.name ?? '';
+      return (
+        r.run_id.toLowerCase().includes(s)
+        || pName.toLowerCase().includes(s)
+        || r.trigger_type?.toLowerCase().includes(s)
+      );
+    }
+    return true;
+  });
 
   const handleCreate = form.onSubmit((values) => {
     createMut.mutate(
@@ -97,81 +163,158 @@ export function Component() {
 
   const projectName = (id: string) => projects.find((p) => p.project_id === id)?.name ?? id;
 
+  const toggleFilter = (status: string) => {
+    setStatusFilter((prev) => (prev === status ? null : status));
+  };
+
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Group justify="space-between">
         <Title order={2}>Pipelines</Title>
-        <Button onClick={open}>Run Pipeline</Button>
+        <Button leftSection={<IconPlayerPlay size={16} />} onClick={open}>
+          Run Pipeline
+        </Button>
       </Group>
 
-      {runs.length === 0 ? (
+      {/* Status summary cards */}
+      {allRuns.length > 0 && (
+        <SimpleGrid cols={{ base: 2, sm: 4 }}>
+          <StatusSummaryCard
+            label="Running"
+            count={counts.running}
+            total={allRuns.length}
+            color="blue"
+            icon={<ThemeIcon variant="light" color="blue" size="sm" radius="xl"><IconPlayerPlay size={14} /></ThemeIcon>}
+            active={statusFilter === 'running'}
+            onClick={() => toggleFilter('running')}
+          />
+          <StatusSummaryCard
+            label="Succeeded"
+            count={counts.succeeded}
+            total={allRuns.length}
+            color="green"
+            icon={<ThemeIcon variant="light" color="green" size="sm" radius="xl"><IconCircleCheck size={14} /></ThemeIcon>}
+            active={statusFilter === 'succeeded'}
+            onClick={() => toggleFilter('succeeded')}
+          />
+          <StatusSummaryCard
+            label="Failed"
+            count={counts.failed}
+            total={allRuns.length}
+            color="red"
+            icon={<ThemeIcon variant="light" color="red" size="sm" radius="xl"><IconCircleX size={14} /></ThemeIcon>}
+            active={statusFilter === 'failed'}
+            onClick={() => toggleFilter('failed')}
+          />
+          <StatusSummaryCard
+            label="Pending"
+            count={counts.pending}
+            total={allRuns.length}
+            color="yellow"
+            icon={<ThemeIcon variant="light" color="yellow" size="sm" radius="xl"><IconClock size={14} /></ThemeIcon>}
+            active={statusFilter === 'pending'}
+            onClick={() => toggleFilter('pending')}
+          />
+        </SimpleGrid>
+      )}
+
+      {allRuns.length === 0 ? (
         <EmptyState title="No pipeline runs" description="Start a pipeline to run workflows" actionLabel="Run Pipeline" onAction={open} />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Run</Table.Th>
-              <Table.Th>Project</Table.Th>
-              <Table.Th>Trigger</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Started</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {runs.map((r) => (
-              <Table.Tr key={r.run_id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/pipelines/${r.run_id}`)}>
-                <Table.Td><Text size="sm" ff="monospace">{r.run_id?.slice(0, 8)}</Text></Table.Td>
-                <Table.Td>{projectName(r.project_id)}</Table.Td>
-                <Table.Td>
-                  {r.trigger_type?.startsWith('chat:') ? (
-                    <Badge
-                      variant="light"
-                      style={{ cursor: 'pointer' }}
-                      onClick={(e) => { e.stopPropagation(); navigate(`/chat/${r.trigger_type.split(':')[1]}`); }}
-                    >
-                      chat
-                    </Badge>
-                  ) : r.trigger_type?.startsWith('work_item:') ? (
-                    <Badge
-                      variant="light"
-                      color="indigo"
-                      style={{ cursor: 'pointer' }}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          const resp = await fetch(`/api/v1/projects/${r.project_id}/boards`);
-                          const boards = await resp.json();
-                          const boardId = boards?.[0]?.board_id;
-                          if (boardId) navigate(`/boards/${boardId}?work_item=${r.work_item_id}`);
-                          else navigate('/boards');
-                        } catch { navigate('/boards'); }
-                      }}
-                    >
-                      work item
-                    </Badge>
-                  ) : (
-                    <Badge variant="light">{r.trigger_type || '—'}</Badge>
-                  )}
-                </Table.Td>
-                <Table.Td><StatusBadge status={r.status} /></Table.Td>
-                <Table.Td><TimeAgo date={r.created_at} size="sm" /></Table.Td>
-                <Table.Td>
-                  <Group gap={4}>
-                    {r.status === 'running' && (
-                      <ActionIcon color="orange" variant="subtle" onClick={(e) => { e.stopPropagation(); handleCancel(r.run_id); }}>
-                        <IconPlayerStop size={16} />
-                      </ActionIcon>
-                    )}
-                    <ActionIcon color="red" variant="subtle" onClick={(e) => { e.stopPropagation(); handleDelete(r.run_id); }}>
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+        <>
+          {/* Search bar */}
+          <TextInput
+            placeholder="Search by run ID, project, or trigger..."
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+          />
+
+          <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+            <Table highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Run</Table.Th>
+                  <Table.Th>Project</Table.Th>
+                  <Table.Th>Trigger</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                  <Table.Th>Started</Table.Th>
+                  <Table.Th w={80} />
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {runs.map((r) => (
+                  <Table.Tr key={r.run_id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/pipelines/${r.run_id}`)}>
+                    <Table.Td>
+                      <Text size="sm" ff="monospace" fw={500}>{r.run_id?.slice(0, 8)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" fw={500}>{projectName(r.project_id)}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      {r.trigger_type?.startsWith('chat:') ? (
+                        <Badge
+                          variant="light"
+                          style={{ cursor: 'pointer' }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/chat/${r.trigger_type.split(':')[1]}`); }}
+                        >
+                          chat
+                        </Badge>
+                      ) : r.trigger_type?.startsWith('work_item:') ? (
+                        <Badge
+                          variant="light"
+                          color="indigo"
+                          style={{ cursor: 'pointer' }}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const resp = await fetch(`/api/v1/projects/${r.project_id}/boards`);
+                              const boards = await resp.json();
+                              const boardId = boards?.[0]?.board_id;
+                              if (boardId) navigate(`/boards/${boardId}?work_item=${r.work_item_id}`);
+                              else navigate('/boards');
+                            } catch { navigate('/boards'); }
+                          }}
+                        >
+                          work item
+                        </Badge>
+                      ) : (
+                        <Badge variant="light" color="gray">{r.trigger_type || '—'}</Badge>
+                      )}
+                    </Table.Td>
+                    <Table.Td><StatusBadge status={r.status} /></Table.Td>
+                    <Table.Td><TimeAgo date={r.created_at} size="sm" /></Table.Td>
+                    <Table.Td>
+                      <Group gap={4} wrap="nowrap">
+                        {r.status === 'running' && (
+                          <Tooltip label="Cancel">
+                            <ActionIcon color="orange" variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleCancel(r.run_id); }}>
+                              <IconPlayerStop size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                        <Tooltip label="Delete">
+                          <ActionIcon color="red" variant="subtle" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(r.run_id); }}>
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {runs.length === 0 && (
+                  <Table.Tr>
+                    <Table.Td colSpan={6}>
+                      <Text c="dimmed" ta="center" py="md">
+                        No pipelines match your filters
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                )}
+              </Table.Tbody>
+            </Table>
+          </Paper>
+        </>
       )}
 
       <Modal opened={opened} onClose={close} title="Run Pipeline">

@@ -7,12 +7,12 @@ from typing import Any
 _UNSET = object()
 
 
-class StoreProvider:
+class StoreProvider[T]:
     """Store holder that can be overridden at app startup.
 
     Use as a FastAPI ``Depends()`` callable::
 
-        user_store_provider = StoreProvider()
+        user_store_provider: StoreProvider[MyStore] = StoreProvider()
 
         @router.get("/users")
         async def list_users(
@@ -31,7 +31,7 @@ class StoreProvider:
     def __init__(self) -> None:
         self._instance: Any = _UNSET
 
-    def override(self, instance: Any) -> None:  # noqa: ANN401
+    def override(self, instance: T) -> None:
         """Set or replace the store instance."""
         self._instance = instance
 
@@ -39,12 +39,12 @@ class StoreProvider:
         """Reset to unconfigured state."""
         self._instance = _UNSET
 
-    def __call__(self) -> Any:  # noqa: ANN401
-        """Return the store instance (called by FastAPI Depends)."""
+    def get(self) -> T:
+        """Return the store instance."""
         if self._instance is _UNSET:
             raise RuntimeError("Store not configured — call .override() at app startup")
-        return self._instance
+        return self._instance  # type: ignore[return-value]
 
-    def __class_getitem__(cls, item: Any) -> type:  # noqa: ANN401
-        """Allow generic subscript notation e.g. StoreProvider[MyStore]."""
-        return cls
+    def __call__(self) -> T:
+        """Return the store instance (called by FastAPI Depends)."""
+        return self.get()
