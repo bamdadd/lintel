@@ -35,6 +35,10 @@ class StoreProvider:
         """Set or replace the store instance."""
         self._instance = instance
 
+    def reset(self) -> None:
+        """Reset to unconfigured state."""
+        self._instance = _UNSET
+
     def __call__(self) -> Any:  # noqa: ANN401
         """Return the store instance (called by FastAPI Depends)."""
         if self._instance is _UNSET:

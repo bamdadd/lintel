@@ -25,9 +25,15 @@ class TestStoreProvider:
         provider.override(second)
         assert provider() is second
 
-    def test_override_with_none_resets(self) -> None:
+    def test_override_with_none_is_valid(self) -> None:
         provider = StoreProvider()
         provider.override(object())
         provider.override(None)
+        assert provider() is None
+
+    def test_reset_clears_provider(self) -> None:
+        provider = StoreProvider()
+        provider.override(object())
+        provider.reset()
         with pytest.raises(RuntimeError):
             provider()
