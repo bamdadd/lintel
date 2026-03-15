@@ -24,6 +24,7 @@ dependencies = [
     "lintel-policies-api",
     "lintel-notifications-api",
     "lintel-environments-api",
+    "lintel-variables-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -59,6 +60,7 @@ lintel-teams = { workspace = true }
 lintel-policies-api = { workspace = true }
 lintel-notifications-api = { workspace = true }
 lintel-environments-api = { workspace = true }
+lintel-variables-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

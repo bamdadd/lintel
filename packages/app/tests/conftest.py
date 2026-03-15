@@ -46,7 +46,7 @@ def container() -> Generator[AppContainerType]:
     from lintel.teams.store import InMemoryTeamStore
     from lintel.api.routes.triggers import InMemoryTriggerStore
     from lintel.users.store import InMemoryUserStore
-    from lintel.api.routes.variables import InMemoryVariableStore
+    from lintel.variables_api.store import InMemoryVariableStore
     from lintel.api.routes.work_items import WorkItemStore
     from lintel.event_store.in_memory import InMemoryEventStore
     from lintel.repos.repository_store import InMemoryRepositoryStore
