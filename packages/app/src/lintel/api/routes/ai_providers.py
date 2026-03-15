@@ -282,6 +282,11 @@ async def update_ai_provider(
         AIProviderUpdated(payload={"resource_id": provider_id, "fields": list(updates.keys())}),
         stream_id=f"ai_provider:{provider_id}",
     )
+    # Invalidate model router default cache when default provider changes
+    if "is_default" in updates:
+        model_router = getattr(request.app.state, "model_router", None)
+        if model_router is not None and hasattr(model_router, "_cached_default"):
+            model_router._cached_default = None
     d = asdict(updated)
     d["models"] = list(updated.models)
     d["has_api_key"] = await store.has_api_key(provider_id)

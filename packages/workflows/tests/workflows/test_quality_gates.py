@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from lintel.workflows.nodes._quality_gates import validate_plan, validate_research_report
 
 

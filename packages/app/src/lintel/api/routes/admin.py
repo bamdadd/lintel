@@ -56,6 +56,8 @@ async def clear_cache(request: Request) -> dict[str, str]:
         model_router._response_cache.clear()
         model_router._cache_hits = 0
         model_router._cache_misses = 0
+    if model_router is not None and hasattr(model_router, "_cached_default"):
+        model_router._cached_default = None
     return {"status": "cache_cleared"}
 
 

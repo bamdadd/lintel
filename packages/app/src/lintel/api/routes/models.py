@@ -248,6 +248,11 @@ async def update_model(
     await dispatch_event(
         request, ModelUpdated(payload={"resource_id": model_id}), stream_id=f"model:{model_id}"
     )
+    # Invalidate model router default cache when default model changes
+    if "is_default" in updates:
+        model_router = getattr(request.app.state, "model_router", None)
+        if model_router is not None and hasattr(model_router, "_cached_default"):
+            model_router._cached_default = None
     return await _enrich_model(updated, provider_store)
 
 

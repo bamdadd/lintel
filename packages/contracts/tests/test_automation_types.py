@@ -4,8 +4,8 @@ from dataclasses import FrozenInstanceError, asdict
 
 import pytest
 
-from lintel.contracts.events import (
-    EVENT_TYPE_MAP,
+from lintel.contracts.events import EVENT_TYPE_MAP
+from lintel.domain.events import (
     AutomationCancelled,
     AutomationCreated,
     AutomationDisabled,
@@ -15,7 +15,7 @@ from lintel.contracts.events import (
     AutomationSkipped,
     AutomationUpdated,
 )
-from lintel.contracts.types import (
+from lintel.domain.types import (
     AutomationDefinition,
     AutomationTriggerType,
     ConcurrencyPolicy,

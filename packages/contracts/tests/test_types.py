@@ -8,21 +8,25 @@ from uuid import UUID, uuid4
 from lintel.agents.types import AgentRole, SkillExecutionMode
 from lintel.contracts.types import (
     ActorType,
-    ChatSession,
     CorrelationId,
+    EventId,
+    ThreadRef,
+)
+from lintel.domain.types import (
+    ChatSession,
     Environment,
     EnvironmentType,
-    EventId,
-    PipelineRun,
     Project,
     ProjectStatus,
-    ThreadRef,
     Variable,
+)
+from lintel.sandbox.types import SandboxStatus
+from lintel.workflows.types import (
+    PipelineRun,
     WorkflowDefinitionRecord,
     WorkflowPhase,
     WorkflowStepConfig,
 )
-from lintel.sandbox.types import SandboxStatus
 
 
 class TestThreadRef:

@@ -84,9 +84,10 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 
 **Event-sourced CQRS** with clean architecture boundaries enforced by workspace package dependencies:
 
-- `packages/contracts/` — Pure domain contracts (no I/O). Types, commands, events, and Protocol interfaces that define service boundaries.
-- `packages/agents/` — AI agent definitions and runtime
-- `packages/workflows/` — LangGraph workflow orchestration with `workflows/nodes/` for graph nodes, workflow executor, graph compiler
+- `packages/contracts/` — **Slim kernel only** (EventEnvelope, ThreadRef, ActorType, core protocols). NEVER add new types, events, or commands here — put them in the relevant domain package instead.
+- `packages/domain/` — Domain types and events (projects, work items, boards, users, teams, compliance, etc.)
+- `packages/agents/` — AI agent definitions and runtime, agent types/protocols/events
+- `packages/workflows/` — LangGraph workflow orchestration, workflow/pipeline types/events/commands
 - `packages/event-store/` — Append-only event persistence (Postgres + in-memory)
 - `packages/event-bus/` — In-memory pub/sub event bus with subscriptions
 - `packages/projections/` — Read-model projection engine and concrete projections
@@ -106,6 +107,18 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 - `EventEnvelope` wraps all events with metadata (correlation_id, causation, timestamps)
 - Library packages implement Protocol interfaces from contracts — never import app from library packages
 - pytest uses `--import-mode=importlib` — do NOT add `__init__.py` to test directories
+
+**Import rules — where things live:**
+- `lintel.contracts.types` — ONLY ThreadRef, ActorType, CorrelationId, EventId
+- `lintel.contracts.events` — ONLY EventEnvelope, register_events, deserialize_event, EVENT_TYPE_MAP
+- `lintel.contracts.protocols` — ONLY EventHandler, EventBus, CommandDispatcher, EventStore
+- `lintel.domain.types` — All domain types (Project, WorkItem, Board, User, Team, Policy, etc.)
+- `lintel.domain.events` — All domain events (ProjectCreated, WorkItemUpdated, etc.)
+- `lintel.workflows.types` — Workflow types (PipelineRun, Stage, StageStatus, etc.)
+- `lintel.workflows.events` — Workflow events (PipelineRunStarted, WorkflowStarted, etc.)
+- `lintel.workflows.commands` — Workflow commands (StartWorkflow)
+- `lintel.<pkg>.types/events/protocols` — Package-specific contracts (sandbox, models, pii, repos, agents, etc.)
+- **NEVER add new types or events to `lintel-contracts`** — it is a frozen kernel. New domain items go in `lintel-domain`, workflow items in `lintel-workflows`, or the relevant infrastructure package.
 
 ## Dependency Injection
 

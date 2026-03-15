@@ -1,30 +1,131 @@
-"""Workflow and pipeline events.
+"""Workflow and pipeline domain events.
 
-Re-exported from lintel.contracts.events — this module is the canonical import path
-for workflow events. The definitions live in contracts to avoid circular dependencies.
+Defines events related to workflows, pipelines, and workflow definitions.
+Events for hooks, delivery loops, and approvals live in lintel.domain.events.
 """
 
-from lintel.contracts.events import IntentRouted as IntentRouted
-from lintel.contracts.events import PipelineRunCancelled as PipelineRunCancelled
-from lintel.contracts.events import PipelineRunCompleted as PipelineRunCompleted
-from lintel.contracts.events import PipelineRunDeleted as PipelineRunDeleted
-from lintel.contracts.events import PipelineRunFailed as PipelineRunFailed
-from lintel.contracts.events import PipelineRunStarted as PipelineRunStarted
-from lintel.contracts.events import PipelineStageApproved as PipelineStageApproved
-from lintel.contracts.events import PipelineStageCompleted as PipelineStageCompleted
-from lintel.contracts.events import PipelineStageRejected as PipelineStageRejected
-from lintel.contracts.events import PipelineStageRetried as PipelineStageRetried
-from lintel.contracts.events import StageReportEdited as StageReportEdited
-from lintel.contracts.events import StageReportRegenerated as StageReportRegenerated
-from lintel.contracts.events import WorkflowAdvanced as WorkflowAdvanced
-from lintel.contracts.events import (
-    WorkflowDefinitionCreated as WorkflowDefinitionCreated,
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from lintel.contracts.events import EventEnvelope, register_events
+
+# --- Workflow Events ---
+
+
+@dataclass(frozen=True)
+class IntentRouted(EventEnvelope):
+    event_type: str = "IntentRouted"
+
+
+@dataclass(frozen=True)
+class WorkflowStarted(EventEnvelope):
+    event_type: str = "WorkflowStarted"
+
+
+@dataclass(frozen=True)
+class WorkflowAdvanced(EventEnvelope):
+    event_type: str = "WorkflowAdvanced"
+
+
+@dataclass(frozen=True)
+class WorkflowTriggered(EventEnvelope):
+    event_type: str = "WorkflowTriggered"
+
+
+# --- Pipeline Events ---
+
+
+@dataclass(frozen=True)
+class PipelineRunStarted(EventEnvelope):
+    event_type: str = "PipelineRunStarted"
+
+
+@dataclass(frozen=True)
+class PipelineStageCompleted(EventEnvelope):
+    event_type: str = "PipelineStageCompleted"
+
+
+@dataclass(frozen=True)
+class PipelineRunCompleted(EventEnvelope):
+    event_type: str = "PipelineRunCompleted"
+
+
+@dataclass(frozen=True)
+class PipelineRunFailed(EventEnvelope):
+    event_type: str = "PipelineRunFailed"
+
+
+@dataclass(frozen=True)
+class PipelineRunCancelled(EventEnvelope):
+    event_type: str = "PipelineRunCancelled"
+
+
+@dataclass(frozen=True)
+class PipelineRunDeleted(EventEnvelope):
+    event_type: str = "PipelineRunDeleted"
+
+
+@dataclass(frozen=True)
+class PipelineStageApproved(EventEnvelope):
+    event_type: str = "PipelineStageApproved"
+
+
+@dataclass(frozen=True)
+class PipelineStageRejected(EventEnvelope):
+    event_type: str = "PipelineStageRejected"
+
+
+@dataclass(frozen=True)
+class PipelineStageRetried(EventEnvelope):
+    event_type: str = "PipelineStageRetried"
+
+
+@dataclass(frozen=True)
+class StageReportEdited(EventEnvelope):
+    event_type: str = "StageReportEdited"
+
+
+@dataclass(frozen=True)
+class StageReportRegenerated(EventEnvelope):
+    event_type: str = "StageReportRegenerated"
+
+
+# --- Workflow Definition Events ---
+
+
+@dataclass(frozen=True)
+class WorkflowDefinitionCreated(EventEnvelope):
+    event_type: str = "WorkflowDefinitionCreated"
+
+
+@dataclass(frozen=True)
+class WorkflowDefinitionUpdated(EventEnvelope):
+    event_type: str = "WorkflowDefinitionUpdated"
+
+
+@dataclass(frozen=True)
+class WorkflowDefinitionRemoved(EventEnvelope):
+    event_type: str = "WorkflowDefinitionRemoved"
+
+
+register_events(
+    IntentRouted,
+    WorkflowStarted,
+    WorkflowAdvanced,
+    WorkflowTriggered,
+    PipelineRunStarted,
+    PipelineStageCompleted,
+    PipelineRunCompleted,
+    PipelineRunFailed,
+    PipelineRunCancelled,
+    PipelineRunDeleted,
+    PipelineStageApproved,
+    PipelineStageRejected,
+    PipelineStageRetried,
+    StageReportEdited,
+    StageReportRegenerated,
+    WorkflowDefinitionCreated,
+    WorkflowDefinitionUpdated,
+    WorkflowDefinitionRemoved,
 )
-from lintel.contracts.events import (
-    WorkflowDefinitionRemoved as WorkflowDefinitionRemoved,
-)
-from lintel.contracts.events import (
-    WorkflowDefinitionUpdated as WorkflowDefinitionUpdated,
-)
-from lintel.contracts.events import WorkflowStarted as WorkflowStarted
-from lintel.contracts.events import WorkflowTriggered as WorkflowTriggered
