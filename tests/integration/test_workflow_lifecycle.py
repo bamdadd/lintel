@@ -8,12 +8,14 @@ from uuid import uuid4
 import asyncpg
 import pytest
 
-from lintel.contracts.events import HumanApprovalGranted, WorkflowAdvanced, WorkflowStarted
-from lintel.contracts.types import ActorType, ThreadRef, WorkflowPhase
+from lintel.contracts.types import ActorType, ThreadRef
+from lintel.domain.events import HumanApprovalGranted
 from lintel.event_store.postgres import PostgresEventStore
 from lintel.projections.engine import InMemoryProjectionEngine
 from lintel.projections.thread_status import ThreadStatusProjection
 from lintel.slack.events import ThreadMessageReceived
+from lintel.workflows.events import WorkflowAdvanced, WorkflowStarted
+from lintel.workflows.types import WorkflowPhase
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

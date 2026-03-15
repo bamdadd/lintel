@@ -9,7 +9,6 @@ from uuid import uuid4
 import asyncpg
 import pytest
 
-from lintel.contracts.events import WorkflowStarted
 from lintel.contracts.types import ActorType, ThreadRef
 from lintel.event_store.postgres import (
     IdempotencyViolationError,
@@ -17,6 +16,7 @@ from lintel.event_store.postgres import (
     PostgresEventStore,
 )
 from lintel.slack.events import ThreadMessageReceived
+from lintel.workflows.events import WorkflowStarted
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
