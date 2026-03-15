@@ -4,50 +4,22 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import (
     NotificationRuleCreated,
     NotificationRuleRemoved,
     NotificationRuleUpdated,
 )
 from lintel.domain.types import NotificationChannel, NotificationRule
+from lintel.notifications_api.store import NotificationRuleStore
 
 router = APIRouter()
 
-
-class NotificationRuleStore:
-    """In-memory store for notification rules."""
-
-    def __init__(self) -> None:
-        self._rules: dict[str, NotificationRule] = {}
-
-    async def add(self, rule: NotificationRule) -> None:
-        self._rules[rule.rule_id] = rule
-
-    async def get(self, rule_id: str) -> NotificationRule | None:
-        return self._rules.get(rule_id)
-
-    async def list_all(self, *, project_id: str | None = None) -> list[NotificationRule]:
-        rules = list(self._rules.values())
-        if project_id is not None:
-            rules = [r for r in rules if r.project_id == project_id]
-        return rules
-
-    async def update(self, rule: NotificationRule) -> None:
-        self._rules[rule.rule_id] = rule
-
-    async def remove(self, rule_id: str) -> None:
-        del self._rules[rule_id]
-
-
-def get_notification_rule_store(request: Request) -> NotificationRuleStore:
-    """Kept for backward compat."""
-    return request.app.state.notification_rule_store  # type: ignore[no-any-return]
+notification_rule_store_provider: StoreProvider = StoreProvider()
 
 
 def _rule_to_dict(rule: NotificationRule) -> dict[str, Any]:
@@ -71,11 +43,10 @@ class UpdateNotificationRuleRequest(BaseModel):
 
 
 @router.post("/notifications/rules", status_code=201)
-@inject
 async def create_notification_rule(
     body: CreateNotificationRuleRequest,
     request: Request,
-    store: NotificationRuleStore = Depends(Provide[AppContainer.notification_rule_store]),  # noqa: B008
+    store: NotificationRuleStore = Depends(notification_rule_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.rule_id)
     if existing is not None:
@@ -98,9 +69,8 @@ async def create_notification_rule(
 
 
 @router.get("/notifications/rules")
-@inject
 async def list_notification_rules(
-    store: NotificationRuleStore = Depends(Provide[AppContainer.notification_rule_store]),  # noqa: B008
+    store: NotificationRuleStore = Depends(notification_rule_store_provider),  # noqa: B008
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     rules = await store.list_all(project_id=project_id)
@@ -108,10 +78,9 @@ async def list_notification_rules(
 
 
 @router.get("/notifications/rules/{rule_id}")
-@inject
 async def get_notification_rule(
     rule_id: str,
-    store: NotificationRuleStore = Depends(Provide[AppContainer.notification_rule_store]),  # noqa: B008
+    store: NotificationRuleStore = Depends(notification_rule_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     rule = await store.get(rule_id)
     if rule is None:
@@ -120,12 +89,11 @@ async def get_notification_rule(
 
 
 @router.patch("/notifications/rules/{rule_id}")
-@inject
 async def update_notification_rule(
     rule_id: str,
     body: UpdateNotificationRuleRequest,
     request: Request,
-    store: NotificationRuleStore = Depends(Provide[AppContainer.notification_rule_store]),  # noqa: B008
+    store: NotificationRuleStore = Depends(notification_rule_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     rule = await store.get(rule_id)
     if rule is None:
@@ -142,11 +110,10 @@ async def update_notification_rule(
 
 
 @router.delete("/notifications/rules/{rule_id}", status_code=204)
-@inject
 async def delete_notification_rule(
     rule_id: str,
     request: Request,
-    store: NotificationRuleStore = Depends(Provide[AppContainer.notification_rule_store]),  # noqa: B008
+    store: NotificationRuleStore = Depends(notification_rule_store_provider),  # noqa: B008
 ) -> None:
     rule = await store.get(rule_id)
     if rule is None:

@@ -37,7 +37,7 @@ def container() -> Generator[AppContainerType]:
     from lintel.api.routes.environments import InMemoryEnvironmentStore
     from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
     from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
-    from lintel.api.routes.notifications import NotificationRuleStore
+    from lintel.notifications_api.store import NotificationRuleStore
     from lintel.api.routes.pipelines import InMemoryPipelineStore
     from lintel.policies_api.store import InMemoryPolicyStore
     from lintel.api.routes.projects import ProjectStore

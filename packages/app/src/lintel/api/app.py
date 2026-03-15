@@ -40,7 +40,6 @@ from lintel.api.routes import (
     mcp_servers,
     metrics,
     models,
-    notifications,
     onboarding,
     pii,
     pipelines,
@@ -70,7 +69,6 @@ from lintel.api.routes.credentials import InMemoryCredentialStore
 from lintel.api.routes.environments import InMemoryEnvironmentStore
 from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
 from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
-from lintel.api.routes.notifications import NotificationRuleStore
 from lintel.api.routes.pipelines import InMemoryPipelineStore
 from lintel.api.routes.projects import ProjectStore
 from lintel.api.routes.skills import InMemorySkillStore
@@ -79,6 +77,11 @@ from lintel.teams.routes import router as teams_router, team_store_provider
 from lintel.teams.store import InMemoryTeamStore
 from lintel.policies_api.routes import router as policies_router, policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
+from lintel.notifications_api.routes import (
+    router as notifications_router,
+    notification_rule_store_provider,
+)
+from lintel.notifications_api.store import NotificationRuleStore
 from lintel.users.routes import router as users_router, user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.api.routes.variables import InMemoryVariableStore
@@ -556,6 +559,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     user_store_provider.override(stores["user_store"])
     team_store_provider.override(stores["team_store"])
     policy_store_provider.override(stores["policy_store"])
+    notification_rule_store_provider.override(stores["notification_rule_store"])
     app.state.container = container
 
     # Start automation scheduler
@@ -692,7 +696,7 @@ def create_app() -> FastAPI:
     app.include_router(users_router, prefix="/api/v1", tags=["users"])
     app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
     app.include_router(policies_router, prefix="/api/v1", tags=["policies"])
-    app.include_router(notifications.router, prefix="/api/v1", tags=["notifications"])
+    app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
     app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
     app.include_router(artifacts.router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
