@@ -1183,16 +1183,18 @@ async def _auto_format(
                 timeout_seconds=60,
             ),
         )
-        if result.exit_code != 0:
-            # Fallback: run ruff directly
-            await sandbox_manager.execute(
-                sandbox_id,
-                SandboxJob(
-                    command="ruff check --fix . 2>/dev/null; ruff format . 2>/dev/null; true",
-                    workdir=workspace_path,
-                    timeout_seconds=30,
+        # Always run --unsafe-fixes after make format (TC001 etc. need it)
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "ruff check --fix --unsafe-fixes . 2>/dev/null;"
+                    " ruff format . 2>/dev/null; true"
                 ),
-            )
+                workdir=workspace_path,
+                timeout_seconds=30,
+            ),
+        )
     except Exception:
         logger.warning("implement_auto_format_failed", exc_info=True)
 
@@ -1341,7 +1343,7 @@ async def _run_lint(
                 ),
             )
         ).stdout
-        else "ruff check --fix . 2>/dev/null; ruff format . 2>/dev/null; true"
+        else "ruff check --fix --unsafe-fixes . 2>/dev/null; ruff format . 2>/dev/null; true"
     )
     await tracker.append_log("implement", f"Auto-fixing lint: {format_command[:60]}")
     try:
@@ -1354,6 +1356,22 @@ async def _run_lint(
                 await tracker.append_log("implement", line.strip())
     except Exception:
         logger.warning("implement_lint_fix_failed")
+
+    # Always run --unsafe-fixes to catch TC001 etc. that make format misses
+    try:
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "ruff check --fix --unsafe-fixes . 2>/dev/null;"
+                    " ruff format . 2>/dev/null; true"
+                ),
+                workdir=workspace_path,
+                timeout_seconds=30,
+            ),
+        )
+    except Exception:
+        logger.warning("implement_unsafe_fix_failed")
 
     await tracker.append_log("implement", f"Running lint: {lint_command[:80]}")
 
