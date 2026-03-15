@@ -564,6 +564,8 @@ async def _implement_tdd(
     policy = await agent_runtime._model_router.select_model(AgentRole.CODER, "implement_generate")
     is_native_claude_code = policy.provider == "claude_code"
     tdd_tools = None if is_native_claude_code else sandbox_tool_schemas()
+    # Bedrock needs more iterations — it explores before writing
+    tdd_max_iter = 50 if not is_native_claude_code else 20
 
     try:
         result = await agent_runtime.execute_step(
@@ -575,6 +577,7 @@ async def _implement_tdd(
                 {"role": "user", "content": user_prompt},
             ],
             tools=tdd_tools,
+            max_iterations=tdd_max_iter,
             sandbox_manager=sandbox_manager,
             sandbox_id=sandbox_id,
             on_activity=_on_activity,
