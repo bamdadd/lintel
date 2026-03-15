@@ -17,27 +17,40 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-RESEARCH_SYSTEM_PROMPT = (
-    "You are a senior software researcher. Your job is to examine a codebase and "
-    "produce a concise research report that will help a planner write an implementation plan.\n\n"
-    "You will be given:\n"
-    "1. A user request describing what needs to change\n"
-    "2. Codebase context: directory structure, key files, class/function definitions\n\n"
-    "Produce a research report in markdown with these sections:\n"
-    "## Relevant Files\n"
-    "List the files most relevant to the request with a one-line description of each.\n\n"
-    "## Current Architecture\n"
-    "Briefly describe how the relevant parts of the codebase work today.\n\n"
-    "## Key Patterns\n"
-    "Note any conventions, patterns, or dependencies the planner should follow.\n\n"
-    "## Impact Analysis\n"
-    "What other parts of the codebase would be affected by the change? "
-    "List tests, APIs, types, and UI components that may need updates.\n\n"
-    "## Recommendations\n"
-    "Brief suggestions for how to approach the implementation.\n\n"
-    "Be specific — reference actual file paths and code patterns from the context provided. "
-    "Keep the report under 1500 words."
-)
+RESEARCH_SYSTEM_PROMPT = """\
+You are a senior software researcher. Your job is to examine a codebase and \
+produce a concise research report that will help a planner write an implementation plan.
+
+You have access to tools to read files, search code, and explore the repository. \
+USE THEM to find actual file paths, class definitions, and code patterns. \
+Do NOT guess or narrate — explore the codebase and report what you find.
+
+Output ONLY the research report in markdown. Do NOT narrate your thinking process. \
+Do NOT say "Let me read..." or "Now I'll look at...". Just produce the report.
+
+The report MUST contain these sections:
+
+## Relevant Files
+List the files most relevant to the request with a one-line description of each. \
+Include actual file paths discovered via tools.
+
+## Current Architecture
+Briefly describe how the relevant parts of the codebase work today. \
+Reference actual classes, functions, and their relationships.
+
+## Key Patterns
+Note any conventions, patterns, or dependencies the planner should follow. \
+Include examples from the actual code.
+
+## Impact Analysis
+What other parts of the codebase would be affected by the change? \
+List tests, APIs, types, and UI components that may need updates.
+
+## Recommendations
+Brief suggestions for how to approach the implementation.
+
+Be specific — reference actual file paths and line numbers. Keep the report under 1500 words.\
+"""
 
 
 async def _gather_context(
@@ -141,31 +154,15 @@ async def research_codebase(
             workspace_id="lintel-chat", channel_id="chat", thread_ts=thread_ref_str
         )
 
-    # Stream LLM output so partial results appear in stage logs in real-time
+    # Use execute_step (with tools) so the agent can explore the codebase
     await tracker.log_llm_context("research", "researcher", "research_codebase")
 
-    _line_buffer: list[str] = []
-
-    async def _on_chunk(chunk: str) -> None:
-        """Buffer streaming chunks and flush complete lines as stage logs."""
-        _line_buffer.append(chunk)
-        text = "".join(_line_buffer)
-        # Flush complete lines
-        while "\n" in text:
-            line, text = text.split("\n", 1)
-            stripped = line.strip()
-            if stripped:
-                await tracker.append_log("research", stripped)
-        _line_buffer.clear()
-        if text:
-            _line_buffer.append(text)
-
     async def _on_activity(activity: str) -> None:
-        """Forward Claude Code streaming activity to stage logs."""
+        """Forward agent activity to stage logs."""
         if activity:
             await tracker.append_log("research", activity)
 
-    result = await agent_runtime.execute_step_stream(
+    result = await agent_runtime.execute_step(
         thread_ref=thread_ref,
         agent_role=AgentRole.RESEARCHER,
         step_name="research_codebase",
@@ -182,20 +179,34 @@ async def research_codebase(
                 ),
             },
         ],
-        on_chunk=_on_chunk,
         on_activity=_on_activity,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
         run_id=state.get("run_id", ""),
     )
 
-    # Flush any remaining buffered content
-    remaining = "".join(_line_buffer).strip()
-    if remaining:
-        await tracker.append_log("research", remaining)
-
     research_report = result.get("content", "")
     usage = StageTracker.extract_token_usage(result)
+
+    # Validate research quality
+    if len(research_report) < 200:
+        await tracker.append_log("research", "Research output too short — marking as failed")
+        await tracker.mark_completed("research", error="Research output too short")
+        return {
+            "research_context": "",
+            "current_phase": "failed",
+            "error": "Research output too short",
+            "agent_outputs": [{"node": "research", "summary": "Failed: output too short"}],
+            "token_usage": [usage],
+        }
+
+    from lintel.workflows.nodes._quality_gates import validate_research_report
+
+    validation_errors = validate_research_report(research_report)
+    if validation_errors:
+        for err in validation_errors:
+            logger.warning("research_validation_warning", error=err)
+            await tracker.append_log("research", f"⚠ {err}")
 
     await tracker.append_log("research", f"Research complete ({len(research_report):,} chars)")
     await tracker.append_log(

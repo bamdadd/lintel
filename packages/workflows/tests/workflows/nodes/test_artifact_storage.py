@@ -34,8 +34,8 @@ def _make_config(
 class TestResearchArtifactStorage:
     async def test_stores_artifact_on_success(self) -> None:
         mock_runtime = AsyncMock()
-        mock_runtime.execute_step_stream.return_value = {
-            "content": "# Research Report\nFindings here.",
+        mock_runtime.execute_step.return_value = {
+            "content": "# Research Report\nFindings here.\n" + "x" * 200,
             "usage": {"input_tokens": 100, "output_tokens": 50},
         }
         artifact_store = AsyncMock()
@@ -53,7 +53,7 @@ class TestResearchArtifactStorage:
 
         result = await research_codebase(state, config)
 
-        assert result["research_context"] == "# Research Report\nFindings here."
+        assert "# Research Report\nFindings here." in result["research_context"]
         artifact_store.add.assert_awaited_once()
         stored = artifact_store.add.call_args[0][0]
         assert stored.artifact_type == "research_report"
@@ -63,8 +63,8 @@ class TestResearchArtifactStorage:
 
     async def test_no_crash_without_artifact_store(self) -> None:
         mock_runtime = AsyncMock()
-        mock_runtime.execute_step_stream.return_value = {
-            "content": "report",
+        mock_runtime.execute_step.return_value = {
+            "content": "research report content " * 20,
             "usage": {"input_tokens": 10, "output_tokens": 5},
         }
         config = _make_config(runtime=mock_runtime, artifact_store=None)
@@ -80,14 +80,20 @@ class TestResearchArtifactStorage:
         }
 
         result = await research_codebase(state, config)
-        assert result["research_context"] == "report"
+        assert "research report content" in result["research_context"]
 
 
 class TestPlanArtifactStorage:
     async def test_stores_plan_artifact_on_success(self) -> None:
         mock_runtime = AsyncMock()
-        mock_runtime.execute_step_stream.return_value = {
-            "content": '{"tasks": [{"title": "Do X"}], "summary": "Do X"}',
+        valid_plan = (
+            '{"tasks": ['
+            '{"title": "Do X", "description": "X desc", "file_paths": ["x.py"], "complexity": "S"}, '
+            '{"title": "Do Y", "description": "Y desc", "file_paths": ["y.py"], "complexity": "S"}'
+            '], "summary": "Do X and Y"}'
+        )
+        mock_runtime.execute_step.return_value = {
+            "content": valid_plan,
             "usage": {"input_tokens": 100, "output_tokens": 50},
         }
         artifact_store = AsyncMock()
@@ -115,8 +121,14 @@ class TestPlanArtifactStorage:
 
     async def test_no_crash_without_artifact_store(self) -> None:
         mock_runtime = AsyncMock()
-        mock_runtime.execute_step_stream.return_value = {
-            "content": '{"tasks": [{"title": "Y"}], "summary": "Y"}',
+        valid_plan = (
+            '{"tasks": ['
+            '{"title": "Y", "description": "Y desc", "file_paths": ["y.py"], "complexity": "S"}, '
+            '{"title": "Z", "description": "Z desc", "file_paths": ["z.py"], "complexity": "S"}'
+            '], "summary": "Y and Z"}'
+        )
+        mock_runtime.execute_step.return_value = {
+            "content": valid_plan,
             "usage": {"input_tokens": 10, "output_tokens": 5},
         }
         config = _make_config(runtime=mock_runtime, artifact_store=None)

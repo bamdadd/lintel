@@ -18,23 +18,49 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-PLAN_SYSTEM_PROMPT = (
-    "You are a senior software planner. Given a feature request or bug report, "
-    "analyse the codebase context provided and "
-    "produce a detailed implementation plan as JSON with the following structure:\n"
-    '{"tasks": [{"title": "...", "description": "...", '
-    '"file_paths": ["..."], "complexity": "S|M|L|XL"}], '
-    '"summary": "one-line summary of what will be done"}\n\n'
-    "Be specific about which files to change, what to add/remove, and "
-    "any cascading effects (tests, APIs, types, UI).\n\n"
-    "If codebase context is provided, reference actual file paths and existing "
-    "patterns in your plan. Identify the right places to make changes based on "
-    "the project structure and conventions you observe."
-)
+PLAN_SYSTEM_PROMPT = """\
+You are a senior software planner. Given a feature request or bug report and \
+research context, produce a detailed implementation plan.
+
+You have access to tools to read files and explore the repository. \
+USE THEM to verify file paths and understand code structure before planning. \
+Do NOT guess — explore the codebase and plan based on what you find.
+
+Output ONLY valid JSON. No markdown fences, no explanation, no narration.
+
+Required JSON schema:
+{
+  "tasks": [
+    {
+      "title": "Short task title",
+      "description": "What to do and why",
+      "file_paths": ["path/to/file1.py", "path/to/file2.py"],
+      "complexity": "S|M|L|XL"
+    }
+  ],
+  "summary": "One-line summary of the full plan",
+  "test_strategy": "How to verify the changes work"
+}
+
+Rules:
+- Break work into 2+ tasks. A single-task plan is NOT acceptable.
+- Each task MUST specify file_paths of files to create or modify.
+- Order tasks by dependency (earlier tasks first).
+- Include test tasks — specify which test files to create or update.
+- Reference actual file paths from the research context or discovered via tools.\
+"""
+
+PLAN_RETRY_PROMPT = """\
+Your plan failed validation with these errors:
+{errors}
+
+Fix the plan and output ONLY valid JSON matching the required schema. \
+Every task must have title, description, and file_paths (non-empty list).\
+"""
 
 
-def _parse_plan(content: str) -> dict[str, Any]:
-    """Extract JSON plan from LLM response, with fallback."""
+def _parse_plan(content: str) -> dict[str, Any] | None:
+    """Extract JSON plan from LLM response. Returns None if unparseable."""
     # Strategy 1: Find ```json ... ``` fenced block (use rfind for closing to handle nested fences)
     for fence in ("```json", "```"):
         idx = content.find(fence)
@@ -59,11 +85,8 @@ def _parse_plan(content: str) -> dict[str, Any]:
             except json.JSONDecodeError:
                 pass
 
-    # Fallback: return raw content as single task
-    return {
-        "tasks": [{"title": "Implement request", "description": content}],
-        "summary": content[:200],
-    }
+    # No fallback — return None to signal parse failure
+    return None
 
 
 def _build_thread_ref(raw: str) -> ThreadRef:
@@ -145,28 +168,12 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
 
     await tracker.log_llm_context("plan", "planner", "plan_work")
 
-    # Stream LLM output so partial results appear in stage logs in real-time
-    _line_buffer: list[str] = []
-
-    async def _on_chunk(chunk: str) -> None:
-        """Buffer streaming chunks and flush complete lines as stage logs."""
-        _line_buffer.append(chunk)
-        text = "".join(_line_buffer)
-        while "\n" in text:
-            line, text = text.split("\n", 1)
-            stripped = line.strip()
-            if stripped:
-                await tracker.append_log("plan", stripped)
-        _line_buffer.clear()
-        if text:
-            _line_buffer.append(text)
-
     async def _on_activity(activity: str) -> None:
-        """Forward Claude Code streaming activity to stage logs."""
+        """Forward agent activity to stage logs."""
         if activity:
             await tracker.append_log("plan", activity)
 
-    result = await agent_runtime.execute_step_stream(
+    result = await agent_runtime.execute_step(
         thread_ref=thread_ref,
         agent_role=AgentRole.PLANNER,
         step_name="plan_work",
@@ -174,20 +181,81 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
             {"role": "system", "content": PLAN_SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
-        on_chunk=_on_chunk,
         on_activity=_on_activity,
         sandbox_manager=sandbox_manager,
         sandbox_id=sandbox_id,
         run_id=state.get("run_id", ""),
     )
 
-    # Flush remaining buffer
-    remaining = "".join(_line_buffer).strip()
-    if remaining:
-        await tracker.append_log("plan", remaining)
-
     content = result.get("content", "")
     plan = _parse_plan(content)
+
+    # Parse failure — log raw content and fail
+    if plan is None:
+        logger.error("plan_parse_failed", raw_content=content[:500])
+        await tracker.append_log("plan", "Failed to parse plan JSON from LLM output")
+        await tracker.append_log("plan", f"Raw output (first 300 chars): {content[:300]}")
+        await tracker.mark_completed("plan", error="Could not parse plan JSON")
+        return {
+            "plan": {},
+            "current_phase": "failed",
+            "error": "Could not parse plan JSON from LLM output",
+            "agent_outputs": [{"node": "plan", "summary": "Failed: unparseable output"}],
+            "token_usage": [StageTracker.extract_token_usage(result)],
+        }
+
+    # Validate plan structure
+    from lintel.workflows.nodes._quality_gates import validate_plan
+
+    validation_errors = validate_plan(plan)
+    if validation_errors:
+        await tracker.append_log("plan", f"Plan validation failed: {'; '.join(validation_errors)}")
+        await tracker.append_log("plan", "Retrying with validation feedback...")
+
+        retry_result = await agent_runtime.execute_step(
+            thread_ref=thread_ref,
+            agent_role=AgentRole.PLANNER,
+            step_name="plan_work_retry",
+            messages=[
+                {"role": "system", "content": PLAN_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+                {"role": "assistant", "content": content},
+                {
+                    "role": "user",
+                    "content": PLAN_RETRY_PROMPT.format(
+                        errors="\n".join(f"- {e}" for e in validation_errors),
+                    ),
+                },
+            ],
+            on_activity=_on_activity,
+            sandbox_manager=sandbox_manager,
+            sandbox_id=sandbox_id,
+            run_id=state.get("run_id", ""),
+        )
+
+        retry_content = retry_result.get("content", "")
+        retry_plan = _parse_plan(retry_content)
+        retry_errors = validate_plan(retry_plan) if retry_plan else ["Still unparseable"]
+
+        if retry_plan and not retry_errors:
+            plan = retry_plan
+            content = retry_content
+            await tracker.append_log("plan", "Retry succeeded — plan is valid")
+        else:
+            logger.error("plan_retry_failed", errors=retry_errors)
+            await tracker.append_log("plan", f"Retry also failed: {'; '.join(retry_errors)}")
+            await tracker.mark_completed("plan", error="Plan validation failed after retry")
+            return {
+                "plan": {},
+                "current_phase": "failed",
+                "error": f"Plan validation failed: {'; '.join(retry_errors)}",
+                "agent_outputs": [{"node": "plan", "summary": "Failed: invalid plan after retry"}],
+                "token_usage": [
+                    StageTracker.extract_token_usage(result),
+                    StageTracker.extract_token_usage(retry_result),
+                ],
+            }
+
     plan["intent"] = state.get("intent", "feature")
     usage = StageTracker.extract_token_usage(result)
 
