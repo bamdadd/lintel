@@ -30,6 +30,7 @@ members = [
     "lintel-event-store",
     "lintel-experimentation-api",
     "lintel-infrastructure",
+    "lintel-integration-patterns-api",
     "lintel-mcp-servers-api",
     "lintel-models",
     "lintel-models-api",
@@ -1564,6 +1565,7 @@ dependencies = [
     { name = "lintel-event-store" },
     { name = "lintel-experimentation-api" },
     { name = "lintel-infrastructure" },
+    { name = "lintel-integration-patterns-api" },
     { name = "lintel-mcp-servers-api" },
     { name = "lintel-models" },
     { name = "lintel-models-api" },
@@ -1623,6 +1625,7 @@ requires-dist = [
     { name = "lintel-event-store", editable = "packages/event-store" },
     { name = "lintel-experimentation-api", editable = "packages/experimentation-api" },
     { name = "lintel-infrastructure", editable = "packages/infrastructure" },
+    { name = "lintel-integration-patterns-api", editable = "packages/integration-patterns-api" },
     { name = "lintel-mcp-servers-api", editable = "packages/mcp-servers-api" },
     { name = "lintel-models", editable = "packages/models" },
     { name = "lintel-models-api", editable = "packages/models-api" },
@@ -2094,6 +2097,29 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-integration-patterns-api"
+version = "0.1.0"
+source = { editable = "packages/integration-patterns-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 

@@ -233,6 +233,11 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/knowledge/pages/KnowledgeBasePage'),
       },
       {
+        path: 'integration-patterns',
+        lazy: () =>
+          import('@/features/integration-patterns/pages/IntegrationPatternsPage'),
+      },
+      {
         path: 'debug',
         lazy: () => import('@/features/debug/pages/DebugPage'),
       },

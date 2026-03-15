@@ -267,6 +267,7 @@ WORKFLOW_BUILDERS: dict[str, Any] = {
     "release": build_release_graph,
     "onboarding": build_onboarding_graph,
     "spike": build_spike_graph,
+    "extract_integration_patterns": None,  # uses dedicated module
 }
 
 
@@ -276,6 +277,13 @@ def get_workflow_builder(definition_id: str) -> Callable[[], StateGraph[Any]]:
         from lintel.workflows.feature_to_pr import build_feature_to_pr_graph
 
         return build_feature_to_pr_graph
+
+    if definition_id == "extract_integration_patterns":
+        from lintel.workflows.extract_integration_patterns import (
+            build_extract_integration_patterns_graph,
+        )
+
+        return build_extract_integration_patterns_graph
 
     builder = WORKFLOW_BUILDERS.get(definition_id)
     if builder is None:

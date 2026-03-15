@@ -54,6 +54,7 @@ import {
   IconBulb,
   IconBug,
   IconCalendarEvent,
+  IconNetwork,
 } from '@tabler/icons-react';
 import type { Icon } from '@tabler/icons-react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -86,6 +87,7 @@ const navSections: NavSection[] = [
       { label: 'Sandboxes', path: '/sandboxes', icon: IconBox },
       { label: 'Artifacts', path: '/artifacts', icon: IconPackage },
       { label: 'Test Results', path: '/test-results', icon: IconTestPipe2 },
+      { label: 'Integration Patterns', path: '/integration-patterns', icon: IconNetwork },
       { label: 'Debug', path: '/debug', icon: IconBug },
     ],
   },
