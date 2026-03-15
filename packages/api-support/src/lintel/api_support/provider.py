@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+_UNSET = object()
+
 
 class StoreProvider:
     """Store holder that can be overridden at app startup.
@@ -21,10 +23,13 @@ class StoreProvider:
     Wire at startup::
 
         user_store_provider.override(InMemoryUserStore())
+
+    You may also override with ``None`` to signal an optional dependency is not
+    configured (the route must check for ``None`` itself).
     """
 
     def __init__(self) -> None:
-        self._instance: Any = None
+        self._instance: Any = _UNSET
 
     def override(self, instance: Any) -> None:  # noqa: ANN401
         """Set or replace the store instance."""
@@ -32,6 +37,6 @@ class StoreProvider:
 
     def __call__(self) -> Any:  # noqa: ANN401
         """Return the store instance (called by FastAPI Depends)."""
-        if self._instance is None:
+        if self._instance is _UNSET:
             raise RuntimeError("Store not configured — call .override() at app startup")
         return self._instance
