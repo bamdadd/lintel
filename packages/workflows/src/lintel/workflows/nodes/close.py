@@ -161,6 +161,15 @@ async def close_workflow(
                 except Exception:
                     logger.warning("close_credential_resolve_failed", cred_id=cred_id)
 
+        # Fetch latest remote refs before pushing (avoids "stale info" rejections)
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=f"cd {workdir} && git fetch origin 2>&1 || true",
+                timeout_seconds=30,
+            ),
+        )
+
         # Push
         await tracker.append_log("close", f"Pushing branch {feature_branch}...")
         push_result = await sandbox_manager.execute(
