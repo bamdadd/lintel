@@ -31,7 +31,6 @@ from lintel.api.routes import (
     boards,
     chat,
     compliance,
-    credentials,
     debug,
     events,
     experimentation,
@@ -63,7 +62,6 @@ from lintel.api.routes.automations import InMemoryAutomationStore
 from lintel.api.routes.boards import BoardStore, TagStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.compliance import ComplianceStore
-from lintel.api.routes.credentials import InMemoryCredentialStore
 from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
 from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.api.routes.pipelines import InMemoryPipelineStore
@@ -86,6 +84,11 @@ from lintel.environments_api.routes import (
 from lintel.environments_api.store import InMemoryEnvironmentStore
 from lintel.variables_api.routes import router as variables_router, variable_store_provider
 from lintel.variables_api.store import InMemoryVariableStore
+from lintel.credentials_api.routes import (
+    router as credentials_router,
+    credential_store_provider,
+)
+from lintel.credentials_api.store import InMemoryCredentialStore
 from lintel.users.routes import router as users_router, user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.api.routes.work_items import WorkItemStore
@@ -565,6 +568,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     notification_rule_store_provider.override(stores["notification_rule_store"])
     environment_store_provider.override(stores["environment_store"])
     variable_store_provider.override(stores["variable_store"])
+    credential_store_provider.override(stores["credential_store"])
     app.state.container = container
 
     # Start automation scheduler
@@ -689,7 +693,7 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, prefix="/api/v1", tags=["settings"])
     app.include_router(workflow_definitions.router, prefix="/api/v1", tags=["workflow-definitions"])
     app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
-    app.include_router(credentials.router, prefix="/api/v1", tags=["credentials"])
+    app.include_router(credentials_router, prefix="/api/v1", tags=["credentials"])
     app.include_router(ai_providers.router, prefix="/api/v1", tags=["ai-providers"])
     app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
     app.include_router(work_items.router, prefix="/api/v1", tags=["work-items"])

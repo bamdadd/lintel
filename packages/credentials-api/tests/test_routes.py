@@ -5,18 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi.testclient import TestClient
-import pytest
-
-from lintel.api.app import create_app
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
-
-@pytest.fixture()
-def client() -> Generator[TestClient]:
-    with TestClient(create_app()) as c:
-        yield c
+    pass
 
 
 class TestCredentialsAPI:
