@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
+from lintel.boards.store import BoardStore, TagStore
 from lintel.domain.events import (
     BoardCreated,
     BoardRemoved,
@@ -19,75 +19,11 @@ from lintel.domain.events import (
     TagRemoved,
     TagUpdated,
 )
-from lintel.persistence.data_models import BoardData, TagData
 
 router = APIRouter()
 
-
-# ---------------------------------------------------------------------------
-# In-memory stores
-# ---------------------------------------------------------------------------
-
-
-class TagStore:
-    """In-memory tag store."""
-
-    def __init__(self) -> None:
-        self._data: dict[str, dict[str, Any]] = {}
-
-    async def add(self, data: dict[str, Any]) -> None:
-        validated = TagData.model_validate(data)
-        self._data[validated.tag_id] = validated.model_dump()
-
-    async def get(self, tag_id: str) -> dict[str, Any] | None:
-        return self._data.get(tag_id)
-
-    async def list_by_project(self, project_id: str) -> list[dict[str, Any]]:
-        return [t for t in self._data.values() if t.get("project_id") == project_id]
-
-    async def update(self, tag_id: str, data: dict[str, Any]) -> None:
-        validated = TagData.model_validate(data)
-        self._data[tag_id] = validated.model_dump()
-
-    async def remove(self, tag_id: str) -> None:
-        self._data.pop(tag_id, None)
-
-
-class BoardStore:
-    """In-memory board store."""
-
-    def __init__(self) -> None:
-        self._data: dict[str, dict[str, Any]] = {}
-
-    async def add(self, data: dict[str, Any]) -> None:
-        validated = BoardData.model_validate(data)
-        self._data[validated.board_id] = validated.model_dump()
-
-    async def get(self, board_id: str) -> dict[str, Any] | None:
-        return self._data.get(board_id)
-
-    async def list_by_project(self, project_id: str) -> list[dict[str, Any]]:
-        return [b for b in self._data.values() if b.get("project_id") == project_id]
-
-    async def update(self, board_id: str, data: dict[str, Any]) -> None:
-        validated = BoardData.model_validate(data)
-        self._data[board_id] = validated.model_dump()
-
-    async def remove(self, board_id: str) -> None:
-        self._data.pop(board_id, None)
-
-
-# ---------------------------------------------------------------------------
-# Dependencies
-# ---------------------------------------------------------------------------
-
-
-def get_tag_store(request: Request) -> TagStore:
-    return request.app.state.tag_store  # type: ignore[no-any-return]
-
-
-def get_board_store(request: Request) -> BoardStore:
-    return request.app.state.board_store  # type: ignore[no-any-return]
+tag_store_provider = StoreProvider()
+board_store_provider = StoreProvider()
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +71,10 @@ class UpdateBoardRequest(BaseModel):
 
 
 @router.post("/tags", status_code=201)
-@inject
 async def create_tag(
     body: CreateTagRequest,
     request: Request,
-    store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
+    store: TagStore = Depends(tag_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.tag_id)
     if existing is not None:
@@ -156,19 +91,17 @@ async def create_tag(
 
 
 @router.get("/projects/{project_id}/tags")
-@inject
 async def list_tags(
     project_id: str,
-    store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
+    store: TagStore = Depends(tag_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     return await store.list_by_project(project_id)
 
 
 @router.get("/tags/{tag_id}")
-@inject
 async def get_tag(
     tag_id: str,
-    store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
+    store: TagStore = Depends(tag_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(tag_id)
     if item is None:
@@ -177,12 +110,11 @@ async def get_tag(
 
 
 @router.patch("/tags/{tag_id}")
-@inject
 async def update_tag(
     tag_id: str,
     body: UpdateTagRequest,
     request: Request,
-    store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
+    store: TagStore = Depends(tag_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(tag_id)
     if item is None:
@@ -200,11 +132,10 @@ async def update_tag(
 
 
 @router.delete("/tags/{tag_id}", status_code=204)
-@inject
 async def remove_tag(
     tag_id: str,
     request: Request,
-    store: TagStore = Depends(Provide[AppContainer.tag_store]),  # noqa: B008
+    store: TagStore = Depends(tag_store_provider),  # noqa: B008
 ) -> None:
     item = await store.get(tag_id)
     if item is None:
@@ -223,11 +154,10 @@ async def remove_tag(
 
 
 @router.post("/boards", status_code=201)
-@inject
 async def create_board(
     body: CreateBoardRequest,
     request: Request,
-    store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
+    store: BoardStore = Depends(board_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.board_id)
     if existing is not None:
@@ -244,19 +174,17 @@ async def create_board(
 
 
 @router.get("/projects/{project_id}/boards")
-@inject
 async def list_boards(
     project_id: str,
-    store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
+    store: BoardStore = Depends(board_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     return await store.list_by_project(project_id)
 
 
 @router.get("/boards/{board_id}")
-@inject
 async def get_board(
     board_id: str,
-    store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
+    store: BoardStore = Depends(board_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(board_id)
     if item is None:
@@ -265,12 +193,11 @@ async def get_board(
 
 
 @router.patch("/boards/{board_id}")
-@inject
 async def update_board(
     board_id: str,
     body: UpdateBoardRequest,
     request: Request,
-    store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
+    store: BoardStore = Depends(board_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(board_id)
     if item is None:
@@ -288,11 +215,10 @@ async def update_board(
 
 
 @router.delete("/boards/{board_id}", status_code=204)
-@inject
 async def remove_board(
     board_id: str,
     request: Request,
-    store: BoardStore = Depends(Provide[AppContainer.board_store]),  # noqa: B008
+    store: BoardStore = Depends(board_store_provider),  # noqa: B008
 ) -> None:
     item = await store.get(board_id)
     if item is None:

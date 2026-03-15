@@ -4,16 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from starlette.testclient import TestClient
-
-from lintel.api.app import create_app
-
-
-@pytest.fixture
-def client() -> TestClient:  # type: ignore[misc]
-    with TestClient(create_app()) as c:
-        yield c  # type: ignore[misc]
 
 
 class TestTagCRUD:
