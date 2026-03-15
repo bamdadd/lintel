@@ -4,8 +4,8 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
+import httpx
 from pydantic import BaseModel, Field
 
 from lintel.ai_providers_api.store import InMemoryAIProviderStore

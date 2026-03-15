@@ -1,5 +1,38 @@
 # Implementation Log
 
+## Phase 5: Extract 6 Large/Complex Packages
+
+### Completed Steps
+1. Fixed `StoreProvider.__class_getitem__` to support generic subscript `StoreProvider[T]` notation
+2. Added `test_sandboxes.py` to `sandboxes-api/tests/` (was missing), updating import to `lintel.sandboxes_api.routes`
+3. Added `client` fixture to `chat-api/tests/conftest.py` for `test_chat_project_selection.py` and `test_chat_retry.py`
+4. Ran ruff auto-fix (59 import-sort issues) across all 6 packages
+5. Committed all 6 packages + app wiring — committed as `0fd4a71`
+
+### Deviations from Plan
+- All 6 packages were already scaffolded (routes, stores, domain logic, tests) when work began — the main gaps were `StoreProvider` subscript support, the missing sandboxes test file, and the missing chat conftest fixture.
+
+### Files Created
+- `packages/compliance-api/` — ComplianceStore, routes, seed, 14 tests
+- `packages/experimentation-api/` — uses ComplianceStore, routes, 9 tests
+- `packages/automations-api/` — InMemoryAutomationStore, routes, scheduler, hooks, 48 tests
+- `packages/sandboxes-api/` — SandboxStore, routes, 11 tests
+- `packages/pipelines-api/` — InMemoryPipelineStore, routes, delivery_loop, 26+ tests
+- `packages/chat-api/` — ChatStore, routes, chat_router, 110+ tests
+
+### Files Modified
+- `packages/api-support/src/lintel/api_support/provider.py` — added `__class_getitem__` for generic subscript support
+- `packages/app/src/lintel/api/app.py` — wired all 6 new packages via StoreProvider.override()
+- `packages/app/pyproject.toml` — added 6 new dependencies
+- `packages/app/tests/conftest.py` — updated stale imports to new package paths
+- `pyproject.toml` — added 6 new test/src paths
+
+### Test Results
+- 218 tests passing across all 6 new packages
+- 388 app tests passing, 59 skipped — no regressions
+
+---
+
 ## Phase 4: Extract Medium CRUD Batch (8 packages)
 
 ### Completed Steps

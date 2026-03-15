@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.policies_api.routes import router, policy_store_provider
+from lintel.policies_api.routes import policy_store_provider, router
 from lintel.policies_api.store import InMemoryPolicyStore
 
 if TYPE_CHECKING:

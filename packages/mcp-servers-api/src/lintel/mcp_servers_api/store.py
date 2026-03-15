@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from lintel.domain.types import MCPServer
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from lintel.domain.types import MCPServer
 
 
 class InMemoryMCPServerStore:

@@ -5,17 +5,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
-import pytest
-
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+import pytest
 
+from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import (
     repo_provider_provider,
     repository_store_provider,
     router,
 )
-from lintel.repos.repository_store import InMemoryRepositoryStore
 
 if TYPE_CHECKING:
     from collections.abc import Generator

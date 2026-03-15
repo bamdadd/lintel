@@ -1,11 +1,6 @@
 """Tests for environments API."""
 
-from typing import TYPE_CHECKING
-
 from fastapi.testclient import TestClient
-
-if TYPE_CHECKING:
-    pass
 
 
 def _create_environment(

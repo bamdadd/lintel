@@ -7,11 +7,11 @@ from uuid import uuid4
 
 import pytest
 
-from lintel.variables_api.store import InMemoryVariableStore
 from lintel.contracts.types import ThreadRef  # noqa: TC001
 from lintel.domain.types import Variable
 from lintel.persistence.types import Credential, CredentialType
 from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
+from lintel.variables_api.store import InMemoryVariableStore
 from lintel.workflows.nodes.setup_workspace import setup_workspace
 
 

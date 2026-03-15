@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.environments_api.routes import router, environment_store_provider
+from lintel.environments_api.routes import environment_store_provider, router
 from lintel.environments_api.store import InMemoryEnvironmentStore
 
 if TYPE_CHECKING:

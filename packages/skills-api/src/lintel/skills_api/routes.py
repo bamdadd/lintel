@@ -15,9 +15,7 @@ from lintel.agents.events import (
 )
 from lintel.agents.types import (
     SkillCategory,
-    SkillDescriptor,
     SkillExecutionMode,
-    SkillResult,
 )
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider

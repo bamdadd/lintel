@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
-from lintel.boards.store import BoardStore, TagStore
 from lintel.domain.events import (
     BoardCreated,
     BoardRemoved,
@@ -19,6 +18,9 @@ from lintel.domain.events import (
     TagRemoved,
     TagUpdated,
 )
+
+if TYPE_CHECKING:
+    from lintel.boards.store import BoardStore, TagStore
 
 router = APIRouter()
 

@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.credentials_api.routes import router, credential_store_provider
+from lintel.credentials_api.routes import credential_store_provider, router
 from lintel.credentials_api.store import InMemoryCredentialStore
 
 if TYPE_CHECKING:

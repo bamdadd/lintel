@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.boards.routes import router, board_store_provider, tag_store_provider
+from lintel.boards.routes import board_store_provider, router, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
 
 if TYPE_CHECKING:

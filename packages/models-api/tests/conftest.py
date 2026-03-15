@@ -10,7 +10,11 @@ import pytest
 
 from lintel.ai_providers_api.routes import (
     ai_provider_store_provider as ai_prov_store_provider,
+)
+from lintel.ai_providers_api.routes import (
     model_store_provider as ai_prov_model_store_provider,
+)
+from lintel.ai_providers_api.routes import (
     router as ai_providers_router,
 )
 from lintel.ai_providers_api.store import InMemoryAIProviderStore

@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.notifications_api.routes import router, notification_rule_store_provider
+from lintel.notifications_api.routes import notification_rule_store_provider, router
 from lintel.notifications_api.store import NotificationRuleStore
 
 if TYPE_CHECKING:

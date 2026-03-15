@@ -1,7 +1,6 @@
 """Work-item CRUD endpoints."""
 
 import asyncio
-from dataclasses import asdict
 from datetime import UTC, datetime
 import logging
 from typing import Annotated, Any
@@ -21,7 +20,6 @@ from lintel.domain.types import (
     WorkItemStatus,
     WorkItemType,
 )
-from lintel.persistence.data_models import WorkItemData
 from lintel.work_items_api.store import WorkItemStore
 from lintel.workflows.types import (
     PipelineRun,
@@ -342,7 +340,9 @@ async def _trigger_workflow_for_work_item(
     # Create pipeline run
     pipeline_store = getattr(request.app.state, "pipeline_store", None)
     if pipeline_store:
-        from lintel.api.routes.pipelines import _stage_names_for_workflow  # type: ignore[attr-defined]
+        from lintel.api.routes.pipelines import (
+            _stage_names_for_workflow,  # type: ignore[attr-defined]
+        )
 
         stage_names = _stage_names_for_workflow(workflow_type)
         stages = tuple(

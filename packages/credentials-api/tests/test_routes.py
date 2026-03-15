@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi.testclient import TestClient
-
 if TYPE_CHECKING:
-    pass
+    from fastapi.testclient import TestClient
 
 
 class TestCredentialsAPI:

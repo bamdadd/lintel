@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.audit_api.routes import router, audit_entry_store_provider
+from lintel.audit_api.routes import audit_entry_store_provider, router
 from lintel.audit_api.store import AuditEntryStore
 
 if TYPE_CHECKING:

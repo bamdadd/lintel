@@ -97,7 +97,6 @@ class CreatePipelineRequest(BaseModel):
 
 
 @router.post("/pipelines", status_code=201)
-
 async def create_pipeline(
     body: CreatePipelineRequest,
     request: Request,
@@ -144,7 +143,6 @@ async def create_pipeline(
 
 
 @router.get("/pipelines")
-
 async def list_pipelines(
     store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
     project_id: str | None = None,
@@ -154,7 +152,6 @@ async def list_pipelines(
 
 
 @router.get("/pipelines/{run_id}")
-
 async def get_pipeline(
     run_id: str,
     store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
@@ -166,7 +163,6 @@ async def get_pipeline(
 
 
 @router.get("/pipelines/{run_id}/stages")
-
 async def list_stages(
     run_id: str,
     store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
@@ -178,7 +174,6 @@ async def list_stages(
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}")
-
 async def get_stage(
     run_id: str,
     stage_id: str,
@@ -194,7 +189,6 @@ async def get_stage(
 
 
 @router.post("/pipelines/{run_id}/cancel")
-
 async def cancel_pipeline(
     run_id: str,
     request: Request,
@@ -243,7 +237,6 @@ async def cancel_pipeline(
 
 
 @router.delete("/pipelines/{run_id}", status_code=204)
-
 async def delete_pipeline(
     run_id: str,
     request: Request,
@@ -318,7 +311,6 @@ class ReportVersionService:
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}/logs")
-
 async def stream_stage_logs(
     run_id: str,
     stage_id: str,
@@ -379,7 +371,6 @@ async def stream_stage_logs(
 
 
 @router.get("/pipelines/{run_id}/events")
-
 async def stream_pipeline_events(
     run_id: str,
     store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
@@ -432,7 +423,6 @@ async def stream_pipeline_events(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/retry")
-
 async def retry_stage(
     run_id: str,
     stage_id: str,
@@ -533,7 +523,6 @@ async def retry_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/reject")
-
 async def reject_stage(
     run_id: str,
     stage_id: str,
@@ -625,7 +614,6 @@ async def reject_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/approve")
-
 async def approve_stage(
     run_id: str,
     stage_id: str,
@@ -707,7 +695,6 @@ class RegeneratePayload(BaseModel):
 
 
 @router.patch("/pipelines/{run_id}/stages/{stage_id}/report")
-
 async def edit_stage_report(
     run_id: str,
     stage_id: str,
@@ -766,7 +753,6 @@ async def edit_stage_report(
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}/report/versions")
-
 async def list_report_versions(
     run_id: str,
     stage_id: str,
@@ -784,7 +770,6 @@ async def list_report_versions(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/regenerate")
-
 async def regenerate_stage(
     run_id: str,
     stage_id: str,

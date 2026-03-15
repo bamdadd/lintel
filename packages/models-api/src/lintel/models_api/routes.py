@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.ai_providers_api.store import InMemoryAIProviderStore
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.models.events import (
@@ -20,7 +19,10 @@ from lintel.models.events import (
     ModelUpdated,
 )
 from lintel.models.types import Model, ModelAssignment, ModelAssignmentContext
-from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
+
+if TYPE_CHECKING:
+    from lintel.ai_providers_api.store import InMemoryAIProviderStore
+    from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
 
 router = APIRouter()
 

@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.projects_api.routes import router, project_store_provider
+from lintel.projects_api.routes import project_store_provider, router
 from lintel.projects_api.store import ProjectStore
 
 if TYPE_CHECKING:

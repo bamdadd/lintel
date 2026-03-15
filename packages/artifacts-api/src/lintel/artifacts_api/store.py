@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from lintel.domain.types import CodeArtifact, TestResult
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from lintel.domain.types import CodeArtifact, TestResult
 
 
 class CodeArtifactStore:

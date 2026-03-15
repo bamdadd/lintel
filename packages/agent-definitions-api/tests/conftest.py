@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.agent_definitions_api.routes import router, agent_definition_store_provider
+from lintel.agent_definitions_api.routes import agent_definition_store_provider, router
 from lintel.agent_definitions_api.store import AgentDefinitionStore
 
 if TYPE_CHECKING:

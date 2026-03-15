@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from lintel.models.types import Model, ModelAssignment, ModelAssignmentContext
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from lintel.models.types import Model, ModelAssignment, ModelAssignmentContext
 
 
 class InMemoryModelStore:

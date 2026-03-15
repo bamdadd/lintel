@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -13,7 +13,9 @@ from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import MCPServerRegistered, MCPServerRemoved, MCPServerUpdated
 from lintel.domain.types import MCPServer
-from lintel.mcp_servers_api.store import InMemoryMCPServerStore
+
+if TYPE_CHECKING:
+    from lintel.mcp_servers_api.store import InMemoryMCPServerStore
 
 router = APIRouter()
 

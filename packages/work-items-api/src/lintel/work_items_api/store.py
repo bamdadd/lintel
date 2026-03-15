@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from lintel.domain.types import WorkItem
 from lintel.persistence.data_models import WorkItemData
+
+if TYPE_CHECKING:
+    from lintel.domain.types import WorkItem
 
 
 class WorkItemStore:

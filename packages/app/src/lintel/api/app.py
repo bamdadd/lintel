@@ -18,18 +18,24 @@ if TYPE_CHECKING:
     from langgraph.graph.state import CompiledStateGraph
 
 from lintel.agent_definitions_api.routes import (
-    router as agent_definitions_router,
     agent_definition_store_provider,
 )
+from lintel.agent_definitions_api.routes import (
+    router as agent_definitions_router,
+)
 from lintel.agent_definitions_api.store import AgentDefinitionStore
-from lintel.api.container import AppContainer, wire_container
-from lintel.api.middleware import CorrelationMiddleware
 from lintel.ai_providers_api.routes import (
-    router as ai_providers_router,
     ai_provider_store_provider,
+)
+from lintel.ai_providers_api.routes import (
     model_store_provider as ai_providers_model_store_provider,
 )
+from lintel.ai_providers_api.routes import (
+    router as ai_providers_router,
+)
 from lintel.ai_providers_api.store import InMemoryAIProviderStore
+from lintel.api.container import AppContainer, wire_container
+from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routes import (
     admin,
     approvals,
@@ -43,118 +49,158 @@ from lintel.api.routes import (
     threads,
     workflows,
 )
-from lintel.automations_api.routes import (
-    router as automations_router,
-    automation_store_provider,
-    InMemoryAutomationStore,
+from lintel.approval_requests_api.routes import (
+    approval_request_store_provider,
 )
-from lintel.chat_api.routes import router as chat_router_routes, chat_store_provider, ChatStore
-from lintel.compliance_api.routes import (
-    router as compliance_router,
-    regulation_store_provider,
-    compliance_policy_store_provider,
-    procedure_store_provider,
-    practice_store_provider,
-    strategy_store_provider,
-    knowledge_entry_store_provider,
-    knowledge_extraction_store_provider,
-    architecture_decision_store_provider,
-)
-from lintel.compliance_api.store import ComplianceStore
-from lintel.experimentation_api.routes import (
-    router as experimentation_router,
-    kpi_store_provider,
-    experiment_store_provider,
-    compliance_metric_store_provider,
-)
-from lintel.pipelines_api.routes import (
-    router as pipelines_router,
-    pipeline_store_provider,
-    InMemoryPipelineStore,
-)
-from lintel.sandboxes_api.routes import router as sandboxes_router, SandboxStore
-from lintel.models_api.routes import (
-    router as models_router,
-    model_store_provider,
-    model_assignment_store_provider,
-    ai_provider_store_provider as models_ai_provider_store_provider,
-)
-from lintel.models_api.store import InMemoryModelStore, InMemoryModelAssignmentStore
-from lintel.repositories_api.routes import (
-    router as repositories_router,
-    repository_store_provider,
-    repo_provider_provider,
-)
-from lintel.settings_api.routes import router as settings_router
-from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
 from lintel.approval_requests_api.routes import (
     router as approval_requests_router,
-    approval_request_store_provider,
 )
 from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 from lintel.artifacts_api.routes import (
-    router as artifacts_router,
     code_artifact_store_provider,
     test_result_store_provider,
 )
+from lintel.artifacts_api.routes import (
+    router as artifacts_router,
+)
 from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
-from lintel.audit_api.routes import router as audit_router, audit_entry_store_provider
+from lintel.audit_api.routes import audit_entry_store_provider
+from lintel.audit_api.routes import router as audit_router
 from lintel.audit_api.store import AuditEntryStore
+from lintel.automations_api.routes import (
+    InMemoryAutomationStore,
+    automation_store_provider,
+)
+from lintel.automations_api.routes import (
+    router as automations_router,
+)
 from lintel.boards.routes import (
-    router as boards_router,
     board_store_provider,
     tag_store_provider,
 )
+from lintel.boards.routes import (
+    router as boards_router,
+)
 from lintel.boards.store import BoardStore, TagStore
+from lintel.chat_api.routes import ChatStore, chat_store_provider
+from lintel.chat_api.routes import router as chat_router_routes
+from lintel.compliance_api.routes import (
+    architecture_decision_store_provider,
+    compliance_policy_store_provider,
+    knowledge_entry_store_provider,
+    knowledge_extraction_store_provider,
+    practice_store_provider,
+    procedure_store_provider,
+    regulation_store_provider,
+    strategy_store_provider,
+)
+from lintel.compliance_api.routes import (
+    router as compliance_router,
+)
+from lintel.compliance_api.store import ComplianceStore
+from lintel.credentials_api.routes import (
+    credential_store_provider,
+)
 from lintel.credentials_api.routes import (
     router as credentials_router,
-    credential_store_provider,
 )
 from lintel.credentials_api.store import InMemoryCredentialStore
 from lintel.environments_api.routes import (
-    router as environments_router,
     environment_store_provider,
 )
+from lintel.environments_api.routes import (
+    router as environments_router,
+)
 from lintel.environments_api.store import InMemoryEnvironmentStore
-from lintel.mcp_servers_api.routes import (
-    router as mcp_servers_router,
-    mcp_server_store_provider,
-)
-from lintel.mcp_servers_api.store import InMemoryMCPServerStore
-from lintel.notifications_api.routes import (
-    router as notifications_router,
-    notification_rule_store_provider,
-)
-from lintel.notifications_api.store import NotificationRuleStore
-from lintel.policies_api.routes import router as policies_router, policy_store_provider
-from lintel.policies_api.store import InMemoryPolicyStore
-from lintel.projects_api.routes import router as projects_router, project_store_provider
-from lintel.projects_api.store import ProjectStore
-from lintel.skills_api.routes import router as skills_router, skill_store_provider
-from lintel.skills_api.store import InMemorySkillStore
-from lintel.teams.routes import router as teams_router, team_store_provider
-from lintel.teams.store import InMemoryTeamStore
-from lintel.triggers_api.routes import router as triggers_router, trigger_store_provider
-from lintel.triggers_api.store import InMemoryTriggerStore
-from lintel.users.routes import router as users_router, user_store_provider
-from lintel.users.store import InMemoryUserStore
-from lintel.variables_api.routes import router as variables_router, variable_store_provider
-from lintel.variables_api.store import InMemoryVariableStore
-from lintel.work_items_api.routes import (
-    router as work_items_router,
-    work_item_store_provider,
-)
-from lintel.work_items_api.store import WorkItemStore
 from lintel.event_bus.in_memory import InMemoryEventBus
 from lintel.event_store.in_memory import InMemoryEventStore
+from lintel.experimentation_api.routes import (
+    compliance_metric_store_provider,
+    experiment_store_provider,
+    kpi_store_provider,
+)
+from lintel.experimentation_api.routes import (
+    router as experimentation_router,
+)
+from lintel.mcp_servers_api.routes import (
+    mcp_server_store_provider,
+)
+from lintel.mcp_servers_api.routes import (
+    router as mcp_servers_router,
+)
+from lintel.mcp_servers_api.store import InMemoryMCPServerStore
+from lintel.models_api.routes import (
+    ai_provider_store_provider as models_ai_provider_store_provider,
+)
+from lintel.models_api.routes import (
+    model_assignment_store_provider,
+    model_store_provider,
+)
+from lintel.models_api.routes import (
+    router as models_router,
+)
+from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
+from lintel.notifications_api.routes import (
+    notification_rule_store_provider,
+)
+from lintel.notifications_api.routes import (
+    router as notifications_router,
+)
+from lintel.notifications_api.store import NotificationRuleStore
+from lintel.pipelines_api.routes import (
+    InMemoryPipelineStore,
+    pipeline_store_provider,
+)
+from lintel.pipelines_api.routes import (
+    router as pipelines_router,
+)
+from lintel.policies_api.routes import policy_store_provider
+from lintel.policies_api.routes import router as policies_router
+from lintel.policies_api.store import InMemoryPolicyStore
 from lintel.projections.audit import AuditProjection
 from lintel.projections.engine import InMemoryProjectionEngine
 from lintel.projections.quality_metrics import QualityMetricsProjection
 from lintel.projections.task_backlog import TaskBacklogProjection
 from lintel.projections.thread_status import ThreadStatusProjection
+from lintel.projects_api.routes import project_store_provider
+from lintel.projects_api.routes import router as projects_router
+from lintel.projects_api.store import ProjectStore
 from lintel.repos.github_provider import GitHubRepoProvider
 from lintel.repos.repository_store import InMemoryRepositoryStore
+from lintel.repositories_api.routes import (
+    repo_provider_provider,
+    repository_store_provider,
+)
+from lintel.repositories_api.routes import (
+    router as repositories_router,
+)
 from lintel.sandbox.docker_backend import DockerSandboxManager
+from lintel.sandboxes_api.routes import SandboxStore
+from lintel.sandboxes_api.routes import router as sandboxes_router
+from lintel.settings_api.routes import router as settings_router
+from lintel.skills_api.routes import router as skills_router
+from lintel.skills_api.routes import skill_store_provider
+from lintel.skills_api.store import InMemorySkillStore
+from lintel.teams.routes import router as teams_router
+from lintel.teams.routes import team_store_provider
+from lintel.teams.store import InMemoryTeamStore
+from lintel.triggers_api.routes import router as triggers_router
+from lintel.triggers_api.routes import trigger_store_provider
+from lintel.triggers_api.store import InMemoryTriggerStore
+from lintel.users.routes import router as users_router
+from lintel.users.routes import user_store_provider
+from lintel.users.store import InMemoryUserStore
+from lintel.variables_api.routes import router as variables_router
+from lintel.variables_api.routes import variable_store_provider
+from lintel.variables_api.store import InMemoryVariableStore
+from lintel.work_items_api.routes import (
+    router as work_items_router,
+)
+from lintel.work_items_api.routes import (
+    work_item_store_provider,
+)
+from lintel.work_items_api.store import WorkItemStore
+from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
 
 
 async def _seed_defaults(stores: dict[str, Any]) -> None:
@@ -470,8 +516,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         setattr(app.state, name, store)
 
     # Wire command dispatcher
-    from lintel.chat_api.chat_router import ChatRouter
     from lintel.api.domain.command_dispatcher import InMemoryCommandDispatcher
+    from lintel.chat_api.chat_router import ChatRouter
     from lintel.models.router import DefaultModelRouter
     from lintel.workflows.workflow_executor import WorkflowExecutor
 

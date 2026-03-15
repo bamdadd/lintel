@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 import pytest
 
 from lintel.artifacts_api.routes import (
-    router,
     code_artifact_store_provider,
+    router,
     test_result_store_provider,
 )
 from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore

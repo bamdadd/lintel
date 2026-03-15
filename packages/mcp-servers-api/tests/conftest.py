@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.mcp_servers_api.routes import router, mcp_server_store_provider
+from lintel.mcp_servers_api.routes import mcp_server_store_provider, router
 from lintel.mcp_servers_api.store import InMemoryMCPServerStore
 
 if TYPE_CHECKING:

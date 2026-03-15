@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.approval_requests_api.routes import router, approval_request_store_provider
+from lintel.approval_requests_api.routes import approval_request_store_provider, router
 from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 
 if TYPE_CHECKING:

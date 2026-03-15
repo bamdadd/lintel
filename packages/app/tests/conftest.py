@@ -28,23 +28,23 @@ def container() -> Generator[AppContainerType]:
 
     from lintel.agent_definitions_api.store import AgentDefinitionStore
     from lintel.api.container import AppContainer
-    from lintel.chat_api.routes import ChatStore
-    from lintel.compliance_api.store import ComplianceStore
-    from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
-    from lintel.pipelines_api.routes import InMemoryPipelineStore
-    from lintel.sandboxes_api.routes import SandboxStore
     from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
     from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
     from lintel.audit_api.store import AuditEntryStore
     from lintel.boards.store import BoardStore, TagStore
+    from lintel.chat_api.routes import ChatStore
+    from lintel.compliance_api.store import ComplianceStore
     from lintel.credentials_api.store import InMemoryCredentialStore
     from lintel.environments_api.store import InMemoryEnvironmentStore
     from lintel.event_store.in_memory import InMemoryEventStore
     from lintel.mcp_servers_api.store import InMemoryMCPServerStore
+    from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
     from lintel.notifications_api.store import NotificationRuleStore
+    from lintel.pipelines_api.routes import InMemoryPipelineStore
     from lintel.policies_api.store import InMemoryPolicyStore
     from lintel.projects_api.store import ProjectStore
     from lintel.repos.repository_store import InMemoryRepositoryStore
+    from lintel.sandboxes_api.routes import SandboxStore
     from lintel.skills_api.store import InMemorySkillStore
     from lintel.teams.store import InMemoryTeamStore
     from lintel.triggers_api.store import InMemoryTriggerStore
