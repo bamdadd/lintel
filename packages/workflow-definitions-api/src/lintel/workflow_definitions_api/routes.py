@@ -57,9 +57,8 @@ def get_workflow_defs(request: Request) -> dict[str, dict[str, Any]]:
         defs: dict[str, dict[str, Any]] = {}
         for wf in DEFAULT_WORKFLOW_DEFINITIONS:
             d = _wf_to_dict(wf)
-            # Only feature_to_pr is enabled by default; others need implementation
-            if wf.definition_id != "feature_to_pr":
-                d["enabled"] = False
+            # Enable all builtin workflows by default
+            d.setdefault("enabled", True)
             defs[wf.definition_id] = d
         request.app.state.workflow_definitions = defs
     return request.app.state.workflow_definitions  # type: ignore[no-any-return]

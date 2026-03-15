@@ -31,6 +31,13 @@ NODE_TO_STAGE: dict[str, str] = {
     "review": "review",
     "approval_gate_pr": "approved_for_pr",
     "close": "raise_pr",
+    # Extract-integration-patterns workflow
+    "scan_repo": "scan_repo",
+    "classify_integrations": "classify_integrations",
+    "build_graph": "build_graph",
+    "detect_antipatterns": "detect_antipatterns",
+    "persist_results": "persist_results",
+    "error": "error",
 }
 
 

@@ -115,27 +115,31 @@ export interface PipelineRun {
 
 const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'cancelled', 'completed']);
 
-export function usePipelinesForWorkItem(workItemId: string | undefined) {
+/**
+ * Single shared query for all pipelines. Every board component shares this cache entry
+ * so only ONE request is made regardless of how many work-item cards are visible.
+ */
+export function useAllPipelines() {
   return useQuery({
-    queryKey: ['/api/v1/pipelines', { work_item_id: workItemId }],
+    queryKey: ['/api/v1/pipelines'],
     queryFn: async () => {
       const resp = await customInstance<ListResponse<PipelineRun>>('/api/v1/pipelines');
-      // Filter client-side since API doesn't support work_item_id filter
       const all = (resp?.data ?? resp) as unknown as PipelineRun[];
-      const filtered = Array.isArray(all) ? all.filter((r) => r.work_item_id === workItemId) : [];
-      return filtered.sort((a, b) =>
-        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
-      );
+      return Array.isArray(all) ? all : [];
     },
-    enabled: !!workItemId,
-    refetchInterval: (query) => {
-      const pipelines = query.state.data;
-      // Slow poll (10s) only while waiting for a pipeline to appear
-      if (!pipelines || pipelines.length === 0) return 10_000;
-      // Stop polling once pipelines exist — SSE handles live updates
-      return false;
-    },
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   });
+}
+
+export function usePipelinesForWorkItem(workItemId: string | undefined) {
+  const { data: allPipelines } = useAllPipelines();
+  const filtered = (allPipelines ?? [])
+    .filter((r) => r.work_item_id === workItemId)
+    .sort((a, b) =>
+      new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+    );
+  return { data: filtered, isLoading: !allPipelines };
 }
 
 export interface PipelineStage {

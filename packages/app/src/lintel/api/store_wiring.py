@@ -302,6 +302,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "knowledge_entry_store": PgCompliance(pool, "knowledge_entry", "entry_id"),
         "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
         "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
+        "integration_patterns": InMemoryIntegrationPatternStore(),
     }
 
 
