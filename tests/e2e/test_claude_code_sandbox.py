@@ -40,8 +40,8 @@ async def sandbox_with_claude(manager: DockerSandboxManager) -> str:
         image="lintel-sandbox:latest",
         network_enabled=True,
         mounts=(
-            (f"{home}/.claude", "/root/.claude", "bind"),
-            (f"{home}/.claude.json", "/root/.claude.json", "bind"),
+            (f"{home}/.claude", "/home/vscode/.claude", "bind"),
+            (f"{home}/.claude.json", "/home/vscode/.claude.json", "bind"),
         ),
     )
     thread_ref = ThreadRef(workspace_id="test", channel_id="e2e", thread_ts="1.0")
@@ -59,7 +59,7 @@ class TestClaudeCodeSandbox:
         """Verify ~/.claude from host is visible inside the container."""
         result = await manager.execute(
             sandbox_with_claude,
-            SandboxJob(command="ls /root/.claude/", timeout_seconds=10),
+            SandboxJob(command="ls /home/vscode/.claude/", timeout_seconds=10),
         )
         assert result.exit_code == 0
         assert result.stdout.strip()  # Should contain files
@@ -92,7 +92,7 @@ class TestClaudeCodeSandbox:
         result = await manager.execute(
             sandbox_with_claude,
             SandboxJob(
-                command="touch /root/.claude/test-write 2>&1; echo $?",
+                command="touch /home/vscode/.claude/test-write 2>&1; echo $?",
                 timeout_seconds=10,
             ),
         )
