@@ -4,80 +4,19 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
+from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
 from lintel.domain.events import ArtifactStored, TestRunCompleted
 from lintel.domain.types import CodeArtifact, TestResult, TestVerdict
 
 router = APIRouter()
 
-
-# --- Stores ---
-
-
-class CodeArtifactStore:
-    """In-memory store for code artifacts."""
-
-    def __init__(self) -> None:
-        self._artifacts: dict[str, CodeArtifact] = {}
-
-    async def add(self, artifact: CodeArtifact) -> None:
-        self._artifacts[artifact.artifact_id] = artifact
-
-    async def get(self, artifact_id: str) -> CodeArtifact | None:
-        return self._artifacts.get(artifact_id)
-
-    async def remove(self, artifact_id: str) -> bool:
-        return self._artifacts.pop(artifact_id, None) is not None
-
-    async def list_all(
-        self,
-        *,
-        work_item_id: str | None = None,
-        run_id: str | None = None,
-    ) -> list[CodeArtifact]:
-        artifacts = list(self._artifacts.values())
-        if work_item_id is not None:
-            artifacts = [a for a in artifacts if a.work_item_id == work_item_id]
-        if run_id is not None:
-            artifacts = [a for a in artifacts if a.run_id == run_id]
-        return artifacts
-
-
-class TestResultStore:
-    """In-memory store for test results."""
-
-    def __init__(self) -> None:
-        self._results: dict[str, TestResult] = {}
-
-    async def add(self, result: TestResult) -> None:
-        self._results[result.result_id] = result
-
-    async def get(self, result_id: str) -> TestResult | None:
-        return self._results.get(result_id)
-
-    async def remove(self, result_id: str) -> bool:
-        return self._results.pop(result_id, None) is not None
-
-    async def list_all(self, *, run_id: str | None = None) -> list[TestResult]:
-        results = list(self._results.values())
-        if run_id is not None:
-            results = [r for r in results if r.run_id == run_id]
-        return results
-
-
-def get_code_artifact_store(request: Request) -> CodeArtifactStore:
-    """Get code artifact store from app state."""
-    return request.app.state.code_artifact_store  # type: ignore[no-any-return]
-
-
-def get_test_result_store(request: Request) -> TestResultStore:
-    """Get test result store from app state."""
-    return request.app.state.test_result_store  # type: ignore[no-any-return]
+code_artifact_store_provider = StoreProvider()
+test_result_store_provider = StoreProvider()
 
 
 # --- Helpers ---
@@ -121,11 +60,10 @@ class CreateTestResultRequest(BaseModel):
 
 
 @router.post("/artifacts", status_code=201)
-@inject
 async def create_artifact(
     body: CreateCodeArtifactRequest,
     request: Request,
-    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
+    store: CodeArtifactStore = Depends(code_artifact_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.artifact_id)
     if existing is not None:
@@ -155,9 +93,8 @@ async def create_artifact(
 
 
 @router.get("/artifacts")
-@inject
 async def list_artifacts(
-    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
+    store: CodeArtifactStore = Depends(code_artifact_store_provider),  # noqa: B008
     work_item_id: str | None = None,
     run_id: str | None = None,
 ) -> list[dict[str, Any]]:
@@ -166,10 +103,9 @@ async def list_artifacts(
 
 
 @router.get("/artifacts/{artifact_id}")
-@inject
 async def get_artifact(
     artifact_id: str,
-    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
+    store: CodeArtifactStore = Depends(code_artifact_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     artifact = await store.get(artifact_id)
     if artifact is None:
@@ -178,10 +114,9 @@ async def get_artifact(
 
 
 @router.delete("/artifacts/{artifact_id}", status_code=204)
-@inject
 async def delete_artifact(
     artifact_id: str,
-    store: CodeArtifactStore = Depends(Provide[AppContainer.code_artifact_store]),  # noqa: B008
+    store: CodeArtifactStore = Depends(code_artifact_store_provider),  # noqa: B008
 ) -> None:
     artifact = await store.get(artifact_id)
     if artifact is None:
@@ -193,11 +128,10 @@ async def delete_artifact(
 
 
 @router.post("/test-results", status_code=201)
-@inject
 async def create_test_result(
     body: CreateTestResultRequest,
     request: Request,
-    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
+    store: TestResultStore = Depends(test_result_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.result_id)
     if existing is not None:
@@ -232,9 +166,8 @@ async def create_test_result(
 
 
 @router.get("/test-results")
-@inject
 async def list_test_results(
-    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
+    store: TestResultStore = Depends(test_result_store_provider),  # noqa: B008
     run_id: str | None = None,
 ) -> list[dict[str, Any]]:
     results = await store.list_all(run_id=run_id)
@@ -242,10 +175,9 @@ async def list_test_results(
 
 
 @router.get("/test-results/{result_id}")
-@inject
 async def get_test_result(
     result_id: str,
-    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
+    store: TestResultStore = Depends(test_result_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     result = await store.get(result_id)
     if result is None:
@@ -254,10 +186,9 @@ async def get_test_result(
 
 
 @router.delete("/test-results/{result_id}", status_code=204)
-@inject
 async def delete_test_result(
     result_id: str,
-    store: TestResultStore = Depends(Provide[AppContainer.test_result_store]),  # noqa: B008
+    store: TestResultStore = Depends(test_result_store_provider),  # noqa: B008
 ) -> None:
     result = await store.get(result_id)
     if result is None:

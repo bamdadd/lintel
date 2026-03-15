@@ -1,27 +1,10 @@
 """Tests for artifacts API."""
 
-from typing import TYPE_CHECKING
-
 from fastapi.testclient import TestClient
-import pytest
-
-from lintel.api.app import create_app
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-
-@pytest.fixture()
-def client() -> "Generator[TestClient]":
-    with TestClient(create_app()) as c:
-        yield c
 
 
 class TestArtifactsAPI:
-    def test_create_artifact_returns_201(
-        self,
-        client: TestClient,
-    ) -> None:
+    def test_create_artifact_returns_201(self, client: TestClient) -> None:
         resp = client.post(
             "/api/v1/artifacts",
             json={
@@ -61,10 +44,7 @@ class TestArtifactsAPI:
         resp = client.get("/api/v1/artifacts/nonexistent")
         assert resp.status_code == 404
 
-    def test_create_test_result_returns_201(
-        self,
-        client: TestClient,
-    ) -> None:
+    def test_create_test_result_returns_201(self, client: TestClient) -> None:
         resp = client.post(
             "/api/v1/test-results",
             json={
@@ -119,9 +99,6 @@ class TestArtifactsAPI:
         resp = client.delete("/api/v1/test-results/nonexistent")
         assert resp.status_code == 404
 
-    def test_get_test_result_not_found(
-        self,
-        client: TestClient,
-    ) -> None:
+    def test_get_test_result_not_found(self, client: TestClient) -> None:
         resp = client.get("/api/v1/test-results/nonexistent")
         assert resp.status_code == 404
