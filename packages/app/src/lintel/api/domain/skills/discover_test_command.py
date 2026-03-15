@@ -242,7 +242,8 @@ async def _python_setup_commands(
         sandbox_id,
         SandboxJob(
             command=(
-                "test -f .venv/bin/python && .venv/bin/python -c 'import pytest' "
+                "test -f .venv/bin/python"
+                " && .venv/bin/python -c 'import pytest; import fastapi' "
                 "2>/dev/null && echo INSTALLED || echo MISSING"
             ),
             workdir=workdir,

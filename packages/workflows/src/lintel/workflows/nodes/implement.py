@@ -113,7 +113,8 @@ callers and their tests in the same increment.
 - If the project uses frozen dataclasses (as in contracts/types.py), follow that pattern \
 for domain types. Use Pydantic BaseModel for API request/response schemas.
 
-## Lint & Type Check
+## Lint & Format
+- Auto-format: `make format` (run this BEFORE lint to auto-fix issues)
 - Lint: `{lint_command}`
 - Type check: `{typecheck_command}` (run periodically, not after every change)
 
@@ -601,10 +602,17 @@ async def _implement_tdd(
     # Detect "no changes" — LLM concluded everything was already done
     from lintel.sandbox.types import SandboxJob
 
+    # Check for uncommitted changes (sandbox_write_file doesn't git-add) AND committed changes.
+    # git status --porcelain shows unstaged/staged files; git diff shows committed-but-not-pushed.
     diff_check = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
-            command="git diff --name-only origin/main..HEAD 2>/dev/null | head -20",
+            command=(
+                "{ git status --porcelain;"
+                " git diff --name-only origin/main..HEAD 2>/dev/null;"
+                " git diff --name-only main..HEAD 2>/dev/null;"
+                " } | sort -u"
+            ),
             workdir=workspace_path,
             timeout_seconds=10,
         ),
@@ -615,6 +623,9 @@ async def _implement_tdd(
         return "No changes made.", True, [usage]
 
     await tracker.append_log("implement", f"{len(changed_files)} file(s) changed")
+
+    # Auto-format before testing — agent-generated code may have lint issues
+    await _auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
 
     # Test/fix loop — give the LLM a chance to fix failures
     test_passed = False
@@ -667,6 +678,8 @@ async def _implement_tdd(
                 logger.exception("implement_tdd_fix_failed")
                 await tracker.append_log("implement", "Fix attempt failed")
                 break
+            # Re-format after fix
+            await _auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
 
     if not test_passed:
         await tracker.append_log("implement", "Tests still failing after fix attempts")
@@ -1149,6 +1162,39 @@ async def _pre_read_plan_files(
             pass
 
     return contents
+
+
+async def _auto_format(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workspace_path: str,
+    tracker: Any,  # noqa: ANN401
+) -> None:
+    """Run code formatters in the sandbox to fix agent-generated lint issues."""
+    from lintel.sandbox.types import SandboxJob
+
+    await tracker.append_log("implement", "Auto-fixing lint: make format")
+    try:
+        result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command="make format 2>&1 | tail -5",
+                workdir=workspace_path,
+                timeout_seconds=60,
+            ),
+        )
+        if result.exit_code != 0:
+            # Fallback: run ruff directly
+            await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command="ruff check --fix . 2>/dev/null; ruff format . 2>/dev/null; true",
+                    workdir=workspace_path,
+                    timeout_seconds=30,
+                ),
+            )
+    except Exception:
+        logger.warning("implement_auto_format_failed", exc_info=True)
 
 
 async def _run_tests(
