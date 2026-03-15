@@ -1,8 +1,11 @@
-CREATE TYPE memory_type_enum AS ENUM ('long_term', 'episodic');
+DO $$ BEGIN
+    CREATE TYPE memory_type_enum AS ENUM ('long_term', 'episodic');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE memory_facts (
+CREATE TABLE IF NOT EXISTS memory_facts (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id          UUID NOT NULL REFERENCES projects(id),
+    project_id          UUID NOT NULL,
     memory_type         memory_type_enum NOT NULL,
     fact_type           VARCHAR(100) NOT NULL,
     content             TEXT NOT NULL,
@@ -12,7 +15,7 @@ CREATE TABLE memory_facts (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_memory_facts_project_id ON memory_facts(project_id);
-CREATE INDEX idx_memory_facts_memory_type ON memory_facts(memory_type);
-CREATE INDEX idx_memory_facts_project_id_memory_type ON memory_facts(project_id, memory_type);
-CREATE INDEX idx_memory_facts_fact_type ON memory_facts(fact_type);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_project_id ON memory_facts(project_id);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_memory_type ON memory_facts(memory_type);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_project_id_memory_type ON memory_facts(project_id, memory_type);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_fact_type ON memory_facts(fact_type);

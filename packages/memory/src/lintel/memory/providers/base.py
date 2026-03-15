@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from lintel.memory.models import ScoredPoint
+if TYPE_CHECKING:
+    from lintel.memory.models import ScoredPoint
 
 log = structlog.get_logger(__name__)
 
@@ -19,7 +20,7 @@ class VectorStoreProvider(ABC):
     async def store_embedding(
         self,
         collection: str,
-        id: str,
+        embedding_id: str,
         vector: list[float],
         payload: dict[str, Any],
     ) -> None:
@@ -36,7 +37,7 @@ class VectorStoreProvider(ABC):
         """Return the *top_k* nearest neighbours for *query_vector*."""
 
     @abstractmethod
-    async def delete(self, collection: str, id: str) -> None:
+    async def delete(self, collection: str, embedding_id: str) -> None:
         """Remove a point by id from *collection*."""
 
     @abstractmethod

@@ -37,17 +37,17 @@ class QdrantProvider(VectorStoreProvider):
     async def store_embedding(
         self,
         collection: str,
-        id: str,
+        embedding_id: str,
         vector: list[float],
         payload: dict[str, Any],
     ) -> None:
         await self._client.upsert(
             collection_name=collection,
             points=[
-                PointStruct(id=id, vector=vector, payload=payload),
+                PointStruct(id=embedding_id, vector=vector, payload=payload),
             ],
         )
-        log.debug("embedding_stored", collection=collection, id=id)
+        log.debug("embedding_stored", collection=collection, embedding_id=embedding_id)
 
     async def search(
         self,
@@ -81,12 +81,12 @@ class QdrantProvider(VectorStoreProvider):
             )
         return scored
 
-    async def delete(self, collection: str, id: str) -> None:
+    async def delete(self, collection: str, embedding_id: str) -> None:
         await self._client.delete(
             collection_name=collection,
-            points_selector=PointIdsList(points=[id]),
+            points_selector=PointIdsList(points=[embedding_id]),
         )
-        log.debug("point_deleted", collection=collection, id=id)
+        log.debug("point_deleted", collection=collection, embedding_id=embedding_id)
 
     async def create_collection(self, name: str, vector_size: int) -> None:
         await self._client.create_collection(

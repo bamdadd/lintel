@@ -1,7 +1,5 @@
 """Pydantic request/response models for the memory API."""
 
-from __future__ import annotations
-
 from datetime import datetime
 from uuid import UUID
 

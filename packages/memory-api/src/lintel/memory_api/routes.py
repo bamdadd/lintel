@@ -1,13 +1,11 @@
 """FastAPI router for the memory subsystem."""
 
-from __future__ import annotations
-
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 import structlog
 
-from lintel.memory.memory_service import MemoryService
 from lintel.memory_api.dependencies import memory_service_provider
 from lintel.memory_api.schemas import (
     CreateMemoryRequest,
@@ -16,6 +14,9 @@ from lintel.memory_api.schemas import (
     MemoryListResponse,
     MemorySearchResponse,
 )
+
+if TYPE_CHECKING:
+    from lintel.memory.memory_service import MemoryService
 
 logger = structlog.get_logger(__name__)
 
@@ -27,8 +28,8 @@ router = APIRouter(tags=["memory"])
 # ---------------------------------------------------------------------------
 
 
-def _get_service() -> MemoryService:
-    return memory_service_provider()
+def _get_service() -> "MemoryService":
+    return memory_service_provider()  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -38,11 +39,11 @@ def _get_service() -> MemoryService:
 
 @router.get("/memory", response_model=MemoryListResponse)
 async def list_memories(
-    project_id: UUID = Query(...),
+    project_id: UUID = Query(...),  # noqa: B008
     memory_type: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    service: MemoryService = Depends(_get_service),
+    service: "MemoryService" = Depends(_get_service),  # noqa: B008
 ) -> MemoryListResponse:
     """List memory facts with pagination."""
     items, total = await service.list_memories(
@@ -62,10 +63,10 @@ async def list_memories(
 @router.get("/memory/search", response_model=MemorySearchResponse)
 async def search_memories(
     q: str = Query(...),
-    project_id: UUID = Query(...),
+    project_id: UUID = Query(...),  # noqa: B008
     memory_type: str | None = Query(None),
     top_k: int = Query(5, ge=1, le=100),
-    service: MemoryService = Depends(_get_service),
+    service: "MemoryService" = Depends(_get_service),  # noqa: B008
 ) -> MemorySearchResponse:
     """Semantic search over memory facts."""
     chunks = await service.search(
@@ -86,7 +87,7 @@ async def search_memories(
 @router.get("/memory/{memory_id}", response_model=MemoryFactResponse)
 async def get_memory(
     memory_id: UUID,
-    service: MemoryService = Depends(_get_service),
+    service: "MemoryService" = Depends(_get_service),  # noqa: B008
 ) -> MemoryFactResponse:
     """Retrieve a single memory fact by ID."""
     fact = await service.get_memory(memory_id=memory_id)
@@ -105,7 +106,7 @@ async def get_memory(
 )
 async def create_memory(
     body: CreateMemoryRequest,
-    service: MemoryService = Depends(_get_service),
+    service: "MemoryService" = Depends(_get_service),  # noqa: B008
 ) -> MemoryFactResponse:
     """Create a new memory fact."""
     fact = await service.create_memory(
@@ -124,7 +125,7 @@ async def create_memory(
 )
 async def delete_memory(
     memory_id: UUID,
-    service: MemoryService = Depends(_get_service),
+    service: "MemoryService" = Depends(_get_service),  # noqa: B008
 ) -> None:
     """Delete a memory fact."""
     deleted = await service.delete_memory(memory_id=memory_id)

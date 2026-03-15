@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, ClassVar
 from uuid import UUID, uuid4
 
 import structlog
 
-from lintel.memory.embedding_service import EmbeddingService
 from lintel.memory.models import MemoryChunk, MemoryFact, MemoryType
-from lintel.memory.providers.base import VectorStoreProvider
-from lintel.memory.repository import MemoryRepository
+
+if TYPE_CHECKING:
+    from lintel.memory.embedding_service import EmbeddingService
+    from lintel.memory.providers.base import VectorStoreProvider
+    from lintel.memory.repository import MemoryRepository
 
 log = structlog.get_logger(__name__)
 
@@ -18,12 +21,12 @@ log = structlog.get_logger(__name__)
 class MemoryService:
     """Orchestrates embedding generation, vector storage, and Postgres persistence."""
 
-    COLLECTIONS: list[str] = [
+    COLLECTIONS: ClassVar[list[str]] = [
         "long_term_memory",
         "episodic_memory",
         "project_facts",
     ]
-    VECTOR_SIZE: int = 1536  # text-embedding-3-small dimensions
+    VECTOR_SIZE: ClassVar[int] = 1536  # text-embedding-3-small dimensions
 
     def __init__(
         self,
@@ -76,7 +79,7 @@ class MemoryService:
         collection = self._collection_for(memory_type)
         await self._vector_store.store_embedding(
             collection=collection,
-            id=embedding_id,
+            embedding_id=embedding_id,
             vector=embedding,
             payload={
                 "project_id": str(project_id),
@@ -182,7 +185,7 @@ class MemoryService:
                     # Update the embedding in the vector store.
                     await self._vector_store.store_embedding(
                         collection=collection,
-                        id=existing.embedding_id or str(existing.id),
+                        embedding_id=existing.embedding_id or str(existing.id),
                         vector=embedding,
                         payload={
                             "project_id": str(project_id),
@@ -229,6 +232,63 @@ class MemoryService:
         deleted = await self._repository.delete(memory_id)
         log.info("memory_deleted", memory_id=str(memory_id), deleted=deleted)
         return deleted
+
+    # ------------------------------------------------------------------
+    # CRUD convenience wrappers (used by the API layer)
+    # ------------------------------------------------------------------
+
+    async def list_memories(
+        self,
+        project_id: UUID,
+        memory_type: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[MemoryFact], int]:
+        """Return a paginated list of facts for *project_id*."""
+        mt = MemoryType(memory_type) if memory_type is not None else None
+        return await self._repository.list_by_project(
+            project_id=project_id,
+            memory_type=mt,
+            page=page,
+            page_size=page_size,
+        )
+
+    async def search(
+        self,
+        query: str,
+        project_id: UUID,
+        memory_type: str | None = None,
+        top_k: int = 5,
+    ) -> list[MemoryChunk]:
+        """Semantic search — thin wrapper around :meth:`recall`."""
+        mt = MemoryType(memory_type) if memory_type is not None else None
+        return await self.recall(
+            project_id=project_id,
+            query=query,
+            memory_type=mt,
+            top_k=top_k,
+        )
+
+    async def get_memory(self, memory_id: UUID) -> MemoryFact | None:
+        """Retrieve a single memory fact by id."""
+        return await self._repository.get(memory_id)
+
+    async def create_memory(
+        self,
+        project_id: UUID,
+        content: str,
+        memory_type: str,
+        fact_type: str,
+        source_workflow_id: UUID | None = None,
+    ) -> MemoryFact:
+        """Create a new memory fact — thin wrapper around :meth:`store_memory`."""
+        return await self.store_memory(
+            project_id=project_id,
+            content=content,
+            memory_type=MemoryType(memory_type),
+            fact_type=fact_type,
+            source_workflow_id=source_workflow_id,
+        )
 
     # ------------------------------------------------------------------
     # Helpers

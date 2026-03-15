@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 import structlog
 
-from lintel.memory.providers.base import VectorStoreProvider
 from lintel.memory.providers.qdrant_provider import QdrantProvider
+
+if TYPE_CHECKING:
+    from lintel.memory.providers.base import VectorStoreProvider
 
 log = structlog.get_logger(__name__)
 

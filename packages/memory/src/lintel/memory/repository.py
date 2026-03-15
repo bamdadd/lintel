@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from uuid import UUID
+from uuid import UUID  # noqa: TC003
 
-import asyncpg
+import asyncpg  # noqa: TC002
 import structlog
 
 from lintel.memory.models import MemoryFact, MemoryType
@@ -20,7 +20,7 @@ class MemoryRepository:
 
     async def save(self, fact: MemoryFact) -> MemoryFact:
         """Insert a new memory fact and return it."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 """
                 INSERT INTO memory_facts
@@ -41,10 +41,13 @@ class MemoryRepository:
         log.debug("memory_fact_saved", fact_id=str(fact.id))
         return fact
 
-    async def get(self, id: UUID) -> MemoryFact | None:
+    async def get(self, fact_id: UUID) -> MemoryFact | None:
         """Fetch a single fact by primary key."""
-        async with self._pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT * FROM memory_facts WHERE id = $1", id)
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
+            row = await conn.fetchrow(
+                "SELECT * FROM memory_facts WHERE id = $1",
+                fact_id,
+            )
         if row is None:
             return None
         return self._row_to_fact(row)
@@ -59,7 +62,7 @@ class MemoryRepository:
         """Return a page of facts for *project_id* and the total count."""
         offset = (page - 1) * page_size
 
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             if memory_type is not None:
                 rows = await conn.fetch(
                     """
@@ -104,17 +107,20 @@ class MemoryRepository:
         facts = [self._row_to_fact(r) for r in rows]
         return facts, int(total)
 
-    async def delete(self, id: UUID) -> bool:
+    async def delete(self, fact_id: UUID) -> bool:
         """Delete a fact by id.  Returns ``True`` if a row was removed."""
-        async with self._pool.acquire() as conn:
-            result = await conn.execute("DELETE FROM memory_facts WHERE id = $1", id)
-        deleted = result == "DELETE 1"
-        log.debug("memory_fact_deleted", fact_id=str(id), deleted=deleted)
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
+            result = await conn.execute(
+                "DELETE FROM memory_facts WHERE id = $1",
+                fact_id,
+            )
+        deleted: bool = result == "DELETE 1"
+        log.debug("memory_fact_deleted", fact_id=str(fact_id), deleted=deleted)
         return deleted
 
     async def find_by_embedding_id(self, embedding_id: str) -> MemoryFact | None:
         """Look up a fact by its vector-store embedding id."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             row = await conn.fetchrow(
                 "SELECT * FROM memory_facts WHERE embedding_id = $1",
                 embedding_id,
@@ -125,7 +131,7 @@ class MemoryRepository:
 
     async def update(self, fact: MemoryFact) -> MemoryFact:
         """Persist changes to an existing fact."""
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
                 """
                 UPDATE memory_facts

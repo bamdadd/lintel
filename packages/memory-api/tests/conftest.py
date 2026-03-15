@@ -17,13 +17,13 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture()
-def mock_memory_service():
+def mock_memory_service() -> AsyncMock:
     service = AsyncMock()
     return service
 
 
 @pytest.fixture()
-def client(mock_memory_service) -> Generator[TestClient]:
+def client(mock_memory_service: AsyncMock) -> Generator[TestClient]:
     memory_service_provider.override(mock_memory_service)
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")

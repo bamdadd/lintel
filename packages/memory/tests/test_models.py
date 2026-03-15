@@ -20,21 +20,21 @@ from lintel.memory.models import (
 
 
 class TestMemoryType:
-    def test_long_term_value(self):
+    def test_long_term_value(self) -> None:
         assert MemoryType.LONG_TERM.value == "long_term"
 
-    def test_episodic_value(self):
+    def test_episodic_value(self) -> None:
         assert MemoryType.EPISODIC.value == "episodic"
 
-    def test_is_str_enum(self):
+    def test_is_str_enum(self) -> None:
         assert isinstance(MemoryType.LONG_TERM, str)
         assert MemoryType.LONG_TERM == "long_term"
 
-    def test_from_value(self):
+    def test_from_value(self) -> None:
         assert MemoryType("long_term") is MemoryType.LONG_TERM
         assert MemoryType("episodic") is MemoryType.EPISODIC
 
-    def test_invalid_value_raises(self):
+    def test_invalid_value_raises(self) -> None:
         with pytest.raises(ValueError):
             MemoryType("invalid_type")
 
@@ -43,7 +43,7 @@ class TestMemoryType:
 
 
 class TestMemoryFact:
-    def test_creation_with_all_fields(self):
+    def test_creation_with_all_fields(self) -> None:
         project_id = uuid4()
         fact_id = uuid4()
         workflow_id = uuid4()
@@ -71,7 +71,7 @@ class TestMemoryFact:
         assert fact.created_at == now
         assert fact.updated_at == now
 
-    def test_optional_fields_default_to_none(self):
+    def test_optional_fields_default_to_none(self) -> None:
         fact = MemoryFact(
             project_id=uuid4(),
             memory_type=MemoryType.EPISODIC,
@@ -82,7 +82,7 @@ class TestMemoryFact:
         assert fact.embedding_id is None
         assert fact.source_workflow_id is None
 
-    def test_id_auto_generated(self):
+    def test_id_auto_generated(self) -> None:
         fact = MemoryFact(
             project_id=uuid4(),
             memory_type=MemoryType.LONG_TERM,
@@ -91,7 +91,7 @@ class TestMemoryFact:
         )
         assert isinstance(fact.id, UUID)
 
-    def test_timestamps_auto_generated(self):
+    def test_timestamps_auto_generated(self) -> None:
         fact = MemoryFact(
             project_id=uuid4(),
             memory_type=MemoryType.LONG_TERM,
@@ -101,7 +101,7 @@ class TestMemoryFact:
         assert isinstance(fact.created_at, datetime)
         assert isinstance(fact.updated_at, datetime)
 
-    def test_invalid_memory_type_rejected(self):
+    def test_invalid_memory_type_rejected(self) -> None:
         with pytest.raises(ValidationError):
             MemoryFact(
                 project_id=uuid4(),
@@ -110,7 +110,7 @@ class TestMemoryFact:
                 content="test",
             )
 
-    def test_missing_required_fields_rejected(self):
+    def test_missing_required_fields_rejected(self) -> None:
         with pytest.raises(ValidationError):
             MemoryFact(
                 memory_type=MemoryType.LONG_TERM,
@@ -123,7 +123,7 @@ class TestMemoryFact:
 
 
 class TestMemoryChunk:
-    def test_creation(self):
+    def test_creation(self) -> None:
         fact = MemoryFact(
             project_id=uuid4(),
             memory_type=MemoryType.EPISODIC,
@@ -136,7 +136,7 @@ class TestMemoryChunk:
         assert chunk.score == 0.92
         assert chunk.rank == 1
 
-    def test_score_is_float(self):
+    def test_score_is_float(self) -> None:
         fact = MemoryFact(
             project_id=uuid4(),
             memory_type=MemoryType.EPISODIC,
@@ -151,7 +151,7 @@ class TestMemoryChunk:
 
 
 class TestScoredPoint:
-    def test_creation(self):
+    def test_creation(self) -> None:
         sp = ScoredPoint(
             id="abc-123",
             score=0.85,
@@ -161,7 +161,7 @@ class TestScoredPoint:
         assert sp.score == 0.85
         assert sp.payload == {"project_id": "p1", "fact_type": "note"}
 
-    def test_empty_payload(self):
+    def test_empty_payload(self) -> None:
         sp = ScoredPoint(id="x", score=0.0, payload={})
         assert sp.payload == {}
 
@@ -170,7 +170,7 @@ class TestScoredPoint:
 
 
 class TestMemorySearchResult:
-    def test_creation(self):
+    def test_creation(self) -> None:
         fact = MemoryFact(
             project_id=uuid4(),
             memory_type=MemoryType.LONG_TERM,
@@ -188,7 +188,7 @@ class TestMemorySearchResult:
         assert len(result.chunks) == 1
         assert result.total == 1
 
-    def test_empty_results(self):
+    def test_empty_results(self) -> None:
         result = MemorySearchResult(query="nothing", chunks=[], total=0)
         assert result.chunks == []
         assert result.total == 0

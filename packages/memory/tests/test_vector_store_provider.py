@@ -16,13 +16,13 @@ from lintel.memory.providers.qdrant_provider import QdrantProvider
 
 
 @pytest.fixture
-def mock_qdrant_client():
+def mock_qdrant_client() -> AsyncMock:
     client = AsyncMock()
     return client
 
 
 @pytest.fixture
-def provider(mock_qdrant_client):
+def provider(mock_qdrant_client: AsyncMock) -> QdrantProvider:
     with patch(
         "lintel.memory.providers.qdrant_provider.AsyncQdrantClient",
         return_value=mock_qdrant_client,
@@ -36,10 +36,12 @@ def provider(mock_qdrant_client):
 
 
 class TestQdrantProviderStoreEmbedding:
-    async def test_calls_upsert(self, provider, mock_qdrant_client):
+    async def test_calls_upsert(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         await provider.store_embedding(
             collection="long_term_memory",
-            id="emb-1",
+            embedding_id="emb-1",
             vector=[0.1, 0.2, 0.3],
             payload={"project_id": "p1"},
         )
@@ -55,7 +57,9 @@ class TestQdrantProviderStoreEmbedding:
 
 
 class TestQdrantProviderSearch:
-    async def test_returns_scored_points(self, provider, mock_qdrant_client):
+    async def test_returns_scored_points(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_point = SimpleNamespace(id="point-1", score=0.95, payload={"fact_id": "f1"})
         mock_qdrant_client.query_points.return_value = SimpleNamespace(points=[mock_point])
 
@@ -71,7 +75,9 @@ class TestQdrantProviderSearch:
         assert results[0].score == 0.95
         assert results[0].payload == {"fact_id": "f1"}
 
-    async def test_search_with_filters(self, provider, mock_qdrant_client):
+    async def test_search_with_filters(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_qdrant_client.query_points.return_value = SimpleNamespace(points=[])
 
         await provider.search(
@@ -84,7 +90,9 @@ class TestQdrantProviderSearch:
         call_kwargs = mock_qdrant_client.query_points.call_args.kwargs
         assert call_kwargs["query_filter"] is not None
 
-    async def test_search_without_filters(self, provider, mock_qdrant_client):
+    async def test_search_without_filters(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_qdrant_client.query_points.return_value = SimpleNamespace(points=[])
 
         await provider.search(
@@ -95,14 +103,18 @@ class TestQdrantProviderSearch:
         call_kwargs = mock_qdrant_client.query_points.call_args.kwargs
         assert call_kwargs["query_filter"] is None
 
-    async def test_handles_none_score(self, provider, mock_qdrant_client):
+    async def test_handles_none_score(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_point = SimpleNamespace(id="p1", score=None, payload={"k": "v"})
         mock_qdrant_client.query_points.return_value = SimpleNamespace(points=[mock_point])
 
         results = await provider.search("col", [0.1])
         assert results[0].score == 0.0
 
-    async def test_handles_none_payload(self, provider, mock_qdrant_client):
+    async def test_handles_none_payload(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_point = SimpleNamespace(id="p1", score=0.5, payload=None)
         mock_qdrant_client.query_points.return_value = SimpleNamespace(points=[mock_point])
 
@@ -111,8 +123,10 @@ class TestQdrantProviderSearch:
 
 
 class TestQdrantProviderDelete:
-    async def test_calls_delete(self, provider, mock_qdrant_client):
-        await provider.delete(collection="long_term_memory", id="emb-1")
+    async def test_calls_delete(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
+        await provider.delete(collection="long_term_memory", embedding_id="emb-1")
 
         mock_qdrant_client.delete.assert_awaited_once()
         call_kwargs = mock_qdrant_client.delete.call_args.kwargs
@@ -120,7 +134,9 @@ class TestQdrantProviderDelete:
 
 
 class TestQdrantProviderCreateCollection:
-    async def test_creates_with_correct_params(self, provider, mock_qdrant_client):
+    async def test_creates_with_correct_params(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         await provider.create_collection(name="test_col", vector_size=768)
 
         mock_qdrant_client.create_collection.assert_awaited_once()
@@ -130,13 +146,17 @@ class TestQdrantProviderCreateCollection:
 
 
 class TestQdrantProviderEnsureCollection:
-    async def test_handles_already_exists(self, provider, mock_qdrant_client):
+    async def test_handles_already_exists(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_qdrant_client.create_collection.side_effect = Exception("collection already exists")
 
         # Should not raise
         await provider.ensure_collection(name="existing_col", vector_size=1536)
 
-    async def test_creates_new_collection(self, provider, mock_qdrant_client):
+    async def test_creates_new_collection(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_qdrant_client.create_collection.return_value = None
 
         await provider.ensure_collection(name="new_col", vector_size=1536)
@@ -144,13 +164,17 @@ class TestQdrantProviderEnsureCollection:
 
 
 class TestQdrantProviderHealthCheck:
-    async def test_returns_true_when_healthy(self, provider, mock_qdrant_client):
+    async def test_returns_true_when_healthy(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_qdrant_client.get_collections.return_value = []
 
         result = await provider.health_check()
         assert result is True
 
-    async def test_returns_false_on_error(self, provider, mock_qdrant_client):
+    async def test_returns_false_on_error(
+        self, provider: QdrantProvider, mock_qdrant_client: AsyncMock
+    ) -> None:
         mock_qdrant_client.get_collections.side_effect = Exception("connection refused")
 
         result = await provider.health_check()
@@ -161,17 +185,17 @@ class TestQdrantProviderHealthCheck:
 
 
 class TestVectorStoreFactory:
-    def test_create_qdrant_provider(self):
+    def test_create_qdrant_provider(self) -> None:
         with patch("lintel.memory.providers.qdrant_provider.AsyncQdrantClient"):
-            provider = VectorStoreFactory.create("qdrant", url="http://localhost:6333")
-        assert isinstance(provider, QdrantProvider)
-        assert isinstance(provider, VectorStoreProvider)
+            result = VectorStoreFactory.create("qdrant", url="http://localhost:6333")
+        assert isinstance(result, QdrantProvider)
+        assert isinstance(result, VectorStoreProvider)
 
-    def test_create_raises_for_unknown(self):
+    def test_create_raises_for_unknown(self) -> None:
         with pytest.raises(ValueError, match="Unsupported vector store provider"):
             VectorStoreFactory.create("pinecone")
 
-    def test_create_uses_kwargs(self):
+    def test_create_uses_kwargs(self) -> None:
         with patch("lintel.memory.providers.qdrant_provider.AsyncQdrantClient") as mock_cls:
             VectorStoreFactory.create("qdrant", url="http://custom:6333", api_key="my-key")
             mock_cls.assert_called_once_with(url="http://custom:6333", api_key="my-key")
