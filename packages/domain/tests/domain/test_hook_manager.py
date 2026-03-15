@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from lintel.contracts.events import EventEnvelope
 from lintel.domain.events import HookLoopDetected, HookTriggered
-from lintel.domain.hooks.hook_manager import (
+from lintel.automations_api.hooks.hook_manager import (
     HookManager,
     _conditions_match,
     _pattern_matches,

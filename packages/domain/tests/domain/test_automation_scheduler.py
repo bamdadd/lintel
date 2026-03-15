@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID
 
 from lintel.contracts.events import EventEnvelope
-from lintel.domain.automation_scheduler import AutomationScheduler
+from lintel.automations_api.scheduler import AutomationScheduler
 from lintel.domain.types import (
     AutomationDefinition,
     AutomationTriggerType,

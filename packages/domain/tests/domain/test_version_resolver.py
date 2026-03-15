@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from lintel.domain.events import ResourceVersionConsumed, ResourceVersionProduced
 from lintel.domain.types import JobInput, PassedConstraint
-from lintel.domain.version_resolver import VersionResolver
+from lintel.api.domain.version_resolver import VersionResolver
 
 
 def _make_produced_event(

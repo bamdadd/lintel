@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-from lintel.domain.pipeline_scheduler import PipelineScheduler
+from lintel.api.domain.pipeline_scheduler import PipelineScheduler
 from lintel.domain.types import JobInput, ResourceVersion
 
 

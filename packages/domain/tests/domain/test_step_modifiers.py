@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lintel.domain.step_modifiers import with_ensure, with_on_failure, with_try
+from lintel.workflows.step_modifiers import with_ensure, with_on_failure, with_try
 
 
 async def test_with_ensure_runs_cleanup_on_success() -> None:

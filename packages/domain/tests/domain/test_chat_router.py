@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 import pytest
 
-from lintel.domain.chat_router import WORKFLOW_KEYWORDS, ChatRouter, ChatRouterResult
+from lintel.chat_api.chat_router import WORKFLOW_KEYWORDS, ChatRouter, ChatRouterResult
 
 
 class TestKeywordClassification:

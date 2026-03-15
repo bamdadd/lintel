@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from lintel.domain.graph_compiler import GraphCompiler
+from lintel.workflows.graph_compiler import GraphCompiler
 
 
 def _sample_graph_def() -> dict[str, list[dict[str, str]]]:
