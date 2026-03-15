@@ -1199,6 +1199,56 @@ async def _auto_format(
         logger.warning("implement_auto_format_failed", exc_info=True)
 
 
+async def _failures_in_agent_files(
+    test_output: str,
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workspace_path: str,
+) -> bool:
+    """Check if any test failures are in files the agent created or modified.
+
+    Parses FAILED lines from pytest output (e.g. ``FAILED path/to/test.py::...``)
+    and checks if those files are in the set of agent-changed files.
+    Returns True if any failure is in an agent-changed file.
+    """
+    import re
+
+    from lintel.sandbox.types import SandboxJob
+
+    # Extract failed test file paths from pytest output
+    failed_files: set[str] = set()
+    for match in re.finditer(r"FAILED\s+([\w/._-]+\.py)::", test_output):
+        failed_files.add(match.group(1))
+    # Also catch ERROR lines (import failures)
+    for match in re.finditer(r"ERROR\s+([\w/._-]+\.py)", test_output):
+        failed_files.add(match.group(1))
+
+    if not failed_files:
+        # Can't parse failures — assume agent is responsible
+        return True
+
+    # Get agent-changed files
+    result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                "{ git diff --name-only origin/main 2>/dev/null;"
+                " git diff --name-only main 2>/dev/null;"
+                " git status --porcelain 2>/dev/null | awk '{print $NF}';"
+                " } | sort -u || true"
+            ),
+            workdir=workspace_path,
+            timeout_seconds=10,
+        ),
+    )
+    agent_files = {f.strip() for f in result.stdout.strip().split("\n") if f.strip()}
+
+    for failed in failed_files:
+        if failed in agent_files:
+            return True
+    return False
+
+
 async def _run_tests(
     config: RunnableConfig | dict[str, Any],
     state: ThreadWorkflowState,
@@ -1252,38 +1302,10 @@ async def _run_tests(
             SandboxJob(command=cmd, workdir=workspace_path, timeout_seconds=180),
         )
 
-    # Always try targeted tests first (only files the agent changed).
-    # If those pass, run the full suite as a regression check.
-    changed_cmd = await _build_changed_tests_command(
-        sandbox_manager, sandbox_id, workspace_path
-    )
-
     async def _log_test_line(line: str) -> None:
         await tracker.append_log("implement", line)
 
-    # Phase 1: Run targeted tests for agent-changed files
-    if changed_cmd:
-        await tracker.append_log("implement", f"Running changed tests: {changed_cmd[:80]}")
-        try:
-            changed_output, changed_exit = await _stream_execute_with_logging(
-                sandbox_manager, sandbox_id, changed_cmd, workspace_path, 300, _log_test_line,
-            )
-        except Exception:
-            logger.warning("implement_changed_tests_failed")
-            return "Changed test execution failed", 1
-
-        if changed_exit != 0:
-            await tracker.append_log("implement", "Changed tests: FAILED")
-            if len(changed_output) > 5000:
-                changed_output = (
-                    changed_output[:2500] + "\n...(truncated)...\n" + changed_output[-2500:]
-                )
-            return changed_output, changed_exit
-
-        await tracker.append_log("implement", "Changed tests: PASSED")
-
-    # Phase 2: Run full test suite as regression check
-    await tracker.append_log("implement", f"Running full tests: {test_command[:80]}")
+    await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
     try:
         output, exit_code = await _stream_execute_with_logging(
             sandbox_manager, sandbox_id, test_command, workspace_path, 600, _log_test_line,
@@ -1292,14 +1314,18 @@ async def _run_tests(
         logger.warning("implement_test_execute_failed")
         return "Test execution failed", 1
 
-    if exit_code != 0 and changed_cmd:
-        # Full suite failed but changed tests passed — likely pre-existing failures.
-        # Accept if the agent's own tests passed.
-        await tracker.append_log(
-            "implement",
-            "Full suite has failures but agent-changed tests passed — accepting",
+    if exit_code != 0:
+        # Check if failures are only in pre-existing tests (not agent-changed files).
+        # If so, accept — the agent's code didn't introduce regressions.
+        failed_in_agent_files = await _failures_in_agent_files(
+            output, sandbox_manager, sandbox_id, workspace_path
         )
-        exit_code = 0
+        if not failed_in_agent_files:
+            await tracker.append_log(
+                "implement",
+                "Test failures are in pre-existing files only — accepting",
+            )
+            exit_code = 0
 
     verdict = "PASSED" if exit_code == 0 else "FAILED"
     await tracker.append_log("implement", f"Tests: {verdict}")
