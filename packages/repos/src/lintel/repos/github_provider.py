@@ -82,6 +82,8 @@ class GitHubRepoProvider:
         base: str,
         title: str,
         body: str,
+        *,
+        draft: bool = False,
     ) -> str:
         import httpx
 
@@ -92,7 +94,13 @@ class GitHubRepoProvider:
             resp = await client.post(
                 url,
                 headers=self._headers(),
-                json={"title": title, "body": body, "head": head, "base": base},
+                json={
+                    "title": title,
+                    "body": body,
+                    "head": head,
+                    "base": base,
+                    "draft": draft,
+                },
             )
             if resp.status_code >= 400:
                 logger.error(

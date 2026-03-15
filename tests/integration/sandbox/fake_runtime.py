@@ -351,6 +351,8 @@ class FakeRepoProvider:
         base: str,
         title: str,
         body: str,
+        *,
+        draft: bool = False,
     ) -> str:
         self.created_prs.append(
             {
@@ -359,6 +361,7 @@ class FakeRepoProvider:
                 "base": base,
                 "title": title,
                 "body": body,
+                "draft": draft,
             }
         )
         return self._pr_url

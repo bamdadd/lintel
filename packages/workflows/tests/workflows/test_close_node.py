@@ -133,6 +133,7 @@ async def test_close_creates_pr_with_github_token() -> None:
         base="main",
         title="add dark mode toggle",
         body=mock_provider.create_pr.call_args.kwargs["body"],
+        draft=False,
     )
     # Verify the PR body contains key information
     pr_body = mock_provider.create_pr.call_args.kwargs["body"]

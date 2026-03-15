@@ -73,11 +73,11 @@ async def close_workflow(
         has_failure = True
 
     if has_failure:
-        await tracker.append_log("close", "Pipeline aborted due to earlier failure")
-        # Mark all remaining pending/running stages as skipped
+        await tracker.append_log(
+            "close", "Pipeline has failures — will raise draft PR for engineer handoff"
+        )
+        # Mark remaining pending/running stages as skipped
         await _skip_remaining_stages(_config, state)
-        await _release_sandbox()
-        return {"current_phase": "closed"}
 
     await tracker.mark_running("close")
 
@@ -89,6 +89,7 @@ async def close_workflow(
 
     if not sandbox_id or sandbox_manager is None:
         await tracker.mark_completed("close")
+        await _release_sandbox()
         return {"current_phase": "closed"}
 
     # Commit any uncommitted changes
@@ -194,6 +195,7 @@ async def close_workflow(
                 feature_branch=feature_branch,
                 base_branch=base_branch,
                 commit_msg=commit_msg,
+                draft=has_failure,
             )
 
         # Disconnect network again
@@ -248,8 +250,12 @@ async def _create_pull_request(
     feature_branch: str,
     base_branch: str,
     commit_msg: str,
+    draft: bool = False,
 ) -> str:
     """Create a PR using an injected repo_provider or credentials.
+
+    When *draft* is True the PR is opened as a draft with a warning banner
+    so an engineer knows it needs manual attention.
 
     Returns the PR URL, or empty string if creation is skipped/fails.
     """
@@ -259,19 +265,23 @@ async def _create_pull_request(
     _configurable = config.get("configurable", {})
     pr_url = ""
 
+    plan = state.get("plan", {})
+    pr_body = _build_pr_body(state, plan, draft=draft)
+    pr_title = f"[WIP] {commit_msg}" if draft else commit_msg
+    label = "draft pull request" if draft else "pull request"
+
     # Prefer injected repo_provider (used by tests)
     repo_provider = _configurable.get("repo_provider")
     if repo_provider is not None:
-        plan = state.get("plan", {})
-        pr_body = _build_pr_body(state, plan)
         try:
-            await tracker.append_log("close", "Creating pull request...")
+            await tracker.append_log("close", f"Creating {label}...")
             pr_url = await repo_provider.create_pr(
                 repo_url=repo_url,
                 head=feature_branch,
                 base=base_branch,
-                title=commit_msg,
+                title=pr_title,
                 body=pr_body,
+                draft=draft,
             )
             await tracker.append_log("close", f"PR created: {pr_url}")
 
@@ -319,16 +329,15 @@ async def _create_pull_request(
                 )
 
                 provider = GitHubRepoProvider(token=secret)
-                plan = state.get("plan", {})
-                pr_body = _build_pr_body(state, plan)
 
-                await tracker.append_log("close", "Creating pull request...")
+                await tracker.append_log("close", f"Creating {label}...")
                 pr_url = await provider.create_pr(
                     repo_url=repo_url,
                     head=feature_branch,
                     base=base_branch,
-                    title=commit_msg,
+                    title=pr_title,
                     body=pr_body,
+                    draft=draft,
                 )
                 await tracker.append_log("close", f"PR created: {pr_url}")
 
@@ -397,9 +406,21 @@ async def _skip_remaining_stages(
         logger.warning("skip_remaining_stages_failed", run_id=run_id)
 
 
-def _build_pr_body(state: ThreadWorkflowState, plan: dict[str, Any]) -> str:
+def _build_pr_body(
+    state: ThreadWorkflowState,
+    plan: dict[str, Any],
+    *,
+    draft: bool = False,
+) -> str:
     """Build a well-structured PR description from the workflow state."""
     lines: list[str] = []
+
+    if draft:
+        lines.append(
+            "> :warning: **This is a draft PR created by Lintel after a pipeline failure.**\n"
+            "> The automated workflow could not complete successfully. "
+            "An engineer should review the changes, fix any issues, and mark the PR as ready.\n"
+        )
 
     # Summary section
     messages = state.get("sanitized_messages", [])

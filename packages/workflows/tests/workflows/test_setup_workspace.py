@@ -112,6 +112,8 @@ class DummyRepoProvider:
         base: str,
         title: str,
         body: str,
+        *,
+        draft: bool = False,
     ) -> str:
         return "https://github.com/test/repo/pull/1"
 

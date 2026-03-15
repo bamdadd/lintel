@@ -55,6 +55,8 @@ class RepoProvider(Protocol):
         base: str,
         title: str,
         body: str,
+        *,
+        draft: bool = False,
     ) -> str: ...
 
     async def add_comment(

@@ -70,19 +70,19 @@ class TestDefaultWorkflowDefinitions:
 
     def test_entry_point_is_in_graph_nodes(self) -> None:
         for defn in DEFAULT_WORKFLOW_DEFINITIONS:
-            assert (
-                defn.entry_point in defn.graph_nodes
-            ), f"{defn.definition_id}: entry_point '{defn.entry_point}' not in graph_nodes"
+            assert defn.entry_point in defn.graph_nodes, (
+                f"{defn.definition_id}: entry_point '{defn.entry_point}' not in graph_nodes"
+            )
 
     def test_edge_nodes_exist_in_graph(self) -> None:
         for defn in DEFAULT_WORKFLOW_DEFINITIONS:
             for src, dst in defn.graph_edges:
-                assert (
-                    src in defn.graph_nodes
-                ), f"{defn.definition_id}: edge source '{src}' not in graph_nodes"
-                assert (
-                    dst in defn.graph_nodes
-                ), f"{defn.definition_id}: edge dest '{dst}' not in graph_nodes"
+                assert src in defn.graph_nodes, (
+                    f"{defn.definition_id}: edge source '{src}' not in graph_nodes"
+                )
+                assert dst in defn.graph_nodes, (
+                    f"{defn.definition_id}: edge dest '{dst}' not in graph_nodes"
+                )
 
     def test_definition_count(self) -> None:
         assert len(DEFAULT_WORKFLOW_DEFINITIONS) >= 8

@@ -21,6 +21,8 @@ class RepoProvider(Protocol):
         base: str,
         title: str,
         body: str,
+        *,
+        draft: bool = False,
     ) -> str: ...
 
     async def add_comment(self, repo_url: str, pr_number: int, body: str) -> None: ...
