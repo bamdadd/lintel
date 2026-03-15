@@ -111,7 +111,7 @@ async def test_test_node_persists_test_result() -> None:
 
     discovery = {"test_command": "make test", "setup_commands": []}
     with patch(
-        "lintel.api.domain.skills.discover_test_command.discover_test_command",
+        "lintel.skills_api.domain.discover_test_command.discover_test_command",
         new_callable=AsyncMock,
         return_value=discovery,
     ):
@@ -155,7 +155,7 @@ async def test_test_node_records_failure() -> None:
 
     discovery = {"test_command": "make test", "setup_commands": []}
     with patch(
-        "lintel.api.domain.skills.discover_test_command.discover_test_command",
+        "lintel.skills_api.domain.discover_test_command.discover_test_command",
         new_callable=AsyncMock,
         return_value=discovery,
     ):

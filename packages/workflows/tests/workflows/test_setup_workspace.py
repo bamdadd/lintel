@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from lintel.api.routes.variables import InMemoryVariableStore
+from lintel.variables_api.store import InMemoryVariableStore
 from lintel.contracts.types import ThreadRef  # noqa: TC001
 from lintel.domain.types import Variable
 from lintel.persistence.types import Credential, CredentialType

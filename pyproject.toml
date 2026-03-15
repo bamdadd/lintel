@@ -47,6 +47,14 @@ testpaths = [
     "packages/credentials-api/tests",
     "packages/audit-api/tests",
     "packages/approval-requests-api/tests",
+    "packages/boards/tests",
+    "packages/triggers-api/tests",
+    "packages/artifacts-api/tests",
+    "packages/projects-api/tests",
+    "packages/work-items-api/tests",
+    "packages/skills-api/tests",
+    "packages/agent-definitions-api/tests",
+    "packages/mcp-servers-api/tests",
     "tests",
 ]
 
@@ -83,6 +91,14 @@ mypy_path = [
     "packages/credentials-api/src",
     "packages/audit-api/src",
     "packages/approval-requests-api/src",
+    "packages/boards/src",
+    "packages/triggers-api/src",
+    "packages/artifacts-api/src",
+    "packages/projects-api/src",
+    "packages/work-items-api/src",
+    "packages/skills-api/src",
+    "packages/agent-definitions-api/src",
+    "packages/mcp-servers-api/src",
 ]
 
 [[tool.mypy.overrides]]

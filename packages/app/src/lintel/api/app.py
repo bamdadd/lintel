@@ -17,84 +17,101 @@ if TYPE_CHECKING:
     from fastapi.routing import APIRoute
     from langgraph.graph.state import CompiledStateGraph
 
+from lintel.agent_definitions_api.routes import (
+    router as agent_definitions_router,
+    agent_definition_store_provider,
+)
+from lintel.agent_definitions_api.store import AgentDefinitionStore
 from lintel.api.container import AppContainer, wire_container
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routes import (
     admin,
-    agents,
     ai_providers,
     approvals,
-    artifacts,
     automations,
-    boards,
     chat,
     compliance,
     debug,
     events,
     experimentation,
     health,
-    mcp_servers,
     metrics,
     models,
     onboarding,
     pii,
     pipelines,
-    projects,
     repositories,
     sandboxes,
     settings,
-    skills,
     streams,
     threads,
-    triggers,
-    work_items,
     workflow_definitions,
     workflows,
 )
-from lintel.api.routes.agents import AgentDefinitionStore
 from lintel.api.routes.ai_providers import InMemoryAIProviderStore
-from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
 from lintel.api.routes.automations import InMemoryAutomationStore
-from lintel.api.routes.boards import BoardStore, TagStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.compliance import ComplianceStore
-from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
 from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.api.routes.pipelines import InMemoryPipelineStore
-from lintel.api.routes.projects import ProjectStore
-from lintel.api.routes.skills import InMemorySkillStore
-from lintel.api.routes.triggers import InMemoryTriggerStore
-from lintel.teams.routes import router as teams_router, team_store_provider
-from lintel.teams.store import InMemoryTeamStore
-from lintel.policies_api.routes import router as policies_router, policy_store_provider
-from lintel.policies_api.store import InMemoryPolicyStore
-from lintel.notifications_api.routes import (
-    router as notifications_router,
-    notification_rule_store_provider,
-)
-from lintel.notifications_api.store import NotificationRuleStore
-from lintel.environments_api.routes import (
-    router as environments_router,
-    environment_store_provider,
-)
-from lintel.environments_api.store import InMemoryEnvironmentStore
-from lintel.variables_api.routes import router as variables_router, variable_store_provider
-from lintel.variables_api.store import InMemoryVariableStore
-from lintel.credentials_api.routes import (
-    router as credentials_router,
-    credential_store_provider,
-)
-from lintel.credentials_api.store import InMemoryCredentialStore
-from lintel.audit_api.routes import router as audit_router, audit_entry_store_provider
-from lintel.audit_api.store import AuditEntryStore
 from lintel.approval_requests_api.routes import (
     router as approval_requests_router,
     approval_request_store_provider,
 )
 from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
+from lintel.artifacts_api.routes import (
+    router as artifacts_router,
+    code_artifact_store_provider,
+    test_result_store_provider,
+)
+from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
+from lintel.audit_api.routes import router as audit_router, audit_entry_store_provider
+from lintel.audit_api.store import AuditEntryStore
+from lintel.boards.routes import (
+    router as boards_router,
+    board_store_provider,
+    tag_store_provider,
+)
+from lintel.boards.store import BoardStore, TagStore
+from lintel.credentials_api.routes import (
+    router as credentials_router,
+    credential_store_provider,
+)
+from lintel.credentials_api.store import InMemoryCredentialStore
+from lintel.environments_api.routes import (
+    router as environments_router,
+    environment_store_provider,
+)
+from lintel.environments_api.store import InMemoryEnvironmentStore
+from lintel.mcp_servers_api.routes import (
+    router as mcp_servers_router,
+    mcp_server_store_provider,
+)
+from lintel.mcp_servers_api.store import InMemoryMCPServerStore
+from lintel.notifications_api.routes import (
+    router as notifications_router,
+    notification_rule_store_provider,
+)
+from lintel.notifications_api.store import NotificationRuleStore
+from lintel.policies_api.routes import router as policies_router, policy_store_provider
+from lintel.policies_api.store import InMemoryPolicyStore
+from lintel.projects_api.routes import router as projects_router, project_store_provider
+from lintel.projects_api.store import ProjectStore
+from lintel.skills_api.routes import router as skills_router, skill_store_provider
+from lintel.skills_api.store import InMemorySkillStore
+from lintel.teams.routes import router as teams_router, team_store_provider
+from lintel.teams.store import InMemoryTeamStore
+from lintel.triggers_api.routes import router as triggers_router, trigger_store_provider
+from lintel.triggers_api.store import InMemoryTriggerStore
 from lintel.users.routes import router as users_router, user_store_provider
 from lintel.users.store import InMemoryUserStore
-from lintel.api.routes.work_items import WorkItemStore
+from lintel.variables_api.routes import router as variables_router, variable_store_provider
+from lintel.variables_api.store import InMemoryVariableStore
+from lintel.work_items_api.routes import (
+    router as work_items_router,
+    work_item_store_provider,
+)
+from lintel.work_items_api.store import WorkItemStore
 from lintel.event_bus.in_memory import InMemoryEventBus
 from lintel.event_store.in_memory import InMemoryEventStore
 from lintel.projections.audit import AuditProjection
@@ -574,6 +591,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     credential_store_provider.override(stores["credential_store"])
     audit_entry_store_provider.override(stores["audit_entry_store"])
     approval_request_store_provider.override(stores["approval_request_store"])
+    boards_tag_provider_ref = tag_store_provider
+    boards_tag_provider_ref.override(stores["tag_store"])
+    boards_board_provider_ref = board_store_provider
+    boards_board_provider_ref.override(stores["board_store"])
+    trigger_store_provider.override(stores["trigger_store"])
+    code_artifact_store_provider.override(stores["code_artifact_store"])
+    test_result_store_provider.override(stores["test_result_store"])
+    project_store_provider.override(stores["project_store"])
+    work_item_store_provider.override(stores["work_item_store"])
+    skill_store_provider.override(stores["skill_store"])
+    agent_definition_store_provider.override(stores["agent_definition_store"])
+    mcp_server_store_provider.override(stores["mcp_server_store"])
     app.state.container = container
 
     # Start automation scheduler
@@ -688,10 +717,10 @@ def create_app() -> FastAPI:
     app.include_router(threads.router, prefix="/api/v1", tags=["threads"])
     app.include_router(repositories.router, prefix="/api/v1", tags=["repositories"])
     app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])
-    app.include_router(agents.router, prefix="/api/v1", tags=["agents"])
+    app.include_router(agent_definitions_router, prefix="/api/v1", tags=["agents"])
     app.include_router(approvals.router, prefix="/api/v1", tags=["approvals"])
     app.include_router(sandboxes.router, prefix="/api/v1", tags=["sandboxes"])
-    app.include_router(skills.router, prefix="/api/v1", tags=["skills"])
+    app.include_router(skills_router, prefix="/api/v1", tags=["skills"])
     app.include_router(streams.router, prefix="/api/v1", tags=["streams"])
     app.include_router(events.router, prefix="/api/v1", tags=["events"])
     app.include_router(pii.router, prefix="/api/v1", tags=["pii"])
@@ -700,11 +729,11 @@ def create_app() -> FastAPI:
     app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
     app.include_router(credentials_router, prefix="/api/v1", tags=["credentials"])
     app.include_router(ai_providers.router, prefix="/api/v1", tags=["ai-providers"])
-    app.include_router(projects.router, prefix="/api/v1", tags=["projects"])
-    app.include_router(work_items.router, prefix="/api/v1", tags=["work-items"])
+    app.include_router(projects_router, prefix="/api/v1", tags=["projects"])
+    app.include_router(work_items_router, prefix="/api/v1", tags=["work-items"])
     app.include_router(pipelines.router, prefix="/api/v1", tags=["pipelines"])
     app.include_router(environments_router, prefix="/api/v1", tags=["environments"])
-    app.include_router(triggers.router, prefix="/api/v1", tags=["triggers"])
+    app.include_router(triggers_router, prefix="/api/v1", tags=["triggers"])
     app.include_router(automations.router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables_router, prefix="/api/v1", tags=["variables"])
     app.include_router(users_router, prefix="/api/v1", tags=["users"])
@@ -712,13 +741,13 @@ def create_app() -> FastAPI:
     app.include_router(policies_router, prefix="/api/v1", tags=["policies"])
     app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
     app.include_router(audit_router, prefix="/api/v1", tags=["audit"])
-    app.include_router(artifacts.router, prefix="/api/v1", tags=["artifacts"])
+    app.include_router(artifacts_router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests_router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
     app.include_router(models.router, prefix="/api/v1", tags=["models"])
-    app.include_router(mcp_servers.router, prefix="/api/v1", tags=["mcp-servers"])
+    app.include_router(mcp_servers_router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
-    app.include_router(boards.router, prefix="/api/v1", tags=["boards"])
+    app.include_router(boards_router, prefix="/api/v1", tags=["boards"])
     app.include_router(compliance.router, prefix="/api/v1", tags=["compliance"])
     app.include_router(experimentation.router, prefix="/api/v1", tags=["experimentation"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])

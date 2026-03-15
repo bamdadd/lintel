@@ -28,6 +28,14 @@ dependencies = [
     "lintel-credentials-api",
     "lintel-audit-api",
     "lintel-approval-requests-api",
+    "lintel-boards",
+    "lintel-triggers-api",
+    "lintel-artifacts-api",
+    "lintel-projects-api",
+    "lintel-work-items-api",
+    "lintel-skills-api",
+    "lintel-agent-definitions-api",
+    "lintel-mcp-servers-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -67,6 +75,14 @@ lintel-variables-api = { workspace = true }
 lintel-credentials-api = { workspace = true }
 lintel-audit-api = { workspace = true }
 lintel-approval-requests-api = { workspace = true }
+lintel-boards = { workspace = true }
+lintel-triggers-api = { workspace = true }
+lintel-artifacts-api = { workspace = true }
+lintel-projects-api = { workspace = true }
+lintel-work-items-api = { workspace = true }
+lintel-skills-api = { workspace = true }
+lintel-agent-definitions-api = { workspace = true }
+lintel-mcp-servers-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
