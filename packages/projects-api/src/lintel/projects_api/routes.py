@@ -1,58 +1,20 @@
 """Project CRUD endpoints."""
 
-from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import ProjectCreated, ProjectRemoved, ProjectUpdated
 from lintel.domain.types import Project, ProjectStatus
-from lintel.persistence.data_models import ProjectData
+from lintel.projects_api.store import ProjectStore
 
 router = APIRouter()
 
-
-class ProjectStore:
-    """In-memory project store."""
-
-    def __init__(self) -> None:
-        self._data: dict[str, dict[str, Any]] = {}
-
-    async def add(self, project: Project) -> None:
-        data = asdict(project)
-        # Convert tuples to lists for JSON compat
-        for key in ("repo_ids", "credential_ids"):
-            if isinstance(data.get(key), tuple):
-                data[key] = list(data[key])
-        validated = ProjectData.model_validate(data)
-        self._data[project.project_id] = validated.model_dump()
-
-    async def get(self, project_id: str) -> dict[str, Any] | None:
-        return self._data.get(project_id)
-
-    async def list_all(self) -> list[dict[str, Any]]:
-        return list(self._data.values())
-
-    async def update(self, project_id: str, data: dict[str, Any]) -> None:
-        # Convert tuples to lists before validation
-        for key in ("repo_ids", "credential_ids"):
-            if isinstance(data.get(key), tuple):
-                data[key] = list(data[key])
-        validated = ProjectData.model_validate(data)
-        self._data[project_id] = validated.model_dump()
-
-    async def remove(self, project_id: str) -> None:
-        self._data.pop(project_id, None)
-
-
-def get_project_store(request: Request) -> ProjectStore:
-    """Get project store from app state."""
-    return request.app.state.project_store  # type: ignore[no-any-return]
+project_store_provider = StoreProvider()
 
 
 class CreateProjectRequest(BaseModel):
@@ -79,11 +41,10 @@ class UpdateProjectRequest(BaseModel):
 
 
 @router.post("/projects", status_code=201)
-@inject
 async def create_project(
     request: Request,
     body: CreateProjectRequest,
-    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.project_id)
     if existing is not None:
@@ -107,18 +68,16 @@ async def create_project(
 
 
 @router.get("/projects")
-@inject
 async def list_projects(
-    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     return await store.list_all()
 
 
 @router.get("/projects/{project_id}")
-@inject
 async def get_project(
     project_id: str,
-    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(project_id)
     if item is None:
@@ -127,12 +86,11 @@ async def get_project(
 
 
 @router.patch("/projects/{project_id}")
-@inject
 async def update_project(
     request: Request,
     project_id: str,
     body: UpdateProjectRequest,
-    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     item = await store.get(project_id)
     if item is None:
@@ -150,11 +108,10 @@ async def update_project(
 
 
 @router.delete("/projects/{project_id}", status_code=204)
-@inject
 async def remove_project(
     request: Request,
     project_id: str,
-    store: ProjectStore = Depends(Provide[AppContainer.project_store]),  # noqa: B008
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
 ) -> None:
     item = await store.get(project_id)
     if item is None:

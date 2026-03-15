@@ -1,23 +1,9 @@
 """Tests for projects API."""
 
-from typing import TYPE_CHECKING
-
 from fastapi.testclient import TestClient
-import pytest
-
-from lintel.api.app import create_app
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 
 
-@pytest.fixture()
-def client() -> "Generator[TestClient]":
-    with TestClient(create_app()) as c:
-        yield c
-
-
-def _create_project(client: TestClient, project_id: str = "p1") -> dict:
+def _create_project(client: TestClient, project_id: str = "p1") -> dict:  # type: ignore[type-arg]
     return client.post(
         "/api/v1/projects",
         json={
@@ -54,10 +40,7 @@ class TestProjectsAPI:
         assert resp.status_code == 201
         assert resp.json()["repo_ids"] == []
 
-    def test_create_project_duplicate_returns_409(
-        self,
-        client: TestClient,
-    ) -> None:
+    def test_create_project_duplicate_returns_409(self, client: TestClient) -> None:
         _create_project(client, "dup")
         resp = client.post(
             "/api/v1/projects",
@@ -83,10 +66,7 @@ class TestProjectsAPI:
         assert resp.status_code == 200
         assert resp.json()["project_id"] == "p1"
 
-    def test_get_project_not_found_returns_404(
-        self,
-        client: TestClient,
-    ) -> None:
+    def test_get_project_not_found_returns_404(self, client: TestClient) -> None:
         resp = client.get("/api/v1/projects/missing")
         assert resp.status_code == 404
 
