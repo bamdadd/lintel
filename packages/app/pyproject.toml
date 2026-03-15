@@ -36,6 +36,11 @@ dependencies = [
     "lintel-skills-api",
     "lintel-agent-definitions-api",
     "lintel-mcp-servers-api",
+    "lintel-ai-providers-api",
+    "lintel-models-api",
+    "lintel-repositories-api",
+    "lintel-workflow-definitions-api",
+    "lintel-settings-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -83,6 +88,11 @@ lintel-work-items-api = { workspace = true }
 lintel-skills-api = { workspace = true }
 lintel-agent-definitions-api = { workspace = true }
 lintel-mcp-servers-api = { workspace = true }
+lintel-ai-providers-api = { workspace = true }
+lintel-models-api = { workspace = true }
+lintel-repositories-api = { workspace = true }
+lintel-workflow-definitions-api = { workspace = true }
+lintel-settings-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

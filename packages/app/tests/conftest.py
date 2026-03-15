@@ -30,7 +30,7 @@ def container() -> Generator[AppContainerType]:
     from lintel.api.container import AppContainer
     from lintel.api.routes.chat import ChatStore
     from lintel.api.routes.compliance import ComplianceStore
-    from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
+    from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
     from lintel.api.routes.pipelines import InMemoryPipelineStore
     from lintel.api.routes.sandboxes import SandboxStore
     from lintel.approval_requests_api.store import InMemoryApprovalRequestStore

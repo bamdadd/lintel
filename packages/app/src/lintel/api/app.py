@@ -24,9 +24,14 @@ from lintel.agent_definitions_api.routes import (
 from lintel.agent_definitions_api.store import AgentDefinitionStore
 from lintel.api.container import AppContainer, wire_container
 from lintel.api.middleware import CorrelationMiddleware
+from lintel.ai_providers_api.routes import (
+    router as ai_providers_router,
+    ai_provider_store_provider,
+    model_store_provider as ai_providers_model_store_provider,
+)
+from lintel.ai_providers_api.store import InMemoryAIProviderStore
 from lintel.api.routes import (
     admin,
-    ai_providers,
     approvals,
     automations,
     chat,
@@ -36,24 +41,32 @@ from lintel.api.routes import (
     experimentation,
     health,
     metrics,
-    models,
     onboarding,
     pii,
     pipelines,
-    repositories,
     sandboxes,
-    settings,
     streams,
     threads,
-    workflow_definitions,
     workflows,
 )
-from lintel.api.routes.ai_providers import InMemoryAIProviderStore
 from lintel.api.routes.automations import InMemoryAutomationStore
 from lintel.api.routes.chat import ChatStore
 from lintel.api.routes.compliance import ComplianceStore
-from lintel.api.routes.models import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.api.routes.pipelines import InMemoryPipelineStore
+from lintel.models_api.routes import (
+    router as models_router,
+    model_store_provider,
+    model_assignment_store_provider,
+    ai_provider_store_provider as models_ai_provider_store_provider,
+)
+from lintel.models_api.store import InMemoryModelStore, InMemoryModelAssignmentStore
+from lintel.repositories_api.routes import (
+    router as repositories_router,
+    repository_store_provider,
+    repo_provider_provider,
+)
+from lintel.settings_api.routes import router as settings_router
+from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
 from lintel.approval_requests_api.routes import (
     router as approval_requests_router,
     approval_request_store_provider,
@@ -603,6 +616,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     skill_store_provider.override(stores["skill_store"])
     agent_definition_store_provider.override(stores["agent_definition_store"])
     mcp_server_store_provider.override(stores["mcp_server_store"])
+    ai_provider_store_provider.override(stores["ai_provider_store"])
+    ai_providers_model_store_provider.override(stores["model_store"])
+    model_store_provider.override(stores["model_store"])
+    model_assignment_store_provider.override(stores["model_assignment_store"])
+    models_ai_provider_store_provider.override(stores["ai_provider_store"])
+    repository_store_provider.override(stores["repository_store"])
+    repo_provider_provider.override(repo_provider)
     app.state.container = container
 
     # Start automation scheduler
@@ -715,7 +735,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, tags=["health"])
     app.include_router(threads.router, prefix="/api/v1", tags=["threads"])
-    app.include_router(repositories.router, prefix="/api/v1", tags=["repositories"])
+    app.include_router(repositories_router, prefix="/api/v1", tags=["repositories"])
     app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])
     app.include_router(agent_definitions_router, prefix="/api/v1", tags=["agents"])
     app.include_router(approvals.router, prefix="/api/v1", tags=["approvals"])
@@ -724,11 +744,11 @@ def create_app() -> FastAPI:
     app.include_router(streams.router, prefix="/api/v1", tags=["streams"])
     app.include_router(events.router, prefix="/api/v1", tags=["events"])
     app.include_router(pii.router, prefix="/api/v1", tags=["pii"])
-    app.include_router(settings.router, prefix="/api/v1", tags=["settings"])
-    app.include_router(workflow_definitions.router, prefix="/api/v1", tags=["workflow-definitions"])
+    app.include_router(settings_router, prefix="/api/v1", tags=["settings"])
+    app.include_router(workflow_definitions_router, prefix="/api/v1", tags=["workflow-definitions"])
     app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
     app.include_router(credentials_router, prefix="/api/v1", tags=["credentials"])
-    app.include_router(ai_providers.router, prefix="/api/v1", tags=["ai-providers"])
+    app.include_router(ai_providers_router, prefix="/api/v1", tags=["ai-providers"])
     app.include_router(projects_router, prefix="/api/v1", tags=["projects"])
     app.include_router(work_items_router, prefix="/api/v1", tags=["work-items"])
     app.include_router(pipelines.router, prefix="/api/v1", tags=["pipelines"])
@@ -744,7 +764,7 @@ def create_app() -> FastAPI:
     app.include_router(artifacts_router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests_router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
-    app.include_router(models.router, prefix="/api/v1", tags=["models"])
+    app.include_router(models_router, prefix="/api/v1", tags=["models"])
     app.include_router(mcp_servers_router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(boards_router, prefix="/api/v1", tags=["boards"])

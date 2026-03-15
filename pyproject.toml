@@ -55,6 +55,11 @@ testpaths = [
     "packages/skills-api/tests",
     "packages/agent-definitions-api/tests",
     "packages/mcp-servers-api/tests",
+    "packages/ai-providers-api/tests",
+    "packages/models-api/tests",
+    "packages/repositories-api/tests",
+    "packages/workflow-definitions-api/tests",
+    "packages/settings-api/tests",
     "tests",
 ]
 
@@ -99,6 +104,11 @@ mypy_path = [
     "packages/skills-api/src",
     "packages/agent-definitions-api/src",
     "packages/mcp-servers-api/src",
+    "packages/ai-providers-api/src",
+    "packages/models-api/src",
+    "packages/repositories-api/src",
+    "packages/workflow-definitions-api/src",
+    "packages/settings-api/src",
 ]
 
 [[tool.mypy.overrides]]
