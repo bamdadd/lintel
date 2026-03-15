@@ -704,6 +704,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     kpi_store_provider.override(stores["kpi_store"])
     experiment_store_provider.override(stores["experiment_store"])
     compliance_metric_store_provider.override(stores["compliance_metric_store"])
+    # Expose stores on app.state so WorkflowExecutor can access them via getattr
+    app.state.code_artifact_store = stores["code_artifact_store"]
+    app.state.test_result_store = stores["test_result_store"]
+    app.state.pipeline_store = stores["pipeline_store"]
+    app.state.credential_store = stores["credential_store"]
     app.state.container = container
 
     # Start automation scheduler
