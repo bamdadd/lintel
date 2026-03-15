@@ -6,8 +6,7 @@ CREATE TABLE IF NOT EXISTS project_step_model_overrides (
     model       TEXT        NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (project_id, node_type),
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    PRIMARY KEY (project_id, node_type)
 );
 
 CREATE INDEX IF NOT EXISTS idx_step_model_overrides_project_id

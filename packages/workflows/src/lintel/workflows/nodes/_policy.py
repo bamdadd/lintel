@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from lintel.domain.types import PolicyAction
 
 if TYPE_CHECKING:
-    from lintel.api.routes.policies import InMemoryPolicyStore
+    from lintel.policies_api.store import InMemoryPolicyStore
 
 
 async def evaluate_gate_policy(

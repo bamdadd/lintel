@@ -11,8 +11,8 @@ import structlog
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lintel.api.routes.mcp_servers import InMemoryMCPServerStore
     from lintel.infrastructure.mcp.tool_client import MCPToolClient
+    from lintel.mcp_servers_api.store import InMemoryMCPServerStore
     from lintel.models.router import DefaultModelRouter
     from lintel.models.types import ModelPolicy
 
