@@ -40,3 +40,7 @@ class StoreProvider:
         if self._instance is _UNSET:
             raise RuntimeError("Store not configured — call .override() at app startup")
         return self._instance
+
+    def __class_getitem__(cls, item: Any) -> type:  # noqa: ANN401
+        """Allow generic subscript notation e.g. StoreProvider[MyStore]."""
+        return cls

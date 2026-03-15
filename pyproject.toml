@@ -60,6 +60,12 @@ testpaths = [
     "packages/repositories-api/tests",
     "packages/workflow-definitions-api/tests",
     "packages/settings-api/tests",
+    "packages/compliance-api/tests",
+    "packages/experimentation-api/tests",
+    "packages/automations-api/tests",
+    "packages/sandboxes-api/tests",
+    "packages/pipelines-api/tests",
+    "packages/chat-api/tests",
     "tests",
 ]
 
@@ -109,6 +115,12 @@ mypy_path = [
     "packages/repositories-api/src",
     "packages/workflow-definitions-api/src",
     "packages/settings-api/src",
+    "packages/compliance-api/src",
+    "packages/experimentation-api/src",
+    "packages/automations-api/src",
+    "packages/sandboxes-api/src",
+    "packages/pipelines-api/src",
+    "packages/chat-api/src",
 ]
 
 [[tool.mypy.overrides]]

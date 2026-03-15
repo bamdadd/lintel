@@ -33,26 +33,46 @@ from lintel.ai_providers_api.store import InMemoryAIProviderStore
 from lintel.api.routes import (
     admin,
     approvals,
-    automations,
-    chat,
-    compliance,
     debug,
     events,
-    experimentation,
     health,
     metrics,
     onboarding,
     pii,
-    pipelines,
-    sandboxes,
     streams,
     threads,
     workflows,
 )
-from lintel.api.routes.automations import InMemoryAutomationStore
-from lintel.api.routes.chat import ChatStore
-from lintel.api.routes.compliance import ComplianceStore
-from lintel.api.routes.pipelines import InMemoryPipelineStore
+from lintel.automations_api.routes import (
+    router as automations_router,
+    automation_store_provider,
+    InMemoryAutomationStore,
+)
+from lintel.chat_api.routes import router as chat_router_routes, chat_store_provider, ChatStore
+from lintel.compliance_api.routes import (
+    router as compliance_router,
+    regulation_store_provider,
+    compliance_policy_store_provider,
+    procedure_store_provider,
+    practice_store_provider,
+    strategy_store_provider,
+    knowledge_entry_store_provider,
+    knowledge_extraction_store_provider,
+    architecture_decision_store_provider,
+)
+from lintel.compliance_api.store import ComplianceStore
+from lintel.experimentation_api.routes import (
+    router as experimentation_router,
+    kpi_store_provider,
+    experiment_store_provider,
+    compliance_metric_store_provider,
+)
+from lintel.pipelines_api.routes import (
+    router as pipelines_router,
+    pipeline_store_provider,
+    InMemoryPipelineStore,
+)
+from lintel.sandboxes_api.routes import router as sandboxes_router, SandboxStore
 from lintel.models_api.routes import (
     router as models_router,
     model_store_provider,
@@ -210,7 +230,7 @@ def _create_in_memory_stores() -> dict[str, Any]:
         "model_store": InMemoryModelStore(),
         "model_assignment_store": InMemoryModelAssignmentStore(),
         "mcp_server_store": InMemoryMCPServerStore(),
-        "sandbox_store": sandboxes.SandboxStore(),
+        "sandbox_store": SandboxStore(),
         "tag_store": TagStore(),
         "board_store": BoardStore(),
         # Compliance & Governance stores
@@ -450,7 +470,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         setattr(app.state, name, store)
 
     # Wire command dispatcher
-    from lintel.api.domain.chat_router import ChatRouter
+    from lintel.chat_api.chat_router import ChatRouter
     from lintel.api.domain.command_dispatcher import InMemoryCommandDispatcher
     from lintel.models.router import DefaultModelRouter
     from lintel.workflows.workflow_executor import WorkflowExecutor
@@ -623,12 +643,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     models_ai_provider_store_provider.override(stores["ai_provider_store"])
     repository_store_provider.override(stores["repository_store"])
     repo_provider_provider.override(repo_provider)
+    # New extracted packages
+    automation_store_provider.override(stores["automation_store"])
+    chat_store_provider.override(stores["chat_store"])
+    pipeline_store_provider.override(stores["pipeline_store"])
+    regulation_store_provider.override(stores["regulation_store"])
+    compliance_policy_store_provider.override(stores["compliance_policy_store"])
+    procedure_store_provider.override(stores["procedure_store"])
+    practice_store_provider.override(stores["practice_store"])
+    strategy_store_provider.override(stores["strategy_store"])
+    knowledge_entry_store_provider.override(stores["knowledge_entry_store"])
+    knowledge_extraction_store_provider.override(stores["knowledge_extraction_store"])
+    architecture_decision_store_provider.override(stores["architecture_decision_store"])
+    kpi_store_provider.override(stores["kpi_store"])
+    experiment_store_provider.override(stores["experiment_store"])
+    compliance_metric_store_provider.override(stores["compliance_metric_store"])
     app.state.container = container
 
     # Start automation scheduler
     import asyncio
 
-    from lintel.api.domain.automation_scheduler import AutomationScheduler
+    from lintel.automations_api.scheduler import AutomationScheduler
 
     async def _fire_automation(
         auto: Any,  # noqa: ANN401
@@ -739,7 +774,7 @@ def create_app() -> FastAPI:
     app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])
     app.include_router(agent_definitions_router, prefix="/api/v1", tags=["agents"])
     app.include_router(approvals.router, prefix="/api/v1", tags=["approvals"])
-    app.include_router(sandboxes.router, prefix="/api/v1", tags=["sandboxes"])
+    app.include_router(sandboxes_router, prefix="/api/v1", tags=["sandboxes"])
     app.include_router(skills_router, prefix="/api/v1", tags=["skills"])
     app.include_router(streams.router, prefix="/api/v1", tags=["streams"])
     app.include_router(events.router, prefix="/api/v1", tags=["events"])
@@ -751,10 +786,10 @@ def create_app() -> FastAPI:
     app.include_router(ai_providers_router, prefix="/api/v1", tags=["ai-providers"])
     app.include_router(projects_router, prefix="/api/v1", tags=["projects"])
     app.include_router(work_items_router, prefix="/api/v1", tags=["work-items"])
-    app.include_router(pipelines.router, prefix="/api/v1", tags=["pipelines"])
+    app.include_router(pipelines_router, prefix="/api/v1", tags=["pipelines"])
     app.include_router(environments_router, prefix="/api/v1", tags=["environments"])
     app.include_router(triggers_router, prefix="/api/v1", tags=["triggers"])
-    app.include_router(automations.router, prefix="/api/v1", tags=["automations"])
+    app.include_router(automations_router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables_router, prefix="/api/v1", tags=["variables"])
     app.include_router(users_router, prefix="/api/v1", tags=["users"])
     app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
@@ -763,13 +798,13 @@ def create_app() -> FastAPI:
     app.include_router(audit_router, prefix="/api/v1", tags=["audit"])
     app.include_router(artifacts_router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests_router, prefix="/api/v1", tags=["approval-requests"])
-    app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+    app.include_router(chat_router_routes, prefix="/api/v1", tags=["chat"])
     app.include_router(models_router, prefix="/api/v1", tags=["models"])
     app.include_router(mcp_servers_router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(boards_router, prefix="/api/v1", tags=["boards"])
-    app.include_router(compliance.router, prefix="/api/v1", tags=["compliance"])
-    app.include_router(experimentation.router, prefix="/api/v1", tags=["experimentation"])
+    app.include_router(compliance_router, prefix="/api/v1", tags=["compliance"])
+    app.include_router(experimentation_router, prefix="/api/v1", tags=["experimentation"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
 

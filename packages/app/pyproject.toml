@@ -41,6 +41,12 @@ dependencies = [
     "lintel-repositories-api",
     "lintel-workflow-definitions-api",
     "lintel-settings-api",
+    "lintel-compliance-api",
+    "lintel-experimentation-api",
+    "lintel-automations-api",
+    "lintel-sandboxes-api",
+    "lintel-pipelines-api",
+    "lintel-chat-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -93,6 +99,12 @@ lintel-models-api = { workspace = true }
 lintel-repositories-api = { workspace = true }
 lintel-workflow-definitions-api = { workspace = true }
 lintel-settings-api = { workspace = true }
+lintel-compliance-api = { workspace = true }
+lintel-experimentation-api = { workspace = true }
+lintel-automations-api = { workspace = true }
+lintel-sandboxes-api = { workspace = true }
+lintel-pipelines-api = { workspace = true }
+lintel-chat-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
