@@ -10,12 +10,6 @@ import structlog
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
-from lintel.domain.events import (
-    ConversationCreated,
-    ConversationDeleted,
-    ProjectSelected,
-)
-from lintel.workflows.types import PipelineStatus
 
 # ---------------------------------------------------------------------------
 # Re-exports — keep backward compatibility for importers of this module
@@ -24,6 +18,12 @@ from lintel.chat_api.models import SendMessageRequest, StartConversationRequest
 from lintel.chat_api.service import ChatService
 from lintel.chat_api.store import ChatStore
 from lintel.chat_api.streaming import streaming_router
+from lintel.domain.events import (
+    ConversationCreated,
+    ConversationDeleted,
+    ProjectSelected,
+)
+from lintel.workflows.types import PipelineStatus
 
 __all__ = [
     "ChatService",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -13,7 +13,8 @@ import structlog
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-from lintel.chat_api.models import SendMessageRequest
+    from lintel.chat_api.models import SendMessageRequest
+
 from lintel.chat_api.service import ChatService
 from lintel.chat_api.store import ChatStore
 

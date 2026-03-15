@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 if TYPE_CHECKING:
-    from lintel.api.routes.chat import ChatStore
+    from lintel.chat_api.routes import ChatStore
 
 logger = structlog.get_logger()
 

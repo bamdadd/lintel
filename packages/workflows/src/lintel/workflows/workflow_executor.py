@@ -10,30 +10,56 @@ from uuid import uuid4
 
 import structlog
 
+from lintel.workflows._executor_artifacts import (
+    auto_promote_if_capacity as _auto_promote_if_capacity,
+)
+from lintel.workflows._executor_artifacts import (
+    complete_work_item as _complete_work_item,
+)
+from lintel.workflows._executor_artifacts import (
+    create_approval_request as _create_approval_request,
+)
+from lintel.workflows._executor_artifacts import (
+    evaluate_policy as _evaluate_policy,
+)
+from lintel.workflows._executor_artifacts import (
+    fail_work_item as _fail_work_item,
+)
+from lintel.workflows._executor_artifacts import (
+    rehydrate_from_run as _rehydrate_from_run,
+)
+from lintel.workflows._executor_lifecycle import (
+    determine_final_status as _determine_final_status,
+)
+from lintel.workflows._executor_lifecycle import (
+    get_stage_id as _get_stage_id,
+)
+from lintel.workflows._executor_lifecycle import (
+    mark_first_stage_running as _mark_first_stage_running,
+)
+from lintel.workflows._executor_lifecycle import (
+    mark_running_stages_failed as _mark_running_stages_failed,
+)
+from lintel.workflows._executor_lifecycle import (
+    mark_stage_completed as _mark_stage_completed,
+)
+from lintel.workflows._executor_lifecycle import (
+    mark_stage_waiting_approval as _mark_stage_waiting_approval,
+)
+from lintel.workflows._executor_lifecycle import (
+    notify_chat as _notify_chat,
+)
+from lintel.workflows._executor_lifecycle import (
+    send_stage_notification as _send_stage_notification,
+)
+from lintel.workflows._executor_lifecycle import (
+    update_pipeline_status as _update_pipeline_status,
+)
 from lintel.workflows.events import (
     PipelineRunCompleted,
     PipelineRunFailed,
     PipelineRunStarted,
     PipelineStageCompleted,
-)
-from lintel.workflows._executor_artifacts import (
-    auto_promote_if_capacity as _auto_promote_if_capacity,
-    complete_work_item as _complete_work_item,
-    create_approval_request as _create_approval_request,
-    evaluate_policy as _evaluate_policy,
-    fail_work_item as _fail_work_item,
-    rehydrate_from_run as _rehydrate_from_run,
-)
-from lintel.workflows._executor_lifecycle import (
-    determine_final_status as _determine_final_status,
-    get_stage_id as _get_stage_id,
-    mark_first_stage_running as _mark_first_stage_running,
-    mark_running_stages_failed as _mark_running_stages_failed,
-    mark_stage_completed as _mark_stage_completed,
-    mark_stage_waiting_approval as _mark_stage_waiting_approval,
-    notify_chat as _notify_chat,
-    send_stage_notification as _send_stage_notification,
-    update_pipeline_status as _update_pipeline_status,
 )
 
 if TYPE_CHECKING:
@@ -437,26 +463,26 @@ class WorkflowExecutor:
         """Append a log line to a stage (delegated to stage tracking)."""
         from lintel.workflows.nodes._stage_tracking import StageTracker
 
-        class _FakeState:
+        class _FakeState(dict):  # type: ignore[type-arg]
             pass
 
-        class _FakeConfig:
-            configurable = self._build_config(run_id)["configurable"]
+        fake_config = {"configurable": self._build_config(run_id)["configurable"]}
 
-        tracker = StageTracker(_FakeConfig(), _FakeState())
+        tracker = StageTracker(fake_config, _FakeState())
         with contextlib.suppress(Exception):
             await tracker.append_log(stage_name, message)
 
     async def _get_stage_id(self, run_id: str, node_name: str) -> str | None:
         return await _get_stage_id(self._app_state, run_id, node_name)
 
-    async def _mark_stage_completed(
-        self, run_id: str, node_name: str, timestamp_ms: int
-    ) -> None:
+    async def _mark_stage_completed(self, run_id: str, node_name: str, timestamp_ms: int) -> None:
         await _mark_stage_completed(self._app_state, run_id, node_name, timestamp_ms)
 
     async def _send_stage_notification(
-        self, run_id: str, node_name: str, output: Any  # noqa: ANN401
+        self,
+        run_id: str,
+        node_name: str,
+        output: Any,  # noqa: ANN401
     ) -> None:
         await _send_stage_notification(self._app_state, run_id, node_name, output)
 

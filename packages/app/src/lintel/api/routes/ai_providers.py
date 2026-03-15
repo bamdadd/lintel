@@ -10,7 +10,7 @@ import httpx
 from pydantic import BaseModel, Field
 
 from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.models.events import (
     AIProviderApiKeyUpdated,
     AIProviderCreated,

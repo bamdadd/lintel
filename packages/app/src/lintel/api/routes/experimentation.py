@@ -10,7 +10,8 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.compliance_api.store import ComplianceStore
 from lintel.domain.events import (
     ComplianceExperimentCreated,
     ComplianceExperimentRemoved,
@@ -30,8 +31,6 @@ from lintel.domain.types import (
     ExperimentStatus,
     KPIDirection,
 )
-
-from .compliance import ComplianceStore
 
 router = APIRouter()
 

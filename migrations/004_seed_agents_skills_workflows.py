@@ -43,7 +43,7 @@ def _insert_sql(kind: str, entity_id: str, data: dict[str, Any]) -> str:
 
 def generate_sql() -> str:
     """Generate all seed SQL from the domain types."""
-    from lintel.api.domain.seed import (
+    from lintel.domain.seed import (
         DEFAULT_AGENTS,
         DEFAULT_SKILLS,
         DEFAULT_WORKFLOW_DEFINITIONS,

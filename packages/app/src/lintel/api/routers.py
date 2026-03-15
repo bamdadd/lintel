@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from typing import TYPE_CHECKING
 
 from lintel.agent_definitions_api.routes import router as agent_definitions_router
 from lintel.ai_providers_api.routes import router as ai_providers_router
@@ -25,7 +25,6 @@ from lintel.audit_api.routes import router as audit_router
 from lintel.automations_api.routes import router as automations_router
 from lintel.boards.routes import router as boards_router
 from lintel.chat_api.routes import router as chat_router_routes
-from lintel.chat_api.streaming import streaming_router as chat_streaming_router
 from lintel.compliance_api.routes import router as compliance_router
 from lintel.credentials_api.routes import router as credentials_router
 from lintel.environments_api.routes import router as environments_router
@@ -47,6 +46,9 @@ from lintel.variables_api.routes import router as variables_router
 from lintel.work_items_api.routes import router as work_items_router
 from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
 
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+
 
 def mount_routers(app: FastAPI) -> None:
     """Register all API routers on the application."""
@@ -62,9 +64,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(events.router, prefix="/api/v1", tags=["events"])
     app.include_router(pii.router, prefix="/api/v1", tags=["pii"])
     app.include_router(settings_router, prefix="/api/v1", tags=["settings"])
-    app.include_router(
-        workflow_definitions_router, prefix="/api/v1", tags=["workflow-definitions"]
-    )
+    app.include_router(workflow_definitions_router, prefix="/api/v1", tags=["workflow-definitions"])
     app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
     app.include_router(credentials_router, prefix="/api/v1", tags=["credentials"])
     app.include_router(ai_providers_router, prefix="/api/v1", tags=["ai-providers"])
@@ -81,11 +81,8 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
     app.include_router(audit_router, prefix="/api/v1", tags=["audit"])
     app.include_router(artifacts_router, prefix="/api/v1", tags=["artifacts"])
-    app.include_router(
-        approval_requests_router, prefix="/api/v1", tags=["approval-requests"]
-    )
+    app.include_router(approval_requests_router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat_router_routes, prefix="/api/v1", tags=["chat"])
-    app.include_router(chat_streaming_router, prefix="/api/v1", tags=["chat"])
     app.include_router(models_router, prefix="/api/v1", tags=["models"])
     app.include_router(mcp_servers_router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])

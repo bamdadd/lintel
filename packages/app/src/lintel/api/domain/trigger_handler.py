@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from lintel.api.domain.event_dispatcher import dispatch_event_raw
+from lintel.api_support.event_dispatcher import dispatch_event_raw
 from lintel.contracts.types import ThreadRef
 from lintel.domain.events import TriggerFired
 from lintel.workflows.commands import StartWorkflow

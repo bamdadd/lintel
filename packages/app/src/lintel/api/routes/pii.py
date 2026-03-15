@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.contracts.types import ThreadRef
 from lintel.pii.commands import RevealPII
 from lintel.pii.events import VaultRevealRequested

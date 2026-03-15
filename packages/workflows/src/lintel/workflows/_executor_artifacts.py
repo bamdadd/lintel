@@ -1,3 +1,4 @@
+# ruff: noqa: ANN401
 """Work item and approval lifecycle helpers extracted from WorkflowExecutor."""
 
 from __future__ import annotations
@@ -25,11 +26,7 @@ async def is_auto_move_enabled(app_state: Any, project_id: str) -> bool:
     try:
         boards = await board_store.list_by_project(project_id)
         return any(
-            (
-                b.get("auto_move", False)
-                if isinstance(b, dict)
-                else getattr(b, "auto_move", False)
-            )
+            (b.get("auto_move", False) if isinstance(b, dict) else getattr(b, "auto_move", False))
             for b in boards
         )
     except Exception:
@@ -109,9 +106,9 @@ async def create_approval_request(app_state: Any, run_id: str, node_name: str) -
 def _dict_to_stage_local(d: dict[str, Any]) -> Any:
     """Convert a plain dict to a Stage dataclass instance."""
     import contextlib
+    from dataclasses import fields as dc_fields
 
     from lintel.workflows.types import Stage, StageStatus
-    from dataclasses import fields as dc_fields
 
     valid = {f.name for f in dc_fields(Stage)}
     filtered = {k: v for k, v in d.items() if k in valid}
@@ -123,7 +120,6 @@ def _dict_to_stage_local(d: dict[str, Any]) -> Any:
 
 async def rehydrate_from_run(app_state: Any, prev_run_id: str) -> dict[str, Any]:
     """Load stage outputs from a previous run and map them to workflow state keys."""
-    import contextlib
 
     from lintel.workflows.types import StageStatus
 
@@ -261,9 +257,7 @@ async def complete_work_item(
             app_state, event_store, project_events_fn, project_id, work_item_store
         )
     except Exception as exc:
-        logger.warning(
-            "complete_work_item_failed", work_item_id=work_item_id, error=str(exc)
-        )
+        logger.warning("complete_work_item_failed", work_item_id=work_item_id, error=str(exc))
 
 
 async def auto_promote_if_capacity(

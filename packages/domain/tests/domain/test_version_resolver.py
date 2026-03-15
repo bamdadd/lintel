@@ -5,9 +5,9 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+from lintel.api.domain.version_resolver import VersionResolver
 from lintel.domain.events import ResourceVersionConsumed, ResourceVersionProduced
 from lintel.domain.types import JobInput, PassedConstraint
-from lintel.api.domain.version_resolver import VersionResolver
 
 
 def _make_produced_event(

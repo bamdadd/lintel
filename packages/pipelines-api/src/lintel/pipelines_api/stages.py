@@ -1,268 +1,26 @@
-"""Pipeline run CRUD and stage endpoints."""
+"""Stage-level route handlers."""
 
 import asyncio
-from collections.abc import AsyncGenerator
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
-import json
 from typing import Any
-import uuid
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from lintel.api.container import AppContainer
 from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.pipelines_api._helpers import _find_stage
+from lintel.pipelines_api._store import InMemoryPipelineStore, pipeline_store_provider
 from lintel.workflows.events import (
-    PipelineRunCancelled,
-    PipelineRunDeleted,
-    PipelineRunStarted,
     PipelineStageApproved,
     PipelineStageRejected,
     PipelineStageRetried,
     StageReportEdited,
     StageReportRegenerated,
 )
-from lintel.workflows.types import PipelineRun, PipelineStatus, Stage, StageStatus
+from lintel.workflows.types import PipelineStatus, StageStatus
 
 router = APIRouter()
-
-
-def _stage_names_for_workflow(workflow_definition_id: str) -> tuple[str, ...]:
-    """Look up stage names from the seed data for a given workflow."""
-    from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
-
-    for wf in DEFAULT_WORKFLOW_DEFINITIONS:
-        if wf.definition_id == workflow_definition_id:
-            return wf.stage_names
-    # Fallback for custom workflows
-    return (
-        "ingest",
-        "research",
-        "approve_research",
-        "plan",
-        "approve_spec",
-        "implement",
-        "review",
-        "approved_for_pr",
-        "raise_pr",
-    )
-
-
-class InMemoryPipelineStore:
-    """Simple in-memory store for pipeline runs."""
-
-    def __init__(self) -> None:
-        self._runs: dict[str, PipelineRun] = {}
-
-    async def add(self, run: PipelineRun) -> None:
-        self._runs[run.run_id] = run
-
-    async def get(self, run_id: str) -> PipelineRun | None:
-        return self._runs.get(run_id)
-
-    async def list_all(
-        self,
-        *,
-        project_id: str | None = None,
-    ) -> list[PipelineRun]:
-        runs = list(self._runs.values())
-        if project_id is not None:
-            runs = [r for r in runs if r.project_id == project_id]
-        return runs
-
-    async def update(self, run: PipelineRun) -> None:
-        self._runs[run.run_id] = run
-
-    async def remove(self, run_id: str) -> None:
-        del self._runs[run_id]
-
-
-def get_pipeline_store(request: Request) -> InMemoryPipelineStore:
-    """Get pipeline store from app state."""
-    return request.app.state.pipeline_store  # type: ignore[no-any-return]
-
-
-class CreatePipelineRequest(BaseModel):
-    run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    project_id: str
-    work_item_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    workflow_definition_id: str = "feature_to_pr"
-    trigger_type: str = ""
-    trigger_id: str = ""
-
-
-@router.post("/pipelines", status_code=201)
-@inject
-async def create_pipeline(
-    body: CreatePipelineRequest,
-    request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> dict[str, Any]:
-    existing = await store.get(body.run_id)
-    if existing is not None:
-        raise HTTPException(status_code=409, detail="Pipeline run already exists")
-    stage_names = _stage_names_for_workflow(body.workflow_definition_id)
-    stages = tuple(
-        Stage(
-            stage_id=str(uuid.uuid4()),
-            name=name,
-            stage_type=name,
-        )
-        for name in stage_names
-    )
-    from datetime import UTC, datetime
-
-    run = PipelineRun(
-        run_id=body.run_id,
-        project_id=body.project_id,
-        work_item_id=body.work_item_id,
-        workflow_definition_id=body.workflow_definition_id,
-        trigger_type=body.trigger_type,
-        trigger_id=body.trigger_id,
-        stages=stages,
-        created_at=datetime.now(UTC).isoformat(),
-    )
-    await store.add(run)
-    await dispatch_event(
-        request,
-        PipelineRunStarted(
-            payload={
-                "resource_id": body.run_id,
-                "run_id": body.run_id,
-                "project_id": body.project_id,
-                "workflow": body.workflow_definition_id,
-            }
-        ),
-        stream_id=f"run:{body.run_id}",
-    )
-    return asdict(run)
-
-
-@router.get("/pipelines")
-@inject
-async def list_pipelines(
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-    project_id: str | None = None,
-) -> list[dict[str, Any]]:
-    runs = await store.list_all(project_id=project_id)
-    return [asdict(r) for r in runs]
-
-
-@router.get("/pipelines/{run_id}")
-@inject
-async def get_pipeline(
-    run_id: str,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> dict[str, Any]:
-    run = await store.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Pipeline run not found")
-    return asdict(run)
-
-
-@router.get("/pipelines/{run_id}/stages")
-@inject
-async def list_stages(
-    run_id: str,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> list[dict[str, Any]]:
-    run = await store.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Pipeline run not found")
-    return [asdict(s) for s in run.stages]
-
-
-@router.get("/pipelines/{run_id}/stages/{stage_id}")
-@inject
-async def get_stage(
-    run_id: str,
-    stage_id: str,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> dict[str, Any]:
-    run = await store.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Pipeline run not found")
-    for stage in run.stages:
-        if stage.stage_id == stage_id:
-            return asdict(stage)
-    raise HTTPException(status_code=404, detail="Stage not found")
-
-
-@router.post("/pipelines/{run_id}/cancel")
-@inject
-async def cancel_pipeline(
-    run_id: str,
-    request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> dict[str, Any]:
-    run = await store.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Pipeline run not found")
-    terminal = {PipelineStatus.SUCCEEDED, PipelineStatus.FAILED, PipelineStatus.CANCELLED}
-    if run.status in terminal:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Cannot cancel run in {run.status} state",
-        )
-    cancelled_stages = tuple(
-        Stage(
-            stage_id=s.stage_id,
-            name=s.name,
-            stage_type=s.stage_type,
-            status=StageStatus.SKIPPED if s.status == StageStatus.PENDING else s.status,
-            inputs=s.inputs,
-            outputs=s.outputs,
-            error=s.error,
-            duration_ms=s.duration_ms,
-        )
-        for s in run.stages
-    )
-    updated = PipelineRun(
-        run_id=run.run_id,
-        project_id=run.project_id,
-        work_item_id=run.work_item_id,
-        workflow_definition_id=run.workflow_definition_id,
-        status=PipelineStatus.CANCELLED,
-        stages=cancelled_stages,
-        trigger_type=run.trigger_type,
-        trigger_id=run.trigger_id,
-        created_at=run.created_at,
-    )
-    await store.update(updated)
-    await dispatch_event(
-        request,
-        PipelineRunCancelled(payload={"resource_id": run_id, "run_id": run_id}),
-        stream_id=f"run:{run_id}",
-    )
-    return asdict(updated)
-
-
-@router.delete("/pipelines/{run_id}", status_code=204)
-@inject
-async def delete_pipeline(
-    run_id: str,
-    request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> None:
-    run = await store.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Pipeline run not found")
-    await store.remove(run_id)
-    await dispatch_event(
-        request,
-        PipelineRunDeleted(payload={"resource_id": run_id, "run_id": run_id}),
-        stream_id=f"run:{run_id}",
-    )
-
-
-def _find_stage(run: PipelineRun, stage_id: str) -> Stage | None:
-    for s in run.stages:
-        if s.stage_id == stage_id:
-            return s
-    return None
 
 
 class ReportVersionService:
@@ -315,127 +73,51 @@ class ReportVersionService:
         return data
 
 
-@router.get("/pipelines/{run_id}/stages/{stage_id}/logs")
-@inject
-async def stream_stage_logs(
+class ReportEditPayload(BaseModel):
+    """Body for editing a stage report."""
+
+    content: str = Field(..., description="Updated report content (Markdown)")
+    editor: str = Field(default="user", description="Who made the edit")
+
+
+class RegeneratePayload(BaseModel):
+    """Body for regenerating a stage report."""
+
+    guidance: str = Field(default="", description="Optional prompt to guide regeneration")
+
+
+@router.get("/pipelines/{run_id}/stages")
+async def list_stages(
+    run_id: str,
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
+) -> list[dict[str, Any]]:
+    run = await store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    return [asdict(s) for s in run.stages]
+
+
+@router.get("/pipelines/{run_id}/stages/{stage_id}")
+async def get_stage(
     run_id: str,
     stage_id: str,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> StreamingResponse:
-    """Stream stage logs via SSE. Shows stored logs and polls for new ones."""
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
+) -> dict[str, Any]:
     run = await store.get(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
-    stage = _find_stage(run, stage_id)
-    if stage is None:
-        raise HTTPException(status_code=404, detail="Stage not found")
-
-    async def event_stream() -> AsyncGenerator[str, None]:
-        last_log_count = 0
-        last_status = ""
-        while True:
-            run = await store.get(run_id)
-            if run is None:
-                return
-            stage = _find_stage(run, stage_id)
-            if stage is None:
-                return
-
-            # Emit any new log lines
-            current_logs = list(stage.logs) if stage.logs else []
-            if len(current_logs) > last_log_count:
-                for line in current_logs[last_log_count:]:
-                    yield f"data: {json.dumps({'type': 'log', 'line': line})}\n\n"
-                last_log_count = len(current_logs)
-
-            # Emit status changes
-            status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
-            if status != last_status:
-                last_status = status
-                yield f"data: {json.dumps({'type': 'status', 'status': status})}\n\n"
-
-            # Emit outputs and error for completed/failed stages
-            if status in ("succeeded", "failed", "skipped"):
-                if stage.outputs:
-                    payload = json.dumps(
-                        {"type": "outputs", "data": stage.outputs},
-                        default=str,
-                    )
-                    yield f"data: {payload}\n\n"
-                if stage.error:
-                    yield f"data: {json.dumps({'type': 'error', 'message': stage.error})}\n\n"
-                yield f"data: {json.dumps({'type': 'end'})}\n\n"
-                return
-
-            await asyncio.sleep(0.5)
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
-
-
-@router.get("/pipelines/{run_id}/events")
-@inject
-async def stream_pipeline_events(
-    run_id: str,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
-) -> StreamingResponse:
-    """Stream pipeline stage status changes via SSE for real-time UI updates."""
-    run = await store.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Pipeline run not found")
-
-    async def event_stream() -> AsyncGenerator[str, None]:
-        last_statuses: dict[str, str] = {}
-        last_pipeline_status = ""
-        while True:
-            run = await store.get(run_id)
-            if run is None:
-                return
-
-            # Emit stage status changes
-            for stage in run.stages:
-                status = stage.status.value if hasattr(stage.status, "value") else str(stage.status)
-                prev = last_statuses.get(stage.stage_id)
-                if status != prev:
-                    last_statuses[stage.stage_id] = status
-                    payload = {
-                        "type": "stage_update",
-                        "stage_id": stage.stage_id,
-                        "name": stage.name,
-                        "status": status,
-                    }
-                    yield f"data: {json.dumps(payload)}\n\n"
-
-            # Emit pipeline-level status changes
-            p_status = run.status.value if hasattr(run.status, "value") else str(run.status)
-            if p_status != last_pipeline_status:
-                last_pipeline_status = p_status
-                yield f"data: {json.dumps({'type': 'pipeline_status', 'status': p_status})}\n\n"
-
-            # End stream when pipeline reaches a terminal state
-            if p_status in ("succeeded", "failed", "cancelled"):
-                yield f"data: {json.dumps({'type': 'pipeline_complete', 'status': p_status})}\n\n"
-                return
-
-            await asyncio.sleep(1)
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    for stage in run.stages:
+        if stage.stage_id == stage_id:
+            return asdict(stage)
+    raise HTTPException(status_code=404, detail="Stage not found")
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/retry")
-@inject
 async def retry_stage(
     run_id: str,
     stage_id: str,
     request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Retry a failed or stuck stage. Resets it to running and re-invokes the node."""
     run = await store.get(run_id)
@@ -498,8 +180,6 @@ async def retry_stage(
     # Re-invoke the workflow executor if the session is still alive
     executor = getattr(request.app.state, "workflow_executor", None)
     if executor is not None and run_id in getattr(executor, "_suspended_runs", {}):
-        import asyncio
-
         task = asyncio.create_task(executor.resume(run_id))
         bg: set[asyncio.Task[None]] = getattr(request.app.state, "_background_tasks", set())
         request.app.state._background_tasks = bg
@@ -531,12 +211,11 @@ async def retry_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/reject")
-@inject
 async def reject_stage(
     run_id: str,
     stage_id: str,
     request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Reject a stage that is waiting for human approval, failing the pipeline."""
     run = await store.get(run_id)
@@ -570,8 +249,6 @@ async def reject_stage(
                 new_stages.append(s)
         else:
             new_stages.append(s)
-
-    from lintel.workflows.types import PipelineStatus
 
     updated = replace(
         run,
@@ -623,16 +300,13 @@ async def reject_stage(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/approve")
-@inject
 async def approve_stage(
     run_id: str,
     stage_id: str,
     request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Approve a stage that is waiting for human approval and resume the workflow."""
-    import asyncio
-
     run = await store.get(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
@@ -656,8 +330,6 @@ async def approve_stage(
             new_stages.append(replace(s, status=StageStatus.APPROVED))
         else:
             new_stages.append(s)
-
-    from lintel.workflows.types import PipelineStatus
 
     updated = replace(
         run,
@@ -688,30 +360,13 @@ async def approve_stage(
     return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]
 
 
-# --- Stage Report Editing (REQ-013) ---
-
-
-class ReportEditPayload(BaseModel):
-    """Body for editing a stage report."""
-
-    content: str = Field(..., description="Updated report content (Markdown)")
-    editor: str = Field(default="user", description="Who made the edit")
-
-
-class RegeneratePayload(BaseModel):
-    """Body for regenerating a stage report."""
-
-    guidance: str = Field(default="", description="Optional prompt to guide regeneration")
-
-
 @router.patch("/pipelines/{run_id}/stages/{stage_id}/report")
-@inject
 async def edit_stage_report(
     run_id: str,
     stage_id: str,
     body: ReportEditPayload,
     request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Edit the report output of a completed or waiting_approval stage."""
     run = await store.get(run_id)
@@ -764,12 +419,11 @@ async def edit_stage_report(
 
 
 @router.get("/pipelines/{run_id}/stages/{stage_id}/report/versions")
-@inject
 async def list_report_versions(
     run_id: str,
     stage_id: str,
     request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
 ) -> list[dict[str, object]]:
     """List all versions of a stage report."""
     run = await store.get(run_id)
@@ -782,13 +436,12 @@ async def list_report_versions(
 
 
 @router.post("/pipelines/{run_id}/stages/{stage_id}/regenerate")
-@inject
 async def regenerate_stage(
     run_id: str,
     stage_id: str,
     body: RegeneratePayload,
     request: Request,
-    store: InMemoryPipelineStore = Depends(Provide[AppContainer.pipeline_store]),  # noqa: B008
+    store: InMemoryPipelineStore = Depends(pipeline_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Re-run a stage with optional guidance, resetting it to running."""
     run = await store.get(run_id)

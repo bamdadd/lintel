@@ -44,7 +44,7 @@ class TestNotifyPhaseChange:
     @pytest.fixture()
     def memory_store(self) -> object:
         """Create an in-memory ChatStore."""
-        from lintel.api.routes.chat import ChatStore
+        from lintel.chat_api.routes import ChatStore
 
         return ChatStore()
 
@@ -91,7 +91,7 @@ class TestNotificationService:
         await NotificationService.notify_phase_change(None, "conv1", "planning", "summary")
 
     async def test_notify_phase_change_adds_message(self) -> None:
-        from lintel.api.routes.chat import ChatStore
+        from lintel.chat_api.routes import ChatStore
 
         store = ChatStore()
         await store.create(

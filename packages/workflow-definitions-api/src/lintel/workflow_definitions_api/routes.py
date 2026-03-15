@@ -52,7 +52,7 @@ def _wf_to_dict(wf: object) -> dict[str, Any]:
 def get_workflow_defs(request: Request) -> dict[str, dict[str, Any]]:
     """Get workflow definitions store from app state."""
     if not hasattr(request.app.state, "workflow_definitions"):
-        from lintel.api.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
+        from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
 
         defs: dict[str, dict[str, Any]] = {}
         for wf in DEFAULT_WORKFLOW_DEFINITIONS:

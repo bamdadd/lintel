@@ -6,6 +6,8 @@ from fastapi import APIRouter
 
 from lintel.ai_providers_api.api_keys import (
     UpdateAPIKeyRequest,
+)
+from lintel.ai_providers_api.api_keys import (
     router as api_keys_router,
 )
 from lintel.ai_providers_api.models import router as models_router
@@ -16,19 +18,21 @@ from lintel.ai_providers_api.providers import (
     _mask_key,
     ai_provider_store_provider,
     model_store_provider,
+)
+from lintel.ai_providers_api.providers import (
     router as providers_router,
 )
 
 # Re-export for backward compatibility
 __all__ = [
-    "router",
-    "ai_provider_store_provider",
-    "model_store_provider",
     "PROVIDER_FIELD_REQUIREMENTS",
     "CreateAIProviderRequest",
     "UpdateAIProviderRequest",
     "UpdateAPIKeyRequest",
     "_mask_key",
+    "ai_provider_store_provider",
+    "model_store_provider",
+    "router",
 ]
 
 router = APIRouter()

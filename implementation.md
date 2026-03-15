@@ -1,5 +1,6 @@
 # Implementation Log
 
+<<<<<<< Updated upstream
 ## Route Splits: sandboxes-api, ai-providers-api, experimentation-api
 
 ### Completed Steps
@@ -26,6 +27,63 @@
 - sandboxes-api: 13 passed
 - ai-providers-api: 24 passed
 - experimentation-api: 8 passed
+=======
+## Refactor: Split chat-api routes.py (commit 8bad589)
+
+### Completed Steps
+1. Extracted `ChatStore` to `store.py`
+2. Extracted Pydantic models to `models.py`
+3. Extracted `ChatService` to `service.py`
+4. Extracted SSE streaming endpoints to `streaming.py`
+5. Rewrote `routes.py` to CRUD handlers + re-exports
+6. Mounted `streaming_router` in `routers.py`
+
+### Deviations from Plan
+- `ChatService` extracted to `service.py` (not in the original spec) to avoid circular imports between `streaming.py` and `routes.py`
+- Fixed `_stage_names_for_workflow` import to use `lintel.pipelines_api._helpers` (original used the wrong module `lintel.pipelines_api.routes`)
+
+### Files Created
+- `packages/chat-api/src/lintel/chat_api/store.py` — `ChatStore`
+- `packages/chat-api/src/lintel/chat_api/models.py` — request/response models
+- `packages/chat-api/src/lintel/chat_api/service.py` — `ChatService`
+- `packages/chat-api/src/lintel/chat_api/streaming.py` — SSE `streaming_router`
+
+### Files Modified
+- `packages/chat-api/src/lintel/chat_api/routes.py` — CRUD handlers + re-exports
+- `packages/app/src/lintel/api/routers.py` — mounts `chat_streaming_router`
+
+### Test Results
+- 61 tests passing, 0 failures
+
+---
+
+
+## Phase 6: Split WorkflowExecutor into smaller files
+
+### Completed Steps
+1. Read full `workflow_executor.py` (1,063 lines) to map all method dependencies.
+2. Created `_executor_lifecycle.py` with stage lifecycle helpers as standalone async functions.
+3. Created `_executor_artifacts.py` with work item / approval / policy helpers as standalone async functions.
+4. Rewrote `workflow_executor.py` to delegate to extracted functions; added thin shim methods for backwards compatibility.
+5. Verified 276 tests pass (13 pre-existing `test_setup_workspace` failures unchanged). — committed as `a98ebed`
+
+### Deviations from Plan
+- The plan specified method names that did not exist in the source file. The extraction was done on the actual methods present, grouped by logical concern.
+- `_executor_artifacts.py` received work item / approval / policy methods rather than artifact I/O.
+- `_executor_lifecycle.py` received stage lifecycle and pipeline status methods.
+- A `_dict_to_stage_local` helper was duplicated in both extracted modules to avoid circular imports; the canonical `_dict_to_stage` stays in `workflow_executor.py`.
+- Thin shim wrappers were added to `WorkflowExecutor` so any callers using `self._mark_stage_completed(...)` style continue to work.
+
+### Files Created
+- `/Users/bamdad/projects/lintel/packages/workflows/src/lintel/workflows/_executor_lifecycle.py` — stage lifecycle helpers
+- `/Users/bamdad/projects/lintel/packages/workflows/src/lintel/workflows/_executor_artifacts.py` — work item / approval / policy helpers
+
+### Files Modified
+- `/Users/bamdad/projects/lintel/packages/workflows/src/lintel/workflows/workflow_executor.py` — reduced to core class with shim methods
+
+### Test Results
+- 276 tests passing; 13 pre-existing failures in `test_setup_workspace.py`
+>>>>>>> Stashed changes
 
 ---
 

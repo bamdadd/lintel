@@ -1,9 +1,9 @@
-"""AI provider model discovery endpoints: list provider models, list available models, list types."""
+"""AI provider model discovery endpoints."""
 
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException
+import httpx
 
 from lintel.ai_providers_api.providers import ai_provider_store_provider, model_store_provider
 from lintel.ai_providers_api.store import InMemoryAIProviderStore

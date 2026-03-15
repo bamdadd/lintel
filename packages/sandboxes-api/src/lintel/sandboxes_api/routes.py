@@ -13,18 +13,20 @@ from lintel.sandboxes_api.sandboxes import (
     DevcontainerFeature,
     MountConfig,
     SandboxStore,
+)
+from lintel.sandboxes_api.sandboxes import (
     router as sandboxes_router,
 )
 
 # Re-export sub-module symbols for backward compatibility
 __all__ = [
-    "router",
-    "SandboxStore",
     "SANDBOX_PRESETS",
     "CreateSandboxRequest",
     "DevcontainerConfig",
     "DevcontainerFeature",
     "MountConfig",
+    "SandboxStore",
+    "router",
 ]
 
 router = APIRouter()

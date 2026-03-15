@@ -1,14 +1,12 @@
+# ruff: noqa: ANN401
 """Stage lifecycle helpers extracted from WorkflowExecutor."""
 
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import structlog
-
-if TYPE_CHECKING:
-    from lintel.contracts.protocols import EventStore
 
 logger = structlog.get_logger()
 
@@ -58,7 +56,7 @@ async def send_stage_notification(
     app_state: Any,
     run_id: str,
     node_name: str,
-    output: Any,  # noqa: ANN401
+    output: Any,
 ) -> None:
     """Send a chat notification for a completed stage."""
     is_approval = "approve" in node_name or "approval" in node_name
@@ -140,14 +138,10 @@ async def send_stage_notification(
                     diff_lines = diff.strip().split("\n")
                     files_changed = sum(1 for ln in diff_lines if ln.startswith("diff --git"))
                     additions = sum(
-                        1
-                        for ln in diff_lines
-                        if ln.startswith("+") and not ln.startswith("+++")
+                        1 for ln in diff_lines if ln.startswith("+") and not ln.startswith("+++")
                     )
                     deletions = sum(
-                        1
-                        for ln in diff_lines
-                        if ln.startswith("-") and not ln.startswith("---")
+                        1 for ln in diff_lines if ln.startswith("-") and not ln.startswith("---")
                     )
                     lines.append(
                         f"\n**Diff:** {files_changed} files changed, +{additions} -{deletions}"
@@ -247,9 +241,7 @@ async def mark_stage_completed(
                 if s.status == StageStatus.SUCCEEDED:
                     continue
                 if s.status == StageStatus.PENDING:
-                    updated_stages[i] = replace(
-                        s, status=StageStatus.RUNNING, started_at=finished
-                    )
+                    updated_stages[i] = replace(s, status=StageStatus.RUNNING, started_at=finished)
                     break
         updated = replace(run, stages=tuple(updated_stages))
         await pipeline_store.update(updated)

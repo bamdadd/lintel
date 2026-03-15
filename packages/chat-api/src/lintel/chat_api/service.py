@@ -7,15 +7,16 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from fastapi import Request
 import structlog
 
 if TYPE_CHECKING:
+    from fastapi import Request
+
     from lintel.chat_api.chat_router import ChatRouterResult
+    from lintel.chat_api.store import ChatStore
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.contracts.types import ThreadRef
-from lintel.domain.events import ProjectSelected
 from lintel.domain.types import (
     Trigger,
     TriggerType,
@@ -27,8 +28,6 @@ from lintel.models.types import ModelPolicy
 from lintel.workflows.commands import StartWorkflow
 from lintel.workflows.events import WorkflowTriggered
 from lintel.workflows.types import PipelineRun, PipelineStatus, Stage
-
-from lintel.chat_api.store import ChatStore
 
 logger = structlog.get_logger()
 
@@ -284,7 +283,7 @@ class ChatService:
 
         pipeline_store = getattr(request.app.state, "pipeline_store", None)
         if pipeline_store is not None and project_id:
-            from lintel.pipelines_api._helpers import _stage_names_for_workflow  # noqa: PLC0415
+            from lintel.pipelines_api._helpers import _stage_names_for_workflow
 
             stage_names = _stage_names_for_workflow(workflow_type)
             stages = tuple(
@@ -343,7 +342,7 @@ class ChatService:
         status_lines.append("")
         status_lines.append("**Workflow stages:**")
 
-        from lintel.pipelines_api._helpers import _stage_names_for_workflow  # noqa: PLC0415
+        from lintel.pipelines_api._helpers import _stage_names_for_workflow
 
         for stage_name in _stage_names_for_workflow(workflow_type):
             status_lines.append(f"  ⏳ {stage_name}")
@@ -386,14 +385,14 @@ class ChatService:
 
     def get_enabled_workflows(self) -> set[str]:
         """Return set of enabled workflow definition IDs."""
-        from lintel.workflow_definitions_api.routes import get_workflow_defs  # noqa: PLC0415
+        from lintel.workflow_definitions_api.routes import get_workflow_defs
 
         defs = get_workflow_defs(self._request)
         return {k for k, v in defs.items() if v.get("enabled", True)}
 
     def is_workflow_enabled(self, workflow_type: str) -> bool:
         """Check if a workflow definition is enabled."""
-        from lintel.workflow_definitions_api.routes import get_workflow_defs  # noqa: PLC0415
+        from lintel.workflow_definitions_api.routes import get_workflow_defs
 
         defs = get_workflow_defs(self._request)
         wf = defs.get(workflow_type)
