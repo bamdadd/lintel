@@ -41,7 +41,10 @@ from lintel.settings_api.channels_router import router as channels_settings_rout
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
 from lintel.teams.routes import router as teams_router
-from lintel.telegram.webhook import router as telegram_router
+try:
+    from lintel.telegram.webhook import router as telegram_router
+except ModuleNotFoundError:
+    telegram_router = None  # type: ignore[assignment]
 from lintel.triggers_api.routes import router as triggers_router
 from lintel.users.routes import router as users_router
 from lintel.variables_api.routes import router as variables_router
@@ -93,5 +96,6 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(experimentation_router, prefix="/api/v1", tags=["experimentation"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
-    app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])
+    if telegram_router is not None:
+        app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])
     app.include_router(channels_settings_router, prefix="/api/v1", tags=["channels"])
