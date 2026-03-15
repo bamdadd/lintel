@@ -5,7 +5,7 @@ import {
   TextInput, MultiSelect, Switch, Tooltip,
 } from '@mantine/core';
 import { IconSettings, IconPlus, IconSearch, IconX, IconArrowsSort } from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,6 +32,7 @@ export function Component() {
   const [detailOpened, { open: openDetail, close: closeDetail }] = useDisclosure(false);
   const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
   const [createItemOpened, { open: openCreateItem, close: closeCreateItem }] = useDisclosure(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -253,25 +254,22 @@ export function Component() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between">
+      <Group justify="space-between" wrap="wrap">
         <Group gap="xs">
-          <Title order={2}>{board.name}</Title>
-          <Text size="sm" c="dimmed">
-            Kanban
-          </Text>
+          <Title order={isMobile ? 3 : 2}>{board.name}</Title>
+          {!isMobile && <Text size="sm" c="dimmed">Kanban</Text>}
         </Group>
-        <Group gap="xs">
+        <Group gap="xs" wrap="wrap">
           <Tooltip label="When enabled, failed pipelines move items back to Todo and items auto-promote to In Progress when WIP has capacity">
             <IconArrowsSort size={16} style={{ opacity: 0.6 }} />
           </Tooltip>
           <Switch
-            label="Auto Move"
+            label={isMobile ? undefined : 'Auto Move'}
             size="sm"
             checked={board.auto_move ?? false}
             onChange={(e) => {
               if (!boardId) return;
               const newVal = e.currentTarget.checked;
-              // Optimistic update
               qc.setQueryData(
                 ['/api/v1/boards', boardId],
                 (old: typeof boardResp) =>
@@ -286,8 +284,8 @@ export function Component() {
               );
             }}
           />
-          <Button leftSection={<IconPlus size={16} />} size="sm" onClick={openCreateItem}>
-            New Work Item
+          <Button leftSection={<IconPlus size={16} />} size={isMobile ? 'xs' : 'sm'} onClick={openCreateItem}>
+            {isMobile ? 'New' : 'New Work Item'}
           </Button>
           <ActionIcon variant="subtle" onClick={openEdit}>
             <IconSettings size={20} />
@@ -306,7 +304,7 @@ export function Component() {
           size="xs"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.currentTarget.value)}
-          style={{ flex: '1 1 180px', maxWidth: 260 }}
+          style={{ flex: '1 1 180px', maxWidth: isMobile ? '100%' : 260, minWidth: 0 }}
           rightSection={searchQuery ? (
             <ActionIcon size="xs" variant="subtle" onClick={() => setSearchQuery('')}>
               <IconX size={12} />
@@ -314,22 +312,24 @@ export function Component() {
           ) : undefined}
         />
         <MultiSelect
-          placeholder="Filter by status"
+          placeholder="Status"
           data={allStatuses}
           value={filterStatuses}
           onChange={setFilterStatuses}
           size="xs"
           clearable
-          style={{ flex: '1 1 150px', maxWidth: 220 }}
+          searchable
+          style={{ flex: '1 1 120px', maxWidth: isMobile ? '100%' : 220, minWidth: 0 }}
         />
         <MultiSelect
-          placeholder="Filter by tags"
+          placeholder="Tags"
           data={allTags}
           value={filterTags}
           onChange={setFilterTags}
           size="xs"
           clearable
-          style={{ flex: '1 1 150px', maxWidth: 220 }}
+          searchable
+          style={{ flex: '1 1 120px', maxWidth: isMobile ? '100%' : 220, minWidth: 0 }}
         />
         {hasActiveFilters && (
           <Button
@@ -343,33 +343,42 @@ export function Component() {
       </Group>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <Group gap="md" align="flex-start" wrap="nowrap" style={{ overflowX: 'auto' }}>
-          {hasUnassigned && (
-            <BoardColumn
-              columnId="__unassigned__"
-              name="Unassigned"
-              items={itemsByColumn['__unassigned__'] ?? []}
-              onClickItem={handleClickItem}
-            />
-          )}
-          {columns.map((col) => {
-            const colItems = itemsByColumn[col.column_id] ?? [];
-            if (col.name.toLowerCase() === 'backlog' && colItems.length === 0) return null;
-            return (
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 8 }}>
+          <Group gap="md" align="flex-start" wrap="nowrap" style={{ minWidth: 'min-content' }}>
+            {hasUnassigned && (
               <BoardColumn
-                key={col.column_id}
-                columnId={col.column_id}
-                name={col.name}
-                items={colItems}
-                wipLimit={col.wip_limit}
+                columnId="__unassigned__"
+                name="Unassigned"
+                items={itemsByColumn['__unassigned__'] ?? []}
                 onClickItem={handleClickItem}
+                compact={isMobile}
               />
-            );
-          })}
-        </Group>
+            )}
+            {columns.map((col) => {
+              const colItems = itemsByColumn[col.column_id] ?? [];
+              if (col.name.toLowerCase() === 'backlog' && colItems.length === 0) return null;
+              return (
+                <BoardColumn
+                  key={col.column_id}
+                  columnId={col.column_id}
+                  name={col.name}
+                  items={colItems}
+                  wipLimit={col.wip_limit}
+                  onClickItem={handleClickItem}
+                  compact={isMobile}
+                />
+              );
+            })}
+          </Group>
+        </div>
       </DragDropContext>
 
-      <WorkItemDetailModal item={selectedItem} opened={detailOpened} onClose={handleCloseDetail} />
+      <WorkItemDetailModal
+        item={selectedItem}
+        opened={detailOpened}
+        onClose={handleCloseDetail}
+        columns={columns}
+      />
     </Stack>
   );
 }

@@ -9,9 +9,10 @@ interface BoardColumnProps {
   items: WorkItem[];
   wipLimit?: number;
   onClickItem?: (item: WorkItem) => void;
+  compact?: boolean;
 }
 
-export function BoardColumn({ columnId, name, items, wipLimit, onClickItem }: BoardColumnProps) {
+export function BoardColumn({ columnId, name, items, wipLimit, onClickItem, compact }: BoardColumnProps) {
   const count = items.length;
   const isAtLimit = wipLimit != null && wipLimit > 0 && count >= wipLimit;
   const isOverLimit = wipLimit != null && wipLimit > 0 && count > wipLimit;
@@ -24,8 +25,8 @@ export function BoardColumn({ columnId, name, items, wipLimit, onClickItem }: Bo
       p="sm"
       radius="md"
       style={{
-        width: 280,
-        minWidth: 280,
+        width: compact ? 240 : 280,
+        minWidth: compact ? 240 : 280,
         flexShrink: 0,
         borderColor: isOverLimit
           ? 'var(--mantine-color-red-4)'

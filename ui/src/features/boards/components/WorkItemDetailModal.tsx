@@ -13,17 +13,18 @@ import {
   Divider,
   Anchor,
   Loader,
-  Table,
   ThemeIcon,
   TypographyStylesProvider,
   ActionIcon,
   Box,
+  ScrollArea,
 } from '@mantine/core';
-import { IconProgress, IconGitBranch, IconExternalLink, IconPencil, IconArrowRight } from '@tabler/icons-react';
+import { IconProgress, IconGitBranch, IconExternalLink, IconPencil, IconArrowRight, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '@/features/chat/chat-markdown.css';
 import { notifications } from '@mantine/notifications';
+import { useMediaQuery } from '@mantine/hooks';
 import { useNavigate } from 'react-router';
 import { useUpdateWorkItem, useDeleteWorkItem, usePipelinesForWorkItem } from '../api';
 import type { WorkItem } from '../api';
@@ -47,13 +48,21 @@ const STATUSES = [
 ];
 
 
+interface BoardColumnDef {
+  column_id: string;
+  name: string;
+  position: number;
+  work_item_status: string;
+}
+
 interface WorkItemDetailModalProps {
   item: WorkItem | null;
   opened: boolean;
   onClose: () => void;
+  columns?: BoardColumnDef[];
 }
 
-export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailModalProps) {
+export function WorkItemDetailModal({ item, opened, onClose, columns }: WorkItemDetailModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [workType, setWorkType] = useState('task');
@@ -62,6 +71,7 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
   const [tags, setTags] = useState<string[]>([]);
 
   const [editingDescription, setEditingDescription] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const navigate = useNavigate();
   const updateMut = useUpdateWorkItem();
   const deleteMut = useDeleteWorkItem();
@@ -115,10 +125,33 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
 
   if (!item) return null;
 
+  const sorted = columns ? [...columns].sort((a, b) => a.position - b.position) : [];
+  const currentIdx = sorted.findIndex((c) => c.work_item_status === status);
+  const prevCol = currentIdx > 0 ? sorted[currentIdx - 1] : null;
+  const nextCol = currentIdx >= 0 && currentIdx < sorted.length - 1 ? sorted[currentIdx + 1] : null;
+
+  const handleMove = (col: BoardColumnDef) => {
+    if (!item) return;
+    const newStatus = col.work_item_status;
+    setStatus(newStatus);
+    updateMut.mutate(
+      { workItemId: item.work_item_id, data: { status: newStatus, column_id: col.column_id } },
+      {
+        onSuccess: () => {
+          void qc.invalidateQueries({ queryKey: ['/api/v1/work-items'] });
+          notifications.show({ title: 'Moved', message: `Moved to ${col.name}`, color: 'green' });
+        },
+        onError: () => {
+          notifications.show({ title: 'Error', message: 'Failed to move', color: 'red' });
+        },
+      },
+    );
+  };
+
   return (
-    <Modal opened={opened} onClose={onClose} title="Work Item Details" size="lg">
+    <Modal opened={opened} onClose={onClose} title="Work Item Details" size="lg" fullScreen={isMobile}>
       <Stack gap="sm">
-        <Group gap={8}>
+        <Group gap={8} wrap="wrap">
           <Badge size="xs" variant="light" color="dimmed">
             {item.work_item_id.slice(0, 8)}
           </Badge>
@@ -131,6 +164,7 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
           return (
             <Button
               variant="light"
+              size={isMobile ? 'sm' : 'md'}
               color={
                 last.status === 'completed' ? 'green'
                   : last.status === 'failed' ? 'red'
@@ -154,7 +188,33 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
           );
         })()}
 
-        <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
+        {/* ── Move to prev / next column ─────────────────────────────── */}
+        {sorted.length > 1 && (
+          <Group grow>
+            <Button
+              variant="light"
+              color="gray"
+              size={isMobile ? 'sm' : 'md'}
+              leftSection={<IconChevronLeft size={16} />}
+              disabled={!prevCol}
+              onClick={() => prevCol && handleMove(prevCol)}
+            >
+              {prevCol ? prevCol.name : 'Back'}
+            </Button>
+            <Button
+              variant="light"
+              color="blue"
+              size={isMobile ? 'sm' : 'md'}
+              rightSection={<IconChevronRight size={16} />}
+              disabled={!nextCol}
+              onClick={() => nextCol && handleMove(nextCol)}
+            >
+              {nextCol ? nextCol.name : 'Next'}
+            </Button>
+          </Group>
+        )}
+
+        <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} size={isMobile ? 'sm' : 'md'} />
 
         <Box>
           <Group justify="space-between" mb={4}>
@@ -172,9 +232,10 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.currentTarget.value)}
-              minRows={6}
+              minRows={isMobile ? 4 : 6}
               autosize
               placeholder="Markdown supported..."
+              size={isMobile ? 'sm' : 'md'}
             />
           ) : description ? (
             <Box
@@ -183,6 +244,8 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
                 border: '1px solid var(--mantine-color-dark-4)',
                 borderRadius: 'var(--mantine-radius-sm)',
                 cursor: 'pointer',
+                maxHeight: isMobile ? 200 : undefined,
+                overflow: isMobile ? 'auto' : undefined,
               }}
               onClick={() => setEditingDescription(true)}
             >
@@ -210,22 +273,25 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
             </Text>
           )}
         </Box>
-        <Group grow>
-          <Select label="Type" data={WORK_TYPES} value={workType} onChange={(v) => setWorkType(v ?? 'task')} />
-          <Select label="Status" data={STATUSES} value={status} onChange={(v) => setStatus(v ?? 'open')} />
+        <Group grow wrap={isMobile ? 'wrap' : 'nowrap'}>
+          <Select label="Type" data={WORK_TYPES} value={workType} onChange={(v) => setWorkType(v ?? 'task')} size={isMobile ? 'sm' : 'md'} />
+          <Select label="Status" data={STATUSES} value={status} onChange={(v) => setStatus(v ?? 'open')} size={isMobile ? 'sm' : 'md'} />
         </Group>
         <TextInput
           label="Assignee (agent role)"
           value={assignee}
           onChange={(e) => setAssignee(e.currentTarget.value)}
           placeholder="e.g. coder, reviewer"
+          size={isMobile ? 'sm' : 'md'}
         />
-        <TagsInput label="Tags" value={tags} onChange={setTags} placeholder="Add tags" />
+        <TagsInput label="Tags" value={tags} onChange={setTags} placeholder="Add tags" size={isMobile ? 'sm' : 'md'} />
 
-        <Group justify="space-between">
+        {/* ── Actions ─────────────────────────────────────────────────── */}
+        <Group justify="space-between" wrap="wrap" gap="xs">
           <Button
             color="red"
             variant="subtle"
+            size={isMobile ? 'xs' : 'sm'}
             onClick={() => {
               if (!item || !window.confirm('Delete this work item?')) return;
               deleteMut.mutate(item.work_item_id, {
@@ -243,11 +309,11 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
           >
             Delete
           </Button>
-          <Group>
-            <Button variant="default" onClick={onClose}>
+          <Group gap="xs">
+            <Button variant="default" onClick={onClose} size={isMobile ? 'sm' : 'md'}>
               Cancel
             </Button>
-            <Button onClick={handleSave} loading={updateMut.isPending}>
+            <Button onClick={handleSave} loading={updateMut.isPending} size={isMobile ? 'sm' : 'md'}>
               Save
             </Button>
           </Group>
@@ -256,11 +322,13 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
         <Divider label="Linked Resources" labelPosition="left" mt="sm" />
 
         {item.branch_name && (
-          <Group gap="xs">
+          <Group gap="xs" wrap="wrap" style={{ overflow: 'hidden' }}>
             <ThemeIcon size="sm" variant="light" color="gray">
               <IconGitBranch size={14} />
             </ThemeIcon>
-            <Text size="sm">Branch: <Text span fw={500}>{item.branch_name}</Text></Text>
+            <Text size="xs" style={{ wordBreak: 'break-all' }}>
+              Branch: <Text span fw={500}>{item.branch_name}</Text>
+            </Text>
           </Group>
         )}
 
@@ -269,16 +337,16 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
             <ThemeIcon size="sm" variant="light" color="blue">
               <IconExternalLink size={14} />
             </ThemeIcon>
-            <Anchor href={item.pr_url} target="_blank" size="sm">
+            <Anchor href={item.pr_url} target="_blank" size="sm" style={{ wordBreak: 'break-all' }}>
               Pull Request
             </Anchor>
           </Group>
         )}
 
         {item.thread_ref_str && (
-          <Group gap="xs">
-            <Text size="xs" c="dimmed">Thread: {item.thread_ref_str}</Text>
-          </Group>
+          <Text size="xs" c="dimmed" style={{ wordBreak: 'break-all' }}>
+            Thread: {item.thread_ref_str}
+          </Text>
         )}
 
         <Text size="sm" fw={500} mt="xs">
@@ -294,41 +362,58 @@ export function WorkItemDetailModal({ item, opened, onClose }: WorkItemDetailMod
           <Loader size="sm" />
         ) : !pipelines || pipelines.length === 0 ? (
           <Text size="xs" c="dimmed">
-            No pipelines linked. Moving to "In Progress" will trigger a workflow.
+            No pipelines linked. Moving to &quot;In Progress&quot; will trigger a workflow.
           </Text>
-        ) : (
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Run ID</Table.Th>
-                <Table.Th>Workflow</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Created</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {pipelines.map((p) => (
-                <Table.Tr key={p.run_id}>
-                  <Table.Td>
-                    <Anchor href={`/pipelines/${p.run_id}`} size="xs">
-                      {p.run_id.slice(0, 8)}
-                    </Anchor>
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="xs">{p.workflow_definition_id}</Text>
-                  </Table.Td>
-                  <Table.Td>
+        ) : isMobile ? (
+          /* Mobile: card layout instead of table */
+          <Stack gap="xs">
+            {pipelines.map((p) => (
+              <Anchor key={p.run_id} href={`/pipelines/${p.run_id}`} underline="never">
+                <Box p="xs" style={{ border: '1px solid var(--mantine-color-dark-4)', borderRadius: 'var(--mantine-radius-sm)' }}>
+                  <Group justify="space-between" wrap="wrap" gap={4}>
+                    <Text size="xs" fw={500}>{p.run_id.slice(0, 8)}</Text>
                     <StatusBadge status={p.status} size="xs" />
-                  </Table.Td>
-                  <Table.Td>
-                    <Text size="xs" c="dimmed">
-                      {p.created_at ? new Date(p.created_at).toLocaleString() : '—'}
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+                  </Group>
+                  <Text size="xs" c="dimmed" mt={2}>{p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</Text>
+                </Box>
+              </Anchor>
+            ))}
+          </Stack>
+        ) : (
+          <ScrollArea type="auto">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontSize: 12 }}>Run ID</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontSize: 12 }}>Workflow</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontSize: 12 }}>Status</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontSize: 12 }}>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pipelines.map((p) => (
+                  <tr key={p.run_id}>
+                    <td style={{ padding: '6px 8px' }}>
+                      <Anchor href={`/pipelines/${p.run_id}`} size="xs">
+                        {p.run_id.slice(0, 8)}
+                      </Anchor>
+                    </td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <Text size="xs">{p.workflow_definition_id}</Text>
+                    </td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <StatusBadge status={p.status} size="xs" />
+                    </td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <Text size="xs" c="dimmed">
+                        {p.created_at ? new Date(p.created_at).toLocaleString() : '—'}
+                      </Text>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollArea>
         )}
       </Stack>
     </Modal>
