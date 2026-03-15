@@ -8,7 +8,7 @@ Lintel is an open-source AI collaboration infrastructure platform. It orchestrat
 
 ## Workspace Structure
 
-This is a **uv workspace monorepo** with 16 packages under `packages/`:
+This is a **uv workspace monorepo** with 44+ packages under `packages/`:
 
 **Core packages:**
 
@@ -17,7 +17,7 @@ This is a **uv workspace monorepo** with 16 packages under `packages/`:
 | `packages/contracts/` | `lintel-contracts` | (none) | Pure domain contracts: types, commands, events, Protocol interfaces |
 | `packages/agents/` | `lintel-agents` | contracts | AI agent runtime (roles: planner, coder, reviewer, pm, designer, summarizer) |
 | `packages/workflows/` | `lintel-workflows` | contracts, agents | LangGraph workflow orchestration and graph nodes |
-| `packages/app/` | `lintel` | all below | FastAPI API routes, middleware, composition root, domain logic |
+| `packages/app/` | `lintel` | all below | Thin composition root: lifespan wiring, middleware, router mounting |
 
 **Reusable library packages (each independently installable):**
 
@@ -35,6 +35,40 @@ This is a **uv workspace monorepo** with 16 packages under `packages/`:
 | `packages/repos/` | `lintel-repos` | contracts | GitHub repository provider |
 | `packages/coordination/` | `lintel-coordination` | (asyncpg only) | Database advisory locks |
 | `packages/infrastructure/` | `lintel-infrastructure` | (residual) | MCP tool client only — will be dissolved |
+
+**API route packages (extracted from app — each independently installable):**
+
+| Package | Name | Namespace | Description |
+|---------|------|-----------|-------------|
+| `packages/api-support/` | `lintel-api-support` | `lintel.api_support` | `StoreProvider`, `dispatch_event`, `EntityStore`/`DictStore` protocols |
+| `packages/users/` | `lintel-users` | `lintel.users` | User CRUD routes + in-memory store |
+| `packages/teams/` | `lintel-teams` | `lintel.teams` | Team CRUD routes + in-memory store |
+| `packages/policies-api/` | `lintel-policies-api` | `lintel.policies_api` | Policy CRUD routes + in-memory store |
+| `packages/notifications-api/` | `lintel-notifications-api` | `lintel.notifications_api` | Notification rule CRUD routes + in-memory store |
+| `packages/environments-api/` | `lintel-environments-api` | `lintel.environments_api` | Environment CRUD routes + in-memory store |
+| `packages/variables-api/` | `lintel-variables-api` | `lintel.variables_api` | Variable CRUD routes + in-memory store |
+| `packages/credentials-api/` | `lintel-credentials-api` | `lintel.credentials_api` | Credential CRUD routes + in-memory store |
+| `packages/audit-api/` | `lintel-audit-api` | `lintel.audit_api` | Audit entry CRUD routes + in-memory store |
+| `packages/approval-requests-api/` | `lintel-approval-requests-api` | `lintel.approval_requests_api` | Approval request CRUD routes + in-memory store |
+| `packages/boards/` | `lintel-boards` | `lintel.boards` | Board + tag CRUD routes + in-memory stores |
+| `packages/triggers-api/` | `lintel-triggers-api` | `lintel.triggers_api` | Trigger CRUD routes + in-memory store |
+| `packages/artifacts-api/` | `lintel-artifacts-api` | `lintel.artifacts_api` | Code artifact + test result routes + in-memory stores |
+| `packages/projects-api/` | `lintel-projects-api` | `lintel.projects_api` | Project CRUD routes + in-memory store |
+| `packages/work-items-api/` | `lintel-work-items-api` | `lintel.work_items_api` | Work item CRUD routes + in-memory store |
+| `packages/skills-api/` | `lintel-skills-api` | `lintel.skills_api` | Skill CRUD routes + in-memory store |
+| `packages/agent-definitions-api/` | `lintel-agent-definitions-api` | `lintel.agent_definitions_api` | Agent definition CRUD routes + in-memory store |
+| `packages/mcp-servers-api/` | `lintel-mcp-servers-api` | `lintel.mcp_servers_api` | MCP server CRUD routes + in-memory store |
+| `packages/models-api/` | `lintel-models-api` | `lintel.models_api` | Model CRUD routes + in-memory store |
+| `packages/ai-providers-api/` | `lintel-ai-providers-api` | `lintel.ai_providers_api` | AI provider CRUD routes + in-memory store |
+| `packages/repositories-api/` | `lintel-repositories-api` | `lintel.repositories_api` | Repository registration routes |
+| `packages/workflow-definitions-api/` | `lintel-workflow-definitions-api` | `lintel.workflow_definitions_api` | Workflow definition routes |
+| `packages/settings-api/` | `lintel-settings-api` | `lintel.settings_api` | Settings + connection routes |
+| `packages/compliance-api/` | `lintel-compliance-api` | `lintel.compliance_api` | Compliance policy/regulation/practice routes + stores |
+| `packages/experimentation-api/` | `lintel-experimentation-api` | `lintel.experimentation_api` | KPI + experiment + metric routes |
+| `packages/automations-api/` | `lintel-automations-api` | `lintel.automations_api` | Automation rules, scheduler, webhook hooks |
+| `packages/sandboxes-api/` | `lintel-sandboxes-api` | `lintel.sandboxes_api` | Sandbox lifecycle routes (proxies to lintel-sandbox) |
+| `packages/pipelines-api/` | `lintel-pipelines-api` | `lintel.pipelines_api` | Pipeline run + stage routes, SSE delivery loop |
+| `packages/chat-api/` | `lintel-chat-api` | `lintel.chat_api` | Chat conversation routes + ChatService |
 
 Each package has `src/lintel/<pkg>/` source and colocated `tests/` directory. The `lintel` namespace is shared across packages via implicit namespace packages (no `__init__.py` in `src/lintel/`).
 
@@ -63,6 +97,12 @@ make test-slack         # Run slack package tests
 make test-repos         # Run repos package tests
 make test-coordination  # Run coordination package tests
 make test-projections   # Run projections package tests
+make test-api-support   # Run api-support package tests
+make test-users         # Run users package tests
+make test-teams         # Run teams package tests
+# ... pattern: make test-<package-dir> for all 28 extracted API packages
+make test-pipelines-api # Run pipelines-api package tests
+make test-chat-api      # Run chat-api package tests
 make test-unit          # Run all package tests (parallelised)
 make test-integration   # Run integration tests only
 make test-e2e           # Run e2e tests only
@@ -99,7 +139,9 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 - `packages/slack/` — Slack channel adapter (slack-bolt)
 - `packages/repos/` — GitHub repository provider
 - `packages/coordination/` — Database advisory locks
-- `packages/app/` — FastAPI routes, middleware, dependency injection (composition root)
+- `packages/api-support/` — `StoreProvider`, `dispatch_event`, `EntityStore`/`DictStore` protocols shared by all API packages
+- `packages/app/` — **Thin composition root** only: lifespan wiring, middleware, mounting extracted routers. Domain logic lives in extracted packages.
+- `packages/<name>-api/` or `packages/<name>/` — 28 extracted API route packages (users, teams, boards, chat, pipelines, etc.)
 
 **Key patterns:**
 - `ThreadRef` (workspace_id, channel_id, thread_ts) is the canonical workflow instance identifier
@@ -122,11 +164,34 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 
 ## Dependency Injection
 
-Uses `dependency-injector` (v4.x) with a `DeclarativeContainer` for the FastAPI app.
+There are two DI patterns in use, depending on the package:
 
-**Container:** `packages/app/src/lintel/api/container.py` — `AppContainer` declares all stores, services, and projections as `providers.Object` holders. The lifespan in `app.py` constructs instances and overrides providers via `wire_container()`.
+### Extracted API packages — `StoreProvider` (lintel-api-support)
 
-**Route handler pattern** — all route handlers use `@inject` + `Depends(Provide[...])`:
+Each extracted package declares module-level `StoreProvider` instances. The app wires the real store at startup by calling `.override()`:
+
+```python
+# In the package routes module (e.g. lintel/users/routes.py):
+from lintel.api_support.provider import StoreProvider
+user_store_provider: StoreProvider[UserStore] = StoreProvider()
+
+@router.get("/users")
+async def list_users() -> list[User]:
+    store = user_store_provider.get()
+    ...
+
+# In packages/app lifespan wiring:
+from lintel.users.routes import user_store_provider
+user_store_provider.override(stores["users"])
+```
+
+- No `dependency-injector` or `@inject` needed in extracted packages
+- `StoreProvider.get()` raises `RuntimeError` if not wired — tests must call `.override()` in fixtures
+
+### App package — `dependency-injector` (legacy, domain services only)
+
+`packages/app/src/lintel/api/container.py` — `AppContainer` still manages non-extracted services (workflow executor, event bus, projections, etc.) as `providers.Object` holders. Route handlers for these use `@inject` + `Depends(Provide[...])`:
+
 ```python
 from dependency_injector.wiring import Provide, inject
 from lintel.api.container import AppContainer
@@ -140,7 +205,6 @@ async def list_items(
 ```
 - `@inject` must be the decorator directly above the function (after `@router.X()`)
 - Use `= Depends(Provide[AppContainer.X])` default-value syntax with `# noqa: B008`
-- Old `get_X_store(request)` getter functions are kept for backward compatibility
 
 **Testing with DI:** Override providers in tests:
 ```python
