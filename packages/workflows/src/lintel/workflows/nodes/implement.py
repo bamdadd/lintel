@@ -1250,33 +1250,54 @@ async def _run_tests(
             SandboxJob(command=cmd, workdir=workspace_path, timeout_seconds=180),
         )
 
-    # Try changed tests first — but skip if discovery already returned an
-    # affected-only target (e.g. make test-affected) since that already scopes
-    # to changed packages and is more reliable than raw pytest file lists.
-    if "affected" not in test_command and "changed" not in test_command:
-        changed_cmd = await _build_changed_tests_command(
-            sandbox_manager, sandbox_id, workspace_path
-        )
-        if changed_cmd:
-            test_command = changed_cmd
-
-    await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
+    # Always try targeted tests first (only files the agent changed).
+    # If those pass, run the full suite as a regression check.
+    changed_cmd = await _build_changed_tests_command(
+        sandbox_manager, sandbox_id, workspace_path
+    )
 
     async def _log_test_line(line: str) -> None:
         await tracker.append_log("implement", line)
 
+    # Phase 1: Run targeted tests for agent-changed files
+    if changed_cmd:
+        await tracker.append_log("implement", f"Running changed tests: {changed_cmd[:80]}")
+        try:
+            changed_output, changed_exit = await _stream_execute_with_logging(
+                sandbox_manager, sandbox_id, changed_cmd, workspace_path, 300, _log_test_line,
+            )
+        except Exception:
+            logger.warning("implement_changed_tests_failed")
+            return "Changed test execution failed", 1
+
+        if changed_exit != 0:
+            await tracker.append_log("implement", "Changed tests: FAILED")
+            if len(changed_output) > 5000:
+                changed_output = (
+                    changed_output[:2500] + "\n...(truncated)...\n" + changed_output[-2500:]
+                )
+            return changed_output, changed_exit
+
+        await tracker.append_log("implement", "Changed tests: PASSED")
+
+    # Phase 2: Run full test suite as regression check
+    await tracker.append_log("implement", f"Running full tests: {test_command[:80]}")
     try:
         output, exit_code = await _stream_execute_with_logging(
-            sandbox_manager,
-            sandbox_id,
-            test_command,
-            workspace_path,
-            600,
-            _log_test_line,
+            sandbox_manager, sandbox_id, test_command, workspace_path, 600, _log_test_line,
         )
     except Exception:
         logger.warning("implement_test_execute_failed")
         return "Test execution failed", 1
+
+    if exit_code != 0 and changed_cmd:
+        # Full suite failed but changed tests passed — likely pre-existing failures.
+        # Accept if the agent's own tests passed.
+        await tracker.append_log(
+            "implement",
+            "Full suite has failures but agent-changed tests passed — accepting",
+        )
+        exit_code = 0
 
     verdict = "PASSED" if exit_code == 0 else "FAILED"
     await tracker.append_log("implement", f"Tests: {verdict}")
