@@ -14,7 +14,13 @@ from lintel.ai_providers_api.routes import model_store_provider as ai_providers_
 from lintel.ai_providers_api.store import InMemoryAIProviderStore
 from lintel.approval_requests_api.routes import approval_request_store_provider
 from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
-from lintel.artifacts_api.routes import code_artifact_store_provider, test_result_store_provider
+from lintel.artifacts_api.routes import (
+    code_artifact_store_provider,
+    test_result_store_provider,
+)
+from lintel.artifacts_api.routes import (
+    pipeline_store_provider as artifact_pipeline_store_provider,
+)
 from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
 from lintel.audit_api.routes import audit_entry_store_provider
 from lintel.audit_api.store import AuditEntryStore
@@ -311,6 +317,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     trigger_store_provider.override(stores["trigger_store"])
     code_artifact_store_provider.override(stores["code_artifact_store"])
     test_result_store_provider.override(stores["test_result_store"])
+    artifact_pipeline_store_provider.override(stores["pipeline_store"])
     project_store_provider.override(stores["project_store"])
     work_item_store_provider.override(stores["work_item_store"])
     skill_store_provider.override(stores["skill_store"])

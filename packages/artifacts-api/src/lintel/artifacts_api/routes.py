@@ -1,10 +1,14 @@
 """Code artifact and test result endpoints."""
 
+import asyncio
+from collections.abc import AsyncGenerator
 from dataclasses import asdict
+import json
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
@@ -15,8 +19,9 @@ from lintel.domain.types import CodeArtifact, TestResult, TestVerdict
 
 router = APIRouter()
 
-code_artifact_store_provider = StoreProvider()
-test_result_store_provider = StoreProvider()
+code_artifact_store_provider: StoreProvider[CodeArtifactStore] = StoreProvider()
+test_result_store_provider: StoreProvider[TestResultStore] = StoreProvider()
+pipeline_store_provider: StoreProvider[object] = StoreProvider()
 
 
 # --- Helpers ---
@@ -100,6 +105,62 @@ async def list_artifacts(
 ) -> list[dict[str, Any]]:
     artifacts = await store.list_all(work_item_id=work_item_id, run_id=run_id)
     return [asdict(a) for a in artifacts]
+
+
+@router.get("/artifacts/stream")
+async def stream_artifacts(
+    run_id: str,
+    artifact_store: CodeArtifactStore = Depends(code_artifact_store_provider),  # noqa: B008
+    test_store: TestResultStore = Depends(test_result_store_provider),  # noqa: B008
+    pipe_store: object = Depends(pipeline_store_provider),
+) -> StreamingResponse:
+    """Stream artifacts and test results for a running pipeline via SSE.
+
+    Emits ``artifact`` events as new code artifacts appear and ``test_result``
+    events for new test results.  The stream ends with a ``complete`` event once
+    the pipeline reaches a terminal state (succeeded / failed / cancelled) or is
+    not found.
+    """
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        seen_artifacts: set[str] = set()
+        seen_results: set[str] = set()
+
+        while True:
+            # Check pipeline status
+            run = await pipe_store.get(run_id) if pipe_store else None
+            terminal = False
+            if run is not None:
+                status = run.status.value if hasattr(run.status, "value") else str(run.status)
+                terminal = status in ("succeeded", "failed", "cancelled")
+
+            # Emit new artifacts
+            artifacts = await artifact_store.list_all(run_id=run_id)
+            for a in artifacts:
+                if a.artifact_id not in seen_artifacts:
+                    seen_artifacts.add(a.artifact_id)
+                    payload = {"type": "artifact", "data": asdict(a)}
+                    yield f"data: {json.dumps(payload, default=str)}\n\n"
+
+            # Emit new test results
+            results = await test_store.list_all(run_id=run_id)
+            for r in results:
+                if r.result_id not in seen_results:
+                    seen_results.add(r.result_id)
+                    payload = {"type": "test_result", "data": _test_result_to_dict(r)}
+                    yield f"data: {json.dumps(payload, default=str)}\n\n"
+
+            if terminal or run is None:
+                yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+                return
+
+            await asyncio.sleep(1)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/artifacts/{artifact_id}")
