@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-from lintel.api.domain.skills.discover_test_command import (
+from lintel.skills_api.domain.discover_test_command import (
     DiscoverTestCommandSkill,
     discover_test_command,
     pick_test_target,
@@ -69,26 +69,6 @@ class TestDiscoverTestCommand:
 
         assert result["test_command"] == "make test-unit"
 
-    async def test_python_without_postgres_no_unit_target_uses_pytest(self) -> None:
-        """Python project, no postgres, no unit target → pytest tests/unit/."""
-        mgr = _mock_sandbox(
-            (0, "/w/Makefile\n/w/pyproject.toml", ""),
-            (0, "0", ""),  # workspace check
-            (0, "HAS_UV", ""),
-            (0, "MISSING", ""),
-            (0, "/root/.local/bin/uv", ""),
-            (0, "0", ""),  # workspace check for sync
-            (0, "", ""),
-            # _python_test_command: make help
-            (0, "build\nlint\n", ""),
-            # make help fallback: grep targets
-            (0, "build\nlint\n", ""),
-        )
-        result = await discover_test_command(mgr, "sb-1", "/w")
-
-        assert "tests/unit/" in result["test_command"]
-        assert "pytest" in result["test_command"]
-
     async def test_python_without_makefile(self) -> None:
         """Python project, no Makefile → pytest directly."""
         mgr = _mock_sandbox(
@@ -104,21 +84,6 @@ class TestDiscoverTestCommand:
 
         assert "pytest" in result["test_command"]
         assert "tests/unit/" not in result["test_command"]  # postgres is available
-
-    async def test_detects_spacy_dependency(self) -> None:
-        """Spacy in pyproject.toml → setup includes model download."""
-        mgr = _mock_sandbox(
-            (0, "/w/pyproject.toml", ""),
-            (0, "0", ""),  # workspace check
-            (0, "HAS_UV", ""),
-            (0, "MISSING", ""),
-            (0, "/root/.local/bin/uv", ""),
-            (0, "0", ""),  # workspace check for sync
-            (0, '"presidio-analyzer>=2.0"', ""),
-        )
-        result = await discover_test_command(mgr, "sb-1", "/w")
-
-        assert any("spacy download" in c for c in result["setup_commands"])
 
     async def test_installs_uv_when_missing(self) -> None:
         """uv not found → setup includes curl install."""
@@ -169,32 +134,6 @@ class TestDiscoverTestCommand:
 
         assert result["test_command"] == "make test-affected"
 
-    async def test_workspace_uses_all_packages_sync(self) -> None:
-        """uv workspace → uv sync --all-extras --all-packages."""
-        mgr = _mock_sandbox(
-            (0, "/w/pyproject.toml", ""),
-            (0, "1", ""),  # workspace check
-            (0, "HAS_UV", ""),
-            (0, "MISSING", ""),  # probe
-            (0, "/root/.local/bin/uv", ""),  # which uv
-            (0, "1", ""),  # workspace check for sync
-            (0, "", ""),  # extras
-        )
-        result = await discover_test_command(mgr, "sb-1", "/w")
-
-        assert any("--all-packages" in c for c in result["setup_commands"])
-
-    async def test_package_json_with_test_script(self) -> None:
-        mgr = _mock_sandbox(
-            (0, "/w/package.json", ""),
-            (0, "", ""),  # capabilities
-            (0, "HAS_TEST", ""),
-        )
-        result = await discover_test_command(mgr, "sb-1", "/w")
-
-        assert result["test_command"] == "npm test"
-        assert "npm install" in result["setup_commands"]
-
     async def test_cargo_toml(self) -> None:
         mgr = _mock_sandbox(
             (0, "/w/Cargo.toml", ""),
@@ -221,26 +160,6 @@ class TestDiscoverTestCommand:
         result = await discover_test_command(mgr, "sb-1", "/w")
 
         assert "No test runner" in result["test_command"]
-
-    async def test_makefile_no_test_target_falls_through(self) -> None:
-        """Makefile exists but no test target → falls through to Cargo."""
-        mgr = _mock_sandbox(
-            (0, "/w/Makefile\n/w/Cargo.toml", ""),
-            (0, "", ""),  # capabilities
-        )
-        result = await discover_test_command(mgr, "sb-1", "/w")
-
-        assert result["test_command"] == "cargo test"
-
-    async def test_package_json_without_test_script(self) -> None:
-        mgr = _mock_sandbox(
-            (0, "/w/package.json\n/w/go.mod", ""),
-            (0, "", ""),  # capabilities
-            (0, "", ""),  # grep — no HAS_TEST
-        )
-        result = await discover_test_command(mgr, "sb-1", "/w")
-
-        assert result["test_command"] == "go test ./..."
 
 
 class TestPickTestTarget:

@@ -4,7 +4,6 @@ from dataclasses import asdict
 from typing import Any
 from uuid import uuid4
 
-from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -20,78 +19,18 @@ from lintel.agents.types import (
     SkillExecutionMode,
     SkillResult,
 )
-from lintel.api.container import AppContainer
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
+from lintel.skills_api.store import InMemorySkillStore
 
 router = APIRouter()
 
-
-# ---------------------------------------------------------------------------
-# In-memory skill store (placeholder until a real SkillRegistry is wired)
-# ---------------------------------------------------------------------------
-
-
-class InMemorySkillStore:
-    """Minimal in-memory store satisfying the SkillRegistry protocol shape."""
-
-    def __init__(self) -> None:
-        self._skills: dict[str, SkillDescriptor] = {}
-        self._metadata: dict[str, dict[str, Any]] = {}
-
-    async def register(
-        self,
-        skill_id: str,
-        version: str,
-        name: str,
-        input_schema: dict[str, Any],
-        output_schema: dict[str, Any],
-        execution_mode: str,
-        description: str = "",
-        allowed_agent_roles: tuple[str, ...] | list[str] = (),
-    ) -> SkillDescriptor:
-        descriptor = SkillDescriptor(
-            name=name,
-            version=version,
-            description=description,
-            input_schema=input_schema,
-            output_schema=output_schema,
-            execution_mode=SkillExecutionMode(execution_mode),
-            allowed_agent_roles=frozenset(allowed_agent_roles),
-        )
-        self._skills[skill_id] = descriptor
-        return descriptor
-
-    async def invoke(
-        self,
-        skill_id: str,
-        input_data: dict[str, Any],
-        context: dict[str, Any],
-    ) -> SkillResult:
-        if skill_id not in self._skills:
-            msg = f"Skill {skill_id} not found"
-            raise KeyError(msg)
-        # Stub: real implementation would dispatch to the skill runtime.
-        return SkillResult(success=True, output={"echo": input_data})
-
-    async def delete(self, skill_id: str) -> None:
-        if skill_id not in self._skills:
-            msg = f"Skill {skill_id} not found"
-            raise KeyError(msg)
-        del self._skills[skill_id]
-        self._metadata.pop(skill_id, None)
-
-    async def list_skills(self) -> dict[str, SkillDescriptor]:
-        return dict(self._skills)
+skill_store_provider = StoreProvider()
 
 
 # ---------------------------------------------------------------------------
 # Dependency
 # ---------------------------------------------------------------------------
-
-
-def get_skill_store(request: Request) -> InMemorySkillStore:
-    """Kept for backward compat."""
-    return request.app.state.skill_store  # type: ignore[no-any-return]
 
 
 def _get_metadata(store: InMemorySkillStore, skill_id: str) -> dict[str, Any]:
@@ -128,11 +67,10 @@ class InvokeSkillRequest(BaseModel):
 
 
 @router.post("/skills", status_code=201)
-@inject
 async def register_skill(
     body: RegisterSkillRequest,
     request: Request,
-    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
+    store: InMemorySkillStore = Depends(skill_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.list_skills()
     if body.skill_id in existing:
@@ -159,9 +97,8 @@ async def register_skill(
 
 
 @router.get("/skills")
-@inject
 async def list_skills(
-    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
+    store: InMemorySkillStore = Depends(skill_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     skills = await store.list_skills()
     return [
@@ -171,10 +108,9 @@ async def list_skills(
 
 
 @router.get("/skills/{skill_id}")
-@inject
 async def get_skill(
     skill_id: str,
-    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
+    store: InMemorySkillStore = Depends(skill_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     skills = await store.list_skills()
     if skill_id not in skills:
@@ -191,12 +127,11 @@ class UpdateSkillRequest(BaseModel):
 
 
 @router.patch("/skills/{skill_id}")
-@inject
 async def update_skill(
     skill_id: str,
     body: UpdateSkillRequest,
     request: Request,
-    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
+    store: InMemorySkillStore = Depends(skill_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Update a registered skill."""
     skills = await store.list_skills()
@@ -222,11 +157,10 @@ async def update_skill(
 
 
 @router.delete("/skills/{skill_id}", status_code=204)
-@inject
 async def delete_skill(
     skill_id: str,
     request: Request,
-    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
+    store: InMemorySkillStore = Depends(skill_store_provider),  # noqa: B008
 ) -> None:
     """Delete a registered skill."""
     try:
@@ -239,12 +173,11 @@ async def delete_skill(
 
 
 @router.post("/skills/{skill_id}/invoke")
-@inject
 async def invoke_skill(
     skill_id: str,
     body: InvokeSkillRequest,
     request: Request,
-    store: InMemorySkillStore = Depends(Provide[AppContainer.skill_store]),  # noqa: B008
+    store: InMemorySkillStore = Depends(skill_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     try:
         result = await store.invoke(

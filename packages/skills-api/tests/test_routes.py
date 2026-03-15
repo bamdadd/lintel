@@ -2,27 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-import pytest
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 from fastapi.testclient import TestClient
-
-from lintel.api.app import create_app
 
 SKILL_BODY = {
     "skill_id": "s1",
     "name": "echo-skill",
     "version": "1.0.0",
 }
-
-
-@pytest.fixture()
-def client() -> Generator[TestClient]:
-    with TestClient(create_app()) as c:
-        yield c
 
 
 class TestSkillsAPI:
@@ -39,25 +25,18 @@ class TestSkillsAPI:
         resp = client.post("/api/v1/skills", json=SKILL_BODY)
         assert resp.status_code == 409
 
-    def test_list_skills_has_builtins(self, client: TestClient) -> None:
+    def test_list_skills_empty(self, client: TestClient) -> None:
         resp = client.get("/api/v1/skills")
         assert resp.status_code == 200
-        items = resp.json()
-        assert len(items) > 0
-        builtin_ids = {s["skill_id"] for s in items}
-        assert "skill_write_code" in builtin_ids
-        assert "skill_code_review" in builtin_ids
+        assert resp.json() == []
 
     def test_list_skills_after_registration(self, client: TestClient) -> None:
-        resp_before = client.get("/api/v1/skills")
-        count_before = len(resp_before.json())
         client.post("/api/v1/skills", json=SKILL_BODY)
         resp = client.get("/api/v1/skills")
         assert resp.status_code == 200
         items = resp.json()
-        assert len(items) == count_before + 1
-        ids = {s["skill_id"] for s in items}
-        assert "s1" in ids
+        assert len(items) == 1
+        assert items[0]["skill_id"] == "s1"
 
     def test_invoke_skill(self, client: TestClient) -> None:
         client.post("/api/v1/skills", json=SKILL_BODY)
@@ -75,3 +54,19 @@ class TestSkillsAPI:
             json={"input_data": {}, "context": {}},
         )
         assert resp.status_code == 404
+
+    def test_get_skill(self, client: TestClient) -> None:
+        client.post("/api/v1/skills", json=SKILL_BODY)
+        resp = client.get("/api/v1/skills/s1")
+        assert resp.status_code == 200
+        assert resp.json()["skill_id"] == "s1"
+
+    def test_get_skill_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/skills/nonexistent")
+        assert resp.status_code == 404
+
+    def test_delete_skill(self, client: TestClient) -> None:
+        client.post("/api/v1/skills", json=SKILL_BODY)
+        resp = client.delete("/api/v1/skills/s1")
+        assert resp.status_code == 204
+        assert client.get("/api/v1/skills/s1").status_code == 404
