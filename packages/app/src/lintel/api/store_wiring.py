@@ -49,6 +49,8 @@ from lintel.experimentation_api.routes import (
     experiment_store_provider,
     kpi_store_provider,
 )
+from lintel.integration_patterns_api.routes import integration_pattern_store_provider
+from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
 from lintel.mcp_servers_api.routes import mcp_server_store_provider
 from lintel.mcp_servers_api.store import InMemoryMCPServerStore
 from lintel.models_api.routes import ai_provider_store_provider as models_ai_provider_store_provider
@@ -120,6 +122,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "sandbox_store": SandboxStore(),
         "tag_store": TagStore(),
         "board_store": BoardStore(),
+        "integration_patterns": InMemoryIntegrationPatternStore(),
         # Compliance & Governance stores
         "regulation_store": ComplianceStore("regulation_id"),
         "compliance_policy_store": ComplianceStore("policy_id"),
@@ -344,3 +347,4 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     kpi_store_provider.override(stores["kpi_store"])
     experiment_store_provider.override(stores["experiment_store"])
     compliance_metric_store_provider.override(stores["compliance_metric_store"])
+    integration_pattern_store_provider.override(stores["integration_patterns"])

@@ -45,6 +45,7 @@ dependencies = [
     "lintel-settings-api",
     "lintel-compliance-api",
     "lintel-experimentation-api",
+    "lintel-integration-patterns-api",
     "lintel-automations-api",
     "lintel-sandboxes-api",
     "lintel-pipelines-api",
@@ -105,6 +106,7 @@ lintel-workflow-definitions-api = { workspace = true }
 lintel-settings-api = { workspace = true }
 lintel-compliance-api = { workspace = true }
 lintel-experimentation-api = { workspace = true }
+lintel-integration-patterns-api = { workspace = true }
 lintel-automations-api = { workspace = true }
 lintel-sandboxes-api = { workspace = true }
 lintel-pipelines-api = { workspace = true }

@@ -346,11 +346,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     scheduler_task.add_done_callback(app.state._background_tasks.discard)
 
     # Start Telegram polling if adapter is configured
-    telegram_adapter = getattr(app.state, "telegram_adapter", None)
-    if telegram_adapter is not None:
+    tg_adapter: object | None = getattr(app.state, "telegram_adapter", None)
+    if tg_adapter is not None:
         from lintel.settings_api.channels_router import start_telegram_polling
 
-        await start_telegram_polling(app, telegram_adapter)
+        await start_telegram_polling(app, tg_adapter)
 
     yield
 

@@ -15,8 +15,8 @@ router = APIRouter()
 
 async def _dispatch_inbound_message(
     request: Request,
-    inbound: Any,
-    adapter: Any,
+    inbound: object,
+    adapter: object,
 ) -> None:
     """Create or find a conversation and route the message through ChatService."""
     from lintel.chat_api.service import ChatService

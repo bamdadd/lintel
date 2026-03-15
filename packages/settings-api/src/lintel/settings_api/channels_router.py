@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -28,11 +29,11 @@ class ChannelConnectionStatus(BaseModel):
     message: str = ""
 
 
-async def _get_credential_store(request: Request) -> Any:
+async def _get_credential_store(request: Request) -> object | None:
     return getattr(request.app.state, "credential_store", None)
 
 
-async def restore_telegram_from_store(app: Any) -> None:
+async def restore_telegram_from_store(app: object) -> None:
     """Restore the Telegram adapter from the credential store on startup.
 
     Called from lifespan after stores are wired.
@@ -79,7 +80,7 @@ async def restore_telegram_from_store(app: Any) -> None:
     logger.info("telegram.restored_from_store", bot_username=adapter.bot_username)
 
 
-async def start_telegram_polling(app: Any, adapter: Any) -> None:
+async def start_telegram_polling(app: object, adapter: object) -> None:
     """Start Telegram long-polling as a background task."""
     import asyncio
 
@@ -93,7 +94,7 @@ async def start_telegram_polling(app: Any, adapter: Any) -> None:
     class _AppRequestProxy:
         """Minimal stand-in for FastAPI Request."""
 
-        def __init__(self, _app: Any) -> None:
+        def __init__(self, _app: object) -> None:
             self.app = _app
 
     proxy = _AppRequestProxy(app)
@@ -133,7 +134,7 @@ async def start_telegram_polling(app: Any, adapter: Any) -> None:
         task.add_done_callback(bg.discard)
 
 
-async def stop_telegram_polling(app: Any) -> None:
+async def stop_telegram_polling(app: object) -> None:
     """Cancel the Telegram polling background task if running."""
     task = getattr(app.state, "_telegram_poll_task", None)
     if task is not None and not task.done():
@@ -264,10 +265,8 @@ async def disconnect_telegram(request: Request) -> None:
     # Remove from credential store
     credential_store = await _get_credential_store(request)
     if credential_store is not None:
-        try:
+        with contextlib.suppress(KeyError):
             await credential_store.revoke(TELEGRAM_CREDENTIAL_ID)
-        except KeyError:
-            pass  # Already removed
 
     # Remove from app state
     del request.app.state.telegram_adapter
