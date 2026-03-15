@@ -10,15 +10,30 @@ from uuid import uuid4
 
 import structlog
 
-from lintel.domain.events import (
-    WorkItemCompleted,
-    WorkItemUpdated,
-)
 from lintel.workflows.events import (
     PipelineRunCompleted,
     PipelineRunFailed,
     PipelineRunStarted,
     PipelineStageCompleted,
+)
+from lintel.workflows._executor_artifacts import (
+    auto_promote_if_capacity as _auto_promote_if_capacity,
+    complete_work_item as _complete_work_item,
+    create_approval_request as _create_approval_request,
+    evaluate_policy as _evaluate_policy,
+    fail_work_item as _fail_work_item,
+    rehydrate_from_run as _rehydrate_from_run,
+)
+from lintel.workflows._executor_lifecycle import (
+    determine_final_status as _determine_final_status,
+    get_stage_id as _get_stage_id,
+    mark_first_stage_running as _mark_first_stage_running,
+    mark_running_stages_failed as _mark_running_stages_failed,
+    mark_stage_completed as _mark_stage_completed,
+    mark_stage_waiting_approval as _mark_stage_waiting_approval,
+    notify_chat as _notify_chat,
+    send_stage_notification as _send_stage_notification,
+    update_pipeline_status as _update_pipeline_status,
 )
 
 if TYPE_CHECKING:
@@ -129,7 +144,7 @@ class WorkflowExecutor:
         await self._project_events([start_event])
 
         # Mark first stage as running
-        await self._mark_first_stage_running(run_id)
+        await _mark_first_stage_running(self._app_state, run_id)
 
         # Resolve graph: prefer factory (per workflow type), fall back to static graph
         graph = self._graph
@@ -152,7 +167,7 @@ class WorkflowExecutor:
 
         # Rehydrate state from previous run if continuing
         if command.continue_from_run_id:
-            prev_state = await self._rehydrate_from_run(command.continue_from_run_id)
+            prev_state = await _rehydrate_from_run(self._app_state, command.continue_from_run_id)
             initial_input.update(prev_state)
 
         # Store graph and command for potential resumption
@@ -165,48 +180,6 @@ class WorkflowExecutor:
 
         await self._stream_graph(run_id, graph, initial_input, config)
         return run_id
-
-    async def _rehydrate_from_run(self, prev_run_id: str) -> dict[str, Any]:
-        """Load stage outputs from a previous run and map them to workflow state keys."""
-        from lintel.workflows.types import StageStatus
-
-        result: dict[str, Any] = {}
-        if self._app_state is None:
-            return result
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return result
-        try:
-            run = await pipeline_store.get(prev_run_id)
-            if run is None:
-                logger.warning("rehydrate_run_not_found", run_id=prev_run_id)
-                return result
-            for stage in run.stages:
-                if isinstance(stage, dict):
-                    stage = _dict_to_stage(stage)
-                outputs = stage.outputs if isinstance(stage.outputs, dict) else {}
-                if stage.status == StageStatus.SUCCEEDED and outputs:
-                    if stage.name == "research" and (
-                        "research_report" in outputs or "research_context" in outputs
-                    ):
-                        result["research_context"] = outputs.get(
-                            "research_report", outputs.get("research_context", "")
-                        )
-                    elif stage.name == "plan" and "plan" in outputs:
-                        result["plan"] = outputs["plan"]
-                    elif stage.name == "setup_workspace" and "feature_branch" in outputs:
-                        result["feature_branch"] = outputs["feature_branch"]
-                elif stage.status == StageStatus.FAILED and stage.error:
-                    result["previous_error"] = stage.error
-                    result["previous_failed_stage"] = stage.name
-            logger.info(
-                "rehydrated_from_previous_run",
-                prev_run_id=prev_run_id,
-                keys=list(result.keys()),
-            )
-        except Exception:
-            logger.warning("rehydrate_failed", prev_run_id=prev_run_id, exc_info=True)
-        return result
 
     async def resume(self, run_id: str) -> None:
         """Resume a workflow that was paused at an approval gate."""
@@ -287,7 +260,7 @@ class WorkflowExecutor:
                     )
                     await self._event_store.append(stream_id=stream_id, events=[stage_event])
                     await self._project_events([stage_event])
-                    await self._mark_stage_completed(run_id, node_name, timestamp_ms)
+                    await _mark_stage_completed(self._app_state, run_id, node_name, timestamp_ms)
 
                     # Accumulate token usage from node output
                     if isinstance(output, dict):
@@ -298,7 +271,7 @@ class WorkflowExecutor:
                                 total_tokens["total_tokens"] += entry.get("total_tokens", 0)
 
                     # Chat notifications
-                    await self._send_stage_notification(run_id, node_name, output)
+                    await _send_stage_notification(self._app_state, run_id, node_name, output)
 
                     if self._on_stage_complete is not None:
                         with contextlib.suppress(Exception):
@@ -316,7 +289,7 @@ class WorkflowExecutor:
                 )
 
                 # Evaluate policy for this gate
-                policy_action = await self._evaluate_policy(run_id, next_node)
+                policy_action = await _evaluate_policy(self._app_state, run_id, next_node)
 
                 if policy_action == "auto_approve":
                     logger.info(
@@ -324,7 +297,8 @@ class WorkflowExecutor:
                         run_id=run_id,
                         node=next_node,
                     )
-                    await self._notify_chat(
+                    await _notify_chat(
+                        self._app_state,
                         run_id,
                         f"✅ **{next_node}** — auto-approved by policy\n"
                         f"[View pipeline →](/pipelines/{run_id})",
@@ -339,9 +313,10 @@ class WorkflowExecutor:
                         run_id=run_id,
                         node=next_node,
                     )
-                    await self._mark_running_stages_failed(run_id, "Blocked by policy")
-                    await self._update_pipeline_status(run_id, "failed")
-                    await self._notify_chat(
+                    await _mark_running_stages_failed(self._app_state, run_id, "Blocked by policy")
+                    await _update_pipeline_status(self._app_state, run_id, "failed")
+                    await _notify_chat(
+                        self._app_state,
                         run_id,
                         f"🚫 **{next_node}** — blocked by policy\n"
                         f"[View pipeline →](/pipelines/{run_id})",
@@ -349,17 +324,19 @@ class WorkflowExecutor:
                     return
 
                 if policy_action == "notify":
-                    await self._notify_chat(
+                    await _notify_chat(
+                        self._app_state,
                         run_id,
                         f"📢 **{next_node}** — policy notification: gate reached\n"
                         f"[View pipeline →](/pipelines/{run_id})",
                     )
 
                 # Default: require_approval
-                await self._mark_stage_waiting_approval(run_id, next_node)
-                await self._update_pipeline_status(run_id, "waiting_approval")
-                await self._create_approval_request(run_id, next_node)
-                await self._notify_chat(
+                await _mark_stage_waiting_approval(self._app_state, run_id, next_node)
+                await _update_pipeline_status(self._app_state, run_id, "waiting_approval")
+                await _create_approval_request(self._app_state, run_id, next_node)
+                await _notify_chat(
+                    self._app_state,
                     run_id,
                     f"⏸️ **{next_node}** — waiting for approval\n"
                     f"[View pipeline →](/pipelines/{run_id})",
@@ -374,7 +351,7 @@ class WorkflowExecutor:
 
             # Determine final status — if any stage failed/skipped due to
             # failure, the pipeline should be marked failed, not succeeded.
-            final_status = await self._determine_final_status(run_id)
+            final_status = await _determine_final_status(self._app_state, run_id)
 
             completed_event = PipelineRunCompleted(
                 event_type="PipelineRunCompleted",
@@ -386,13 +363,25 @@ class WorkflowExecutor:
             )
             await self._event_store.append(stream_id=stream_id, events=[completed_event])
             await self._project_events([completed_event])
-            await self._update_pipeline_status(run_id, final_status)
+            await _update_pipeline_status(self._app_state, run_id, final_status)
             command = suspended.get("command")
             if command:
                 if final_status == "failed":
-                    await self._fail_work_item(command)
+                    await _fail_work_item(
+                        self._app_state,
+                        self._event_store,
+                        self._project_events,
+                        run_id,
+                        command.work_item_id or "",
+                        command.project_id or "",
+                    )
                 else:
-                    await self._complete_work_item(command)
+                    await _complete_work_item(
+                        self._app_state,
+                        self._event_store,
+                        self._project_events,
+                        command.work_item_id or "",
+                    )
             token_summary = ""
             if total_tokens["total_tokens"] > 0:
                 token_summary = (
@@ -401,663 +390,134 @@ class WorkflowExecutor:
                     f"{total_tokens['output_tokens']:,} out)"
                 )
             if final_status == "failed":
-                await self._notify_chat(
+                await _notify_chat(
+                    self._app_state,
                     run_id,
                     f"❌ **Workflow completed with failures**{token_summary}\n"
                     f"[View pipeline →](/pipelines/{run_id})",
                 )
             else:
-                await self._notify_chat(
+                await _notify_chat(
+                    self._app_state,
                     run_id,
                     f"🎉 **Workflow completed successfully**{token_summary}\n"
                     f"[View pipeline →](/pipelines/{run_id})",
                 )
         except Exception as exc:
             self._suspended_runs.pop(run_id, None)
-            await self._mark_running_stages_failed(run_id, str(exc))
+            await _mark_running_stages_failed(self._app_state, run_id, str(exc))
             failed_event = PipelineRunFailed(
                 event_type="PipelineRunFailed",
                 payload={"run_id": run_id, "error": str(exc)},
             )
             await self._event_store.append(stream_id=stream_id, events=[failed_event])
             await self._project_events([failed_event])
-            await self._update_pipeline_status(run_id, "failed")
+            await _update_pipeline_status(self._app_state, run_id, "failed")
             command = suspended.get("command")
             if command:
-                await self._fail_work_item(command)
-            await self._notify_chat(
+                await _fail_work_item(
+                    self._app_state,
+                    self._event_store,
+                    self._project_events,
+                    run_id,
+                    command.work_item_id or "",
+                    command.project_id or "",
+                )
+            await _notify_chat(
+                self._app_state,
                 run_id,
                 f"❌ **Workflow failed**: {exc}\n[View pipeline →](/pipelines/{run_id})",
             )
 
-    async def _send_stage_notification(
-        self,
-        run_id: str,
-        node_name: str,
-        output: Any,  # noqa: ANN401
-    ) -> None:
-        """Send a chat notification for a completed stage."""
-        is_approval = "approve" in node_name or "approval" in node_name
-        if is_approval:
-            await self._notify_chat(
-                run_id,
-                f"✅ **{node_name}** — approved\n[View pipeline →](/pipelines/{run_id})",
-            )
-        elif node_name == "setup_workspace" and isinstance(output, dict):
-            sandbox_id = output.get("sandbox_id", "")
-            feature_branch = output.get("feature_branch", "")
-            lines = ["✅ **setup_workspace** completed\n"]
-            if sandbox_id:
-                lines.append(f"**Sandbox:** [{sandbox_id[:12]}](/sandboxes/{sandbox_id})")
-            if feature_branch:
-                lines.append(f"**Branch:** `{feature_branch}`")
-            await self._notify_chat(run_id, "\n".join(lines))
-        elif node_name == "research" and isinstance(output, dict):
-            ctx = output.get("research_context", "")
-            if ctx:
-                lines = ["✅ **research** completed\n"]
-                lines.append("---\n")
-                # Include the research report (truncate if very long)
-                report = ctx if len(ctx) <= 4000 else ctx[:4000] + "\n\n…(truncated)"
-                lines.append(report)
-                await self._notify_chat(run_id, "\n".join(lines))
-            else:
-                await self._notify_chat(run_id, f"✅ **{node_name}** completed")
-        elif node_name == "plan" and isinstance(output, dict):
-            plan = output.get("plan", {})
-            if isinstance(plan, dict) and plan.get("tasks"):
-                lines = ["✅ **plan** completed\n"]
-                summary = plan.get("summary", "")
-                if summary:
-                    lines.append(f"**Summary:** {summary}\n")
-                lines.append("**Tasks:**")
-                for i, task in enumerate(plan.get("tasks", []), 1):
-                    if isinstance(task, dict):
-                        title = task.get("title", "")
-                        desc = task.get("description", "")
-                        complexity = task.get("complexity", "")
-                        suffix = f" [{complexity}]" if complexity else ""
-                        lines.append(f"  {i}. **{title}**{suffix}")
-                        if desc:
-                            lines.append(f"     {desc}")
-                    else:
-                        lines.append(f"  {i}. {task}")
-                await self._notify_chat(run_id, "\n".join(lines))
-            else:
-                await self._notify_chat(run_id, f"✅ **{node_name}** completed")
-        elif node_name == "implement" and isinstance(output, dict):
-            lines = ["✅ **implement** completed\n"]
-            # Show agent output summary
-            for entry in output.get("agent_outputs", []):
-                if isinstance(entry, dict):
-                    node = entry.get("node", "")
-                    if node == "implement":
-                        impl_output = entry.get("output", "")
-                        if impl_output:
-                            # Truncate long output
-                            text = (
-                                impl_output
-                                if len(impl_output) <= 4000
-                                else impl_output[:4000] + "\n\n…(truncated)"
-                            )
-                            lines.append("**Changes:**\n")
-                            lines.append(text)
-                    elif node == "test":
-                        verdict = entry.get("verdict", "")
-                        if verdict:
-                            icon = "✅" if verdict == "passed" else "❌"
-                            lines.append(f"\n**Tests:** {icon} {verdict}")
-            # Show diff stats if available
-            for artifact in output.get("sandbox_results", []):
-                if isinstance(artifact, dict):
-                    diff = artifact.get("content", "")
-                    if diff:
-                        diff_lines = diff.strip().split("\n")
-                        files_changed = sum(1 for ln in diff_lines if ln.startswith("diff --git"))
-                        additions = sum(
-                            1
-                            for ln in diff_lines
-                            if ln.startswith("+") and not ln.startswith("+++")
-                        )
-                        deletions = sum(
-                            1
-                            for ln in diff_lines
-                            if ln.startswith("-") and not ln.startswith("---")
-                        )
-                        lines.append(
-                            f"\n**Diff:** {files_changed} files changed, +{additions} -{deletions}"
-                        )
-            await self._notify_chat(run_id, "\n".join(lines))
-        else:
-            await self._notify_chat(run_id, f"✅ **{node_name}** completed")
+    # ---------------------------------------------------------------------------
+    # Compatibility shims — thin wrappers so existing call-sites using self.* work
+    # ---------------------------------------------------------------------------
 
-    async def _notify_chat(self, run_id: str, message: str) -> None:
-        """Post a status message to the chat conversation linked to this pipeline."""
-        if self._app_state is None:
-            return
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        chat_store = getattr(self._app_state, "chat_store", None)
-        if pipeline_store is None or chat_store is None:
-            return
-        try:
-            run = await pipeline_store.get(run_id)
-            if run is None:
-                return
-            trigger = run.trigger_type
-            if not trigger.startswith("chat:"):
-                return
-            conversation_id = trigger[5:]  # strip "chat:" prefix
-            await chat_store.add_message(
-                conversation_id,
-                user_id="system",
-                display_name="Lintel",
-                role="agent",
-                content=message,
-            )
-        except Exception:
+    async def append_log(self, run_id: str, stage_name: str, message: str) -> None:
+        """Append a log line to a stage (delegated to stage tracking)."""
+        from lintel.workflows.nodes._stage_tracking import StageTracker
+
+        class _FakeState:
             pass
+
+        class _FakeConfig:
+            configurable = self._build_config(run_id)["configurable"]
+
+        tracker = StageTracker(_FakeConfig(), _FakeState())
+        with contextlib.suppress(Exception):
+            await tracker.append_log(stage_name, message)
 
     async def _get_stage_id(self, run_id: str, node_name: str) -> str | None:
-        """Look up the stage_id for a given node name."""
-        if self._app_state is None:
-            return None
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return None
-        try:
-            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
-
-            stage_name = NODE_TO_STAGE.get(node_name, node_name)
-            run = await pipeline_store.get(run_id)
-            if run is None:
-                return None
-            for stage in run.stages:
-                if isinstance(stage, dict):
-                    stage = _dict_to_stage(stage)
-                if stage.name == stage_name:
-                    return str(stage.stage_id)
-        except Exception:
-            pass
-        return None
-
-    async def _evaluate_policy(self, run_id: str, node_name: str) -> str:
-        """Evaluate policy for an approval gate. Returns action string."""
-        if self._app_state is None:
-            return "require_approval"
-        try:
-            from lintel.workflows.nodes._policy import evaluate_gate_policy
-            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
-
-            policy_store = getattr(self._app_state, "policy_store", None)
-            pipeline_store = getattr(self._app_state, "pipeline_store", None)
-
-            # Get project_id from pipeline run
-            project_id = ""
-            if pipeline_store is not None:
-                run = await pipeline_store.get(run_id)
-                if run is not None:
-                    project_id = getattr(run, "project_id", "") or ""
-
-            gate_type = NODE_TO_STAGE.get(node_name, node_name)
-            action = await evaluate_gate_policy(policy_store, project_id, gate_type)
-            result = action.value if hasattr(action, "value") else str(action)
-            logger.info(
-                "policy_evaluated",
-                run_id=run_id,
-                gate_type=gate_type,
-                action=result,
-            )
-            return result
-        except Exception as exc:
-            logger.warning(
-                "policy_evaluation_failed",
-                run_id=run_id,
-                error=str(exc),
-            )
-            return "require_approval"
-
-    async def _create_approval_request(self, run_id: str, node_name: str) -> None:
-        """Create an ApprovalRequest record when workflow pauses at an approval gate."""
-        if self._app_state is None:
-            return
-        approval_store = getattr(self._app_state, "approval_request_store", None)
-        if approval_store is None:
-            return
-        try:
-            from lintel.domain.types import ApprovalRequest
-            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
-
-            gate_type = NODE_TO_STAGE.get(node_name, node_name)
-            approval = ApprovalRequest(
-                approval_id=str(uuid4()),
-                run_id=run_id,
-                gate_type=gate_type,
-            )
-            await approval_store.add(approval)
-            logger.info(
-                "approval_request_created",
-                approval_id=approval.approval_id,
-                run_id=run_id,
-                gate_type=gate_type,
-            )
-        except Exception as exc:
-            logger.warning(
-                "create_approval_request_failed",
-                run_id=run_id,
-                node_name=node_name,
-                error=str(exc),
-            )
-
-    async def _mark_stage_waiting_approval(self, run_id: str, node_name: str) -> None:
-        """Mark an approval gate stage as waiting_approval."""
-        if self._app_state is None:
-            return
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return
-        try:
-            from dataclasses import replace
-            from datetime import UTC, datetime
-
-            from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
-            from lintel.workflows.types import StageStatus
-
-            stage_name = NODE_TO_STAGE.get(node_name, node_name)
-            run = await pipeline_store.get(run_id)
-            if run is None:
-                return
-
-            now = datetime.now(UTC).isoformat()
-            updated_stages = []
-            for stage in run.stages:
-                if isinstance(stage, dict):
-                    stage = _dict_to_stage(stage)
-                if stage.name == stage_name:
-                    updated_stages.append(
-                        replace(
-                            stage,
-                            status=StageStatus.WAITING_APPROVAL,
-                            started_at=now,
-                        )
-                    )
-                else:
-                    updated_stages.append(stage)
-            updated = replace(run, stages=tuple(updated_stages))
-            await pipeline_store.update(updated)
-        except Exception as exc:
-            logger.warning(
-                "mark_stage_waiting_approval_failed",
-                run_id=run_id,
-                node_name=node_name,
-                error=str(exc),
-            )
+        return await _get_stage_id(self._app_state, run_id, node_name)
 
     async def _mark_stage_completed(
-        self,
-        run_id: str,
-        node_name: str,
-        timestamp_ms: int,
+        self, run_id: str, node_name: str, timestamp_ms: int
     ) -> None:
-        """Mark a pipeline stage as completed in the store."""
-        # Resolve graph node name to pipeline stage name
-        from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+        await _mark_stage_completed(self._app_state, run_id, node_name, timestamp_ms)
 
-        node_name = NODE_TO_STAGE.get(node_name, node_name)
-        if self._app_state is None:
-            return
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return
-        try:
-            from dataclasses import replace
-            from datetime import UTC, datetime
+    async def _send_stage_notification(
+        self, run_id: str, node_name: str, output: Any  # noqa: ANN401
+    ) -> None:
+        await _send_stage_notification(self._app_state, run_id, node_name, output)
 
-            from lintel.workflows.types import StageStatus
-
-            run = await pipeline_store.get(run_id)
-            if run is None:
-                return
-            finished = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).isoformat()
-            updated_stages = []
-            found = False
-            for stage in run.stages:
-                # Handle both Stage dataclass instances and plain dicts (Postgres)
-                if isinstance(stage, dict):
-                    stage = _dict_to_stage(stage)
-                s_name = stage.name
-                s_type = stage.stage_type
-                if s_name == node_name or s_type == node_name:
-                    started = stage.started_at or finished
-                    duration = 0
-                    if stage.started_at:
-                        start_ts = datetime.fromisoformat(stage.started_at).timestamp()
-                        duration = timestamp_ms - int(start_ts * 1000)
-                    # Preserve status if the node already marked itself failed/skipped
-                    final_status = (
-                        stage.status
-                        if stage.status in (StageStatus.FAILED, StageStatus.SKIPPED)
-                        else StageStatus.SUCCEEDED
-                    )
-                    updated_stages.append(
-                        replace(
-                            stage,
-                            status=final_status,
-                            started_at=started,
-                            finished_at=finished,
-                            duration_ms=duration,
-                        )
-                    )
-                    found = True
-                else:
-                    updated_stages.append(stage)
-            # Mark the next stage as running (only if current stage succeeded)
-            if found and final_status == StageStatus.SUCCEEDED:
-                for i, s in enumerate(updated_stages):
-                    if isinstance(s, dict):
-                        s = _dict_to_stage(s)
-                    if s.status == StageStatus.SUCCEEDED:
-                        continue
-                    if s.status == StageStatus.PENDING:
-                        updated_stages[i] = replace(
-                            s, status=StageStatus.RUNNING, started_at=finished
-                        )
-                        break
-            updated = replace(run, stages=tuple(updated_stages))
-            await pipeline_store.update(updated)
-        except Exception as exc:
-            logger.warning(
-                "mark_stage_completed_failed", run_id=run_id, node_name=node_name, error=str(exc)
-            )
+    async def _notify_chat(self, run_id: str, message: str) -> None:
+        await _notify_chat(self._app_state, run_id, message)
 
     async def _update_pipeline_status(self, run_id: str, status: str) -> None:
-        """Update the pipeline run status in the pipeline store."""
-        if self._app_state is None:
-            return
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return
-        try:
-            from dataclasses import replace
-
-            run = await pipeline_store.get(run_id)
-            if run is not None:
-                from lintel.workflows.types import PipelineStatus
-
-                new_status = PipelineStatus(status)
-                updated = replace(run, status=new_status)
-                await pipeline_store.update(updated)
-        except Exception as exc:
-            logger.warning(
-                "update_pipeline_status_failed", run_id=run_id, status=status, error=str(exc)
-            )
+        await _update_pipeline_status(self._app_state, run_id, status)
 
     async def _determine_final_status(self, run_id: str) -> str:
-        """Check pipeline stages to determine if the run succeeded or failed.
-
-        If any stage has a failed or skipped status, the pipeline is considered
-        failed — even though the graph itself completed without raising.
-        """
-        if self._app_state is None:
-            return "succeeded"
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return "succeeded"
-        try:
-            run = await pipeline_store.get(run_id)
-            if run is None:
-                return "succeeded"
-            from lintel.workflows.types import StageStatus
-
-            for stage in run.stages:
-                s = stage
-                if isinstance(s, dict):
-                    from lintel.workflows.types import Stage
-
-                    s = Stage(**s)
-                if s.status in (StageStatus.FAILED,):
-                    return "failed"
-        except Exception:
-            logger.warning("determine_final_status_failed", run_id=run_id)
-        return "succeeded"
+        return await _determine_final_status(self._app_state, run_id)
 
     async def _mark_first_stage_running(self, run_id: str) -> None:
-        """Mark the first pipeline stage as running."""
-        if self._app_state is None:
-            return
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return
-        try:
-            from dataclasses import replace
-            from datetime import UTC, datetime
-
-            from lintel.workflows.types import StageStatus
-
-            run = await pipeline_store.get(run_id)
-            if run is None or not run.stages:
-                return
-            stages = list(run.stages)
-            first = stages[0]
-            if isinstance(first, dict):
-                first = _dict_to_stage(first)
-            now = datetime.now(UTC).isoformat()
-            stages[0] = replace(first, status=StageStatus.RUNNING, started_at=now)
-            updated = replace(run, stages=tuple(stages))
-            await pipeline_store.update(updated)
-        except Exception as exc:
-            logger.warning("mark_first_stage_running_failed", run_id=run_id, error=str(exc))
+        await _mark_first_stage_running(self._app_state, run_id)
 
     async def _mark_running_stages_failed(self, run_id: str, error: str) -> None:
-        """Mark any stages still in 'running' status as failed when the workflow errors."""
-        if self._app_state is None:
-            return
-        pipeline_store = getattr(self._app_state, "pipeline_store", None)
-        if pipeline_store is None:
-            return
-        try:
-            from dataclasses import replace
+        await _mark_running_stages_failed(self._app_state, run_id, error)
 
-            from lintel.workflows.types import StageStatus
+    async def _mark_stage_waiting_approval(self, run_id: str, node_name: str) -> None:
+        await _mark_stage_waiting_approval(self._app_state, run_id, node_name)
 
-            run = await pipeline_store.get(run_id)
-            if run is None:
-                return
-            updated_stages = []
-            changed = False
-            for stage in run.stages:
-                if isinstance(stage, dict):
-                    stage = _dict_to_stage(stage)
-                if stage.status == StageStatus.RUNNING:
-                    updated_stages.append(replace(stage, status=StageStatus.FAILED, error=error))
-                    changed = True
-                elif stage.status == StageStatus.PENDING:
-                    updated_stages.append(replace(stage, status=StageStatus.SKIPPED))
-                    changed = True
-                else:
-                    updated_stages.append(stage)
-            if changed:
-                updated = replace(run, stages=tuple(updated_stages))
-                await pipeline_store.update(updated)
-        except Exception as exc:
-            logger.warning(
-                "mark_running_stages_failed_error",
-                run_id=run_id,
-                error=str(exc),
-            )
+    async def _evaluate_policy(self, run_id: str, node_name: str) -> str:
+        return await _evaluate_policy(self._app_state, run_id, node_name)
+
+    async def _create_approval_request(self, run_id: str, node_name: str) -> None:
+        await _create_approval_request(self._app_state, run_id, node_name)
 
     async def _is_auto_move_enabled(self, project_id: str) -> bool:
-        """Check if any board for this project has auto_move enabled."""
-        if self._app_state is None:
-            return False
-        board_store = getattr(self._app_state, "board_store", None)
-        if board_store is None:
-            return False
-        try:
-            boards = await board_store.list_by_project(project_id)
-            return any(
-                (
-                    b.get("auto_move", False)
-                    if isinstance(b, dict)
-                    else getattr(b, "auto_move", False)
-                )
-                for b in boards
-            )
-        except Exception:
-            return False
+        from lintel.workflows._executor_artifacts import is_auto_move_enabled
+
+        return await is_auto_move_enabled(self._app_state, project_id)
 
     async def _fail_work_item(self, command: StartWorkflow) -> None:
-        """Mark the work item as failed (or open if auto_move is on)."""
-        if self._app_state is None:
-            return
-        work_item_store = getattr(self._app_state, "work_item_store", None)
-        if work_item_store is None or not command.work_item_id:
-            return
-        try:
-            item = await work_item_store.get(command.work_item_id)
-            if item is None:
-                return
-            project_id = item.get("project_id", "")
-            auto_move = await self._is_auto_move_enabled(project_id)
-            new_status = "open" if auto_move else "failed"
-            item["status"] = new_status
-            await work_item_store.update(command.work_item_id, item)
-            # Emit audit event for work item failure
-            stream_id = f"work_item:{command.work_item_id}"
-            event = WorkItemUpdated(
-                event_type="WorkItemUpdated",
-                payload={
-                    "work_item_id": command.work_item_id,
-                    "status": new_status,
-                    "auto_moved": auto_move,
-                },
-            )
-            await self._event_store.append(stream_id=stream_id, events=[event])
-            await self._project_events([event])
-            if auto_move:
-                logger.info(
-                    "auto_move_failed_to_todo",
-                    work_item_id=command.work_item_id,
-                )
-                # Item moved from in_progress to open — WIP capacity freed
-                # Exclude the just-failed item from promotion
-                await self._auto_promote_if_capacity(
-                    project_id,
-                    work_item_store,
-                    exclude_id=command.work_item_id,
-                )
-        except Exception as exc:
-            logger.warning(
-                "fail_work_item_failed",
-                work_item_id=command.work_item_id,
-                error=str(exc),
-            )
+        await _fail_work_item(
+            self._app_state,
+            self._event_store,
+            self._project_events,
+            "",
+            command.work_item_id or "",
+            command.project_id or "",
+        )
 
     async def _complete_work_item(self, command: StartWorkflow) -> None:
-        """Mark the work item as closed after workflow success."""
-        if self._app_state is None:
-            return
-        work_item_store = getattr(self._app_state, "work_item_store", None)
-        if work_item_store is None or not command.work_item_id:
-            return
-        try:
-            item = await work_item_store.get(command.work_item_id)
-            if item is None:
-                return
-            item["status"] = "closed"
-            await work_item_store.update(command.work_item_id, item)
-            # Emit audit event for work item completion
-            stream_id = f"work_item:{command.work_item_id}"
-            event = WorkItemCompleted(
-                event_type="WorkItemCompleted",
-                payload={
-                    "work_item_id": command.work_item_id,
-                    "status": "closed",
-                },
-            )
-            await self._event_store.append(stream_id=stream_id, events=[event])
-            await self._project_events([event])
-            # Auto-promote: if auto_move is on and WIP has capacity, move oldest open item
-            project_id = item.get("project_id", "")
-            await self._auto_promote_if_capacity(project_id, work_item_store)
-        except Exception as exc:
-            logger.warning(
-                "complete_work_item_failed", work_item_id=command.work_item_id, error=str(exc)
-            )
+        await _complete_work_item(
+            self._app_state,
+            self._event_store,
+            self._project_events,
+            command.work_item_id or "",
+        )
 
     async def _auto_promote_if_capacity(
         self, project_id: str, work_item_store: object, *, exclude_id: str = ""
     ) -> None:
-        """Promote the oldest open work item to in_progress if WIP has capacity."""
-        if not project_id or self._app_state is None:
-            return
-        if not await self._is_auto_move_enabled(project_id):
-            return
-        board_store = getattr(self._app_state, "board_store", None)
-        if board_store is None:
-            return
-        try:
-            boards = await board_store.list_by_project(project_id)
-            # Find the in_progress WIP limit
-            wip_limit = 0
-            for board in boards:
-                columns = (
-                    board.get("columns", [])
-                    if isinstance(board, dict)
-                    else getattr(board, "columns", ())
-                )
-                for col in columns:
-                    col_status = (
-                        col.get("work_item_status", "")
-                        if isinstance(col, dict)
-                        else getattr(col, "work_item_status", "")
-                    )
-                    if col_status == "in_progress":
-                        wip_limit = int(
-                            col.get("wip_limit", 0)
-                            if isinstance(col, dict)
-                            else getattr(col, "wip_limit", 0)
-                        )
-                        break
+        await _auto_promote_if_capacity(
+            self._app_state,
+            self._event_store,
+            self._project_events,
+            project_id,
+            work_item_store,
+            exclude_id=exclude_id,
+        )
 
-            all_items = await work_item_store.list_all(project_id=project_id)  # type: ignore[attr-defined]
-            in_progress_count = sum(1 for i in all_items if i.get("status") == "in_progress")
-            # If no WIP limit or under capacity, promote oldest open item
-            if wip_limit == 0 or in_progress_count < wip_limit:
-                open_items = [
-                    i
-                    for i in all_items
-                    if i.get("status") == "open" and i.get("work_item_id") != exclude_id
-                ]
-                if not open_items:
-                    return
-                # Pick the item at the top of the board column (lowest position)
-                open_items.sort(key=lambda i: i.get("column_position", 0))
-                candidate = open_items[0]
-                candidate_id = candidate.get("work_item_id", "")
-                if not candidate_id:
-                    return
-                candidate["status"] = "in_progress"
-                await work_item_store.update(candidate_id, candidate)  # type: ignore[attr-defined]
-                logger.info(
-                    "auto_promote_to_in_progress",
-                    work_item_id=candidate_id,
-                    project_id=project_id,
-                )
-                # Emit event
-                stream_id = f"work_item:{candidate_id}"
-                event = WorkItemUpdated(
-                    event_type="WorkItemUpdated",
-                    payload={
-                        "work_item_id": candidate_id,
-                        "status": "in_progress",
-                        "auto_promoted": True,
-                    },
-                )
-                await self._event_store.append(stream_id=stream_id, events=[event])
-                await self._project_events([event])
-        except Exception as exc:
-            logger.warning(
-                "auto_promote_failed",
-                project_id=project_id,
-                error=str(exc),
-            )
+    async def _rehydrate_from_run(self, prev_run_id: str) -> dict[str, Any]:
+        return await _rehydrate_from_run(self._app_state, prev_run_id)
