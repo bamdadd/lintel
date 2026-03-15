@@ -74,9 +74,12 @@ class TelegramChannelAdapter:
         """Send a message to a Telegram chat."""
         import httpx
 
+        from lintel.telegram.formatting import md_to_telegram_html
+
         payload: dict[str, Any] = {
             "chat_id": thread_ref.channel_id,
-            "text": text,
+            "text": md_to_telegram_html(text),
+            "parse_mode": "HTML",
         }
         # If thread_ts looks like a forum topic thread_id, include it
         if thread_ref.thread_ts and thread_ref.thread_ts != thread_ref.channel_id:
@@ -135,6 +138,37 @@ class TelegramChannelAdapter:
             resp.raise_for_status()
             data: dict[str, Any] = resp.json().get("result", {})
             return data
+
+    async def delete_webhook(self) -> dict[str, Any]:
+        """Remove any existing webhook so polling works."""
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self._api_base}/deleteWebhook", json={"drop_pending_updates": False}
+            )
+            resp.raise_for_status()
+            result: dict[str, Any] = resp.json()
+            return result
+
+    async def get_updates(
+        self,
+        offset: int | None = None,
+        timeout: int = 30,
+    ) -> list[dict[str, Any]]:
+        """Long-poll for updates via getUpdates API."""
+        import httpx
+
+        params: dict[str, Any] = {"timeout": timeout}
+        if offset is not None:
+            params["offset"] = offset
+
+        async with httpx.AsyncClient(timeout=timeout + 10) as client:
+            resp = await client.get(f"{self._api_base}/getUpdates", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            updates: list[dict[str, Any]] = data.get("result", [])
+            return updates
 
     def make_thread_ref(
         self,

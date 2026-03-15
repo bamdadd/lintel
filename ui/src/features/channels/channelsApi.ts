@@ -19,35 +19,32 @@ export interface ChannelStatus {
 }
 
 export async function listChannelConnections(): Promise<ChannelConnection[]> {
-  const { data } = await customInstance<ChannelConnection[]>({
-    url: '/api/v1/settings/channels',
-    method: 'GET',
-  });
+  const { data } = await customInstance<{ data: ChannelConnection[] }>(
+    '/api/v1/settings/channels',
+  );
   return data ?? [];
 }
 
 export async function connectTelegram(
   body: TelegramConnectionRequest,
 ): Promise<ChannelConnection> {
-  const { data } = await customInstance<ChannelConnection>({
-    url: '/api/v1/settings/channels/telegram',
-    method: 'POST',
-    data: body,
-  });
+  const { data } = await customInstance<{ data: ChannelConnection }>(
+    '/api/v1/settings/channels/telegram',
+    { method: 'POST', body: JSON.stringify(body) },
+  );
   return data!;
 }
 
 export async function getTelegramStatus(): Promise<ChannelStatus> {
-  const { data } = await customInstance<ChannelStatus>({
-    url: '/api/v1/settings/channels/telegram/status',
-    method: 'GET',
-  });
+  const { data } = await customInstance<{ data: ChannelStatus }>(
+    '/api/v1/settings/channels/telegram/status',
+  );
   return data!;
 }
 
 export async function disconnectTelegram(): Promise<void> {
-  await customInstance<void>({
-    url: '/api/v1/settings/channels/telegram',
-    method: 'DELETE',
-  });
+  await customInstance<void>(
+    '/api/v1/settings/channels/telegram',
+    { method: 'DELETE' },
+  );
 }

@@ -11,6 +11,7 @@ class CredentialType(StrEnum):
     GITHUB_TOKEN = "github_token"
     AI_PROVIDER_API_KEY = "ai_provider_api_key"
     CLAUDE_CODE = "claude_code"
+    TELEGRAM_BOT_TOKEN = "telegram_bot_token"
 
 
 @dataclass(frozen=True)
