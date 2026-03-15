@@ -29,7 +29,7 @@ def container() -> Generator[AppContainerType]:
     from lintel.api.container import AppContainer
     from lintel.api.routes.agents import AgentDefinitionStore
     from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
-    from lintel.api.routes.audit import AuditEntryStore
+    from lintel.audit_api.store import AuditEntryStore
     from lintel.api.routes.boards import BoardStore, TagStore
     from lintel.api.routes.chat import ChatStore
     from lintel.api.routes.compliance import ComplianceStore

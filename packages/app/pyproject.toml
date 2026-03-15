@@ -26,6 +26,7 @@ dependencies = [
     "lintel-environments-api",
     "lintel-variables-api",
     "lintel-credentials-api",
+    "lintel-audit-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -63,6 +64,7 @@ lintel-notifications-api = { workspace = true }
 lintel-environments-api = { workspace = true }
 lintel-variables-api = { workspace = true }
 lintel-credentials-api = { workspace = true }
+lintel-audit-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

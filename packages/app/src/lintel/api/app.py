@@ -26,7 +26,6 @@ from lintel.api.routes import (
     approval_requests,
     approvals,
     artifacts,
-    audit,
     automations,
     boards,
     chat,
@@ -57,7 +56,6 @@ from lintel.api.routes.agents import AgentDefinitionStore
 from lintel.api.routes.ai_providers import InMemoryAIProviderStore
 from lintel.api.routes.approval_requests import InMemoryApprovalRequestStore
 from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
-from lintel.api.routes.audit import AuditEntryStore
 from lintel.api.routes.automations import InMemoryAutomationStore
 from lintel.api.routes.boards import BoardStore, TagStore
 from lintel.api.routes.chat import ChatStore
@@ -89,6 +87,8 @@ from lintel.credentials_api.routes import (
     credential_store_provider,
 )
 from lintel.credentials_api.store import InMemoryCredentialStore
+from lintel.audit_api.routes import router as audit_router, audit_entry_store_provider
+from lintel.audit_api.store import AuditEntryStore
 from lintel.users.routes import router as users_router, user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.api.routes.work_items import WorkItemStore
@@ -569,6 +569,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     environment_store_provider.override(stores["environment_store"])
     variable_store_provider.override(stores["variable_store"])
     credential_store_provider.override(stores["credential_store"])
+    audit_entry_store_provider.override(stores["audit_entry_store"])
     app.state.container = container
 
     # Start automation scheduler
@@ -706,7 +707,7 @@ def create_app() -> FastAPI:
     app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
     app.include_router(policies_router, prefix="/api/v1", tags=["policies"])
     app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
-    app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+    app.include_router(audit_router, prefix="/api/v1", tags=["audit"])
     app.include_router(artifacts.router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])

@@ -4,48 +4,16 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
 
-from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from lintel.api.container import AppContainer
+from lintel.api_support.provider import StoreProvider
+from lintel.audit_api.store import AuditEntryStore
 from lintel.domain.types import AuditEntry
 
 router = APIRouter()
 
-
-class AuditEntryStore:
-    """In-memory append-only store for audit entries."""
-
-    def __init__(self) -> None:
-        self._entries: dict[str, AuditEntry] = {}
-
-    async def add(self, entry: AuditEntry) -> None:
-        self._entries[entry.entry_id] = entry
-
-    async def get(self, entry_id: str) -> AuditEntry | None:
-        return self._entries.get(entry_id)
-
-    async def list_all(
-        self,
-        *,
-        actor_id: str | None = None,
-        resource_type: str | None = None,
-        resource_id: str | None = None,
-    ) -> list[AuditEntry]:
-        entries = list(self._entries.values())
-        if actor_id is not None:
-            entries = [e for e in entries if e.actor_id == actor_id]
-        if resource_type is not None:
-            entries = [e for e in entries if e.resource_type == resource_type]
-        if resource_id is not None:
-            entries = [e for e in entries if e.resource_id == resource_id]
-        return entries
-
-
-def get_audit_entry_store(request: Request) -> AuditEntryStore:
-    """Kept for backward compat."""
-    return request.app.state.audit_entry_store  # type: ignore[no-any-return]
+audit_entry_store_provider: StoreProvider = StoreProvider()
 
 
 class CreateAuditEntryRequest(BaseModel):
@@ -60,10 +28,9 @@ class CreateAuditEntryRequest(BaseModel):
 
 
 @router.post("/audit", status_code=201)
-@inject
 async def record_audit_entry(
     body: CreateAuditEntryRequest,
-    store: AuditEntryStore = Depends(Provide[AppContainer.audit_entry_store]),  # noqa: B008
+    store: AuditEntryStore = Depends(audit_entry_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.entry_id)
     if existing is not None:
@@ -91,9 +58,8 @@ class PaginatedAuditResponse(BaseModel):
 
 
 @router.get("/audit")
-@inject
 async def list_audit_entries(
-    store: AuditEntryStore = Depends(Provide[AppContainer.audit_entry_store]),  # noqa: B008
+    store: AuditEntryStore = Depends(audit_entry_store_provider),  # noqa: B008
     actor_id: str | None = None,
     resource_type: str | None = None,
     resource_id: str | None = None,
@@ -118,10 +84,9 @@ async def list_audit_entries(
 
 
 @router.get("/audit/{entry_id}")
-@inject
 async def get_audit_entry(
     entry_id: str,
-    store: AuditEntryStore = Depends(Provide[AppContainer.audit_entry_store]),  # noqa: B008
+    store: AuditEntryStore = Depends(audit_entry_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     entry = await store.get(entry_id)
     if entry is None:
