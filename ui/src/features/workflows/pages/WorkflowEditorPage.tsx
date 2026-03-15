@@ -32,6 +32,7 @@ import {
   useWorkflowDefinitionsCreateWorkflowDefinition,
   useWorkflowDefinitionsUpdateWorkflowDefinition,
 } from '@/generated/api/workflow-definitions/workflow-definitions';
+import { useModelsListModels } from '@/generated/api/models/models';
 import { AgentStepNode } from '../components/nodes/AgentStepNode';
 import { ApprovalGateNode } from '../components/nodes/ApprovalGateNode';
 
@@ -70,6 +71,12 @@ export function Component() {
   });
   const createMut = useWorkflowDefinitionsCreateWorkflowDefinition();
   const updateMut = useWorkflowDefinitionsUpdateWorkflowDefinition();
+  const { data: modelsResp } = useModelsListModels();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const modelOptions = ((modelsResp?.data ?? []) as Array<Record<string, any>>).map((m) => ({
+    value: m.model_id as string,
+    label: (m.name ?? m.model_name) as string,
+  }));
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -91,7 +98,7 @@ export function Component() {
       } else {
         // Convert string node IDs to ReactFlow nodes
         const approvalKeywords = ['approval', 'gate', 'approve'];
-        const meta = (graph.node_metadata ?? {}) as Record<string, { label?: string; agent?: string; agent_id?: string; description?: string }>;
+        const meta = (graph.node_metadata ?? {}) as Record<string, { label?: string; agent?: string; agent_id?: string; model_id?: string; description?: string }>;
         const converted: Node[] = (rawNodes as string[]).map((nodeId, i) => {
           const id = String(nodeId);
           const nm = meta[id];
@@ -103,6 +110,7 @@ export function Component() {
               label: nm?.label ?? id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
               role: nm?.agent ?? 'coder',
               agent_id: nm?.agent_id ?? '',
+              model_id: nm?.model_id ?? '',
               description: nm?.description ?? '',
             },
           };
@@ -271,6 +279,15 @@ export function Component() {
                 onChange={(v) => v && updateNodeData('role', v)}
               />
             )}
+            <Select
+              label="Model"
+              data={modelOptions}
+              value={String(selectedNode.data.model_id ?? '') || null}
+              onChange={(v) => updateNodeData('model_id', v ?? '')}
+              placeholder="Default (no override)"
+              clearable
+              searchable
+            />
             {!!selectedNode.data.agent_id && (
               <Text size="xs">
                 Agent:{' '}

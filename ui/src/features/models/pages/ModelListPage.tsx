@@ -23,6 +23,9 @@ import {
   useAiProvidersListAiProviders,
   useAiProvidersListAvailableModels,
 } from '@/generated/api/ai-providers/ai-providers';
+import {
+  useWorkflowDefinitionsListWorkflowDefinitions,
+} from '@/generated/api/workflow-definitions/workflow-definitions';
 import type { AiProvidersListAvailableModels200Item } from '@/generated/models';
 import type { ModelAssignmentContext } from '@/generated/models/modelAssignmentContext';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -88,8 +91,36 @@ export function Component() {
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<ModelItem | null>(null);
   const [assignModal, setAssignModal] = useState<string | null>(null);
+  const { data: assignModalAssignmentsResp } = useModelsListModelAssignments(assignModal ?? '', {
+    query: { enabled: !!assignModal },
+  });
+  const assignedIds = new Set(
+    ((assignModalAssignmentsResp?.data ?? []) as ModelAssignmentItem[]).map((a) => `${a.context}:${a.context_id}`),
+  );
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  const { data: workflowDefsResp } = useWorkflowDefinitionsListWorkflowDefinitions();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const workflowDefs = (workflowDefsResp?.data ?? []) as Array<Record<string, any>>;
+
+  const workflowStepOptions = (() => {
+    const groups: { group: string; items: { value: string; label: string }[] }[] = [];
+    const seen = new Set<string>();
+    for (const wd of workflowDefs) {
+      const name = wd.name as string;
+      const stageNames = (wd.stage_names ?? []) as string[];
+      const meta = (wd.graph?.node_metadata ?? {}) as Record<string, Record<string, string>>;
+      const items: { value: string; label: string }[] = [];
+      for (const s of stageNames) {
+        if (seen.has(s)) continue;
+        seen.add(s);
+        items.push({ value: s, label: meta[s]?.label ?? s });
+      }
+      if (items.length > 0) groups.push({ group: name, items });
+    }
+    return groups;
+  })();
 
   const providersList = (providersResp?.data ?? []) as Array<{
     provider_id: string; name: string; provider_type: string;
@@ -470,9 +501,20 @@ export function Component() {
             {assignForm.values.context === 'agent_role' ? (
               <Select
                 label="Agent Role"
-                data={AGENT_ROLES}
+                data={AGENT_ROLES.filter((r) => !assignedIds.has(`agent_role:${r.value}`))}
                 searchable
                 placeholder="Select an agent role"
+                {...assignForm.getInputProps('context_id')}
+              />
+            ) : assignForm.values.context === 'workflow_step' || assignForm.values.context === 'pipeline_step' ? (
+              <Select
+                label="Step"
+                data={workflowStepOptions.map((g) => ({
+                  ...g,
+                  items: g.items.filter((i) => !assignedIds.has(`${assignForm.values.context}:${i.value}`)),
+                })).filter((g) => g.items.length > 0)}
+                searchable
+                placeholder="Select a workflow step"
                 {...assignForm.getInputProps('context_id')}
               />
             ) : (
