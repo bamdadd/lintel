@@ -105,7 +105,7 @@ class TestEventEnvelope:
         ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0")
         env = EventEnvelope(thread_ref=ref)
         assert env.thread_ref is not None
-        assert env.thread_ref.stream_id == "thread:W1:C1:1.0"
+        assert env.thread_ref.stream_id == "thread:slack:W1:C1:1.0"
 
 
 class TestConcreteEvents:
