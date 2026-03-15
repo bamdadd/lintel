@@ -1,13 +1,15 @@
 """Approval request CRUD and action endpoints."""
 
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from lintel.api.domain.event_dispatcher import dispatch_event
+from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
+from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 from lintel.domain.events import (
     ApprovalRequestApproved,
     ApprovalRequestCreated,
@@ -17,54 +19,7 @@ from lintel.domain.types import ApprovalRequest, ApprovalStatus
 
 router = APIRouter()
 
-
-# ---------------------------------------------------------------------------
-# In-memory store
-# ---------------------------------------------------------------------------
-
-
-class InMemoryApprovalRequestStore:
-    """Simple in-memory store for approval requests."""
-
-    def __init__(self) -> None:
-        self._requests: dict[str, ApprovalRequest] = {}
-
-    async def add(self, approval: ApprovalRequest) -> None:
-        if approval.approval_id in self._requests:
-            msg = f"ApprovalRequest {approval.approval_id} already exists"
-            raise ValueError(msg)
-        self._requests[approval.approval_id] = approval
-
-    async def get(self, approval_id: str) -> ApprovalRequest | None:
-        return self._requests.get(approval_id)
-
-    async def list_all(self) -> list[ApprovalRequest]:
-        return list(self._requests.values())
-
-    async def update(self, approval: ApprovalRequest) -> None:
-        if approval.approval_id not in self._requests:
-            msg = f"ApprovalRequest {approval.approval_id} not found"
-            raise KeyError(msg)
-        self._requests[approval.approval_id] = approval
-
-
-# ---------------------------------------------------------------------------
-# Dependency
-# ---------------------------------------------------------------------------
-
-
-def get_approval_request_store(
-    request: Request,
-) -> InMemoryApprovalRequestStore:
-    """Get approval request store from app state."""
-    return request.app.state.approval_request_store  # type: ignore[no-any-return]
-
-
-# ---------------------------------------------------------------------------
-# Request bodies
-# ---------------------------------------------------------------------------
-
-StoreDep = Annotated[InMemoryApprovalRequestStore, Depends(get_approval_request_store)]
+approval_request_store_provider: StoreProvider = StoreProvider()
 
 
 class CreateApprovalRequestBody(BaseModel):
@@ -84,16 +39,11 @@ class RejectBody(BaseModel):
     reason: str = ""
 
 
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
-
-
 @router.post("/approval-requests", status_code=201)
 async def create_approval_request(
     body: CreateApprovalRequestBody,
-    store: StoreDep,
     request: Request,
+    store: InMemoryApprovalRequestStore = Depends(approval_request_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.approval_id)
     if existing is not None:
@@ -116,7 +66,7 @@ async def create_approval_request(
 
 @router.get("/approval-requests")
 async def list_approval_requests(
-    store: StoreDep,
+    store: InMemoryApprovalRequestStore = Depends(approval_request_store_provider),  # noqa: B008
     run_id: str | None = None,
     status: ApprovalStatus | None = None,
 ) -> list[dict[str, Any]]:
@@ -130,7 +80,7 @@ async def list_approval_requests(
 
 @router.get("/approval-requests/pending")
 async def list_pending_approval_requests(
-    store: StoreDep,
+    store: InMemoryApprovalRequestStore = Depends(approval_request_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     items = await store.list_all()
     return [asdict(a) for a in items if a.status == ApprovalStatus.PENDING]
@@ -139,7 +89,7 @@ async def list_pending_approval_requests(
 @router.get("/approval-requests/{approval_id}")
 async def get_approval_request(
     approval_id: str,
-    store: StoreDep,
+    store: InMemoryApprovalRequestStore = Depends(approval_request_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
@@ -151,8 +101,8 @@ async def get_approval_request(
 async def approve_approval_request(
     approval_id: str,
     body: DecisionBody,
-    store: StoreDep,
     request: Request,
+    store: InMemoryApprovalRequestStore = Depends(approval_request_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:
@@ -182,8 +132,8 @@ async def approve_approval_request(
 async def reject_approval_request(
     approval_id: str,
     body: RejectBody,
-    store: StoreDep,
     request: Request,
+    store: InMemoryApprovalRequestStore = Depends(approval_request_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     approval = await store.get(approval_id)
     if approval is None:

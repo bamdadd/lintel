@@ -23,7 +23,6 @@ from lintel.api.routes import (
     admin,
     agents,
     ai_providers,
-    approval_requests,
     approvals,
     artifacts,
     automations,
@@ -54,7 +53,6 @@ from lintel.api.routes import (
 )
 from lintel.api.routes.agents import AgentDefinitionStore
 from lintel.api.routes.ai_providers import InMemoryAIProviderStore
-from lintel.api.routes.approval_requests import InMemoryApprovalRequestStore
 from lintel.api.routes.artifacts import CodeArtifactStore, TestResultStore
 from lintel.api.routes.automations import InMemoryAutomationStore
 from lintel.api.routes.boards import BoardStore, TagStore
@@ -89,6 +87,11 @@ from lintel.credentials_api.routes import (
 from lintel.credentials_api.store import InMemoryCredentialStore
 from lintel.audit_api.routes import router as audit_router, audit_entry_store_provider
 from lintel.audit_api.store import AuditEntryStore
+from lintel.approval_requests_api.routes import (
+    router as approval_requests_router,
+    approval_request_store_provider,
+)
+from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 from lintel.users.routes import router as users_router, user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.api.routes.work_items import WorkItemStore
@@ -570,6 +573,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     variable_store_provider.override(stores["variable_store"])
     credential_store_provider.override(stores["credential_store"])
     audit_entry_store_provider.override(stores["audit_entry_store"])
+    approval_request_store_provider.override(stores["approval_request_store"])
     app.state.container = container
 
     # Start automation scheduler
@@ -709,7 +713,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
     app.include_router(audit_router, prefix="/api/v1", tags=["audit"])
     app.include_router(artifacts.router, prefix="/api/v1", tags=["artifacts"])
-    app.include_router(approval_requests.router, prefix="/api/v1", tags=["approval-requests"])
+    app.include_router(approval_requests_router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
     app.include_router(models.router, prefix="/api/v1", tags=["models"])
     app.include_router(mcp_servers.router, prefix="/api/v1", tags=["mcp-servers"])
