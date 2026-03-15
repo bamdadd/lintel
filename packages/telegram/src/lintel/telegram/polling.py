@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
+
     from lintel.telegram.adapter import TelegramChannelAdapter
 
 logger = structlog.get_logger()
@@ -15,7 +17,7 @@ logger = structlog.get_logger()
 
 async def run_polling(
     adapter: TelegramChannelAdapter,
-    dispatch_update: Any,
+    dispatch_update: Callable[[dict[str, Any]], Coroutine[Any, Any, None]],
     *,
     poll_timeout: int = 30,
 ) -> None:
