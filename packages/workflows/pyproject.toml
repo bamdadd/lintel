@@ -7,6 +7,7 @@ dependencies = [
     "lintel-agents",
     "lintel-observability",
     "lintel-sandbox",
+    "lintel-skills-api",
     "structlog>=24.4",
     "langgraph>=0.3",
 ]
@@ -16,6 +17,7 @@ lintel-contracts = { workspace = true }
 lintel-agents = { workspace = true }
 lintel-observability = { workspace = true }
 lintel-sandbox = { workspace = true }
+lintel-skills-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

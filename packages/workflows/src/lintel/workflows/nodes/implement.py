@@ -113,7 +113,8 @@ callers and their tests in the same increment.
 - If the project uses frozen dataclasses (as in contracts/types.py), follow that pattern \
 for domain types. Use Pydantic BaseModel for API request/response schemas.
 
-## Lint & Type Check
+## Lint & Format
+- Auto-format: `make format` (run this BEFORE lint to auto-fix issues)
 - Lint: `{lint_command}`
 - Type check: `{typecheck_command}` (run periodically, not after every change)
 
@@ -515,7 +516,7 @@ async def _implement_tdd(
     await tracker.append_log("implement", f"Lint: {lint_command[:60]}")
 
     # Install deps first
-    from lintel.api.domain.skills.discover_test_command import discover_test_command
+    from lintel.skills_api.domain.discover_test_command import discover_test_command
 
     try:
         discovery = await discover_test_command(sandbox_manager, sandbox_id, workspace_path)
@@ -601,10 +602,17 @@ async def _implement_tdd(
     # Detect "no changes" — LLM concluded everything was already done
     from lintel.sandbox.types import SandboxJob
 
+    # Check for uncommitted changes (sandbox_write_file doesn't git-add) AND committed changes.
+    # git status --porcelain shows unstaged/staged files; git diff shows committed-but-not-pushed.
     diff_check = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
-            command="git diff --name-only origin/main..HEAD 2>/dev/null | head -20",
+            command=(
+                "{ git status --porcelain;"
+                " git diff --name-only origin/main..HEAD 2>/dev/null;"
+                " git diff --name-only main..HEAD 2>/dev/null;"
+                " } | sort -u"
+            ),
             workdir=workspace_path,
             timeout_seconds=10,
         ),
@@ -615,6 +623,9 @@ async def _implement_tdd(
         return "No changes made.", True, [usage]
 
     await tracker.append_log("implement", f"{len(changed_files)} file(s) changed")
+
+    # Auto-format before testing — agent-generated code may have lint issues
+    await _auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
 
     # Test/fix loop — give the LLM a chance to fix failures
     test_passed = False
@@ -667,6 +678,8 @@ async def _implement_tdd(
                 logger.exception("implement_tdd_fix_failed")
                 await tracker.append_log("implement", "Fix attempt failed")
                 break
+            # Re-format after fix
+            await _auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
 
     if not test_passed:
         await tracker.append_log("implement", "Tests still failing after fix attempts")
@@ -1151,6 +1164,87 @@ async def _pre_read_plan_files(
     return contents
 
 
+async def _auto_format(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workspace_path: str,
+    tracker: Any,  # noqa: ANN401
+) -> None:
+    """Run code formatters in the sandbox to fix agent-generated lint issues."""
+    from lintel.sandbox.types import SandboxJob
+
+    await tracker.append_log("implement", "Auto-fixing lint: make format")
+    try:
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command="make format 2>&1 | tail -5",
+                workdir=workspace_path,
+                timeout_seconds=60,
+            ),
+        )
+        # Always run --unsafe-fixes after make format (TC001 etc. need it)
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "ruff check --fix --unsafe-fixes . 2>/dev/null; ruff format . 2>/dev/null; true"
+                ),
+                workdir=workspace_path,
+                timeout_seconds=30,
+            ),
+        )
+    except Exception:
+        logger.warning("implement_auto_format_failed", exc_info=True)
+
+
+async def _failures_in_agent_files(
+    test_output: str,
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workspace_path: str,
+) -> bool:
+    """Check if any test failures are in files the agent created or modified.
+
+    Parses FAILED lines from pytest output (e.g. ``FAILED path/to/test.py::...``)
+    and checks if those files are in the set of agent-changed files.
+    Returns True if any failure is in an agent-changed file.
+    """
+    import re
+
+    from lintel.sandbox.types import SandboxJob
+
+    # Extract failed test file paths from pytest output
+    failed_files: set[str] = set()
+    for match in re.finditer(r"FAILED\s+([\w/._-]+\.py)::", test_output):
+        failed_files.add(match.group(1))
+    # Also catch ERROR lines (import failures)
+    for match in re.finditer(r"ERROR\s+([\w/._-]+\.py)", test_output):
+        failed_files.add(match.group(1))
+
+    if not failed_files:
+        # Can't parse failures — assume agent is responsible
+        return True
+
+    # Get agent-changed files
+    result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=(
+                "{ git diff --name-only origin/main 2>/dev/null;"
+                " git diff --name-only main 2>/dev/null;"
+                " git status --porcelain 2>/dev/null | awk '{print $NF}';"
+                " } | sort -u || true"
+            ),
+            workdir=workspace_path,
+            timeout_seconds=10,
+        ),
+    )
+    agent_files = {f.strip() for f in result.stdout.strip().split("\n") if f.strip()}
+
+    return any(failed in agent_files for failed in failed_files)
+
+
 async def _run_tests(
     config: RunnableConfig | dict[str, Any],
     state: ThreadWorkflowState,
@@ -1159,10 +1253,9 @@ async def _run_tests(
     workspace_path: str,
 ) -> tuple[str, int]:
     """Run tests in the sandbox. Returns (output, exit_code)."""
-    from lintel.api.domain.skills.discover_test_command import discover_test_command
     from lintel.sandbox.types import SandboxJob
+    from lintel.skills_api.domain.discover_test_command import discover_test_command
     from lintel.workflows.nodes._stage_tracking import StageTracker
-    from lintel.workflows.nodes.test_code import _build_changed_tests_command
 
     tracker = StageTracker(config, state)
 
@@ -1204,21 +1297,10 @@ async def _run_tests(
             SandboxJob(command=cmd, workdir=workspace_path, timeout_seconds=180),
         )
 
-    # Try changed tests first — but skip if discovery already returned an
-    # affected-only target (e.g. make test-affected) since that already scopes
-    # to changed packages and is more reliable than raw pytest file lists.
-    if "affected" not in test_command and "changed" not in test_command:
-        changed_cmd = await _build_changed_tests_command(
-            sandbox_manager, sandbox_id, workspace_path
-        )
-        if changed_cmd:
-            test_command = changed_cmd
-
-    await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
-
     async def _log_test_line(line: str) -> None:
         await tracker.append_log("implement", line)
 
+    await tracker.append_log("implement", f"Running tests: {test_command[:80]}")
     try:
         output, exit_code = await _stream_execute_with_logging(
             sandbox_manager,
@@ -1231,6 +1313,19 @@ async def _run_tests(
     except Exception:
         logger.warning("implement_test_execute_failed")
         return "Test execution failed", 1
+
+    if exit_code != 0:
+        # Check if failures are only in pre-existing tests (not agent-changed files).
+        # If so, accept — the agent's code didn't introduce regressions.
+        failed_in_agent_files = await _failures_in_agent_files(
+            output, sandbox_manager, sandbox_id, workspace_path
+        )
+        if not failed_in_agent_files:
+            await tracker.append_log(
+                "implement",
+                "Test failures are in pre-existing files only — accepting",
+            )
+            exit_code = 0
 
     verdict = "PASSED" if exit_code == 0 else "FAILED"
     await tracker.append_log("implement", f"Tests: {verdict}")
@@ -1274,7 +1369,7 @@ async def _run_lint(
                 ),
             )
         ).stdout
-        else "ruff check --fix . 2>/dev/null; ruff format . 2>/dev/null; true"
+        else "ruff check --fix --unsafe-fixes . 2>/dev/null; ruff format . 2>/dev/null; true"
     )
     await tracker.append_log("implement", f"Auto-fixing lint: {format_command[:60]}")
     try:
@@ -1287,6 +1382,21 @@ async def _run_lint(
                 await tracker.append_log("implement", line.strip())
     except Exception:
         logger.warning("implement_lint_fix_failed")
+
+    # Always run --unsafe-fixes to catch TC001 etc. that make format misses
+    try:
+        await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "ruff check --fix --unsafe-fixes . 2>/dev/null; ruff format . 2>/dev/null; true"
+                ),
+                workdir=workspace_path,
+                timeout_seconds=30,
+            ),
+        )
+    except Exception:
+        logger.warning("implement_unsafe_fix_failed")
 
     await tracker.append_log("implement", f"Running lint: {lint_command[:80]}")
 

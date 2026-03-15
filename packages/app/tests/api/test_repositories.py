@@ -154,11 +154,10 @@ class TestRepositoryProviderEndpoints:
     def client_with_provider(self) -> Generator[TestClient]:
         from unittest.mock import AsyncMock
 
-        from dependency_injector import providers
+        from lintel.repositories_api.routes import repo_provider_provider
 
         app = create_app()
         with TestClient(app) as c:
-            container = app.state.container
             mock_provider = AsyncMock()
             mock_provider.list_commits.return_value = [
                 {"sha": "abc123", "message": "init", "author": "dev", "date": "2026-01-01"},
@@ -176,8 +175,9 @@ class TestRepositoryProviderEndpoints:
                     "base_branch": "main",
                 },
             ]
-            container.repo_provider.override(providers.Object(mock_provider))
+            repo_provider_provider.override(mock_provider)
             yield c
+        repo_provider_provider.override(None)
 
     def test_list_commits(self, client_with_provider: TestClient) -> None:
         client_with_provider.post(

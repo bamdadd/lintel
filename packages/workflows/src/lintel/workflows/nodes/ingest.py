@@ -55,11 +55,29 @@ async def ingest_message(
     elif trigger_type:
         await tracker.append_log("ingest", f"Trigger: {trigger_type}")
 
-    # Log the prompt/request
+    # Always log the prompt/request so the UI shows what was asked
     messages = state.get("sanitized_messages", [])
+    prompt = ""
     if messages:
         prompt = messages[0] if isinstance(messages[0], str) else str(messages[0])
-        # Truncate long prompts for readability
+    elif work_item_id and pipeline_store is not None:
+        # Fall back to work item description
+        work_item_store = _configurable.get("work_item_store")
+        if work_item_store is None:
+            app_state = _configurable.get("app_state")
+            if app_state is not None:
+                work_item_store = getattr(app_state, "work_item_store", None)
+        if work_item_store is not None:
+            try:
+                wi = await work_item_store.get(work_item_id)
+                if wi is not None:
+                    prompt = (
+                        wi.description if hasattr(wi, "description") else wi.get("description", "")
+                    )
+            except Exception:
+                pass
+
+    if prompt:
         display = prompt[:500] + "..." if len(prompt) > 500 else prompt
         await tracker.append_log("ingest", f"Request: {display}")
 

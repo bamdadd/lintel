@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from lintel.api.routes.policies import InMemoryPolicyStore
 from lintel.domain.types import Policy, PolicyAction
+from lintel.policies_api.store import InMemoryPolicyStore
 from lintel.workflows.nodes._policy import evaluate_gate_policy
 
 

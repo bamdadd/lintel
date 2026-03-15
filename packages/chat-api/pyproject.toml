@@ -1,0 +1,43 @@
+[project]
+name = "lintel-chat-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "lintel-contracts",
+    "lintel-domain",
+    "lintel-api-support",
+    "lintel-persistence",
+    "lintel-workflows",
+    "lintel-models",
+    "lintel-agents",
+    "lintel-event-bus",
+    "lintel-event-store",
+    "lintel-mcp-servers-api",
+    "lintel-pipelines-api",
+    "fastapi>=0.115",
+    "pydantic>=2.10",
+    "structlog>=24.4",
+]
+
+[tool.uv.sources]
+lintel-contracts = { workspace = true }
+lintel-domain = { workspace = true }
+lintel-api-support = { workspace = true }
+lintel-persistence = { workspace = true }
+lintel-workflows = { workspace = true }
+lintel-models = { workspace = true }
+lintel-agents = { workspace = true }
+lintel-event-bus = { workspace = true }
+lintel-event-store = { workspace = true }
+lintel-mcp-servers-api = { workspace = true }
+lintel-pipelines-api = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/lintel/chat_api"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""

@@ -10,21 +10,50 @@ resolution-markers = [
 [manifest]
 members = [
     "lintel",
+    "lintel-agent-definitions-api",
     "lintel-agents",
+    "lintel-ai-providers-api",
+    "lintel-api-support",
+    "lintel-approval-requests-api",
+    "lintel-artifacts-api",
+    "lintel-audit-api",
+    "lintel-automations-api",
+    "lintel-boards",
+    "lintel-chat-api",
+    "lintel-compliance-api",
     "lintel-contracts",
     "lintel-coordination",
+    "lintel-credentials-api",
     "lintel-domain",
+    "lintel-environments-api",
     "lintel-event-bus",
     "lintel-event-store",
+    "lintel-experimentation-api",
     "lintel-infrastructure",
+    "lintel-mcp-servers-api",
     "lintel-models",
+    "lintel-models-api",
+    "lintel-notifications-api",
     "lintel-observability",
     "lintel-persistence",
     "lintel-pii",
+    "lintel-pipelines-api",
+    "lintel-policies-api",
     "lintel-projections",
+    "lintel-projects-api",
     "lintel-repos",
+    "lintel-repositories-api",
     "lintel-sandbox",
+    "lintel-sandboxes-api",
+    "lintel-settings-api",
+    "lintel-skills-api",
     "lintel-slack",
+    "lintel-teams",
+    "lintel-triggers-api",
+    "lintel-users",
+    "lintel-variables-api",
+    "lintel-work-items-api",
+    "lintel-workflow-definitions-api",
     "lintel-workflows",
     "lintel-workspace",
 ]
@@ -1516,20 +1545,49 @@ dependencies = [
     { name = "fastapi-mcp" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
+    { name = "lintel-agent-definitions-api" },
     { name = "lintel-agents" },
+    { name = "lintel-ai-providers-api" },
+    { name = "lintel-api-support" },
+    { name = "lintel-approval-requests-api" },
+    { name = "lintel-artifacts-api" },
+    { name = "lintel-audit-api" },
+    { name = "lintel-automations-api" },
+    { name = "lintel-boards" },
+    { name = "lintel-chat-api" },
+    { name = "lintel-compliance-api" },
     { name = "lintel-contracts" },
     { name = "lintel-coordination" },
+    { name = "lintel-credentials-api" },
+    { name = "lintel-environments-api" },
     { name = "lintel-event-bus" },
     { name = "lintel-event-store" },
+    { name = "lintel-experimentation-api" },
     { name = "lintel-infrastructure" },
+    { name = "lintel-mcp-servers-api" },
     { name = "lintel-models" },
+    { name = "lintel-models-api" },
+    { name = "lintel-notifications-api" },
     { name = "lintel-observability" },
     { name = "lintel-persistence" },
     { name = "lintel-pii" },
+    { name = "lintel-pipelines-api" },
+    { name = "lintel-policies-api" },
     { name = "lintel-projections" },
+    { name = "lintel-projects-api" },
     { name = "lintel-repos" },
+    { name = "lintel-repositories-api" },
     { name = "lintel-sandbox" },
+    { name = "lintel-sandboxes-api" },
+    { name = "lintel-settings-api" },
+    { name = "lintel-skills-api" },
     { name = "lintel-slack" },
+    { name = "lintel-teams" },
+    { name = "lintel-triggers-api" },
+    { name = "lintel-users" },
+    { name = "lintel-variables-api" },
+    { name = "lintel-work-items-api" },
+    { name = "lintel-workflow-definitions-api" },
     { name = "lintel-workflows" },
     { name = "nats-py" },
     { name = "pydantic" },
@@ -1546,26 +1604,82 @@ requires-dist = [
     { name = "fastapi-mcp", specifier = ">=0.4.0" },
     { name = "langgraph", specifier = ">=0.3" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0" },
+    { name = "lintel-agent-definitions-api", editable = "packages/agent-definitions-api" },
     { name = "lintel-agents", editable = "packages/agents" },
+    { name = "lintel-ai-providers-api", editable = "packages/ai-providers-api" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-approval-requests-api", editable = "packages/approval-requests-api" },
+    { name = "lintel-artifacts-api", editable = "packages/artifacts-api" },
+    { name = "lintel-audit-api", editable = "packages/audit-api" },
+    { name = "lintel-automations-api", editable = "packages/automations-api" },
+    { name = "lintel-boards", editable = "packages/boards" },
+    { name = "lintel-chat-api", editable = "packages/chat-api" },
+    { name = "lintel-compliance-api", editable = "packages/compliance-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-coordination", editable = "packages/coordination" },
+    { name = "lintel-credentials-api", editable = "packages/credentials-api" },
+    { name = "lintel-environments-api", editable = "packages/environments-api" },
     { name = "lintel-event-bus", editable = "packages/event-bus" },
     { name = "lintel-event-store", editable = "packages/event-store" },
+    { name = "lintel-experimentation-api", editable = "packages/experimentation-api" },
     { name = "lintel-infrastructure", editable = "packages/infrastructure" },
+    { name = "lintel-mcp-servers-api", editable = "packages/mcp-servers-api" },
     { name = "lintel-models", editable = "packages/models" },
+    { name = "lintel-models-api", editable = "packages/models-api" },
+    { name = "lintel-notifications-api", editable = "packages/notifications-api" },
     { name = "lintel-observability", editable = "packages/observability" },
     { name = "lintel-persistence", editable = "packages/persistence" },
     { name = "lintel-pii", editable = "packages/pii" },
+    { name = "lintel-pipelines-api", editable = "packages/pipelines-api" },
+    { name = "lintel-policies-api", editable = "packages/policies-api" },
     { name = "lintel-projections", editable = "packages/projections" },
+    { name = "lintel-projects-api", editable = "packages/projects-api" },
     { name = "lintel-repos", editable = "packages/repos" },
+    { name = "lintel-repositories-api", editable = "packages/repositories-api" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
+    { name = "lintel-sandboxes-api", editable = "packages/sandboxes-api" },
+    { name = "lintel-settings-api", editable = "packages/settings-api" },
+    { name = "lintel-skills-api", editable = "packages/skills-api" },
     { name = "lintel-slack", editable = "packages/slack" },
+    { name = "lintel-teams", editable = "packages/teams" },
+    { name = "lintel-triggers-api", editable = "packages/triggers-api" },
+    { name = "lintel-users", editable = "packages/users" },
+    { name = "lintel-variables-api", editable = "packages/variables-api" },
+    { name = "lintel-work-items-api", editable = "packages/work-items-api" },
+    { name = "lintel-workflow-definitions-api", editable = "packages/workflow-definitions-api" },
     { name = "lintel-workflows", editable = "packages/workflows" },
     { name = "nats-py", specifier = ">=2.9" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.7" },
     { name = "structlog", specifier = ">=24.4" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
+]
+
+[[package]]
+name = "lintel-agent-definitions-api"
+version = "0.1.0"
+source = { editable = "packages/agent-definitions-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-agents" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-persistence" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-agents", editable = "packages/agents" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
 ]
 
 [[package]]
@@ -1587,6 +1701,231 @@ requires-dist = [
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "litellm", specifier = ">=1.55" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-ai-providers-api"
+version = "0.1.0"
+source = { editable = "packages/ai-providers-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-models" },
+    { name = "lintel-persistence" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-models", editable = "packages/models" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-api-support"
+version = "0.1.0"
+source = { editable = "packages/api-support" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-contracts" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-approval-requests-api"
+version = "0.1.0"
+source = { editable = "packages/approval-requests-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-artifacts-api"
+version = "0.1.0"
+source = { editable = "packages/artifacts-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-audit-api"
+version = "0.1.0"
+source = { editable = "packages/audit-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-automations-api"
+version = "0.1.0"
+source = { editable = "packages/automations-api" }
+dependencies = [
+    { name = "croniter" },
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-workflows" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "croniter", specifier = ">=3.0" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-workflows", editable = "packages/workflows" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
+name = "lintel-boards"
+version = "0.1.0"
+source = { editable = "packages/boards" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-persistence" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-chat-api"
+version = "0.1.0"
+source = { editable = "packages/chat-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-agents" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-event-bus" },
+    { name = "lintel-event-store" },
+    { name = "lintel-mcp-servers-api" },
+    { name = "lintel-models" },
+    { name = "lintel-persistence" },
+    { name = "lintel-pipelines-api" },
+    { name = "lintel-workflows" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-agents", editable = "packages/agents" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-event-bus", editable = "packages/event-bus" },
+    { name = "lintel-event-store", editable = "packages/event-store" },
+    { name = "lintel-mcp-servers-api", editable = "packages/mcp-servers-api" },
+    { name = "lintel-models", editable = "packages/models" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "lintel-pipelines-api", editable = "packages/pipelines-api" },
+    { name = "lintel-workflows", editable = "packages/workflows" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-compliance-api"
+version = "0.1.0"
+source = { editable = "packages/compliance-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]
@@ -1616,6 +1955,31 @@ dependencies = [
 requires-dist = [{ name = "asyncpg", specifier = ">=0.30" }]
 
 [[package]]
+name = "lintel-credentials-api"
+version = "0.1.0"
+source = { editable = "packages/credentials-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-persistence" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-domain"
 version = "0.1.0"
 source = { editable = "packages/domain" }
@@ -1637,6 +2001,29 @@ requires-dist = [
     { name = "lintel-models", editable = "packages/models" },
     { name = "lintel-observability", editable = "packages/observability" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-environments-api"
+version = "0.1.0"
+source = { editable = "packages/environments-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
@@ -1673,6 +2060,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-experimentation-api"
+version = "0.1.0"
+source = { editable = "packages/experimentation-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-compliance-api" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-compliance-api", editable = "packages/compliance-api" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
 name = "lintel-infrastructure"
 version = "0.1.0"
 source = { editable = "packages/infrastructure" }
@@ -1684,6 +2094,29 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-mcp-servers-api"
+version = "0.1.0"
+source = { editable = "packages/mcp-servers-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
@@ -1708,6 +2141,54 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.55" },
     { name = "structlog", specifier = ">=24.4" },
     { name = "tenacity", specifier = ">=9.0" },
+]
+
+[[package]]
+name = "lintel-models-api"
+version = "0.1.0"
+source = { editable = "packages/models-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-ai-providers-api" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-models" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-ai-providers-api", editable = "packages/ai-providers-api" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-models", editable = "packages/models" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-notifications-api"
+version = "0.1.0"
+source = { editable = "packages/notifications-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
 ]
 
 [[package]]
@@ -1776,6 +2257,58 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-pipelines-api"
+version = "0.1.0"
+source = { editable = "packages/pipelines-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-event-bus" },
+    { name = "lintel-persistence" },
+    { name = "lintel-workflows" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-event-bus", editable = "packages/event-bus" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "lintel-workflows", editable = "packages/workflows" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-policies-api"
+version = "0.1.0"
+source = { editable = "packages/policies-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-projections"
 version = "0.1.0"
 source = { editable = "packages/projections" }
@@ -1791,6 +2324,31 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.30" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-event-bus", editable = "packages/event-bus" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-projects-api"
+version = "0.1.0"
+source = { editable = "packages/projects-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-persistence" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
@@ -1812,6 +2370,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-repositories-api"
+version = "0.1.0"
+source = { editable = "packages/repositories-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-repos" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-repos", editable = "packages/repos" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-sandbox"
 version = "0.1.0"
 source = { editable = "packages/sandbox" }
@@ -1825,6 +2406,79 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-sandboxes-api"
+version = "0.1.0"
+source = { editable = "packages/sandboxes-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-persistence" },
+    { name = "lintel-sandbox" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "lintel-sandbox", editable = "packages/sandbox" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
+name = "lintel-settings-api"
+version = "0.1.0"
+source = { editable = "packages/settings-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-persistence" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-skills-api"
+version = "0.1.0"
+source = { editable = "packages/skills-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-agents" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-agents", editable = "packages/agents" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
@@ -1848,6 +2502,148 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-teams"
+version = "0.1.0"
+source = { editable = "packages/teams" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-triggers-api"
+version = "0.1.0"
+source = { editable = "packages/triggers-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-users"
+version = "0.1.0"
+source = { editable = "packages/users" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-variables-api"
+version = "0.1.0"
+source = { editable = "packages/variables-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-work-items-api"
+version = "0.1.0"
+source = { editable = "packages/work-items-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "lintel-persistence" },
+    { name = "lintel-workflows" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "lintel-workflows", editable = "packages/workflows" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-workflow-definitions-api"
+version = "0.1.0"
+source = { editable = "packages/workflow-definitions-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-workflows" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-workflows", editable = "packages/workflows" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-workflows"
 version = "0.1.0"
 source = { editable = "packages/workflows" }
@@ -1857,6 +2653,7 @@ dependencies = [
     { name = "lintel-contracts" },
     { name = "lintel-observability" },
     { name = "lintel-sandbox" },
+    { name = "lintel-skills-api" },
     { name = "structlog" },
 ]
 
@@ -1867,6 +2664,7 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-observability", editable = "packages/observability" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
+    { name = "lintel-skills-api", editable = "packages/skills-api" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 

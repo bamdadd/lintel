@@ -24,8 +24,8 @@ async def run_tests(
     config: RunnableConfig | None = None,
 ) -> dict[str, Any]:
     """Run the project test suite in the sandbox and report results."""
-    from lintel.api.domain.skills.discover_test_command import discover_test_command
     from lintel.sandbox.types import SandboxJob
+    from lintel.skills_api.domain.discover_test_command import discover_test_command
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
@@ -200,15 +200,16 @@ async def _build_changed_tests_command(
     """
     from lintel.sandbox.types import SandboxJob
 
-    # 1. Find ALL changed files vs main
+    # 1. Find ALL changed files vs main (committed + uncommitted + untracked)
     result = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
             command=(
-                "{ git diff --name-only origin/main 2>/dev/null"
-                " || git diff --name-only main 2>/dev/null"
-                " || git diff --name-only HEAD~1 2>/dev/null; }"
-                " | sort -u || true"
+                "{ git diff --name-only origin/main 2>/dev/null;"
+                " git diff --name-only main 2>/dev/null;"
+                " git diff --name-only HEAD~1 2>/dev/null;"
+                " git status --porcelain 2>/dev/null | awk '{print $NF}';"
+                " } | sort -u || true"
             ),
             workdir=workdir,
             timeout_seconds=10,
