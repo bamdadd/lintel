@@ -378,7 +378,7 @@ async def _trigger_workflow_for_work_item(
                 repo_branch = project.get("default_branch", "main")
                 credential_ids = tuple(project.get("credential_ids", ()))
                 repo_ids = project.get("repo_ids", ())
-                if isinstance(repo_ids, (list, tuple)) and repo_ids and repo_store:
+                if isinstance(repo_ids, list | tuple) and repo_ids and repo_store:
                     first_repo = await repo_store.get(repo_ids[0])
                     if first_repo is not None:
                         repo_url = (

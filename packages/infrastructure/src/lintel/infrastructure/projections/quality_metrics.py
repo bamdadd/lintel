@@ -183,7 +183,7 @@ class QualityMetricsProjection:
     def _on_commit_pushed(self, event: EventEnvelope) -> None:
         payload = event.payload
         files_raw = payload.get("files", [])
-        files = list(files_raw) if isinstance(files_raw, (list, tuple)) else []
+        files = list(files_raw) if isinstance(files_raw, list | tuple) else []
         self._commit_records.append(
             CommitRecord(
                 project_id=payload.get("project_id", ""),
@@ -210,7 +210,7 @@ class QualityMetricsProjection:
     def _on_pr_created(self, event: EventEnvelope) -> None:
         payload = event.payload
         files_raw = payload.get("files", [])
-        files = list(files_raw) if isinstance(files_raw, (list, tuple)) else []
+        files = list(files_raw) if isinstance(files_raw, list | tuple) else []
         self._merge_records.append(
             MergeRecord(
                 project_id=payload.get("project_id", ""),

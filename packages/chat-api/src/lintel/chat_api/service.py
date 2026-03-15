@@ -119,7 +119,7 @@ class ChatService:
 
         # Resolve first repo
         repo_ids = project.get("repo_ids", ())
-        if isinstance(repo_ids, (list, tuple)) and repo_ids:
+        if isinstance(repo_ids, list | tuple) and repo_ids:
             repo_store = getattr(request.app.state, "repository_store", None)
             if repo_store is not None:
                 repo = await repo_store.get(repo_ids[0])

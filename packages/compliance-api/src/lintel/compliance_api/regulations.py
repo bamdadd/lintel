@@ -142,7 +142,7 @@ async def list_regulation_templates() -> list[dict[str, Any]]:
     for reg in SEED_REGULATIONS:
         d = asdict(reg)
         for k, v in d.items():
-            if isinstance(v, (tuple, frozenset)):
+            if isinstance(v, tuple | frozenset):
                 d[k] = list(v)
         results.append(d)
     return results

@@ -14,7 +14,7 @@ class ComplianceStore:
     def _to_dict(self, entity: Any) -> dict[str, Any]:  # noqa: ANN401
         data = asdict(entity)
         for k, v in data.items():
-            if isinstance(v, (tuple, frozenset)):
+            if isinstance(v, tuple | frozenset):
                 data[k] = list(v)
         return data
 

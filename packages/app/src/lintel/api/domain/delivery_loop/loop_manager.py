@@ -263,7 +263,7 @@ class DeliveryLoopManager:
     def _resolve_phase_sequence(event: EventEnvelope) -> tuple[str, ...]:
         """Resolve phase sequence from event payload or use default."""
         seq = event.payload.get("phase_sequence")
-        if isinstance(seq, (list, tuple)) and seq:
+        if isinstance(seq, list | tuple) and seq:
             return tuple(str(s) for s in seq)
         return DEFAULT_DELIVERY_PHASES
 

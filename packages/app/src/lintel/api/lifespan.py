@@ -34,7 +34,7 @@ async def _seed_defaults(stores: dict[str, Any]) -> None:
     for agent in DEFAULT_AGENTS:
         data = dataclasses.asdict(agent)
         for key, value in data.items():
-            if isinstance(value, (frozenset, tuple)):
+            if isinstance(value, frozenset | tuple):
                 data[key] = list(value)
         existing = await agent_store.get(agent.agent_id)
         if existing is None:

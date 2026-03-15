@@ -20,7 +20,7 @@ def _serialize(obj: object) -> dict[str, Any]:
     """Serialize a frozen dataclass to a JSON-safe dict."""
     data = dataclasses.asdict(obj)  # type: ignore[arg-type]
     for key, value in data.items():
-        if isinstance(value, (frozenset, tuple)):
+        if isinstance(value, frozenset | tuple):
             data[key] = list(value)
     return data
 

@@ -22,7 +22,7 @@ class PostgresComplianceStore:
         if hasattr(entity, "__dataclass_fields__"):
             data = asdict(entity)
             for k, v in data.items():
-                if isinstance(v, (tuple, frozenset)):
+                if isinstance(v, tuple | frozenset):
                     data[k] = list(v)
             return data
         return dict(entity) if not isinstance(entity, dict) else entity

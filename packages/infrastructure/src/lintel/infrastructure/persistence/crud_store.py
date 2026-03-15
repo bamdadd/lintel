@@ -61,7 +61,7 @@ def _serialize(obj: object) -> dict[str, Any]:
     data = dataclasses.asdict(obj)  # type: ignore[call-overload]
     # Convert frozensets and tuples for JSON compatibility
     for key, value in data.items():
-        if isinstance(value, (frozenset, tuple)):
+        if isinstance(value, frozenset | tuple):
             data[key] = list(value)
     return data  # type: ignore[no-any-return]
 

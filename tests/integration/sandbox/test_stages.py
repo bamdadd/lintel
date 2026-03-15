@@ -125,9 +125,9 @@ async def test_collect_artifacts_returns_diff(
 
     assert artifacts["type"] == "diff"
     assert artifacts["exit_code"] == 0
-    assert "multiply" in artifacts["content"], (
-        f"Diff should contain the new function. Got:\n{artifacts['content'][:500]}"
-    )
+    assert (
+        "multiply" in artifacts["content"]
+    ), f"Diff should contain the new function. Got:\n{artifacts['content'][:500]}"
 
 
 async def test_collect_artifacts_excludes_lock_files(
@@ -182,7 +182,7 @@ async def test_pytest_parallelism_respects_cpu_limit(
         if "workers" in line and "created" in line.lower():
             parts = line.split("created:")[1].strip().split("/")
             worker_count = int(parts[0].strip())
-            assert worker_count <= 4, (
-                f"pytest -n auto spawned {worker_count} workers, expected <=4 for a 2-CPU sandbox"
-            )
+            assert (
+                worker_count <= 4
+            ), f"pytest -n auto spawned {worker_count} workers, expected <=4 for a 2-CPU sandbox"
             break
