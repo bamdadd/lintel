@@ -113,6 +113,8 @@ export interface PipelineRun {
   created_at: string;
 }
 
+const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'cancelled', 'completed']);
+
 export function usePipelinesForWorkItem(workItemId: string | undefined) {
   return useQuery({
     queryKey: ['/api/v1/pipelines', { work_item_id: workItemId }],
@@ -126,6 +128,13 @@ export function usePipelinesForWorkItem(workItemId: string | undefined) {
       );
     },
     enabled: !!workItemId,
+    refetchInterval: (query) => {
+      const pipelines = query.state.data;
+      // Poll every 3s if there are no pipelines yet or any are still running
+      if (!pipelines || pipelines.length === 0) return 3_000;
+      const allTerminal = pipelines.every((p) => TERMINAL_STATUSES.has(p.status));
+      return allTerminal ? false : 3_000;
+    },
   });
 }
 
