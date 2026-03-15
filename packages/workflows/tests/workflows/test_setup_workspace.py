@@ -207,9 +207,7 @@ def _make_config(
 ) -> dict[str, Any]:
     """Build a RunnableConfig dict with a pre-provisioned sandbox pool."""
     if sandbox_store is None:
-        sandbox_store = FakeSandboxStore(
-            [{"sandbox_id": POOL_SANDBOX_ID}]
-        )
+        sandbox_store = FakeSandboxStore([{"sandbox_id": POOL_SANDBOX_ID}])
     app_state = _AppState(sandbox_store=sandbox_store)
     configurable: dict[str, Any] = {
         "sandbox_manager": manager,

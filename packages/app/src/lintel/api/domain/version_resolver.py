@@ -20,7 +20,7 @@ class VersionResolver:
 
     async def resolve(
         self,
-        job_name: str,
+        _job_name: str,
         inputs: list[JobInput],
     ) -> dict[str, ResourceVersion] | None:
         """Return resolved version set, or None if no versions available."""
