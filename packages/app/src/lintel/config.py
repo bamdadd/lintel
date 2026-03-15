@@ -70,3 +70,10 @@ class Settings(BaseSettings):
     log_format: str = "json"
     otel_endpoint: str = ""
     environment: str = "development"
+
+    # Caps the number of simultaneous agent slot acquisitions across all pipeline runs.
+    # Increase this value to allow more concurrent agent executions.
+    max_concurrent_agents: int = Field(
+        default=5,
+        validation_alias="LINTEL_MAX_CONCURRENT_AGENTS",
+    )
