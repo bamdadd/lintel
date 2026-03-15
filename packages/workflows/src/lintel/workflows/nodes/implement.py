@@ -258,12 +258,12 @@ async def spawn_implementation(
 
     if agent_runtime is not None:
         # Detect provider to choose execution strategy
-        is_claude_code, _provider, _model_name = await _resolve_coder_policy(agent_runtime)
+        use_tdd, _provider, _model_name = await _resolve_coder_policy(agent_runtime)
 
         await tracker.log_llm_context("implement", "coder", "implement_generate")
 
-        if is_claude_code:
-            # ---- Claude Code TDD path ----
+        if use_tdd:
+            # ---- TDD path (Claude models: Claude Code, Bedrock, Anthropic) ----
             agent_output, test_passed, total_usage = await _implement_tdd(
                 agent_runtime=agent_runtime,
                 thread_ref=thread_ref,
@@ -433,12 +433,24 @@ async def _stream_execute_with_logging(
 # ---------------------------------------------------------------------------
 
 
+def _is_claude_model(provider: str, model_name: str) -> bool:
+    """Check if the provider/model combination is a Claude model (any provider)."""
+    if provider == "claude_code":
+        return True
+    # Bedrock Claude models: anthropic.claude-*, eu.anthropic.claude-*, us.anthropic.claude-*
+    if provider == "bedrock" and "anthropic.claude" in model_name:
+        return True
+    # Direct Anthropic API
+    return provider == "anthropic" and "claude" in model_name
+
+
 async def _resolve_coder_policy(
     agent_runtime: AgentRuntime,
 ) -> tuple[bool, str, str]:
     """Resolve the coder role's model policy.
 
-    Returns (is_claude_code, provider, model_name).
+    Returns (use_tdd, provider, model_name).
+    use_tdd is True for any Claude model (Claude Code, Bedrock, or Anthropic API).
     """
     from lintel.agents.types import AgentRole
 
@@ -446,19 +458,20 @@ async def _resolve_coder_policy(
         policy = await agent_runtime._model_router.select_model(
             AgentRole.CODER, "implement_generate"
         )
-        return policy.provider == "claude_code", policy.provider, policy.model_name
+        use_tdd = _is_claude_model(policy.provider, policy.model_name)
+        return use_tdd, policy.provider, policy.model_name
     except Exception:
         return False, "unknown", "unknown"
 
 
 async def _is_claude_code_provider(agent_runtime: AgentRuntime) -> bool:
-    """Check if the coder role is assigned to Claude Code provider."""
-    is_cc, _, _ = await _resolve_coder_policy(agent_runtime)
-    return is_cc
+    """Check if the coder role is assigned to a Claude model (any provider)."""
+    is_claude, _, _ = await _resolve_coder_policy(agent_runtime)
+    return is_claude
 
 
 # ---------------------------------------------------------------------------
-# TDD path (Claude Code)
+# TDD path (Claude models: Claude Code, Bedrock, Anthropic API)
 # ---------------------------------------------------------------------------
 
 
@@ -481,7 +494,7 @@ async def _implement_tdd(
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)
-    await tracker.append_log("implement", "Using Claude Code TDD mode")
+    await tracker.append_log("implement", "Using TDD mode (Claude model)")
 
     # Discover test/lint commands for the project
     (
