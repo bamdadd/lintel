@@ -334,6 +334,10 @@ async def spawn_implementation(
         code_artifact_store = _configurable.get("code_artifact_store")
         if code_artifact_store is None:
             _app = _configurable.get("app_state")
+            if _app is None and run_id:
+                from lintel.workflows.nodes._runtime_registry import get_app_state
+
+                _app = get_app_state(run_id)
             if _app is not None:
                 code_artifact_store = getattr(_app, "code_artifact_store", None)
         if code_artifact_store is not None:

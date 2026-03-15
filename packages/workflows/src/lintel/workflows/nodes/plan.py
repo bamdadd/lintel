@@ -297,6 +297,10 @@ async def plan_work(state: ThreadWorkflowState, config: RunnableConfig) -> dict[
     _artifact_store = _configurable.get("code_artifact_store")
     if _artifact_store is None:
         _app = _configurable.get("app_state")
+        if _app is None and state.get("run_id"):
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            _app = get_app_state(state["run_id"])
         if _app is not None:
             _artifact_store = getattr(_app, "code_artifact_store", None)
     if _artifact_store is not None:
