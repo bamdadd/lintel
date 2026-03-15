@@ -130,10 +130,10 @@ export function usePipelinesForWorkItem(workItemId: string | undefined) {
     enabled: !!workItemId,
     refetchInterval: (query) => {
       const pipelines = query.state.data;
-      // Poll every 3s if there are no pipelines yet or any are still running
-      if (!pipelines || pipelines.length === 0) return 3_000;
-      const allTerminal = pipelines.every((p) => TERMINAL_STATUSES.has(p.status));
-      return allTerminal ? false : 3_000;
+      // Slow poll (10s) only while waiting for a pipeline to appear
+      if (!pipelines || pipelines.length === 0) return 10_000;
+      // Stop polling once pipelines exist — SSE handles live updates
+      return false;
     },
   });
 }

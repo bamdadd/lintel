@@ -30,6 +30,7 @@ import { useUpdateWorkItem, useDeleteWorkItem, usePipelinesForWorkItem } from '.
 import type { WorkItem } from '../api';
 import { useQueryClient } from '@tanstack/react-query';
 import { StatusBadge } from '@/shared/components/StatusBadge';
+import { usePipelineSSE } from '@/features/pipelines/hooks/usePipelineSSE';
 
 const WORK_TYPES = [
   { value: 'task', label: 'Task' },
@@ -79,6 +80,15 @@ export function WorkItemDetailModal({ item, opened, onClose, columns }: WorkItem
   const { data: pipelines, isLoading: pipelinesLoading } = usePipelinesForWorkItem(
     item?.work_item_id,
   );
+
+  // Subscribe to SSE for the latest non-terminal pipeline to get live status updates
+  const activePipeline = pipelines?.find(
+    (p) => !['succeeded', 'failed', 'cancelled', 'completed'].includes(p.status),
+  );
+  const { onUpdate } = usePipelineSSE(activePipeline?.run_id ?? null);
+  onUpdate(() => {
+    void qc.invalidateQueries({ queryKey: ['/api/v1/pipelines'] });
+  });
 
   useEffect(() => {
     if (item) {
