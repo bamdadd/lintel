@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from lintel.contracts.channel_type import ChannelType
 from lintel.contracts.types import ThreadRef
 from lintel.slack.commands import GrantApproval, ProcessIncomingMessage, RejectApproval
 from lintel.slack.event_translator import (
@@ -28,6 +29,7 @@ class TestTranslateMessageEvent:
             workspace_id="T11111",
             channel_id="C99999",
             thread_ts="1234567890.000000",
+            channel_type=ChannelType.SLACK,
         )
         assert result.raw_text == "implement user auth"
         assert result.sender_id == "U12345"
@@ -100,6 +102,7 @@ class TestTranslateApprovalAction:
             workspace_id="T11111",
             channel_id="C99999",
             thread_ts="1234567890.000000",
+            channel_type=ChannelType.SLACK,
         )
         assert result.gate_type == "spec_approval"
         assert result.approver_id == "U12345"

@@ -240,6 +240,10 @@ export const router = createBrowserRouter([
         path: 'settings',
         lazy: () => import('@/features/settings/pages/SettingsPage'),
       },
+      {
+        path: 'settings/channels',
+        lazy: () => import('@/features/channels/ChannelsPage'),
+      },
     ],
   },
   {

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from lintel.contracts.channel_type import ChannelType
 from lintel.contracts.types import ThreadRef
 from lintel.slack.commands import GrantApproval, ProcessIncomingMessage, RejectApproval
 
@@ -27,6 +28,7 @@ def translate_message_event(
             workspace_id=team_id,
             channel_id=channel_id,
             thread_ts=thread_ts,
+            channel_type=ChannelType.SLACK,
         ),
         raw_text=event.get("text", ""),
         sender_id=event.get("user", ""),
@@ -60,6 +62,7 @@ def translate_approval_action(
         workspace_id=ref_parts[1],
         channel_id=ref_parts[2],
         thread_ts=ref_parts[3],
+        channel_type=ChannelType.SLACK,
     )
 
     if decision == "approve":
