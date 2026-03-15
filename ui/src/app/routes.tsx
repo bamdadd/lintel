@@ -237,12 +237,21 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/memory/MemoryPage'),
       },
       {
+        path: 'integration-patterns',
+        lazy: () =>
+          import('@/features/integration-patterns/pages/IntegrationPatternsPage'),
+      },
+      {
         path: 'debug',
         lazy: () => import('@/features/debug/pages/DebugPage'),
       },
       {
         path: 'settings',
         lazy: () => import('@/features/settings/pages/SettingsPage'),
+      },
+      {
+        path: 'settings/channels',
+        lazy: () => import('@/features/channels/ChannelsPage'),
       },
     ],
   },

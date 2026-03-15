@@ -29,6 +29,7 @@ from lintel.compliance_api.routes import router as compliance_router
 from lintel.credentials_api.routes import router as credentials_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
+from lintel.integration_patterns_api import router as integration_patterns_router
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
@@ -38,9 +39,11 @@ from lintel.policies_api.routes import router as policies_router
 from lintel.projects_api.routes import router as projects_router
 from lintel.repositories_api.routes import router as repositories_router
 from lintel.sandboxes_api.routes import router as sandboxes_router
+from lintel.settings_api.channels_router import router as channels_settings_router
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
 from lintel.teams.routes import router as teams_router
+from lintel.telegram.webhook import router as telegram_router
 from lintel.triggers_api.routes import router as triggers_router
 from lintel.users.routes import router as users_router
 from lintel.variables_api.routes import router as variables_router
@@ -91,5 +94,8 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(compliance_router, prefix="/api/v1", tags=["compliance"])
     app.include_router(experimentation_router, prefix="/api/v1", tags=["experimentation"])
     app.include_router(memory_router, prefix="/api/v1", tags=["memory"])
+    app.include_router(integration_patterns_router, prefix="/api/v1", tags=["integration-patterns"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
+    app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])
+    app.include_router(channels_settings_router, prefix="/api/v1", tags=["channels"])

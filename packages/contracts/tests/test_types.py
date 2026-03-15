@@ -6,6 +6,7 @@ import dataclasses
 from uuid import UUID, uuid4
 
 from lintel.agents.types import AgentRole, SkillExecutionMode
+from lintel.contracts.channel_type import ChannelType
 from lintel.contracts.types import (
     ActorType,
     CorrelationId,
@@ -32,7 +33,7 @@ from lintel.workflows.types import (
 class TestThreadRef:
     def test_stream_id_format(self) -> None:
         ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="123.456")
-        assert ref.stream_id == "thread:W1:C1:123.456"
+        assert ref.stream_id == "thread:slack:W1:C1:123.456"
 
     def test_str_returns_stream_id(self) -> None:
         ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="123.456")
@@ -58,7 +59,26 @@ class TestThreadRef:
 
     def test_stream_id_with_special_chars(self) -> None:
         ref = ThreadRef(workspace_id="T01", channel_id="C02ABC", thread_ts="1709.123456")
-        assert ref.stream_id == "thread:T01:C02ABC:1709.123456"
+        assert ref.stream_id == "thread:slack:T01:C02ABC:1709.123456"
+
+    def test_channel_type_default(self) -> None:
+        ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0")
+        assert ref.channel_type == ChannelType.SLACK
+
+    def test_channel_type_telegram(self) -> None:
+        ref = ThreadRef(
+            workspace_id="W1",
+            channel_id="C1",
+            thread_ts="1.0",
+            channel_type=ChannelType.TELEGRAM,
+        )
+        assert ref.channel_type == ChannelType.TELEGRAM
+        assert ref.stream_id.startswith("thread:telegram:")
+
+    def test_parse_stream_id(self) -> None:
+        ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="123.456")
+        parsed = ThreadRef.parse_stream_id(ref.stream_id)
+        assert parsed == ref
 
 
 class TestEnums:

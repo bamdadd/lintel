@@ -464,7 +464,8 @@ export function StageFullscreenModal({
                 <Code
                   block
                   style={{
-                    backgroundColor: 'var(--mantine-color-dark-8)',
+                    backgroundColor: isDark ? 'var(--mantine-color-dark-8)' : 'var(--mantine-color-gray-1)',
+                    color: isDark ? undefined : 'var(--mantine-color-dark-8)',
                     whiteSpace: 'pre',
                     fontSize: 12,
                     minHeight: '100%',
@@ -554,6 +555,7 @@ export function StageFullscreenModal({
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function StageCard({ stage, runId, allStages, onActionComplete, onOpenArtifact }: StageCardProps) {
+  const { colorScheme } = useMantineColorScheme();
   const navigate = useNavigate();
   const [retrying, setRetrying] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -788,7 +790,7 @@ export function StageCard({ stage, runId, allStages, onActionComplete, onOpenArt
               h={200}
               viewportRef={liveLogsAvailable ? logScrollRef : undefined}
               style={{
-                backgroundColor: 'var(--mantine-color-dark-8)',
+                backgroundColor: colorScheme === 'dark' ? 'var(--mantine-color-dark-8)' : 'var(--mantine-color-gray-1)',
                 borderRadius: 4,
               }}
             >
@@ -980,7 +982,7 @@ export function StageCard({ stage, runId, allStages, onActionComplete, onOpenArt
                       <ScrollArea h={120}>
                         <Code
                           block
-                          style={{ fontSize: 11, backgroundColor: 'var(--mantine-color-dark-8)' }}
+                          style={{ fontSize: 11, backgroundColor: colorScheme === 'dark' ? 'var(--mantine-color-dark-8)' : 'var(--mantine-color-gray-1)' }}
                         >
                           {att.logs.join('\n')}
                         </Code>

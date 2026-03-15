@@ -23,13 +23,13 @@ def adapter(mock_client: AsyncMock) -> SlackChannelAdapter:
     return SlackChannelAdapter(client=mock_client)
 
 
-class TestSendMessage:
+class TestPostMessage:
     async def test_sends_text_message(
         self,
         adapter: SlackChannelAdapter,
         mock_client: AsyncMock,
     ) -> None:
-        result = await adapter.send_message("C123", "1234.0", "hello")
+        result = await adapter.post_message("C123", "1234.0", "hello")
         mock_client.chat_postMessage.assert_called_once_with(
             channel="C123",
             thread_ts="1234.0",
@@ -46,7 +46,7 @@ class TestSendMessage:
         blocks: list[dict[str, Any]] = [
             {"type": "section", "text": {"type": "mrkdwn", "text": "hi"}},
         ]
-        await adapter.send_message("C123", "1234.0", "hello", blocks=blocks)
+        await adapter.post_message("C123", "1234.0", "hello", blocks=blocks)
         mock_client.chat_postMessage.assert_called_once_with(
             channel="C123",
             thread_ts="1234.0",
@@ -71,13 +71,13 @@ class TestUpdateMessage:
         assert result["ok"] is True
 
 
-class TestSendApprovalRequest:
+class TestPostApprovalRequest:
     async def test_sends_approval_with_blocks(
         self,
         adapter: SlackChannelAdapter,
         mock_client: AsyncMock,
     ) -> None:
-        result = await adapter.send_approval_request(
+        result = await adapter.post_approval_request(
             channel_id="C123",
             thread_ts="1234.0",
             gate_type="spec_approval",

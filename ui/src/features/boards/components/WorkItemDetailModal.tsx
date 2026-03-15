@@ -159,7 +159,7 @@ export function WorkItemDetailModal({ item, opened, onClose, columns }: WorkItem
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Work Item Details" size="lg" fullScreen={isMobile}>
+    <Modal opened={opened} onClose={onClose} title="Work Item Details" size={isMobile ? '100%' : '60%'} fullScreen={isMobile}>
       <Stack gap="sm">
         <Group gap={8} wrap="wrap">
           <Badge size="xs" variant="light" color="dimmed">

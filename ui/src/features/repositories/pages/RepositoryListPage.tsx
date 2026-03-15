@@ -9,11 +9,21 @@ import {
   Modal,
   TextInput,
   MultiSelect,
+  Paper,
+  Badge,
+  Text,
+  ActionIcon,
+  Tooltip,
+  ThemeIcon,
+  Box,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { notifications } from '@mantine/notifications';
+import {
+  IconTrash, IconPlus, IconFolder, IconGitBranch, IconExternalLink,
+} from '@tabler/icons-react';
 import {
   useRepositoriesListRepositories,
   useRepositoriesRegisterRepository,
@@ -65,7 +75,8 @@ export function Component() {
     );
   };
 
-  const handleDelete = (repoId: string) => {
+  const handleDelete = (repoId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     deleteMutation.mutate(
       { repoId },
       {
@@ -80,10 +91,17 @@ export function Component() {
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>Repositories</Title>
-        <Button onClick={open}>Register Repository</Button>
+        <Group gap="xs">
+          <Title order={2}>Repositories</Title>
+          {repos && repos.length > 0 && (
+            <Badge variant="light" size="lg">{repos.length}</Badge>
+          )}
+        </Group>
+        <Button leftSection={<IconPlus size={16} />} onClick={open}>
+          Register Repository
+        </Button>
       </Group>
 
       {!repos || repos.length === 0 ? (
@@ -94,39 +112,61 @@ export function Component() {
           onAction={open}
         />
       ) : (
-        <Table striped highlightOnHover>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>URL</Table.Th>
-              <Table.Th>Branch</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th />
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {repos.map((r, i) => (
-              <Table.Tr key={i} style={{ cursor: 'pointer' }} onClick={() => void navigate(`/repositories/${String(r.repo_id ?? '')}`)}>
-                <Table.Td>{String(r.name ?? '')}</Table.Td>
-                <Table.Td>{String(r.url ?? '')}</Table.Td>
-                <Table.Td>{String(r.default_branch ?? 'main')}</Table.Td>
-                <Table.Td>
-                  <StatusBadge status={String(r.status ?? 'active')} />
-                </Table.Td>
-                <Table.Td>
-                  <Button
-                    size="xs"
-                    color="red"
-                    variant="subtle"
-                    onClick={() => handleDelete(String(r.repo_id ?? ''))}
-                  >
-                    Delete
-                  </Button>
-                </Table.Td>
+        <Paper withBorder radius="md" style={{ overflow: 'hidden' }}>
+          <Table highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Repository</Table.Th>
+                <Table.Th>Branch</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th w={60} />
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {repos.map((r, i) => (
+                <Table.Tr
+                  key={i}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => void navigate(`/repositories/${String(r.repo_id ?? '')}`)}
+                >
+                  <Table.Td>
+                    <Group gap="sm" wrap="nowrap">
+                      <ThemeIcon variant="light" color="gray" size="md" radius="md">
+                        <IconFolder size={16} />
+                      </ThemeIcon>
+                      <Box>
+                        <Text size="sm" fw={500}>{String(r.name ?? '')}</Text>
+                        <Text size="xs" c="dimmed" ff="monospace" truncate>
+                          {String(r.url ?? '')}
+                        </Text>
+                      </Box>
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge variant="outline" size="sm" color="gray" leftSection={<IconGitBranch size={10} />}>
+                      {String(r.default_branch ?? 'main')}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <StatusBadge status={String(r.status ?? 'active')} />
+                  </Table.Td>
+                  <Table.Td>
+                    <Tooltip label="Remove repository">
+                      <ActionIcon
+                        color="red"
+                        variant="subtle"
+                        size="sm"
+                        onClick={(e) => handleDelete(String(r.repo_id ?? ''), e)}
+                      >
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Paper>
       )}
 
       <Modal opened={opened} onClose={close} title="Register Repository">
