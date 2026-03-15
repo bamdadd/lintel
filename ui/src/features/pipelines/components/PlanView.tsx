@@ -101,7 +101,7 @@ export function PlanView({ plan: rawPlan }: PlanViewProps) {
         </Timeline>
       )}
 
-      <Paper p="xs" bg="var(--mantine-color-dark-7)" radius="sm">
+      <Paper p="xs" bg="var(--mantine-color-body)" radius="sm" withBorder>
         <Text size="xs" c="dimmed">
           {tasks.length} task{tasks.length !== 1 ? 's' : ''}
           {tasks.some((t) => t.complexity) && (
