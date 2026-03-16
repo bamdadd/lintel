@@ -8,12 +8,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from lintel.contracts.protocols.artifact_store import ArtifactRef, ArtifactStore
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
     from uuid import UUID
 
     from lintel.contracts.events import EventEnvelope
+
+__all__ = [
+    "ArtifactRef",
+    "ArtifactStore",
+    "CommandDispatcher",
+    "EventBus",
+    "EventHandler",
+    "EventStore",
+]
 
 
 class EventHandler(Protocol):

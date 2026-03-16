@@ -8,6 +8,7 @@ from lintel.contracts.concurrency import (
     SlotReleasedEvent,
 )
 from lintel.contracts.inbound_message import InboundMessage
+from lintel.contracts.protocols.artifact_store import ArtifactRef, ArtifactStore
 from lintel.contracts.step_models import (
     NodeType,
     ProjectStepModelOverride,
@@ -22,6 +23,8 @@ from lintel.contracts.work_queue import (
 
 __all__ = [
     "AgentQueuedEvent",
+    "ArtifactRef",
+    "ArtifactStore",
     "ChannelAdapter",
     "ChannelType",
     "ConcurrencyState",

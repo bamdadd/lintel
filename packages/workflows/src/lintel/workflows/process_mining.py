@@ -554,7 +554,7 @@ async def classify_flows_node(
         flow["flow_type"] = flow_type
         classified.setdefault(flow_type, []).append(flow)
 
-    summary = {k: len(v) for k, v in classified.items()}
+    summary: dict[str, object] = {k: len(v) for k, v in classified.items()}
     await tracker.append_log("classify_flows", f"Classified flows: {summary}")
     await tracker.mark_completed("classify_flows", outputs=dict(summary))
 

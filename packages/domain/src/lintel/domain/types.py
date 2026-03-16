@@ -231,6 +231,10 @@ class CodeArtifact:
     path: str = ""
     content: str = ""
     metadata: dict[str, object] | None = None
+    storage_backend: str = "postgres"  # 'postgres' or 's3'
+    storage_location: str | None = None
+    size_bytes: int | None = None
+    content_type: str | None = None
 
 
 class TestVerdict(StrEnum):
