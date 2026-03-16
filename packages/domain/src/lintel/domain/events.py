@@ -155,6 +155,24 @@ class TestRunCompleted(EventEnvelope):
     event_type: str = "TestRunCompleted"
 
 
+# --- Artifact Parsing Events (REQ-010) ---
+
+
+@dataclass(frozen=True)
+class TestResultsParsed(EventEnvelope):
+    event_type: str = "TestResultsParsed"
+
+
+@dataclass(frozen=True)
+class CoverageMeasured(EventEnvelope):
+    event_type: str = "CoverageMeasured"
+
+
+@dataclass(frozen=True)
+class QualityGateEvaluated(EventEnvelope):
+    event_type: str = "QualityGateEvaluated"
+
+
 # --- Approval Events ---
 
 
@@ -755,6 +773,9 @@ register_events(
     AutomationCancelled,
     ArtifactStored,
     TestRunCompleted,
+    TestResultsParsed,
+    CoverageMeasured,
+    QualityGateEvaluated,
     ApprovalRequested,
     ApprovalExpired,
     ApprovalRequestCreated,

@@ -1,0 +1,42 @@
+{
+  "created": 1705312200.0,
+  "duration": 1.5,
+  "exitcode": 1,
+  "root": "/project",
+  "tests": [
+    {
+      "nodeid": "tests/test_math.py::test_add",
+      "outcome": "passed",
+      "duration": 0.01
+    },
+    {
+      "nodeid": "tests/test_math.py::test_subtract",
+      "outcome": "passed",
+      "duration": 0.008
+    },
+    {
+      "nodeid": "tests/test_math.py::test_divide",
+      "outcome": "failed",
+      "duration": 0.015,
+      "call": {
+        "longrepr": "AssertionError: assert 3 == 2"
+      }
+    },
+    {
+      "nodeid": "tests/test_strings.py::test_concat",
+      "outcome": "passed",
+      "duration": 0.005
+    },
+    {
+      "nodeid": "tests/test_strings.py::test_split",
+      "outcome": "skipped",
+      "duration": 0.001
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 1,
+    "skipped": 1,
+    "total": 5
+  }
+}

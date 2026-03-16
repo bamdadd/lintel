@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="com.example.MathTest" tests="4" failures="1" errors="0" skipped="1" time="0.123">
+    <testcase name="test_addition" classname="com.example.MathTest" time="0.010"/>
+    <testcase name="test_subtraction" classname="com.example.MathTest" time="0.008"/>
+    <testcase name="test_division" classname="com.example.MathTest" time="0.015">
+      <failure message="AssertionError: expected 2 but got 3">
+        java.lang.AssertionError: expected 2 but got 3
+          at com.example.MathTest.test_division(MathTest.java:25)
+      </failure>
+    </testcase>
+    <testcase name="test_multiply" classname="com.example.MathTest" time="0.000">
+      <skipped message="Not implemented yet"/>
+    </testcase>
+  </testsuite>
+  <testsuite name="com.example.StringTest" tests="2" failures="0" errors="1" time="0.050">
+    <testcase name="test_concat" classname="com.example.StringTest" time="0.020"/>
+    <testcase name="test_split" classname="com.example.StringTest" time="0.030">
+      <error message="NullPointerException">
+        java.lang.NullPointerException
+          at com.example.StringTest.test_split(StringTest.java:15)
+      </error>
+    </testcase>
+  </testsuite>
+</testsuites>
