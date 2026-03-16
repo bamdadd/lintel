@@ -222,35 +222,33 @@ async def classify_integrations_node(
     seen: set[tuple[str, str, str, int]] = set()
     classified: list[dict[str, Any]] = []
 
+    from lintel.skills_api.integration_scanning.build_dependency_graph import (
+        _SCANNER_TYPE_MAP,
+        _extract_target,
+        _infer_service_name,
+    )
+
     for scanner_name, results in scan_results.items():
         if not isinstance(results, list):
             continue
+
+        integration_type, default_protocol = _SCANNER_TYPE_MAP.get(
+            scanner_name, ("sync", "unknown"),
+        )
+
         for result in results:
             source_file: str = result.get("source_file", "")
             line_number: int = result.get("line_number", 0)
 
-            # Resolve service name from directory structure
-            parts = source_file.replace("\\", "/").split("/")
-            source_service = parts[-2] if len(parts) >= 2 else (parts[0] if parts else "unknown")
+            source_service = _infer_service_name(source_file)
+            if source_service is None:
+                continue
 
-            # Determine target from scanner-specific keys
-            target: str | None = None
-            for key in (
-                "target_service_hint",
-                "pattern_type",
-                "db_type",
-                "storage_type",
-                "service_name",
-            ):
-                val = result.get(key)
-                if val:
-                    target = str(val)
-                    break
-
+            target = _extract_target(result)
             if target is None:
                 continue
 
-            protocol: str = result.get("protocol", "unknown")
+            protocol: str = result.get("protocol", default_protocol)
 
             dedup_key = (source_file, target, protocol, line_number)
             if dedup_key in seen:
@@ -262,6 +260,7 @@ async def classify_integrations_node(
                     "source_service": source_service,
                     "target_service": target,
                     "protocol": protocol,
+                    "integration_type": integration_type,
                     "source_file": source_file,
                     "line_number": line_number,
                     "scanner": scanner_name,
@@ -402,8 +401,6 @@ async def persist_results_node(
     raw_patterns = state.get("patterns") or []
     raw_antipatterns = state.get("antipatterns") or []
     raw_coupling = state.get("coupling_scores") or []
-    classified_edges = state.get("classified_edges") or []
-
     # 1. Create the integration map
     integration_map = IntegrationMap(
         map_id=map_id,
@@ -498,8 +495,8 @@ async def persist_results_node(
                 score_id=uuid4().hex,
                 integration_map_id=map_id,
                 service_node_id=node_id_map.get(sname, sname),
-                afferent_coupling=cs.get("afferent", 0) if isinstance(cs, dict) else 0,
-                efferent_coupling=cs.get("efferent", 0) if isinstance(cs, dict) else 0,
+                afferent_coupling=cs.get("afferent_coupling", 0) if isinstance(cs, dict) else 0,
+                efferent_coupling=cs.get("efferent_coupling", 0) if isinstance(cs, dict) else 0,
                 instability=cs.get("instability", 0.0) if isinstance(cs, dict) else 0.0,
                 computed_at=now,
             )
