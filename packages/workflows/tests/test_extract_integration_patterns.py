@@ -6,11 +6,7 @@ and mocked dependencies (StageTracker, scanners, etc.).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 from lintel.workflows.extract_integration_patterns import (
     IntegrationPatternState,
@@ -29,6 +25,7 @@ def _make_state(**overrides: object) -> IntegrationPatternState:
         "repo_path": "/tmp/test-repo",
         "integration_map_id": "",
         "scan_results": {},
+        "resilience_index": {},
         "classified_edges": [],
         "graph_data": {},
         "patterns": [],
@@ -59,15 +56,9 @@ def _mock_stage_tracker() -> MagicMock:
 # ---------------------------------------------------------------------------
 
 
-async def test_scan_repo_node_collects_files(tmp_path: Path) -> None:
-    """Mock the repo directory with known .py files and verify scan_results is populated."""
-    # Create real files so os.walk finds them
-    svc_dir = tmp_path / "service_a"
-    svc_dir.mkdir()
-    py_file = svc_dir / "main.py"
-    py_file.write_text('import requests\nrequests.get("http://example.com/api")\n')
-
-    state = _make_state(repo_path=str(tmp_path))
+async def test_scan_repo_node_no_sandbox_returns_failed() -> None:
+    """Without a sandbox, scan_repo_node should return failed status."""
+    state = _make_state(repo_path="/tmp/test-repo")
     config = _make_config()
 
     with patch(
@@ -76,13 +67,9 @@ async def test_scan_repo_node_collects_files(tmp_path: Path) -> None:
     ):
         result = await scan_repo_node(state, config)
 
-    assert "scan_results" in result
-    scan_results = result["scan_results"]
-    # At least the sync scanner should have found the requests.get call
-    assert isinstance(scan_results, dict)
-    total_matches = sum(len(v) for v in scan_results.values() if isinstance(v, list))
-    assert total_matches >= 1
-    assert result["status"] == "scanned"
+    assert result["status"] == "failed"
+    assert result["scan_results"] == {}
+    assert len(result["errors"]) >= 1
 
 
 # ---------------------------------------------------------------------------
@@ -131,14 +118,14 @@ async def test_build_graph_node_computes_coupling() -> None:
         "sync_integrations": [
             {
                 "source_file": "/repo/service_a/main.py",
-                "target_service_hint": "requests",
+                "target_service_hint": "payment_api",
                 "protocol": "http",
                 "line_number": 10,
                 "match_text": "requests.get(",
             },
             {
                 "source_file": "/repo/service_b/main.py",
-                "target_service_hint": "httpx",
+                "target_service_hint": "order_api",
                 "protocol": "http",
                 "line_number": 5,
                 "match_text": "httpx.AsyncClient(",
@@ -184,12 +171,20 @@ async def test_detect_antipatterns_node_finds_issues() -> None:
     # Build a graph with tight coupling: one service has efferent > threshold
     nodes = [{"name": "svc_chatty"}, {"name": "target_a"}, {"name": "target_b"}]
     edges = [
-        {"source": "svc_chatty", "target": "target_a", "protocol": "http"},
-        {"source": "svc_chatty", "target": "target_a", "protocol": "http"},
-        {"source": "svc_chatty", "target": "target_a", "protocol": "http"},
-        {"source": "svc_chatty", "target": "target_a", "protocol": "http"},
-        {"source": "svc_chatty", "target": "target_b", "protocol": "http"},
-        {"source": "svc_chatty", "target": "target_b", "protocol": "http"},
+        {
+            "source": "svc_chatty",
+            "target": "target_a",
+            "protocol": "http",
+            "integration_type": "sync",
+            "call_count": 4,
+        },
+        {
+            "source": "svc_chatty",
+            "target": "target_b",
+            "protocol": "http",
+            "integration_type": "sync",
+            "call_count": 2,
+        },
     ]
     coupling_scores = [
         {
@@ -239,14 +234,14 @@ async def test_detect_antipatterns_node_finds_issues() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_persist_results_node_sets_complete() -> None:
-    """Provide full state and verify status becomes 'completed'."""
+async def test_persist_results_node_no_store_returns_failed() -> None:
+    """Without a store, persist_results_node should return failed status."""
     state = _make_state(
         repository_id="repo-42",
         integration_map_id="map-1",
         graph_data={"nodes": [{"name": "a"}], "edges": [], "coupling_scores": []},
         classified_edges=[{"source_service": "a", "target_service": "b"}],
-        patterns=[{"type": "normal"}],
+        patterns=[{"pattern_type": "event_driven", "pattern_name": "Event-Driven"}],
         antipatterns=[{"antipattern_type": "tight_coupling"}],
         coupling_scores=[{"service": "a", "efferent_coupling": 10}],
     )
@@ -258,7 +253,37 @@ async def test_persist_results_node_sets_complete() -> None:
     ):
         result = await persist_results_node(state, config)
 
+    # No store configured → fails gracefully
+    assert result["status"] == "failed"
+
+
+async def test_persist_results_node_with_store() -> None:
+    """With a mock store, persist_results_node should return 'completed'."""
+    state = _make_state(
+        repository_id="repo-42",
+        integration_map_id="map-1",
+        graph_data={"nodes": [{"name": "a"}], "edges": [], "coupling_scores": []},
+        classified_edges=[{"source_service": "a", "target_service": "b"}],
+        patterns=[{"pattern_type": "event_driven", "pattern_name": "Event-Driven"}],
+        antipatterns=[{"antipattern_type": "tight_coupling", "severity": "high"}],
+        coupling_scores=[{"service": "a", "efferent_coupling": 10}],
+    )
+
+    mock_store = AsyncMock()
+    mock_app_state = MagicMock()
+    mock_app_state.integration_pattern_store = mock_store
+
+    config: dict = {"configurable": {"thread_id": "test-thread", "app_state": mock_app_state}}
+
+    with patch(
+        "lintel.workflows.nodes._stage_tracking.StageTracker",
+        return_value=_mock_stage_tracker(),
+    ):
+        result = await persist_results_node(state, config)
+
     assert result["status"] == "completed"
+    mock_store.create_map.assert_called_once()
+    mock_store.add_nodes.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

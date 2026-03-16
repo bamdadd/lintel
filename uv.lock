@@ -43,6 +43,7 @@ members = [
     "lintel-pii",
     "lintel-pipelines-api",
     "lintel-policies-api",
+    "lintel-process-mining-api",
     "lintel-projections",
     "lintel-projects-api",
     "lintel-repos",
@@ -1644,6 +1645,7 @@ dependencies = [
     { name = "lintel-pii" },
     { name = "lintel-pipelines-api" },
     { name = "lintel-policies-api" },
+    { name = "lintel-process-mining-api" },
     { name = "lintel-projections" },
     { name = "lintel-projects-api" },
     { name = "lintel-repos" },
@@ -1708,6 +1710,7 @@ requires-dist = [
     { name = "lintel-pii", editable = "packages/pii" },
     { name = "lintel-pipelines-api", editable = "packages/pipelines-api" },
     { name = "lintel-policies-api", editable = "packages/policies-api" },
+    { name = "lintel-process-mining-api", editable = "packages/process-mining-api" },
     { name = "lintel-projections", editable = "packages/projections" },
     { name = "lintel-projects-api", editable = "packages/projects-api" },
     { name = "lintel-repos", editable = "packages/repos" },
@@ -2446,6 +2449,29 @@ requires-dist = [
 name = "lintel-policies-api"
 version = "0.1.0"
 source = { editable = "packages/policies-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-process-mining-api"
+version = "0.1.0"
+source = { editable = "packages/process-mining-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },

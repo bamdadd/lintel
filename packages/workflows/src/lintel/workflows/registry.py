@@ -268,6 +268,7 @@ WORKFLOW_BUILDERS: dict[str, Any] = {
     "onboarding": build_onboarding_graph,
     "spike": build_spike_graph,
     "extract_integration_patterns": None,  # uses dedicated module
+    "process_mining": None,  # uses dedicated module
 }
 
 
@@ -284,6 +285,11 @@ def get_workflow_builder(definition_id: str) -> Callable[[], StateGraph[Any]]:
         )
 
         return build_extract_integration_patterns_graph
+
+    if definition_id == "process_mining":
+        from lintel.workflows.process_mining import build_process_mining_graph
+
+        return build_process_mining_graph
 
     builder = WORKFLOW_BUILDERS.get(definition_id)
     if builder is None:

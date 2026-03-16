@@ -272,6 +272,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.pipeline_store = stores["pipeline_store"]
     app.state.credential_store = stores["credential_store"]
     app.state.integration_pattern_store = stores["integration_patterns"]
+    app.state.process_mining_store = stores["process_mining"]
     app.state.container = container
 
     import asyncio

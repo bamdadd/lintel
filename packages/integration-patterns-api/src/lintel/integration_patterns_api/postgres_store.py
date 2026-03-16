@@ -70,8 +70,7 @@ class PostgresIntegrationPatternStore:
         async with self._pool.acquire() as conn:  # type: ignore[no-untyped-call]
             rows = await conn.fetch(query, *params)
             return [
-                json.loads(r["data"]) if isinstance(r["data"], str) else r["data"]
-                for r in rows
+                json.loads(r["data"]) if isinstance(r["data"], str) else r["data"] for r in rows
             ]
 
     # --- Integration maps ---

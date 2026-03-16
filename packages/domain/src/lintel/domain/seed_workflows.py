@@ -990,4 +990,114 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         tags=("integration", "architecture", "analysis"),
         is_builtin=True,
     ),
+    WorkflowDefinitionRecord(
+        definition_id="process_mining",
+        name="Process Mining",
+        description=(
+            "Discover and map data/process flows in a repository: HTTP request paths, "
+            "event sourcing chains, command dispatch, background jobs, and external integrations. "
+            "Produces individual Mermaid diagrams per flow type."
+        ),
+        is_template=True,
+        stage_names=(
+            "ingest",
+            "setup_workspace",
+            "discover_endpoints",
+            "trace_flows",
+            "classify_flows",
+            "generate_diagrams",
+            "persist_results",
+        ),
+        graph_nodes=(
+            "ingest",
+            "setup_workspace",
+            "discover_endpoints",
+            "trace_flows",
+            "classify_flows",
+            "generate_diagrams",
+            "persist_results",
+            "error",
+        ),
+        graph_edges=(
+            ("ingest", "setup_workspace"),
+            ("setup_workspace", "discover_endpoints"),
+            ("trace_flows", "classify_flows"),
+            ("classify_flows", "generate_diagrams"),
+            ("generate_diagrams", "persist_results"),
+        ),
+        conditional_edges=(
+            {
+                "source": "discover_endpoints",
+                "targets": {
+                    "continue": "trace_flows",
+                    "error": "error",
+                },
+            },
+        ),
+        entry_point="ingest",
+        node_metadata=(
+            {
+                "node": "ingest",
+                "label": "Ingest",
+                "agent": "system",
+                "description": "Processes the incoming request and resolves trigger context.",
+            },
+            {
+                "node": "setup_workspace",
+                "label": "Setup Workspace",
+                "agent": "system",
+                "description": "Clones the repository into a sandbox for analysis.",
+            },
+            {
+                "node": "discover_endpoints",
+                "label": "Discover Endpoints",
+                "agent": "researcher",
+                "agent_id": "agent_researcher",
+                "description": (
+                    "Scans source files for HTTP routes, event handlers, "
+                    "command handlers, and background jobs."
+                ),
+            },
+            {
+                "node": "trace_flows",
+                "label": "Trace Flows",
+                "agent": "researcher",
+                "agent_id": "agent_researcher",
+                "description": (
+                    "Traces each endpoint through middleware, services, stores, and sinks."
+                ),
+            },
+            {
+                "node": "classify_flows",
+                "label": "Classify Flows",
+                "agent": "architect",
+                "agent_id": "agent_architect",
+                "description": (
+                    "Categorises flows by type: HTTP, event sourcing, "
+                    "command dispatch, background, external."
+                ),
+            },
+            {
+                "node": "generate_diagrams",
+                "label": "Generate Diagrams",
+                "agent": "architect",
+                "agent_id": "agent_architect",
+                "description": ("Generates individual Mermaid sequence diagrams per flow type."),
+            },
+            {
+                "node": "persist_results",
+                "label": "Persist Results",
+                "agent": "system",
+                "description": "Saves flow maps, diagrams, and metrics to the store.",
+            },
+            {
+                "node": "error",
+                "label": "Error",
+                "agent": "system",
+                "description": "Handles errors from the discovery phase.",
+            },
+        ),
+        tags=("process-mining", "data-flow", "analysis"),
+        is_builtin=True,
+    ),
 )

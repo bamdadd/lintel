@@ -242,6 +242,11 @@ export const router = createBrowserRouter([
           import('@/features/integration-patterns/pages/IntegrationPatternsPage'),
       },
       {
+        path: 'process-mining',
+        lazy: () =>
+          import('@/features/process-mining/pages/ProcessMiningPage'),
+      },
+      {
         path: 'debug',
         lazy: () => import('@/features/debug/pages/DebugPage'),
       },

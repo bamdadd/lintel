@@ -62,6 +62,8 @@ from lintel.notifications_api.store import NotificationRuleStore
 from lintel.pipelines_api.routes import InMemoryPipelineStore, pipeline_store_provider
 from lintel.policies_api.routes import policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
+from lintel.process_mining_api.routes import process_mining_store_provider
+from lintel.process_mining_api.store import InMemoryProcessMiningStore
 from lintel.projects_api.routes import project_store_provider
 from lintel.projects_api.store import ProjectStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
@@ -126,6 +128,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "tag_store": TagStore(),
         "board_store": BoardStore(),
         "integration_patterns": InMemoryIntegrationPatternStore(),
+        "process_mining": InMemoryProcessMiningStore(),
         "workflow_definition_store": InMemoryWorkflowDefinitionStore(),
         # Compliance & Governance stores
         "regulation_store": ComplianceStore("regulation_id"),
@@ -181,6 +184,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     )
     from lintel.persistence.stores import (
         PostgresTagStore as _PgTagStore,
+    )
+    from lintel.process_mining_api.postgres_store import (
+        PostgresProcessMiningStore as _PgProcessMiningStore,
     )
     from lintel.workflow_definitions_api.store import PostgresWorkflowDefinitionStore
 
@@ -310,6 +316,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
         "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
         "integration_patterns": _PgIntegrationPatternStore(pool),
+        "process_mining": _PgProcessMiningStore(pool),
         "workflow_definition_store": PostgresWorkflowDefinitionStore(pool),
     }
 
@@ -358,6 +365,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     experiment_store_provider.override(stores["experiment_store"])
     compliance_metric_store_provider.override(stores["compliance_metric_store"])
     integration_pattern_store_provider.override(stores["integration_patterns"])
+    process_mining_store_provider.override(stores["process_mining"])
     workflow_definition_store_provider.override(stores["workflow_definition_store"])
 
 

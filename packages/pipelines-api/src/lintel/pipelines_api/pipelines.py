@@ -1,9 +1,9 @@
 """Pipeline-level route handlers: create, list, get, cancel, delete."""
 
 import asyncio
-import logging
 from dataclasses import asdict
 from datetime import UTC, datetime
+import logging
 from typing import Any
 import uuid
 
@@ -104,9 +104,7 @@ async def create_pipeline(
                         for rid in repo_ids[1:]:
                             extra = await repo_store.get(rid)
                             if extra is not None:
-                                u = (
-                                    extra.url if hasattr(extra, "url") else extra.get("url", "")
-                                )
+                                u = extra.url if hasattr(extra, "url") else extra.get("url", "")
                                 if u:
                                     all_urls.append(u)
                         repo_urls = tuple(all_urls)

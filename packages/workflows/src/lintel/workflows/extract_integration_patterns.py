@@ -9,19 +9,24 @@ the results.
 from __future__ import annotations
 
 import os
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
-from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 import structlog
 
+if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
+
 from lintel.skills_api.integration_scanning import (
     build_dependency_graph,
+    build_file_resilience_index,
+    classify_architectural_patterns,
     detect_antipatterns,
     scan_async_integrations,
     scan_db_integrations,
     scan_external_api_calls,
     scan_file_blob_integrations,
+    scan_resilience_patterns,
     scan_sync_integrations,
 )
 
@@ -56,6 +61,7 @@ class IntegrationPatternState(TypedDict):
     repository_id: str
     integration_map_id: str
     scan_results: dict[str, Any]
+    resilience_index: dict[str, dict[str, bool]]
     classified_edges: list[dict[str, Any]]
     graph_data: dict[str, Any]  # nodes, edges, coupling_scores
     patterns: list[dict[str, Any]]
@@ -109,7 +115,17 @@ async def scan_repo_node(
         find_result = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
-                command=f"find {workspace_path} -name '*.py' -not -path '*/__pycache__/*' -not -path '*/.venv/*'",
+                command=(
+                    f"find {workspace_path} -name '*.py'"
+                    " -not -path '*/__pycache__/*'"
+                    " -not -path '*/.venv/*'"
+                    " -not -path '*/tests/*'"
+                    " -not -path '*/test/*'"
+                    " -not -path '*/fixtures/*'"
+                    " -not -path '*/benchmarks/*'"
+                    " -not -path '*/examples/*'"
+                    " -not -path '*/node_modules/*'"
+                ),
                 workdir="/",
                 timeout_seconds=30,
             ),
@@ -143,15 +159,19 @@ async def scan_repo_node(
         # Extract tar to local tmpdir
         import subprocess
 
-        proc = subprocess.run(  # noqa: S603
-            ["tar", "xf", "-", "-C", local_tmpdir],  # noqa: S607
-            input=tar_result.stdout.encode() if isinstance(tar_result.stdout, str) else tar_result.stdout,
+        proc = subprocess.run(
+            ["tar", "xf", "-", "-C", local_tmpdir],
+            input=(
+                tar_result.stdout.encode()
+                if isinstance(tar_result.stdout, str)
+                else tar_result.stdout
+            ),
             capture_output=True,
             timeout=30,
         )
         if proc.returncode != 0:
             # Fallback: read files individually
-            raise RuntimeError(f"tar extract failed: {proc.stderr[:200]}")  # noqa: TRY301
+            raise RuntimeError(f"tar extract failed: {proc.stderr[:200]}")
 
         # Collect local paths
         for root, _dirs, files in os.walk(local_tmpdir):
@@ -178,6 +198,15 @@ async def scan_repo_node(
 
     await tracker.append_log("scan_repo", f"Downloaded {len(local_files)} files for scanning.")
 
+    # Filter out scanner definition files (they contain pattern strings, not usage)
+    local_files = [
+        f
+        for f in local_files
+        if "/integration_scanning/scan_" not in f
+        and "/integration_scanning/detect_" not in f
+        and "/integration_scanning/classify_" not in f
+    ]
+
     # --- Run scanners --------------------------------------------------------
     scan_results: dict[str, list[dict[str, Any]]] = {}
     scanner_map = {
@@ -186,6 +215,7 @@ async def scan_repo_node(
         "db_integrations": scan_db_integrations,
         "file_blob_integrations": scan_file_blob_integrations,
         "external_api_calls": scan_external_api_calls,
+        "resilience_patterns": scan_resilience_patterns,
     }
 
     for key, scanner_fn in scanner_map.items():
@@ -196,16 +226,30 @@ async def scan_repo_node(
             errors.append(f"Scanner '{key}' failed: {exc}")
             scan_results[key] = []
 
+    # Build per-file resilience index
+    resilience_index = build_file_resilience_index(scan_results.get("resilience_patterns", []))
+
     # Cleanup temp dir
     import shutil
 
     shutil.rmtree(local_tmpdir, ignore_errors=True)
 
     total_matches = sum(len(v) for v in scan_results.values())
-    await tracker.append_log("scan_repo", f"Scanners produced {total_matches} raw matches.")
+    resilience_count = len(scan_results.get("resilience_patterns", []))
+    await tracker.append_log(
+        "scan_repo",
+        f"Scanners produced {total_matches} raw matches "
+        f"({resilience_count} resilience patterns in "
+        f"{len(resilience_index)} files).",
+    )
     await tracker.mark_completed("scan_repo", outputs={"total_matches": total_matches})
 
-    return {"scan_results": scan_results, "errors": errors, "status": "scanned"}
+    return {
+        "scan_results": scan_results,
+        "resilience_index": resilience_index,
+        "errors": errors,
+        "status": "scanned",
+    }
 
 
 async def classify_integrations_node(
@@ -228,12 +272,18 @@ async def classify_integrations_node(
         _infer_service_name,
     )
 
+    resilience_index = state.get("resilience_index") or {}
+
     for scanner_name, results in scan_results.items():
         if not isinstance(results, list):
             continue
+        # Skip resilience scanner — it enriches, not produces edges
+        if scanner_name == "resilience_patterns":
+            continue
 
         integration_type, default_protocol = _SCANNER_TYPE_MAP.get(
-            scanner_name, ("sync", "unknown"),
+            scanner_name,
+            ("sync", "unknown"),
         )
 
         for result in results:
@@ -255,6 +305,9 @@ async def classify_integrations_node(
                 continue
             seen.add(dedup_key)
 
+            # Merge resilience info from file-level index
+            file_res = resilience_index.get(source_file, {})
+
             classified.append(
                 {
                     "source_service": source_service,
@@ -264,7 +317,12 @@ async def classify_integrations_node(
                     "source_file": source_file,
                     "line_number": line_number,
                     "scanner": scanner_name,
-                    "has_retry": result.get("has_retry", False),
+                    "has_retry": file_res.get("has_retry", False),
+                    "has_circuit_breaker": file_res.get("has_circuit_breaker", False),
+                    "has_timeout": (
+                        file_res.get("has_timeout", False) or result.get("has_timeout", False)
+                    ),
+                    "has_connection_pool": result.get("has_connection_pool", False),
                 }
             )
 
@@ -291,8 +349,12 @@ async def build_graph_node(
     await tracker.mark_running("build_graph")
 
     scan_results: dict[str, Any] = state.get("scan_results") or {}
+    resilience_index = state.get("resilience_index") or {}
 
-    graph_data: dict[str, Any] = await build_dependency_graph(scan_results)
+    graph_data: dict[str, Any] = await build_dependency_graph(
+        scan_results,
+        resilience_index=resilience_index,
+    )
 
     nodes = graph_data.get("nodes", [])
     edges = graph_data.get("edges", [])
@@ -322,7 +384,7 @@ async def detect_antipatterns_node(
     state: IntegrationPatternState,
     config: RunnableConfig,
 ) -> dict[str, Any]:
-    """Detect architectural antipatterns from the dependency graph."""
+    """Detect architectural antipatterns and classify named patterns."""
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)
@@ -332,27 +394,34 @@ async def detect_antipatterns_node(
     nodes = graph_data.get("nodes", [])
     edges = graph_data.get("edges", [])
     coupling_scores: list[dict[str, Any]] = state.get("coupling_scores") or []
+    resilience_index = state.get("resilience_index") or {}
 
+    # Detect antipatterns (now with resilience awareness)
     antipatterns: list[dict[str, Any]] = await detect_antipatterns(
         nodes=nodes,
         edges=edges,
         coupling_scores=coupling_scores,
+        resilience_index=resilience_index,
     )
 
-    # Separate patterns (normal edges) from antipatterns
-    patterns: list[dict[str, Any]] = [
-        edge
-        for edge in edges
-        if not any(edge.get("source") in (ap.get("affected_nodes") or []) for ap in antipatterns)
-    ]
+    # Classify named architectural patterns
+    patterns: list[dict[str, Any]] = await classify_architectural_patterns(
+        nodes=nodes,
+        edges=edges,
+        coupling_scores=coupling_scores,
+        resilience_index=resilience_index,
+    )
 
     await tracker.append_log(
         "detect_antipatterns",
-        f"Found {len(antipatterns)} antipatterns, {len(patterns)} clean patterns.",
+        f"Found {len(antipatterns)} antipatterns, {len(patterns)} architectural patterns.",
     )
     await tracker.mark_completed(
         "detect_antipatterns",
-        outputs={"antipattern_count": len(antipatterns)},
+        outputs={
+            "antipattern_count": len(antipatterns),
+            "pattern_count": len(patterns),
+        },
     )
 
     return {
@@ -452,35 +521,45 @@ async def persist_results_node(
     if edges:
         await store.add_edges(edges)
 
-    # 4. Persist pattern catalogue entries
-    pattern_counts: dict[str, int] = {}
+    # 4. Persist pattern catalogue entries (real architectural patterns)
+    patterns: list[PatternCatalogueEntry] = []
     for p in raw_patterns:
-        proto = p.get("protocol", "unknown") if isinstance(p, dict) else "unknown"
-        pattern_counts[proto] = pattern_counts.get(proto, 0) + 1
-    patterns: list[PatternCatalogueEntry] = [
-        PatternCatalogueEntry(
-            entry_id=uuid4().hex,
-            integration_map_id=map_id,
-            pattern_type=ptype,
-            pattern_name=ptype,
-            occurrences=count,
+        if not isinstance(p, dict):
+            continue
+        patterns.append(
+            PatternCatalogueEntry(
+                entry_id=uuid4().hex,
+                integration_map_id=map_id,
+                pattern_type=p.get("pattern_type", "unknown"),
+                pattern_name=p.get("pattern_name", "Unknown"),
+                occurrences=len(p.get("affected_services", [])),
+                details={
+                    "confidence": p.get("confidence", 0),
+                    "description": p.get("description", ""),
+                    "affected_services": p.get("affected_services", []),
+                    **(p.get("details") or {}),
+                },
+            )
         )
-        for ptype, count in pattern_counts.items()
-    ]
     if patterns:
         await store.add_patterns(patterns)
 
     # 5. Persist antipattern detections
     detections: list[AntipatternDetection] = []
     for ap in raw_antipatterns:
+        if not isinstance(ap, dict):
+            continue
         detections.append(
             AntipatternDetection(
                 detection_id=uuid4().hex,
                 integration_map_id=map_id,
-                antipattern_type=ap.get("type", "unknown") if isinstance(ap, dict) else "unknown",
-                severity=ap.get("severity", "medium") if isinstance(ap, dict) else "medium",
-                affected_nodes=ap.get("affected_nodes", []) if isinstance(ap, dict) else [],
-                description=ap.get("description", "") if isinstance(ap, dict) else "",
+                antipattern_type=ap.get("antipattern_type", "unknown"),
+                severity=ap.get("severity", "medium"),
+                affected_nodes=ap.get("affected_nodes", []),
+                description=(
+                    ap.get("description", "")
+                    + ("\n\nRemediation: " + ap["remediation"] if ap.get("remediation") else "")
+                ),
             )
         )
     if detections:
@@ -489,16 +568,23 @@ async def persist_results_node(
     # 6. Persist coupling scores
     scores: list[ServiceCouplingScore] = []
     for cs in raw_coupling:
-        sname = cs.get("service", "") if isinstance(cs, dict) else ""
+        if not isinstance(cs, dict):
+            continue
+        sname = cs.get("service", "")
         scores.append(
             ServiceCouplingScore(
                 score_id=uuid4().hex,
                 integration_map_id=map_id,
                 service_node_id=node_id_map.get(sname, sname),
-                afferent_coupling=cs.get("afferent_coupling", 0) if isinstance(cs, dict) else 0,
-                efferent_coupling=cs.get("efferent_coupling", 0) if isinstance(cs, dict) else 0,
-                instability=cs.get("instability", 0.0) if isinstance(cs, dict) else 0.0,
+                afferent_coupling=cs.get("afferent_coupling", 0),
+                efferent_coupling=cs.get("efferent_coupling", 0),
+                instability=cs.get("instability", 0.0),
                 computed_at=now,
+                service_name=sname,
+                weighted_afferent=cs.get("weighted_afferent", 0.0),
+                weighted_efferent=cs.get("weighted_efferent", 0.0),
+                weighted_instability=cs.get("weighted_instability", 0.0),
+                resilience_score=cs.get("resilience_score", 1.0),
             )
         )
     if scores:

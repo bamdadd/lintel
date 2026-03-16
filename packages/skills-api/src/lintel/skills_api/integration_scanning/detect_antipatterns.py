@@ -20,6 +20,7 @@ async def detect_antipatterns(
     *,
     efferent_threshold: int = _DEFAULT_EFFERENT_THRESHOLD,
     chatty_edge_threshold: int = _DEFAULT_CHATTY_EDGE_THRESHOLD,
+    resilience_index: dict[str, dict[str, bool]] | None = None,
 ) -> list[dict]:
     """Detect architectural antipatterns in a service dependency graph.
 
@@ -82,7 +83,7 @@ async def detect_antipatterns(
     # --- (c) Chatty interface -------------------------------------------------
     pair_counts: dict[tuple[str, str], int] = defaultdict(int)
     for edge in edges:
-        pair_counts[(edge["source"], edge["target"])] += 1
+        pair_counts[(edge["source"], edge["target"])] += edge.get("call_count", 1)
 
     for (source, target), count in pair_counts.items():
         if count > chatty_edge_threshold:

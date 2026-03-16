@@ -19,9 +19,7 @@ from lintel.workflows.events import (
 
 router = APIRouter()
 
-workflow_definition_store_provider: StoreProvider[InMemoryWorkflowDefinitionStore] = (
-    StoreProvider()
-)
+workflow_definition_store_provider: StoreProvider[InMemoryWorkflowDefinitionStore] = StoreProvider()
 
 
 def _wf_to_dict(wf: object) -> dict[str, Any]:
@@ -59,20 +57,20 @@ _seeded_stores: set[int] = set()
 
 
 async def _ensure_seeded(store: InMemoryWorkflowDefinitionStore) -> None:
-    """Seed builtin workflow definitions if the store is empty."""
+    """Seed builtin workflow definitions, adding any missing builtins."""
     store_id = id(store)
     if store_id in _seeded_stores:
         return
-    existing = await store.list_all()
-    if existing:
-        _seeded_stores.add(store_id)
-        return
     from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
 
+    existing = await store.list_all()
+    existing_ids = {e["definition_id"] for e in existing} if existing else set()
+
     for wf in DEFAULT_WORKFLOW_DEFINITIONS:
-        d = _wf_to_dict(wf)
-        d.setdefault("enabled", True)
-        await store.put(wf.definition_id, d)
+        if wf.definition_id not in existing_ids:
+            d = _wf_to_dict(wf)
+            d.setdefault("enabled", True)
+            await store.put(wf.definition_id, d)
     _seeded_stores.add(store_id)
 
 

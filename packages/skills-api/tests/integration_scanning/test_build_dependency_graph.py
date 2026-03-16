@@ -33,7 +33,7 @@ async def test_builds_nodes_from_scan_results() -> None:
     node_names = {n["name"] for n in graph["nodes"]}
     assert "order_service" in node_names
     assert "payment_api" in node_names
-    assert "sqlalchemy" in node_names
+    assert "PostgreSQL" in node_names  # sqlalchemy normalised to PostgreSQL
     assert len(graph["edges"]) == 2
 
 

@@ -76,3 +76,8 @@ class ServiceCouplingScore:
     efferent_coupling: int
     instability: float
     computed_at: str
+    service_name: str = ""
+    weighted_afferent: float = 0.0
+    weighted_efferent: float = 0.0
+    weighted_instability: float = 0.0
+    resilience_score: float = 1.0
