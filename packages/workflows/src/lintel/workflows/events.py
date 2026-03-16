@@ -82,6 +82,11 @@ class PipelineStageRetried(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class PipelineStageTimedOut(EventEnvelope):
+    event_type: str = "PipelineStageTimedOut"
+
+
+@dataclass(frozen=True)
 class StageReportEdited(EventEnvelope):
     event_type: str = "StageReportEdited"
 
@@ -141,6 +146,7 @@ register_events(
     PipelineStageApproved,
     PipelineStageRejected,
     PipelineStageRetried,
+    PipelineStageTimedOut,
     StageReportEdited,
     StageReportRegenerated,
     WorkflowDefinitionCreated,
