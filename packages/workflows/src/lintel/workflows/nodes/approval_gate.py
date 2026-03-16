@@ -54,3 +54,7 @@ async def approval_gate(
 
     await tracker.mark_completed(node_name)
     return {"pending_approvals": existing}
+
+
+# Alias for backward-compatible imports (e.g. from __init__.py __getattr__)
+ApprovalGateNode = approval_gate
