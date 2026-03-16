@@ -69,7 +69,7 @@ async def _dispatch_inbound_message(
         inbound.text,
         model_policy=model_policy,
         api_base=api_base,
-        enabled_workflows=svc.get_enabled_workflows(),
+        enabled_workflows=await svc.get_enabled_workflows(),
     )
 
     reply = await svc.handle_classified_message(

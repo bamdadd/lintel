@@ -23,7 +23,9 @@ if TYPE_CHECKING:
 
 router = APIRouter()
 
-integration_pattern_store_provider: StoreProvider[InMemoryIntegrationPatternStore] = StoreProvider()
+integration_pattern_store_provider: StoreProvider[InMemoryIntegrationPatternStore] = (
+    StoreProvider()
+)
 
 
 # --- Request models ---

@@ -78,7 +78,7 @@ async def send_message_stream(
                     body.message,
                     model_policy=model_policy,
                     api_base=api_base,
-                    enabled_workflows=svc.get_enabled_workflows(),
+                    enabled_workflows=await svc.get_enabled_workflows(),
                 )
                 if result.action == "start_workflow":
                     workflow_dispatched = True

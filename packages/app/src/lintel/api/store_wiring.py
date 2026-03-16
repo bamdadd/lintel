@@ -79,6 +79,8 @@ from lintel.variables_api.routes import variable_store_provider
 from lintel.variables_api.store import InMemoryVariableStore
 from lintel.work_items_api.routes import work_item_store_provider
 from lintel.work_items_api.store import WorkItemStore
+from lintel.workflow_definitions_api.routes import workflow_definition_store_provider
+from lintel.workflow_definitions_api.store import InMemoryWorkflowDefinitionStore
 
 
 def _dc_to_dict(obj: Any) -> dict[str, Any]:  # noqa: ANN401
@@ -124,6 +126,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "tag_store": TagStore(),
         "board_store": BoardStore(),
         "integration_patterns": InMemoryIntegrationPatternStore(),
+        "workflow_definition_store": InMemoryWorkflowDefinitionStore(),
         # Compliance & Governance stores
         "regulation_store": ComplianceStore("regulation_id"),
         "compliance_policy_store": ComplianceStore("policy_id"),
@@ -142,6 +145,9 @@ def create_in_memory_stores() -> dict[str, Any]:
 def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     """Create all Postgres-backed stores."""
     from lintel.event_store.postgres import PostgresEventStore
+    from lintel.integration_patterns_api.postgres_store import (
+        PostgresIntegrationPatternStore as _PgIntegrationPatternStore,
+    )
     from lintel.persistence.dict_store import PostgresComplianceStore as PgCompliance
     from lintel.persistence.stores import (
         PostgresAgentDefinitionStore,
@@ -176,6 +182,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     from lintel.persistence.stores import (
         PostgresTagStore as _PgTagStore,
     )
+    from lintel.workflow_definitions_api.store import PostgresWorkflowDefinitionStore
 
     class _BoardStoreAdapter:
         """Adapt PostgresCrudStore (dataclass) to dict-based interface used by routes."""
@@ -302,7 +309,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "knowledge_entry_store": PgCompliance(pool, "knowledge_entry", "entry_id"),
         "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
         "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
-        "integration_patterns": InMemoryIntegrationPatternStore(),
+        "integration_patterns": _PgIntegrationPatternStore(pool),
+        "workflow_definition_store": PostgresWorkflowDefinitionStore(pool),
     }
 
 
@@ -350,6 +358,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     experiment_store_provider.override(stores["experiment_store"])
     compliance_metric_store_provider.override(stores["compliance_metric_store"])
     integration_pattern_store_provider.override(stores["integration_patterns"])
+    workflow_definition_store_provider.override(stores["workflow_definition_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

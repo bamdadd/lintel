@@ -5,10 +5,12 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.api_support.provider import StoreProvider
+from lintel.workflow_definitions_api.store import InMemoryWorkflowDefinitionStore
 from lintel.workflows.events import (
     WorkflowDefinitionCreated,
     WorkflowDefinitionRemoved,
@@ -16,6 +18,10 @@ from lintel.workflows.events import (
 )
 
 router = APIRouter()
+
+workflow_definition_store_provider: StoreProvider[InMemoryWorkflowDefinitionStore] = (
+    StoreProvider()
+)
 
 
 def _wf_to_dict(wf: object) -> dict[str, Any]:
@@ -49,19 +55,25 @@ def _wf_to_dict(wf: object) -> dict[str, Any]:
     }
 
 
-def get_workflow_defs(request: Request) -> dict[str, dict[str, Any]]:
-    """Get workflow definitions store from app state."""
-    if not hasattr(request.app.state, "workflow_definitions"):
-        from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
+_seeded_stores: set[int] = set()
 
-        defs: dict[str, dict[str, Any]] = {}
-        for wf in DEFAULT_WORKFLOW_DEFINITIONS:
-            d = _wf_to_dict(wf)
-            # Enable all builtin workflows by default
-            d.setdefault("enabled", True)
-            defs[wf.definition_id] = d
-        request.app.state.workflow_definitions = defs
-    return request.app.state.workflow_definitions  # type: ignore[no-any-return]
+
+async def _ensure_seeded(store: InMemoryWorkflowDefinitionStore) -> None:
+    """Seed builtin workflow definitions if the store is empty."""
+    store_id = id(store)
+    if store_id in _seeded_stores:
+        return
+    existing = await store.list_all()
+    if existing:
+        _seeded_stores.add(store_id)
+        return
+    from lintel.domain.seed import DEFAULT_WORKFLOW_DEFINITIONS
+
+    for wf in DEFAULT_WORKFLOW_DEFINITIONS:
+        d = _wf_to_dict(wf)
+        d.setdefault("enabled", True)
+        await store.put(wf.definition_id, d)
+    _seeded_stores.add(store_id)
 
 
 class CreateWorkflowDefRequest(BaseModel):
@@ -82,11 +94,16 @@ class UpdateWorkflowDefRequest(BaseModel):
 
 @router.post("/workflow-definitions", status_code=201)
 async def create_workflow_definition(
-    body: CreateWorkflowDefRequest, request: Request
+    body: CreateWorkflowDefRequest,
+    request: Request,
+    store: InMemoryWorkflowDefinitionStore = Depends(  # noqa: B008
+        workflow_definition_store_provider
+    ),
 ) -> dict[str, Any]:
     """Create a new workflow definition."""
-    defs = get_workflow_defs(request)
-    if body.definition_id in defs:
+    await _ensure_seeded(store)
+    existing = await store.get(body.definition_id)
+    if existing is not None:
         raise HTTPException(status_code=409, detail="Definition already exists")
     now = datetime.now(UTC).isoformat()
     entry: dict[str, Any] = {
@@ -98,7 +115,7 @@ async def create_workflow_definition(
         "created_at": now,
         "updated_at": now,
     }
-    defs[body.definition_id] = entry
+    await store.put(body.definition_id, entry)
     await dispatch_event(
         request,
         WorkflowDefinitionCreated(payload={"resource_id": body.definition_id}),
@@ -109,39 +126,60 @@ async def create_workflow_definition(
 
 @router.get("/workflow-definitions")
 async def list_workflow_definitions(
-    request: Request,
+    store: InMemoryWorkflowDefinitionStore = Depends(  # noqa: B008
+        workflow_definition_store_provider
+    ),
 ) -> list[dict[str, Any]]:
     """List all workflow definitions and templates."""
-    return list(get_workflow_defs(request).values())
+    await _ensure_seeded(store)
+    return await store.list_all()
 
 
 @router.get("/workflow-definitions/templates")
-async def list_templates(request: Request) -> list[dict[str, Any]]:
+async def list_templates(
+    store: InMemoryWorkflowDefinitionStore = Depends(  # noqa: B008
+        workflow_definition_store_provider
+    ),
+) -> list[dict[str, Any]]:
     """List only workflow templates."""
-    return [d for d in get_workflow_defs(request).values() if d.get("is_template")]
+    await _ensure_seeded(store)
+    all_defs = await store.list_all()
+    return [d for d in all_defs if d.get("is_template")]
 
 
 @router.get("/workflow-definitions/{definition_id}")
-async def get_workflow_definition(definition_id: str, request: Request) -> dict[str, Any]:
+async def get_workflow_definition(
+    definition_id: str,
+    store: InMemoryWorkflowDefinitionStore = Depends(  # noqa: B008
+        workflow_definition_store_provider
+    ),
+) -> dict[str, Any]:
     """Get a specific workflow definition."""
-    defs = get_workflow_defs(request)
-    if definition_id not in defs:
+    await _ensure_seeded(store)
+    entry = await store.get(definition_id)
+    if entry is None:
         raise HTTPException(status_code=404, detail="Definition not found")
-    return defs[definition_id]
+    return entry
 
 
 @router.put("/workflow-definitions/{definition_id}")
 async def update_workflow_definition(
-    definition_id: str, body: UpdateWorkflowDefRequest, request: Request
+    definition_id: str,
+    body: UpdateWorkflowDefRequest,
+    request: Request,
+    store: InMemoryWorkflowDefinitionStore = Depends(  # noqa: B008
+        workflow_definition_store_provider
+    ),
 ) -> dict[str, Any]:
     """Update a workflow definition (save graph JSON)."""
-    defs = get_workflow_defs(request)
-    if definition_id not in defs:
+    await _ensure_seeded(store)
+    entry = await store.get(definition_id)
+    if entry is None:
         raise HTTPException(status_code=404, detail="Definition not found")
-    entry = defs[definition_id]
     for key, value in body.model_dump(exclude_none=True).items():
         entry[key] = value
     entry["updated_at"] = datetime.now(UTC).isoformat()
+    await store.put(definition_id, entry)
     await dispatch_event(
         request,
         WorkflowDefinitionUpdated(payload={"resource_id": definition_id}),
@@ -151,14 +189,21 @@ async def update_workflow_definition(
 
 
 @router.patch("/workflow-definitions/{definition_id}/toggle")
-async def toggle_workflow_definition(definition_id: str, request: Request) -> dict[str, Any]:
+async def toggle_workflow_definition(
+    definition_id: str,
+    request: Request,
+    store: InMemoryWorkflowDefinitionStore = Depends(  # noqa: B008
+        workflow_definition_store_provider
+    ),
+) -> dict[str, Any]:
     """Toggle the enabled state of a workflow definition."""
-    defs = get_workflow_defs(request)
-    if definition_id not in defs:
+    await _ensure_seeded(store)
+    entry = await store.get(definition_id)
+    if entry is None:
         raise HTTPException(status_code=404, detail="Definition not found")
-    entry = defs[definition_id]
     entry["enabled"] = not entry.get("enabled", True)
     entry["updated_at"] = datetime.now(UTC).isoformat()
+    await store.put(definition_id, entry)
     await dispatch_event(
         request,
         WorkflowDefinitionUpdated(payload={"resource_id": definition_id}),
@@ -168,12 +213,19 @@ async def toggle_workflow_definition(definition_id: str, request: Request) -> di
 
 
 @router.delete("/workflow-definitions/{definition_id}", status_code=204)
-async def delete_workflow_definition(definition_id: str, request: Request) -> None:
+async def delete_workflow_definition(
+    definition_id: str,
+    request: Request,
+    store: InMemoryWorkflowDefinitionStore = Depends(  # noqa: B008
+        workflow_definition_store_provider
+    ),
+) -> None:
     """Delete a workflow definition."""
-    defs = get_workflow_defs(request)
-    if definition_id not in defs:
+    await _ensure_seeded(store)
+    entry = await store.get(definition_id)
+    if entry is None:
         raise HTTPException(status_code=404, detail="Definition not found")
-    del defs[definition_id]
+    await store.remove(definition_id)
     await dispatch_event(
         request,
         WorkflowDefinitionRemoved(payload={"resource_id": definition_id}),

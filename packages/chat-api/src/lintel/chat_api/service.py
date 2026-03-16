@@ -383,19 +383,20 @@ class ChatService:
             stream_id=f"conversation:{conversation_id}",
         )
 
-    def get_enabled_workflows(self) -> set[str]:
+    async def get_enabled_workflows(self) -> set[str]:
         """Return set of enabled workflow definition IDs."""
-        from lintel.workflow_definitions_api.routes import get_workflow_defs
+        from lintel.workflow_definitions_api.routes import workflow_definition_store_provider
 
-        defs = get_workflow_defs(self._request)
-        return {k for k, v in defs.items() if v.get("enabled", True)}
+        store = workflow_definition_store_provider.get()
+        defs = await store.list_all()
+        return {d["definition_id"] for d in defs if d.get("enabled", True)}
 
-    def is_workflow_enabled(self, workflow_type: str) -> bool:
+    async def is_workflow_enabled(self, workflow_type: str) -> bool:
         """Check if a workflow definition is enabled."""
-        from lintel.workflow_definitions_api.routes import get_workflow_defs
+        from lintel.workflow_definitions_api.routes import workflow_definition_store_provider
 
-        defs = get_workflow_defs(self._request)
-        wf = defs.get(workflow_type)
+        store = workflow_definition_store_provider.get()
+        wf = await store.get(workflow_type)
         if wf is None:
             return False
         return bool(wf.get("enabled", True))
@@ -436,7 +437,7 @@ class ChatService:
 
         if result.action == "start_workflow":
             # Check if the workflow is enabled
-            workflow_enabled = self.is_workflow_enabled(result.workflow_type)
+            workflow_enabled = await self.is_workflow_enabled(result.workflow_type)
             if not workflow_enabled:
                 logger.info(
                     "workflow_disabled_fallback_to_chat",

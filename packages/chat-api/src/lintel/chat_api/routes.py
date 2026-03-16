@@ -115,7 +115,7 @@ async def create_conversation(
         body.message,
         model_policy=model_policy,
         api_base=api_base,
-        enabled_workflows=svc.get_enabled_workflows(),
+        enabled_workflows=await svc.get_enabled_workflows(),
     )
 
     await svc.handle_classified_message(
@@ -241,7 +241,7 @@ async def send_message(
         body.message,
         model_policy=model_policy,
         api_base=api_base,
-        enabled_workflows=svc.get_enabled_workflows(),
+        enabled_workflows=await svc.get_enabled_workflows(),
     )
 
     await svc.handle_classified_message(
