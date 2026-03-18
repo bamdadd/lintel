@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Pre-Commit Rule
+
+**Before every commit**, run `make lint` and `make typecheck` and fix any errors. Do not commit code that fails linting or type checking.
+
 ## Project Overview
 
 Lintel is an open-source AI collaboration infrastructure platform. It orchestrates multi-agent workflows triggered from Slack threads, using event sourcing and CQRS patterns. Built with Python 3.12+, FastAPI, LangGraph, and PostgreSQL.

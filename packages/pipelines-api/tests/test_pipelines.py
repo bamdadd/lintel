@@ -97,7 +97,7 @@ class TestPipelinesAPI:
         data = resp.json()
         assert data["status"] == "cancelled"
         skipped = [s for s in data["stages"] if s["status"] == "skipped"]
-        assert len(skipped) == 11  # all pending stages get skipped
+        assert len(skipped) == 9  # 9 of 11 pending stages get skipped (ingest+route auto-start)
 
     def test_delete_pipeline(self, client: TestClient) -> None:
         _create_pipeline(client, "run1")
@@ -126,13 +126,12 @@ class TestPipelinesAPI:
 
         asyncio.get_event_loop().run_until_complete(_fail_stage())
 
-        # When no suspended session exists, retry marks the stage as failed
+        # Retry resets the stage to running
         resp = client.post(f"/api/v1/pipelines/retry-run/stages/{stage_id}/retry")
         assert resp.status_code == 200
         result = resp.json()
-        assert result["status"] == "failed"
+        assert result["status"] == "running"
         assert result["retry_count"] == 1
-        assert "session expired" in result["error"].lower()
 
     def test_retry_stage_rejects_pending(self, client: TestClient) -> None:
         data = _create_pipeline(client, "retry-pending")
@@ -255,7 +254,7 @@ class TestPipelinesAPI:
     def test_edit_report_rejects_pending_stage(self, client: TestClient) -> None:
         """Cannot edit a pending stage report."""
         data = _create_pipeline(client, "edit-pending")
-        stage_id = data["stages"][1]["stage_id"]
+        stage_id = data["stages"][5]["stage_id"]  # use a later stage that stays pending
         resp = client.patch(
             f"/api/v1/pipelines/edit-pending/stages/{stage_id}/report",
             json={"content": "nope"},
@@ -348,7 +347,7 @@ class TestPipelinesAPI:
     def test_regenerate_rejects_pending(self, client: TestClient) -> None:
         """Cannot regenerate a pending stage."""
         data = _create_pipeline(client, "regen-bad")
-        stage_id = data["stages"][1]["stage_id"]
+        stage_id = data["stages"][5]["stage_id"]  # use a later stage that stays pending
         resp = client.post(
             f"/api/v1/pipelines/regen-bad/stages/{stage_id}/regenerate",
             json={},

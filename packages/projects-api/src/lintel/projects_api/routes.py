@@ -20,6 +20,7 @@ project_store_provider = StoreProvider()
 class CreateProjectRequest(BaseModel):
     project_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
+    description: str = ""
     repo_ids: list[str] = []
     default_branch: str = "main"
     credential_ids: list[str] = []
@@ -28,6 +29,7 @@ class CreateProjectRequest(BaseModel):
 
 class UpdateProjectRequest(BaseModel):
     name: str | None = None
+    description: str | None = None
     repo_ids: list[str] | None = None
     default_branch: str | None = None
     credential_ids: list[str] | None = None
@@ -52,6 +54,7 @@ async def create_project(
     project = Project(
         project_id=body.project_id,
         name=body.name,
+        description=body.description,
         repo_ids=tuple(body.repo_ids),
         default_branch=body.default_branch,
         credential_ids=tuple(body.credential_ids),

@@ -679,3 +679,149 @@ class TestArchitectureDecisionsAPI:
         data = resp.json()
         assert data["counts"]["architecture_decisions"] == 1
         assert len(data["architecture_decisions"]) == 1
+
+
+# ======================== POLICY GENERATION ========================
+
+
+class TestPolicyGenerationAPI:
+    def test_trigger_policy_generation(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/regulations",
+            json={"regulation_id": "reg-gen-1", "project_id": "proj-1", "name": "ISO 27001"},
+        )
+        resp = client.post(
+            "/api/v1/compliance/generate-policies",
+            json={
+                "run_id": "gen-1",
+                "project_id": "proj-1",
+                "regulation_ids": ["reg-gen-1"],
+                "industry_context": "it",
+                "additional_context": "We are a SaaS platform handling customer data.",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["run_id"] == "gen-1"
+        assert data["project_id"] == "proj-1"
+        assert data["status"] == "pending"
+        assert data["industry_context"] == "it"
+        assert "reg-gen-1" in data["regulation_ids"]
+
+    def test_trigger_requires_regulation_ids(self, client: TestClient) -> None:
+        _create_project(client)
+        resp = client.post(
+            "/api/v1/compliance/generate-policies",
+            json={
+                "project_id": "proj-1",
+                "regulation_ids": [],
+            },
+        )
+        assert resp.status_code == 400
+
+    def test_trigger_validates_industry_context(self, client: TestClient) -> None:
+        _create_project(client)
+        resp = client.post(
+            "/api/v1/compliance/generate-policies",
+            json={
+                "project_id": "proj-1",
+                "regulation_ids": ["reg-1"],
+                "industry_context": "invalid",
+            },
+        )
+        assert resp.status_code == 400
+
+    def test_duplicate_generation_run_returns_409(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/regulations",
+            json={"regulation_id": "reg-dup-gen", "project_id": "proj-1", "name": "SOC 2"},
+        )
+        client.post(
+            "/api/v1/compliance/generate-policies",
+            json={
+                "run_id": "gen-dup",
+                "project_id": "proj-1",
+                "regulation_ids": ["reg-dup-gen"],
+            },
+        )
+        resp = client.post(
+            "/api/v1/compliance/generate-policies",
+            json={
+                "run_id": "gen-dup",
+                "project_id": "proj-1",
+                "regulation_ids": ["reg-dup-gen"],
+            },
+        )
+        assert resp.status_code == 409
+
+    def test_list_policy_generations(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/compliance/generate-policies",
+            json={
+                "run_id": "gen-list-1",
+                "project_id": "proj-1",
+                "regulation_ids": ["reg-1"],
+            },
+        )
+        resp = client.get("/api/v1/compliance/policy-generations")
+        assert resp.status_code == 200
+        assert len(resp.json()) >= 1
+
+    def test_list_policy_generations_by_project(self, client: TestClient) -> None:
+        _create_project(client, "proj-a")
+        _create_project(client, "proj-b")
+        client.post(
+            "/api/v1/compliance/generate-policies",
+            json={"run_id": "gen-a", "project_id": "proj-a", "regulation_ids": ["r1"]},
+        )
+        client.post(
+            "/api/v1/compliance/generate-policies",
+            json={"run_id": "gen-b", "project_id": "proj-b", "regulation_ids": ["r2"]},
+        )
+        resp = client.get("/api/v1/compliance/policy-generations?project_id=proj-a")
+        assert resp.status_code == 200
+        items = resp.json()
+        assert len(items) == 1
+        assert items[0]["project_id"] == "proj-a"
+
+    def test_get_policy_generation(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/compliance/generate-policies",
+            json={"run_id": "gen-get", "project_id": "proj-1", "regulation_ids": ["r1"]},
+        )
+        resp = client.get("/api/v1/compliance/policy-generations/gen-get")
+        assert resp.status_code == 200
+        assert resp.json()["run_id"] == "gen-get"
+
+    def test_get_policy_generation_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/compliance/policy-generations/nonexistent")
+        assert resp.status_code == 404
+
+    def test_update_policy_generation(self, client: TestClient) -> None:
+        _create_project(client)
+        client.post(
+            "/api/v1/compliance/generate-policies",
+            json={"run_id": "gen-upd", "project_id": "proj-1", "regulation_ids": ["r1"]},
+        )
+        resp = client.patch(
+            "/api/v1/compliance/policy-generations/gen-upd",
+            json={
+                "status": "completed",
+                "generated_policy_ids": ["pol-1", "pol-2"],
+                "assumptions": ["Data retention set to 7 years per SOX"],
+                "questions": ["Do you handle PCI card data?"],
+                "action_items": ["Confirm encryption standard with security team"],
+                "summary": "Generated 2 policies from ISO 27001",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "completed"
+        assert "pol-1" in data["generated_policy_ids"]
+        assert len(data["assumptions"]) == 1
+        assert len(data["questions"]) == 1
+        assert len(data["action_items"]) == 1

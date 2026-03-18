@@ -89,6 +89,28 @@ class TestProjectsAPI:
         assert resp.status_code == 200
         assert resp.json()["repo_ids"] == ["repo-a", "repo-b", "repo-c"]
 
+    def test_create_project_with_description(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/projects",
+            json={
+                "project_id": "p-desc",
+                "name": "Described Project",
+                "description": "A SaaS platform for healthcare compliance.",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["description"] == "A SaaS platform for healthcare compliance."
+
+    def test_update_project_description(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.patch(
+            "/api/v1/projects/p1",
+            json={"description": "Updated description for the project."},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["description"] == "Updated description for the project."
+
     def test_delete_project(self, client: TestClient) -> None:
         _create_project(client, "p1")
         resp = client.delete("/api/v1/projects/p1")

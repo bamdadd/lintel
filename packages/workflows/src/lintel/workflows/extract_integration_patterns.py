@@ -575,7 +575,7 @@ async def persist_results_node(
             ServiceCouplingScore(
                 score_id=uuid4().hex,
                 integration_map_id=map_id,
-                service_node_id=node_id_map.get(sname, sname),
+                service_node_id=node_id_map.get(sname, sname) or sname,
                 afferent_coupling=cs.get("afferent_coupling", 0),
                 efferent_coupling=cs.get("efferent_coupling", 0),
                 instability=cs.get("instability", 0.0),
@@ -655,14 +655,14 @@ def build_extract_integration_patterns_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(IntegrationPatternState)
 
     # Nodes
-    g.add_node("ingest", ingest_message)  # type: ignore  # langgraph overloads
-    g.add_node("setup_workspace", setup_workspace)  # type: ignore
-    g.add_node("scan_repo", scan_repo_node)  # type: ignore
-    g.add_node("classify_integrations", classify_integrations_node)  # type: ignore
-    g.add_node("build_graph", build_graph_node)  # type: ignore
-    g.add_node("detect_antipatterns", detect_antipatterns_node)  # type: ignore
-    g.add_node("persist_results", persist_results_node)  # type: ignore
-    g.add_node("error", error_node)  # type: ignore
+    g.add_node("ingest", ingest_message)
+    g.add_node("setup_workspace", setup_workspace)
+    g.add_node("scan_repo", scan_repo_node)
+    g.add_node("classify_integrations", classify_integrations_node)
+    g.add_node("build_graph", build_graph_node)
+    g.add_node("detect_antipatterns", detect_antipatterns_node)
+    g.add_node("persist_results", persist_results_node)
+    g.add_node("error", error_node)
 
     # Entry
     g.set_entry_point("ingest")
