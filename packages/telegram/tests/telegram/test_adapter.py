@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -34,9 +34,9 @@ class TestTelegramChannelAdapter:
             thread_ts="12345",
             channel_type=ChannelType.TELEGRAM,
         )
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.raise_for_status = lambda: None
+        mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {"ok": True, "result": {"message_id": 1}}
 
         with patch("httpx.AsyncClient") as mock_client_cls:
@@ -57,9 +57,9 @@ class TestTelegramChannelAdapter:
             thread_ts="12345",
             channel_type=ChannelType.TELEGRAM,
         )
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.raise_for_status = lambda: None
+        mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {"ok": True, "result": {"message_id": 2}}
 
         with patch("httpx.AsyncClient") as mock_client_cls:
