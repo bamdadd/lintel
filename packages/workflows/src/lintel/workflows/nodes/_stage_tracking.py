@@ -205,7 +205,7 @@ class StageTracker:
                 logger.warning("on_failure_hook_error", node_name=node_name)
         elif not error and self._on_success is not None:
             try:
-                await self._on_success(node_name, outputs)
+                await self._on_success(node_name, dict(outputs) if outputs else None)
             except Exception:
                 logger.warning("on_success_hook_error", node_name=node_name)
 
@@ -282,7 +282,7 @@ class StageTracker:
                         stage_type=s.stage_type,
                         status=StageStatus(status),
                         inputs=s.inputs,
-                        outputs=outputs if outputs is not None else s.outputs,
+                        outputs=dict(outputs) if outputs is not None else s.outputs,
                         error=error or s.error,
                         duration_ms=s.duration_ms,
                         started_at=s.started_at,
