@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from lintel.domain.types import AuditEntry
+if TYPE_CHECKING:
+    from lintel.domain.types import AuditEntry
 from lintel.workflows.regulation_to_policy import (
     _check_phase,
     _parse_json_response,
@@ -18,7 +19,7 @@ from lintel.workflows.regulation_to_policy import (
 )
 
 
-def _make_state(**overrides: Any) -> dict[str, Any]:
+def _make_state(**overrides: Any) -> dict[str, Any]:  # noqa: ANN401
     base: dict[str, Any] = {
         "thread_ref": "ws/ch/ts",
         "correlation_id": "corr-1",
@@ -68,7 +69,7 @@ class _FakeApprovalStore:
     def __init__(self) -> None:
         self.requests: list[Any] = []
 
-    async def add(self, approval: Any) -> None:
+    async def add(self, approval: Any) -> None:  # noqa: ANN401
         self.requests.append(approval)
 
 
@@ -273,9 +274,21 @@ class TestFinalisePolicies:
                         "procedures": [
                             {"name": "Test Proc", "policy_name": "Test Policy", "steps": ["Step 1"]}
                         ],
-                        "assumptions": [{"assumption": "AES-256 default", "basis": "Industry std", "confidence": "high"}],
-                        "questions": [{"question": "Do you handle PCI?", "impact": "Scope", "priority": "high"}],
-                        "action_items": [{"action": "Confirm with security", "priority": "high", "owner_suggestion": "CISO"}],
+                        "assumptions": [{
+                            "assumption": "AES-256 default",
+                            "basis": "Industry std",
+                            "confidence": "high",
+                        }],
+                        "questions": [{
+                            "question": "Do you handle PCI?",
+                            "impact": "Scope",
+                            "priority": "high",
+                        }],
+                        "action_items": [{
+                            "action": "Confirm with security",
+                            "priority": "high",
+                            "owner_suggestion": "CISO",
+                        }],
                         "summary": "Generated 1 policy",
                     },
                 }
@@ -377,11 +390,11 @@ class TestAuditTrail:
         proc_entries: list[dict[str, Any]] = []
 
         class FakePolicyStore:
-            async def add(self, policy: Any) -> None:
+            async def add(self, policy: Any) -> None:  # noqa: ANN401
                 policy_entries.append({"id": policy.policy_id})
 
         class FakeProcedureStore:
-            async def add(self, proc: Any) -> None:
+            async def add(self, proc: Any) -> None:  # noqa: ANN401
                 proc_entries.append({"id": proc.procedure_id})
 
         class FakeAppState:
