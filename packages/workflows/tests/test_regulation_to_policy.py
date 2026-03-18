@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from lintel.domain.types import AuditEntry
 from lintel.workflows.regulation_to_policy import (
     _check_phase,
     _parse_json_response,
     _resolve_project_description,
     analyse_regulation,
+    approval_gate_policies,
     build_regulation_to_policy_graph,
     finalise_policies,
     gather_context,
@@ -48,6 +50,26 @@ def _make_state(**overrides: Any) -> dict[str, Any]:
     }
     base.update(overrides)
     return base
+
+
+class _FakeAuditStore:
+    """Collects audit entries for test assertions."""
+
+    def __init__(self) -> None:
+        self.entries: list[AuditEntry] = []
+
+    async def add(self, entry: AuditEntry) -> None:
+        self.entries.append(entry)
+
+
+class _FakeApprovalStore:
+    """Collects approval requests for test assertions."""
+
+    def __init__(self) -> None:
+        self.requests: list[Any] = []
+
+    async def add(self, approval: Any) -> None:
+        self.requests.append(approval)
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +286,138 @@ class TestFinalisePolicies:
         summary = result["agent_outputs"][0]["summary"]
         assert "1 assumptions" in summary or "assumptions" in summary
         assert "1 questions" in summary or "questions" in summary
+
+
+# ---------------------------------------------------------------------------
+# Approval gate
+# ---------------------------------------------------------------------------
+
+
+class TestApprovalGatePolicies:
+    async def test_creates_approval_request_when_store_available(self) -> None:
+        approval_store = _FakeApprovalStore()
+        audit_store = _FakeAuditStore()
+
+        class FakeAppState:
+            approval_request_store = approval_store
+            audit_entry_store = audit_store
+
+        config = {"configurable": {"app_state": FakeAppState()}}
+        state = _make_state(
+            agent_outputs=[
+                {
+                    "node": "generate_policies",
+                    "generated": {
+                        "policies": [{"name": "P1"}],
+                        "questions": [{"question": "Q1"}],
+                        "assumptions": [{"assumption": "A1"}],
+                    },
+                }
+            ],
+        )
+        result = await approval_gate_policies(state, config=config)
+
+        assert result["current_phase"] == "awaiting_approval"
+        assert len(approval_store.requests) == 1
+        assert approval_store.requests[0].gate_type == "policy_review"
+        assert approval_store.requests[0].run_id == "run-1"
+        assert len(result["pending_approvals"]) == 1
+        assert result["pending_approvals"][0]["policies_pending"] == 1
+
+    async def test_emits_audit_entry(self) -> None:
+        audit_store = _FakeAuditStore()
+
+        class FakeAppState:
+            audit_entry_store = audit_store
+
+        config = {"configurable": {"app_state": FakeAppState()}}
+        state = _make_state(
+            agent_outputs=[
+                {
+                    "node": "generate_policies",
+                    "generated": {"policies": [{"name": "P1"}], "questions": [], "assumptions": []},
+                }
+            ],
+        )
+        await approval_gate_policies(state, config=config)
+
+        assert len(audit_store.entries) == 1
+        assert audit_store.entries[0].action == "approval_requested"
+        assert audit_store.entries[0].resource_type == "policy_generation_run"
+
+    async def test_works_without_stores(self) -> None:
+        state = _make_state(agent_outputs=[])
+        result = await approval_gate_policies(state, config=None)
+        assert result["current_phase"] == "awaiting_approval"
+
+
+# ---------------------------------------------------------------------------
+# Audit trail integration
+# ---------------------------------------------------------------------------
+
+
+class TestAuditTrail:
+    async def test_gather_context_emits_audit(self) -> None:
+        audit_store = _FakeAuditStore()
+
+        class FakeAppState:
+            audit_entry_store = audit_store
+
+        config = {"configurable": {"app_state": FakeAppState()}}
+        state = _make_state()
+        await gather_context(state, config=config)
+
+        assert len(audit_store.entries) == 1
+        assert audit_store.entries[0].action == "gather_context_completed"
+        assert audit_store.entries[0].resource_id == "run-1"
+
+    async def test_finalise_emits_per_policy_audit(self) -> None:
+        audit_store = _FakeAuditStore()
+        policy_entries: list[dict[str, Any]] = []
+        proc_entries: list[dict[str, Any]] = []
+
+        class FakePolicyStore:
+            async def add(self, policy: Any) -> None:
+                policy_entries.append({"id": policy.policy_id})
+
+        class FakeProcedureStore:
+            async def add(self, proc: Any) -> None:
+                proc_entries.append({"id": proc.procedure_id})
+
+        class FakeAppState:
+            audit_entry_store = audit_store
+            compliance_policy_store = FakePolicyStore()
+            procedure_store = FakeProcedureStore()
+
+        config = {"configurable": {"app_state": FakeAppState()}}
+        state = _make_state(
+            agent_outputs=[
+                {
+                    "node": "generate_policies",
+                    "generated": {
+                        "policies": [
+                            {"name": "Policy A", "description": "D", "risk_level": "high"},
+                            {"name": "Policy B", "description": "D", "risk_level": "low"},
+                        ],
+                        "procedures": [
+                            {"name": "Proc A", "policy_name": "Policy A", "steps": ["S1"]},
+                        ],
+                        "assumptions": [],
+                        "questions": [],
+                        "action_items": [],
+                        "summary": "Test",
+                    },
+                }
+            ],
+        )
+        await finalise_policies(state, config=config)
+
+        # 2 policies + 1 procedure + 1 summary = 4 audit entries
+        assert len(audit_store.entries) == 4
+        actions = [e.action for e in audit_store.entries]
+        assert actions.count("compliance_policy_created") == 2
+        assert actions.count("procedure_created") == 1
+        assert actions.count("finalise_completed") == 1
 
 
 # ---------------------------------------------------------------------------

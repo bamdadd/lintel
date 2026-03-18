@@ -34,6 +34,7 @@ from uuid import uuid4
 from langgraph.graph import END, StateGraph
 import structlog
 
+from lintel.workflows.nodes._event_helpers import AuditEmitter
 from lintel.workflows.state import ThreadWorkflowState
 
 if TYPE_CHECKING:
@@ -42,6 +43,20 @@ if TYPE_CHECKING:
     from lintel.agents.runtime import AgentRuntime
 
 logger = structlog.get_logger()
+
+
+def _get_audit_store(app_state: Any) -> Any:  # noqa: ANN401
+    """Get the audit entry store from app_state."""
+    if app_state is None:
+        return None
+    return getattr(app_state, "audit_entry_store", None)
+
+
+def _get_approval_store(app_state: Any) -> Any:  # noqa: ANN401
+    """Get the approval request store from app_state."""
+    if app_state is None:
+        return None
+    return getattr(app_state, "approval_request_store", None)
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +111,58 @@ be captured. Distinguish between "accepted default" and "requires confirmation".
 Policy may satisfy ISO 27001 A.5.15-A.5.18, HIPAA §164.312(a), PCI-DSS \
 Req 7-8, and SOX Section 404. One policy, many regulatory sources.
 
+## Cross-framework mapping
+
+You MUST cross-reference each regulation requirement against these major \
+compliance frameworks to identify overlapping controls. This prevents \
+duplicate policies and ensures comprehensive coverage:
+
+### Secure Controls Framework (SCF) mappings
+Use SCF as the normalisation layer. Every control domain should reference \
+applicable controls from ALL relevant frameworks, not just the input \
+regulation. For example:
+
+- **Access Control** maps to: ISO 27001 A.5.15-A.5.18, A.8.2-A.8.5 | \
+SOC 2 CC6.1-CC6.3 | NIST 800-53 AC-1 to AC-25 | HIPAA §164.312(a)(1) | \
+PCI-DSS Req 7, Req 8 | GDPR Art. 5(1)(f), Art. 32 | Cyber Essentials \
+Access Control | DORA Art. 9(4)(c)
+- **Data Protection / Encryption** maps to: ISO 27001 A.8.24 | SOC 2 \
+CC6.1, CC6.7 | NIST 800-53 SC-8, SC-13, SC-28 | HIPAA §164.312(a)(2)(iv), \
+§164.312(e)(1) | PCI-DSS Req 3, Req 4 | GDPR Art. 32(1)(a) | \
+DORA Art. 9(4)(d)
+- **Incident Response** maps to: ISO 27001 A.5.24-A.5.28 | SOC 2 CC7.3-CC7.5 | \
+NIST 800-53 IR-1 to IR-10 | HIPAA §164.308(a)(6) | PCI-DSS Req 12.10 | \
+GDPR Art. 33, Art. 34 | NIS2 Art. 23 | DORA Art. 17
+- **Risk Management** maps to: ISO 27001 Clause 6.1, A.5.7 | SOC 2 CC3.1-CC3.4 | \
+NIST 800-53 RA-1 to RA-9 | HIPAA §164.308(a)(1)(ii)(A) | ISO 14971 | \
+DORA Art. 6 | FCA SYSC 7
+- **Audit Logging** maps to: ISO 27001 A.8.15 | SOC 2 CC7.2 | NIST 800-53 \
+AU-1 to AU-16 | HIPAA §164.312(b) | PCI-DSS Req 10 | GDPR Art. 5(2) | \
+SOX Section 404 | DORA Art. 9(4)(b)
+- **Business Continuity** maps to: ISO 27001 A.5.29-A.5.30 | SOC 2 A1.1-A1.3 | \
+NIST 800-53 CP-1 to CP-13 | HIPAA §164.308(a)(7) | PCI-DSS Req 12.10.1 | \
+DORA Art. 11-Art. 12 | FCA SYSC 15A
+- **Vendor / Third Party Risk** maps to: ISO 27001 A.5.19-A.5.23 | SOC 2 \
+CC9.2 | NIST 800-53 SA-9, SR-1 to SR-12 | HIPAA §164.308(b)(1) (BAA) | \
+PCI-DSS Req 12.8-12.9 | DORA Art. 28-Art. 30 | FCA SYSC 8
+- **Change Management** maps to: ISO 27001 A.8.32 | SOC 2 CC8.1 | \
+NIST 800-53 CM-1 to CM-14 | PCI-DSS Req 6.5 | DORA Art. 9(4)(e) | \
+IEC 62304 §8 (problem resolution / change control)
+- **Personnel Security / Training** maps to: ISO 27001 A.6.1-A.6.8 | \
+SOC 2 CC1.4 | NIST 800-53 AT-1 to AT-6, PS-1 to PS-9 | HIPAA \
+§164.308(a)(5) | PCI-DSS Req 12.6 | GDPR Art. 39(1)(b) | \
+DORA Art. 13(6)
+
+### Gap analysis procedure
+For EACH control domain identified:
+1. List the PRIMARY regulation requirement (from the input regulation)
+2. List ALL cross-referenced framework controls that overlap
+3. Assess current coverage: "covered", "partial", or "gap" based on \
+project context
+4. Rate the risk: use the HIGHEST risk rating from any applicable framework
+5. Note which cross-referenced controls would be satisfied by a single \
+policy (consolidation opportunity)
+
 Output ONLY valid JSON matching this schema:
 ```json
 {
@@ -105,9 +172,22 @@ Output ONLY valid JSON matching this schema:
   "control_domains": [
     {
       "domain": "Domain name (e.g. Access Control)",
-      "regulation_references": ["Specific clause references"],
+      "regulation_references": ["Specific clause references from input regulation"],
+      "cross_framework_references": {
+        "iso27001": ["A.5.15", "A.5.16"],
+        "soc2": ["CC6.1"],
+        "nist_800_53": ["AC-1", "AC-2"],
+        "hipaa": [],
+        "pci_dss": [],
+        "gdpr": ["Art. 32"],
+        "dora": [],
+        "cyber_essentials": [],
+        "iec_62304": [],
+        "iso_14971": []
+      },
       "requirements": ["Requirement 1", "Requirement 2"],
       "risk_level": "low|medium|high|critical",
+      "gap_status": "covered|partial|gap",
       "relevance_note": "Why this domain matters for this project"
     }
   ],
@@ -116,16 +196,27 @@ Output ONLY valid JSON matching this schema:
       "name": "Policy name",
       "description": "What this policy covers — use 'must' for mandatory, 'should' for recommended",
       "regulation_references": ["Specific clause/section of the regulation"],
+      "cross_framework_references": ["ISO 27001 A.5.15", "SOC 2 CC6.1", "NIST AC-2"],
       "risk_level": "low|medium|high|critical",
+      "consolidation_note": "Which other framework requirements this single policy satisfies",
       "procedures": [
         {
           "name": "Procedure name",
           "steps": ["Step 1", "Step 2"],
-          "owner_role": "Suggested owner role"
+          "owner_role": "Suggested owner role",
+          "evidence_artifacts": ["What auditors will ask to see as proof of compliance"]
         }
       ]
     }
   ],
+  "framework_coverage_matrix": {
+    "iso27001": {"total_applicable": 0, "covered": 0, "partial": 0, "gap": 0},
+    "soc2": {"total_applicable": 0, "covered": 0, "partial": 0, "gap": 0},
+    "nist_800_53": {"total_applicable": 0, "covered": 0, "partial": 0, "gap": 0},
+    "hipaa": {"total_applicable": 0, "covered": 0, "partial": 0, "gap": 0},
+    "pci_dss": {"total_applicable": 0, "covered": 0, "partial": 0, "gap": 0},
+    "gdpr": {"total_applicable": 0, "covered": 0, "partial": 0, "gap": 0}
+  },
   "assumptions": [
     {
       "assumption": "Data retention period set to 7 years",
@@ -209,6 +300,28 @@ and data protection
 assessment (FCA Consumer Duty)
 - Record keeping: complete audit trail for all client interactions
 
+## Cross-framework consolidation
+
+When writing policies, you MUST consolidate overlapping requirements from \
+multiple frameworks into a single policy. Use the cross_framework_references \
+from the analysis to:
+
+1. Write ONE Access Control Policy that satisfies ISO 27001 A.5.15-A.5.18, \
+SOC 2 CC6.1-CC6.3, NIST AC-2, HIPAA §164.312(a), and PCI-DSS Req 7-8 \
+simultaneously — not five separate policies.
+
+2. Include a "satisfies" field listing every framework control the policy \
+addresses. Auditors from different frameworks can then trace to the same policy.
+
+3. Each procedure step must specify what evidence it produces. Auditors \
+need to verify compliance, so every requirement must be testable. Examples:
+   - "Review access lists quarterly → produce signed-off access review log"
+   - "Encrypt data at rest using AES-256 → configuration audit report"
+   - "Run vulnerability scan monthly → scan report with remediation dates"
+
+4. Include attestation requirements: who signs off, how often, what record \
+is kept.
+
 Output JSON matching this schema:
 ```json
 {
@@ -218,9 +331,11 @@ Output JSON matching this schema:
       "description": "Full policy description with specific requirements",
       "regulation_ids": ["reg-id-1"],
       "regulation_references": ["ISO 27001 A.5.15", "HIPAA §164.312(a)"],
+      "cross_framework_satisfies": ["SOC 2 CC6.1", "NIST AC-2", "PCI-DSS Req 7"],
       "risk_level": "low|medium|high|critical",
       "owner": "Suggested owner role",
       "review_cadence": "annual|quarterly|after_incident",
+      "attestation": "Who signs off and how often",
       "tags": ["access-control", "authentication"]
     }
   ],
@@ -230,7 +345,9 @@ Output JSON matching this schema:
       "description": "What this procedure implements",
       "policy_name": "Parent policy name (must match a policy above)",
       "steps": ["Step 1 (specific, actionable)", "Step 2", "Step 3"],
-      "owner": "Suggested owner role"
+      "owner": "Suggested owner role",
+      "evidence_artifacts": ["What this procedure produces as proof of compliance"],
+      "review_cadence": "quarterly|annual|after_incident"
     }
   ],
   "assumptions": [
@@ -473,6 +590,22 @@ async def gather_context(
 
     assembled_context = "\n".join(context_parts)
 
+    # Emit audit entry for context gathering
+    audit_store = _get_audit_store(app_state)
+    await AuditEmitter.emit(
+        audit_store,
+        actor_id="regulation-to-policy-workflow",
+        actor_type="agent",
+        action="gather_context_completed",
+        resource_type="policy_generation_run",
+        resource_id=state.get("run_id", ""),
+        details={
+            "regulation_count": len(regulation_details),
+            "project_id": project_id,
+            "industry": industry or "general",
+        },
+    )
+
     await tracker.mark_completed(
         "gather_context",
         outputs={
@@ -593,6 +726,25 @@ async def analyse_regulation(
         "analyse_regulation",
         f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
     )
+    # Emit audit entry for regulation analysis
+    app_state = _get_app_state(config, state)
+    coverage = analysis.get("framework_coverage_matrix", {})
+    gap_count = sum(v.get("gap", 0) for v in coverage.values() if isinstance(v, dict))
+    await AuditEmitter.emit(
+        _get_audit_store(app_state),
+        actor_id="regulation-to-policy-workflow",
+        actor_type="agent",
+        action="analyse_regulation_completed",
+        resource_type="policy_generation_run",
+        resource_id=state.get("run_id", ""),
+        details={
+            "domain_count": domain_count,
+            "policy_count": policy_count,
+            "framework_gaps": gap_count,
+            "tokens_used": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+        },
+    )
+
     await tracker.mark_completed(
         "analyse_regulation",
         outputs={"domain_count": domain_count, "policy_count": policy_count, "token_usage": usage},
@@ -727,6 +879,24 @@ async def generate_policies(
         "generate_policies",
         f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
     )
+    # Emit audit entry for policy generation
+    app_state = _get_app_state(config, state)
+    await AuditEmitter.emit(
+        _get_audit_store(app_state),
+        actor_id="regulation-to-policy-workflow",
+        actor_type="agent",
+        action="generate_policies_completed",
+        resource_type="policy_generation_run",
+        resource_id=state.get("run_id", ""),
+        details={
+            "policy_count": pol_count,
+            "procedure_count": proc_count,
+            "assumption_count": assumption_count,
+            "question_count": question_count,
+            "tokens_used": usage.get("input_tokens", 0) + usage.get("output_tokens", 0),
+        },
+    )
+
     await tracker.mark_completed(
         "generate_policies",
         outputs={
@@ -896,6 +1066,46 @@ async def finalise_policies(
         except Exception:
             logger.warning("finalise_update_run_failed", run_id=run_id, exc_info=True)
 
+    # Emit audit entries for each persisted policy
+    audit_store = _get_audit_store(app_state)
+    for policy_id in created_policy_ids:
+        await AuditEmitter.emit(
+            audit_store,
+            actor_id="regulation-to-policy-workflow",
+            actor_type="agent",
+            action="compliance_policy_created",
+            resource_type="compliance_policy",
+            resource_id=policy_id,
+            details={"run_id": run_id, "project_id": project_id, "status": "draft"},
+        )
+    for proc_id in created_procedure_ids:
+        await AuditEmitter.emit(
+            audit_store,
+            actor_id="regulation-to-policy-workflow",
+            actor_type="agent",
+            action="procedure_created",
+            resource_type="procedure",
+            resource_id=proc_id,
+            details={"run_id": run_id, "project_id": project_id, "status": "draft"},
+        )
+
+    # Summary audit entry for the whole finalisation
+    await AuditEmitter.emit(
+        audit_store,
+        actor_id="regulation-to-policy-workflow",
+        actor_type="agent",
+        action="finalise_completed",
+        resource_type="policy_generation_run",
+        resource_id=run_id,
+        details={
+            "policy_ids": created_policy_ids,
+            "procedure_ids": created_procedure_ids,
+            "assumption_count": len(assumptions),
+            "question_count": len(questions),
+            "action_item_count": len(action_items),
+        },
+    )
+
     await tracker.append_log(
         "finalise",
         f"Finalised: {len(created_policy_ids)} policies, "
@@ -957,11 +1167,100 @@ def _check_phase(state: ThreadWorkflowState) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _gate(name: str) -> Any:  # noqa: ANN401
-    fn = lambda s: s  # noqa: E731
-    fn.__name__ = name
-    fn.__qualname__ = name
-    return fn
+async def approval_gate_policies(
+    state: ThreadWorkflowState,
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict[str, Any]:
+    """Create an ApprovalRequest and pause for human review.
+
+    This node creates a PENDING approval request via the existing
+    ApprovalRequest API so that a human can review the generated
+    policies, assumptions, and questions before they are persisted.
+    The workflow executor's interrupt mechanism pauses execution here;
+    the approval is resolved via POST /approval-requests/{id}/approve
+    or /reject.
+    """
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+
+    tracker = StageTracker(config or {})
+    await tracker.mark_running("approval_gate_policies")
+
+    app_state = _get_app_state(config, state)
+    run_id = state.get("run_id", "")
+
+    # Count what's pending review
+    pol_count = 0
+    question_count = 0
+    assumption_count = 0
+    for output in reversed(state.get("agent_outputs", [])):
+        if isinstance(output, dict) and output.get("node") == "generate_policies":
+            generated = output.get("generated", {})
+            pol_count = len(generated.get("policies", []))
+            question_count = len(generated.get("questions", []))
+            assumption_count = len(generated.get("assumptions", []))
+            break
+
+    # Create an ApprovalRequest record
+    approval_store = _get_approval_store(app_state)
+    approval_id = ""
+    if approval_store is not None:
+        from lintel.domain.types import ApprovalRequest
+
+        approval_id = str(uuid4())
+        approval = ApprovalRequest(
+            approval_id=approval_id,
+            run_id=run_id,
+            gate_type="policy_review",
+            requested_by="regulation-to-policy-workflow",
+        )
+        try:
+            await approval_store.add(approval)
+            await tracker.append_log(
+                "approval_gate_policies",
+                f"Approval request created: {approval_id}",
+            )
+        except Exception:
+            logger.warning("approval_gate_create_failed", run_id=run_id, exc_info=True)
+
+    # Emit audit entry for approval gate
+    await AuditEmitter.emit(
+        _get_audit_store(app_state),
+        actor_id="regulation-to-policy-workflow",
+        actor_type="agent",
+        action="approval_requested",
+        resource_type="policy_generation_run",
+        resource_id=run_id,
+        details={
+            "approval_id": approval_id,
+            "gate_type": "policy_review",
+            "policies_pending": pol_count,
+            "questions_pending": question_count,
+            "assumptions_pending": assumption_count,
+        },
+    )
+
+    await tracker.append_log(
+        "approval_gate_policies",
+        f"Awaiting human review: {pol_count} policies, "
+        f"{assumption_count} assumptions, {question_count} questions",
+    )
+    await tracker.mark_completed(
+        "approval_gate_policies",
+        outputs={"approval_id": approval_id, "status": "pending"},
+    )
+
+    return {
+        **state,
+        "current_phase": "awaiting_approval",
+        "pending_approvals": [
+            *(state.get("pending_approvals") or []),
+            {
+                "approval_id": approval_id,
+                "gate_type": "policy_review",
+                "policies_pending": pol_count,
+            },
+        ],
+    }
 
 
 def build_regulation_to_policy_graph() -> StateGraph[Any]:
@@ -980,7 +1279,7 @@ def build_regulation_to_policy_graph() -> StateGraph[Any]:
     g.add_node("gather_context", gather_context)
     g.add_node("analyse_regulation", analyse_regulation)
     g.add_node("generate_policies", generate_policies)
-    g.add_node("approval_gate_policies", _gate("approval_gate_policies"))
+    g.add_node("approval_gate_policies", approval_gate_policies)
     g.add_node("finalise", finalise_policies)
     g.add_node("close", lambda s: {**s, "current_phase": "closed"})
 
