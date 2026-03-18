@@ -86,44 +86,57 @@ async def close_workflow(
     base_branch = state.get("repo_branch", "main")
     repo_url = state.get("repo_url", "")
     workdir = state.get("workspace_path", "/workspace/repo")
+    workspace_paths: tuple[tuple[str, str], ...] = state.get("workspace_paths", ())
 
     if not sandbox_id or sandbox_manager is None:
         await tracker.mark_completed("close")
         await _release_sandbox()
         return {"current_phase": "closed"}
 
-    # Commit any uncommitted changes
+    # Build the list of (repo_url, workdir) pairs to commit/push
+    # Primary repo is always first; additional repos follow
+    repos_to_close: list[tuple[str, str]] = []
+    if workspace_paths:
+        repos_to_close = list(workspace_paths)
+    elif repo_url:
+        repos_to_close = [(repo_url, workdir)]
+
+    # Commit any uncommitted changes across all repos
     await tracker.append_log("close", "Committing changes...")
     messages = state.get("sanitized_messages", [])
     commit_msg = messages[0][:72] if messages else "lintel: implement feature"
     # Escape double quotes in commit message for shell safety
     safe_msg = commit_msg.replace('"', '\\"')
 
-    commit_cmds = [
-        f"cd {workdir} && git config user.email 'lintel@lintel.dev'",
-        f"cd {workdir} && git config user.name 'Lintel'",
-        f"cd {workdir} && git add -A",
-        f'cd {workdir} && git diff --cached --quiet || git commit -m "{safe_msg}"',
-    ]
-    for cmd in commit_cmds:
-        result = await sandbox_manager.execute(
-            sandbox_id,
-            SandboxJob(command=cmd, timeout_seconds=30),
-        )
-        if result.exit_code != 0 and "git diff" not in cmd:
-            logger.warning("close_commit_step_failed", cmd=cmd[:80], error=result.stderr[:200])
+    for _r_url, wd in repos_to_close:
+        commit_cmds = [
+            f"cd {wd} && git config user.email 'lintel@lintel.dev'",
+            f"cd {wd} && git config user.name 'Lintel'",
+            f"cd {wd} && git add -A",
+            f'cd {wd} && git diff --cached --quiet || git commit -m "{safe_msg}"',
+        ]
+        for cmd in commit_cmds:
+            result = await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(command=cmd, timeout_seconds=30),
+            )
+            if result.exit_code != 0 and "git diff" not in cmd:
+                logger.warning("close_commit_step_failed", cmd=cmd[:80], error=result.stderr[:200])
 
     pr_url = ""
     push_error = ""
+    all_pr_urls: list[str] = []
 
-    if feature_branch and repo_url:
+    if feature_branch and repos_to_close:
         # Reconnect network for push
         try:
             await sandbox_manager.reconnect_network(sandbox_id)
         except Exception:
             logger.warning("close_reconnect_network_failed")
 
-        # Resolve credentials for push
+        # Resolve credentials for push — reuse setup_workspace's resolver
+        from lintel.workflows.nodes.setup_workspace import _resolve_credentials
+
         credential_store = _configurable.get("credential_store")
         if credential_store is None and run_id:
             from lintel.workflows.nodes._runtime_registry import get_app_state
@@ -131,72 +144,67 @@ async def close_workflow(
             _app_state = get_app_state(run_id)
             if _app_state is not None:
                 credential_store = getattr(_app_state, "credential_store", None)
-        if credential_store is not None:
-            credential_ids = state.get("credential_ids", [])
-            for cred_id in credential_ids:
-                try:
-                    cred = await credential_store.get(cred_id)
-                    if cred is None:
-                        continue
-                    secret = await credential_store.get_secret(cred_id)
-                    if not secret:
-                        continue
-                    cred_type = cred.credential_type
-                    if hasattr(cred_type, "value"):
-                        cred_type = cred_type.value
-                    if cred_type == "github_token":
-                        # Inject token into remote URL
-                        import re
 
-                        auth_url = re.sub(
-                            r"https://",
-                            f"https://x-access-token:{secret}@",
-                            repo_url,
-                        )
-                        set_url_cmd = f"cd {workdir} && git remote set-url origin {auth_url}"
-                        await sandbox_manager.execute(
-                            sandbox_id,
-                            SandboxJob(command=set_url_cmd, timeout_seconds=10),
-                        )
-                        break
-                except Exception:
-                    logger.warning("close_credential_resolve_failed", cred_id=cred_id)
+        # Push each repo
+        for r_url, wd in repos_to_close:
+            if not r_url:
+                continue
 
-        # Fetch latest remote refs before pushing (avoids "stale info" rejections)
-        await sandbox_manager.execute(
-            sandbox_id,
-            SandboxJob(
-                command=f"cd {workdir} && git fetch origin 2>&1 || true",
-                timeout_seconds=30,
-            ),
-        )
+            # Inject credentials into remote URL
+            if credential_store is not None:
+                auth_url, _ = await _resolve_credentials(
+                    state, credential_store, sandbox_manager, sandbox_id, r_url
+                )
+                if auth_url != r_url:
+                    set_url_cmd = f"cd {wd} && git remote set-url origin {auth_url}"
+                    await sandbox_manager.execute(
+                        sandbox_id,
+                        SandboxJob(command=set_url_cmd, timeout_seconds=10),
+                    )
 
-        # Push
-        await tracker.append_log("close", f"Pushing branch {feature_branch}...")
-        push_result = await sandbox_manager.execute(
-            sandbox_id,
-            SandboxJob(
-                command=f"cd {workdir} && git push --force-with-lease -u origin {feature_branch}",
-                timeout_seconds=60,
-            ),
-        )
-        if push_result.exit_code != 0:
-            push_error = push_result.stderr or push_result.stdout
-            logger.warning("close_push_failed", error=push_error[:200])
-            await tracker.append_log("close", f"Push failed: {push_error[:200]}")
-        else:
-            await tracker.append_log("close", "Push succeeded")
-
-            # Create PR — use injected repo_provider or resolve from credentials
-            pr_url = await _create_pull_request(
-                _config,
-                state,
-                repo_url=repo_url,
-                feature_branch=feature_branch,
-                base_branch=base_branch,
-                commit_msg=commit_msg,
-                draft=has_failure,
+            # Fetch latest remote refs before pushing
+            await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=f"cd {wd} && git fetch origin 2>&1 || true",
+                    timeout_seconds=30,
+                ),
             )
+
+            repo_label = r_url.rstrip("/").rsplit("/", 1)[-1]
+            await tracker.append_log("close", f"Pushing branch {feature_branch} to {repo_label}...")
+            push_result = await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=(f"cd {wd} && git push --force-with-lease -u origin {feature_branch}"),
+                    timeout_seconds=60,
+                ),
+            )
+            if push_result.exit_code != 0:
+                repo_push_error = push_result.stderr or push_result.stdout
+                logger.warning("close_push_failed", repo=repo_label, error=repo_push_error[:200])
+                await tracker.append_log(
+                    "close", f"Push failed ({repo_label}): {repo_push_error[:200]}"
+                )
+                if not push_error:
+                    push_error = repo_push_error
+            else:
+                await tracker.append_log("close", f"Push succeeded ({repo_label})")
+
+                # Create PR
+                this_pr = await _create_pull_request(
+                    _config,
+                    state,
+                    repo_url=r_url,
+                    feature_branch=feature_branch,
+                    base_branch=base_branch,
+                    commit_msg=commit_msg,
+                    draft=has_failure,
+                )
+                if this_pr:
+                    all_pr_urls.append(this_pr)
+
+        pr_url = all_pr_urls[0] if all_pr_urls else ""
 
         # Disconnect network again
         import contextlib
@@ -204,7 +212,7 @@ async def close_workflow(
         with contextlib.suppress(Exception):
             await sandbox_manager.disconnect_network(sandbox_id)
 
-    # Update work item with PR URL
+    # Update work item with PR URL(s)
     if pr_url:
         work_item_store = _configurable.get(
             "work_item_store",
@@ -216,6 +224,8 @@ async def close_workflow(
                 item = await work_item_store.get(work_item_id)
                 if item is not None:
                     item["pr_url"] = pr_url
+                    if len(all_pr_urls) > 1:
+                        item["pr_urls"] = all_pr_urls
                     await work_item_store.update(work_item_id, item)
             except Exception:
                 logger.warning("close_update_work_item_failed")
@@ -223,6 +233,8 @@ async def close_workflow(
     stage_outputs: dict[str, object] = {}
     if pr_url:
         stage_outputs["pr_url"] = pr_url
+    if all_pr_urls and len(all_pr_urls) > 1:
+        stage_outputs["pr_urls"] = all_pr_urls
     if push_error:
         stage_outputs["push_error"] = push_error
 
@@ -313,8 +325,25 @@ async def _create_pull_request(
     if credential_store is None:
         return ""
 
-    credential_ids = state.get("credential_ids", [])
-    for cred_id in credential_ids:
+    # Resolve a GitHub token — try explicit credential_ids first, then fall back to all
+    github_token = ""
+    credential_ids: tuple[str, ...] = state.get("credential_ids", ())
+    cred_ids_to_try: list[str] = list(credential_ids)
+    if not cred_ids_to_try:
+        # Fall back: search all credentials for a github_token
+        all_creds = await credential_store.list_all()
+        for c in all_creds:
+            cid = (
+                c.credential_id
+                if hasattr(c, "credential_id")
+                else c.get("credential_id", "")
+                if isinstance(c, dict)
+                else ""
+            )
+            if cid:
+                cred_ids_to_try.append(cid)
+
+    for cred_id in cred_ids_to_try:
         try:
             cred = await credential_store.get(cred_id)
             if cred is None:
@@ -324,37 +353,42 @@ async def _create_pull_request(
             if hasattr(cred_type, "value"):
                 cred_type = cred_type.value
             if cred_type == "github_token" and secret:
-                from lintel.repos.github_provider import (
-                    GitHubRepoProvider,
-                )
-
-                provider = GitHubRepoProvider(token=secret)
-
-                await tracker.append_log("close", f"Creating {label}...")
-                pr_url = await provider.create_pr(
-                    repo_url=repo_url,
-                    head=feature_branch,
-                    base=base_branch,
-                    title=pr_title,
-                    body=pr_body,
-                    draft=draft,
-                )
-                await tracker.append_log("close", f"PR created: {pr_url}")
-
-                # Add review comment if available
-                review_outputs = [
-                    o
-                    for o in state.get("agent_outputs", [])
-                    if isinstance(o, dict) and o.get("node") == "review"
-                ]
-                if review_outputs:
-                    review_text = review_outputs[0].get("output", "")
-                    if review_text:
-                        pr_number = int(pr_url.rstrip("/").split("/")[-1])
-                        await provider.add_comment(repo_url, pr_number, review_text)
+                github_token = secret
                 break
         except Exception as exc:
-            logger.warning("close_pr_creation_failed", error=str(exc)[:200])
+            logger.warning("close_credential_resolve_failed", error=str(exc)[:200])
+
+    if not github_token:
+        return ""
+
+    from lintel.repos.github_provider import GitHubRepoProvider
+
+    provider = GitHubRepoProvider(token=github_token)
+    try:
+        await tracker.append_log("close", f"Creating {label}...")
+        pr_url = await provider.create_pr(
+            repo_url=repo_url,
+            head=feature_branch,
+            base=base_branch,
+            title=pr_title,
+            body=pr_body,
+            draft=draft,
+        )
+        await tracker.append_log("close", f"PR created: {pr_url}")
+
+        # Add review comment if available
+        review_outputs = [
+            o
+            for o in state.get("agent_outputs", [])
+            if isinstance(o, dict) and o.get("node") == "review"
+        ]
+        if review_outputs:
+            review_text = review_outputs[0].get("output", "")
+            if review_text:
+                pr_number = int(pr_url.rstrip("/").split("/")[-1])
+                await provider.add_comment(repo_url, pr_number, review_text)
+    except Exception as exc:
+        logger.warning("close_pr_creation_failed", error=str(exc)[:200])
 
     return pr_url
 

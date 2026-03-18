@@ -99,8 +99,18 @@ async def research_codebase(
     if sandbox_manager is not None and sandbox_id is not None:
         await tracker.append_log("research", "Reading codebase from sandbox...")
         try:
-            workspace_path = state.get("workspace_path") or "/workspace/repo"
-            codebase_context = await _gather_context(sandbox_manager, sandbox_id, workspace_path)
+            workspace_paths: tuple[tuple[str, str], ...] = state.get("workspace_paths", ())
+            if workspace_paths and len(workspace_paths) > 1:
+                from lintel.workflows.nodes._codebase_context import gather_multi_repo_context
+
+                codebase_context = await gather_multi_repo_context(
+                    sandbox_manager, sandbox_id, workspace_paths
+                )
+            else:
+                workspace_path = state.get("workspace_path") or "/workspace/repo"
+                codebase_context = await _gather_context(
+                    sandbox_manager, sandbox_id, workspace_path
+                )
         except Exception:
             logger.warning("research_sandbox_context_failed", exc_info=True)
             await tracker.append_log("research", "Failed to read codebase from sandbox")

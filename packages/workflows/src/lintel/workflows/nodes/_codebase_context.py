@@ -171,3 +171,38 @@ async def gather_codebase_context(
         total_chars=total_chars,
     )
     return result
+
+
+async def gather_multi_repo_context(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workspace_paths: tuple[tuple[str, str], ...],
+) -> str:
+    """Gather codebase context from all repos in a multi-repo project.
+
+    Each entry in *workspace_paths* is a ``(repo_url, workspace_dir)`` pair.
+    Returns a combined context string with per-repo sections.
+    """
+    if not workspace_paths:
+        return ""
+
+    if len(workspace_paths) == 1:
+        return await gather_codebase_context(
+            sandbox_manager, sandbox_id, repo_path=workspace_paths[0][1]
+        )
+
+    parts: list[str] = []
+    for repo_url, ws_path in workspace_paths:
+        repo_label = repo_url.rstrip("/").rsplit("/", 1)[-1] if repo_url else ws_path
+        try:
+            ctx = await gather_codebase_context(sandbox_manager, sandbox_id, repo_path=ws_path)
+            if ctx:
+                parts.append(f"# Repository: {repo_label}\n\n{ctx}")
+        except FileNotFoundError:
+            logger.warning(
+                "multi_repo_context_missing",
+                repo_url=repo_url,
+                ws_path=ws_path,
+            )
+
+    return "\n\n---\n\n".join(parts) if parts else ""

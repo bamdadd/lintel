@@ -41,6 +41,10 @@ class ThreadWorkflowState(TypedDict):
     # Workspace path inside sandbox (set by setup_workspace, e.g. /workspace/{run_id}/repo)
     workspace_path: str
 
+    # All workspace paths for multi-repo projects (repo_url → workspace dir)
+    # First entry is always the primary repo. Empty tuple for single-repo projects.
+    workspace_paths: tuple[tuple[str, str], ...]
+
     # Research context (populated by the research node for plan/implement)
     research_context: str
 

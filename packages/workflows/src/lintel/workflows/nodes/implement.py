@@ -99,6 +99,7 @@ async def spawn_implementation(
     plan = state.get("plan", {})
     messages = state.get("sanitized_messages", [])
     workspace_path = state.get("workspace_path") or "/workspace/repo"
+    workspace_paths: tuple[tuple[str, str], ...] = state.get("workspace_paths", ())
 
     # Read project guidelines
     guidelines = await read_guidelines(sandbox_manager, sandbox_id, workspace_path)
@@ -151,6 +152,21 @@ async def spawn_implementation(
         else ""
     )
 
+    # Multi-repo workspace info for the LLM
+    multi_repo_section = ""
+    if workspace_paths and len(workspace_paths) > 1:
+        repo_lines = []
+        for url, ws_path in workspace_paths:
+            label = url.rstrip("/").rsplit("/", 1)[-1] if url else ws_path
+            repo_lines.append(f"- **{label}**: `{ws_path}`")
+        multi_repo_section = (
+            "\n\n## Multi-Repository Project\n"
+            "This project spans multiple repositories cloned into the sandbox:\n"
+            + "\n".join(repo_lines)
+            + f"\n\nPrimary repo (feature branch): `{workspace_path}`\n"
+            "You may need to read or modify files across repositories.\n"
+        )
+
     # Inject failure context from previous pipeline run (continuation)
     previous_error = state.get("previous_error", "")
     failure_section = ""
@@ -167,7 +183,7 @@ async def spawn_implementation(
         f"## Plan\n{plan_summary}\n\n## Tasks\n{task_text}\n\n"
         f"## Original request\n{chr(10).join(messages)}"
         f"{file_context}{research_section}{guidelines_section}"
-        f"{review_section}{failure_section}"
+        f"{multi_repo_section}{review_section}{failure_section}"
     )
 
     # Parse thread ref

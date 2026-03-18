@@ -168,27 +168,65 @@ async def _resolve_credentials(
     sandbox_id: str,
     repo_url: str,
 ) -> tuple[str, bool]:
-    """Resolve credentials. Returns (clone_url, has_ssh_key)."""
+    """Resolve credentials. Returns (clone_url, has_ssh_key).
+
+    First tries explicit credential_ids from the workflow state.
+    Falls back to querying the credential store for any applicable credentials
+    (global credentials or those matching the repo).
+    """
     if credential_store is None:
         return repo_url, False
 
     credential_ids: tuple[str, ...] = state.get("credential_ids", ())
-    if not credential_ids:
-        return repo_url, False
+
+    credentials: list[tuple[Any, str]] = []  # (Credential, secret) pairs
+
+    if credential_ids:
+        # Use explicitly linked credentials
+        for cred_id in credential_ids:
+            cred = await credential_store.get(cred_id)
+            if cred is None:
+                continue
+            secret = await credential_store.get_secret(cred_id)
+            if not secret:
+                continue
+            credentials.append((cred, secret))
+    else:
+        # Fall back: search for any applicable credentials in the store
+        all_creds = await credential_store.list_all()
+        for cred in all_creds:
+            cred_id = (
+                cred.credential_id
+                if hasattr(cred, "credential_id")
+                else cred.get("credential_id", "")
+                if isinstance(cred, dict)
+                else ""
+            )
+            if not cred_id:
+                continue
+            secret = await credential_store.get_secret(cred_id)
+            if not secret:
+                continue
+            credentials.append((cred, secret))
+        if credentials:
+            logger.info(
+                "credentials_auto_resolved",
+                count=len(credentials),
+                repo_url=repo_url,
+            )
 
     has_ssh_key = False
-    for cred_id in credential_ids:
-        cred = await credential_store.get(cred_id)
-        if cred is None:
-            continue
-
-        secret = await credential_store.get_secret(cred_id)
-        if not secret:
-            continue
-
-        if cred.credential_type == "github_token":
+    for cred, secret in credentials:
+        cred_type = (
+            cred.credential_type
+            if hasattr(cred, "credential_type")
+            else cred.get("credential_type", "")
+            if isinstance(cred, dict)
+            else ""
+        )
+        if cred_type == "github_token":
             repo_url = _inject_github_token(repo_url, secret)
-        elif cred.credential_type == "ssh_key":
+        elif cred_type == "ssh_key":
             from lintel.sandbox.types import SandboxJob
 
             has_ssh_key = True
@@ -601,6 +639,8 @@ async def setup_workspace(
                 await tracker.append_log("setup_workspace", f"Created new branch: {feature_branch}")
 
         # Clone additional repos (if multi-repo project)
+        # Track all workspace paths: (repo_url, workspace_dir) pairs
+        all_workspace_paths: list[tuple[str, str]] = [(repo_url, repo_path)]
         additional_repos = [u for u in repo_urls[1:] if u] if len(repo_urls) > 1 else []
         for idx, extra_url in enumerate(additional_repos, start=1):
             extra_clone_url = extra_url
@@ -613,7 +653,11 @@ async def setup_workspace(
                     extra_url,
                 )
             target = f"{workspace_root}/repo-{idx}"
-            await sandbox_manager.execute(
+            await tracker.append_log(
+                "setup_workspace",
+                f"Cloning additional repo {idx}: {extra_url} (branch: {repo_branch})...",
+            )
+            extra_result = await sandbox_manager.execute(
                 sandbox_id,
                 SandboxJob(
                     command=(
@@ -624,15 +668,32 @@ async def setup_workspace(
                     timeout_seconds=120,
                 ),
             )
-            logger.info(
-                "additional_repo_cloned index=%d target=%s url=%s",
-                idx,
-                target,
-                extra_url,
-            )
+            if extra_result.exit_code != 0:
+                await tracker.append_log(
+                    "setup_workspace",
+                    f"Additional repo {idx} clone failed: {extra_result.stderr[:200]}",
+                )
+                logger.warning(
+                    "additional_repo_clone_failed",
+                    index=idx,
+                    url=extra_url,
+                    error=extra_result.stderr[:200],
+                )
+            else:
+                all_workspace_paths.append((extra_url, target))
+                await tracker.append_log(
+                    "setup_workspace", f"Additional repo {idx} cloned to {target}"
+                )
+                logger.info(
+                    "additional_repo_cloned index=%d target=%s url=%s",
+                    idx,
+                    target,
+                    extra_url,
+                )
 
-        # Install project dependencies while network is still available
-        await _install_project_deps(sandbox_manager, sandbox_id, repo_path, config, state)
+        # Install project dependencies for all repos while network is still available
+        for _ws_url, ws_path in all_workspace_paths:
+            await _install_project_deps(sandbox_manager, sandbox_id, ws_path, config, state)
 
         # Disconnect network now that clone and deps are complete
         # Keep network active when Claude Code is the provider (needs Anthropic API)
@@ -670,6 +731,7 @@ async def setup_workspace(
             except Exception:
                 logger.warning("setup_workspace_update_work_item_failed", exc_info=True)
 
+        workspace_paths_tuple = tuple(all_workspace_paths)
         await tracker.mark_completed(
             "setup_workspace",
             outputs={
@@ -677,12 +739,14 @@ async def setup_workspace(
                 "repo_url": repo_url,
                 "feature_branch": feature_branch,
                 "workspace_path": repo_path,
+                "workspace_paths": workspace_paths_tuple,
             },
         )
         return {
             "sandbox_id": sandbox_id,
             "feature_branch": feature_branch,
             "workspace_path": repo_path,
+            "workspace_paths": workspace_paths_tuple,
             "current_phase": "planning",
         }
     except Exception:
