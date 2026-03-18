@@ -529,8 +529,10 @@ async def gather_context(
         workspace_path=state.get("workspace_path", ""),
     )
     if project_description:
-        source = "project description" if not project_description.startswith("[From") else (
-            project_description.split("]")[0].replace("[From ", "")
+        source = (
+            "project description"
+            if not project_description.startswith("[From")
+            else (project_description.split("]")[0].replace("[From ", ""))
         )
         await tracker.append_log("gather_context", f"Project context from: {source}")
     else:
@@ -817,8 +819,14 @@ async def generate_policies(
                 {
                     "node": "generate_policies",
                     "summary": "Policies drafted (no LLM — analysis passed through)",
-                    "generated": {"policies": [], "procedures": [], "assumptions": [],
-                                  "questions": [], "action_items": [], "summary": ""},
+                    "generated": {
+                        "policies": [],
+                        "procedures": [],
+                        "assumptions": [],
+                        "questions": [],
+                        "action_items": [],
+                        "summary": "",
+                    },
                 }
             ],
         }
@@ -1058,16 +1066,19 @@ async def finalise_policies(
         try:
             from datetime import datetime
 
-            await generation_store.update(run_id, {
-                "status": "completed",
-                "generated_policy_ids": created_policy_ids,
-                "generated_procedure_ids": created_procedure_ids,
-                "assumptions": assumptions,
-                "questions": questions,
-                "action_items": action_items,
-                "summary": summary,
-                "completed_at": datetime.now(tz=UTC).isoformat(),
-            })
+            await generation_store.update(
+                run_id,
+                {
+                    "status": "completed",
+                    "generated_policy_ids": created_policy_ids,
+                    "generated_procedure_ids": created_procedure_ids,
+                    "assumptions": assumptions,
+                    "questions": questions,
+                    "action_items": action_items,
+                    "summary": summary,
+                    "completed_at": datetime.now(tz=UTC).isoformat(),
+                },
+            )
             await tracker.append_log("finalise", "Updated generation run record")
         except Exception:
             logger.warning("finalise_update_run_failed", run_id=run_id, exc_info=True)

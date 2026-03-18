@@ -134,8 +134,13 @@ async def update_policy_generation(
 ) -> dict[str, Any]:
     """Update a policy generation run (typically called by the workflow)."""
     updates = body.model_dump(exclude_none=True)
-    for key in ("generated_policy_ids", "generated_procedure_ids", "assumptions",
-                "questions", "action_items"):
+    for key in (
+        "generated_policy_ids",
+        "generated_procedure_ids",
+        "assumptions",
+        "questions",
+        "action_items",
+    ):
         if key in updates:
             updates[key] = list(updates[key])
     result = await store.update(run_id, updates)

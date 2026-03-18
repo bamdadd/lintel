@@ -177,9 +177,7 @@ class TestResolveProjectDescription:
                 return {"project_id": project_id, "description": ""}
 
         class FakeSandboxManager:
-            async def exec_in_sandbox(
-                self, sandbox_id: str, cmd: list[str]
-            ) -> dict[str, Any]:
+            async def exec_in_sandbox(self, sandbox_id: str, cmd: list[str]) -> dict[str, Any]:
                 if "CLAUDE.md" in cmd[1]:
                     raise FileNotFoundError
                 if "README.md" in cmd[1]:
@@ -190,8 +188,10 @@ class TestResolveProjectDescription:
             project_store = FakeProjectStore()
 
         result = await _resolve_project_description(
-            FakeAppState(), "proj-1",
-            sandbox_manager=FakeSandboxManager(), sandbox_id="sb-1",
+            FakeAppState(),
+            "proj-1",
+            sandbox_manager=FakeSandboxManager(),
+            sandbox_id="sb-1",
         )
         assert "README.md" in result
         assert "financial compliance tool" in result
@@ -212,11 +212,13 @@ class TestGatherContext:
     async def test_assembles_trigger_context(self) -> None:
         import json
 
-        trigger = json.dumps({
-            "regulation_ids": ["reg-1"],
-            "industry_context": "finance",
-            "additional_context": "We handle PCI card data.",
-        })
+        trigger = json.dumps(
+            {
+                "regulation_ids": ["reg-1"],
+                "industry_context": "finance",
+                "additional_context": "We handle PCI card data.",
+            }
+        )
         state = _make_state(sanitized_messages=[trigger])
         result = await gather_context(state, config=None)
         assert "finance" in result["research_context"]
@@ -274,21 +276,27 @@ class TestFinalisePolicies:
                         "procedures": [
                             {"name": "Test Proc", "policy_name": "Test Policy", "steps": ["Step 1"]}
                         ],
-                        "assumptions": [{
-                            "assumption": "AES-256 default",
-                            "basis": "Industry std",
-                            "confidence": "high",
-                        }],
-                        "questions": [{
-                            "question": "Do you handle PCI?",
-                            "impact": "Scope",
-                            "priority": "high",
-                        }],
-                        "action_items": [{
-                            "action": "Confirm with security",
-                            "priority": "high",
-                            "owner_suggestion": "CISO",
-                        }],
+                        "assumptions": [
+                            {
+                                "assumption": "AES-256 default",
+                                "basis": "Industry std",
+                                "confidence": "high",
+                            }
+                        ],
+                        "questions": [
+                            {
+                                "question": "Do you handle PCI?",
+                                "impact": "Scope",
+                                "priority": "high",
+                            }
+                        ],
+                        "action_items": [
+                            {
+                                "action": "Confirm with security",
+                                "priority": "high",
+                                "owner_suggestion": "CISO",
+                            }
+                        ],
                         "summary": "Generated 1 policy",
                     },
                 }
