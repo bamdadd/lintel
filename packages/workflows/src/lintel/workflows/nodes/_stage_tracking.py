@@ -38,6 +38,12 @@ NODE_TO_STAGE: dict[str, str] = {
     "detect_antipatterns": "detect_antipatterns",
     "persist_results": "persist_results",
     "error": "error",
+    # Regulation-to-policy workflow
+    "gather_context": "gather_context",
+    "analyse_regulation": "analyse_regulation",
+    "generate_policies": "generate_policies",
+    "approval_gate_policies": "approve_policies",
+    "finalise": "finalise",
 }
 
 

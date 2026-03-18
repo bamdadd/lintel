@@ -26,11 +26,23 @@ The workflow follows real-world regulation-to-policy methodology:
 
 from __future__ import annotations
 
-from typing import Any
+from datetime import UTC
+import json
+from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 from langgraph.graph import END, StateGraph
+import structlog
 
 from lintel.workflows.state import ThreadWorkflowState
+
+if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
+
+    from lintel.agents.runtime import AgentRuntime
+
+logger = structlog.get_logger()
+
 
 # ---------------------------------------------------------------------------
 # Prompts
@@ -39,9 +51,9 @@ from lintel.workflows.state import ThreadWorkflowState
 ANALYSIS_SYSTEM_PROMPT = """\
 You are a senior compliance analyst specialising in converting external \
 regulations into internal organisational policies. You have deep expertise \
-in IT security (ISO 27001, SOC 2, Cyber Essentials), healthcare/medical \
-(HIPAA, MDR, IEC 62304, ISO 14971), and financial regulations (FCA, PSD2, \
-SOX, DORA, AML, MiFID II, GDPR).
+in IT security (ISO 27001, SOC 2, Cyber Essentials, NIST 800-53), \
+healthcare/medical (HIPAA, MDR, IEC 62304, ISO 14971, ISO 13485), and \
+financial regulations (FCA, PSD2, SOX, DORA, AML, MiFID II, GDPR).
 
 Your task is to analyse the provided regulation(s) in the context of the \
 project described below and produce a structured analysis.
@@ -50,29 +62,50 @@ project described below and produce a structured analysis.
 
 When converting regulations to policies in practice, compliance teams:
 
-1. **Map regulation controls to domains** — e.g. ISO 27001 Annex A maps to
-   access control, cryptography, operations security, etc.
-2. **Perform gap analysis** — identify which controls are already addressed
-   and which need new policies.
-3. **Apply industry defaults** — e.g.:
-   - Healthcare: minimum 6-year data retention (HIPAA), PHI encryption at
-     rest and in transit, role-based access with audit trails
-   - Finance: 7-year record retention (SOX/FCA), transaction monitoring,
-     strong customer authentication (PSD2), segregation of duties
-   - IT: 90-day password rotation or MFA, annual penetration testing,
-     incident response within 72 hours (GDPR), quarterly access reviews
-4. **Risk-rate each control** — based on the regulation's own risk framework
-   and the project's specific context
-5. **Document assumptions** — every decision that could go either way
+1. **Map regulation controls to domains** — e.g. ISO 27001:2022 Annex A \
+has 93 controls across 4 themes (Organisational, People, Physical, \
+Technological). HIPAA has ~54 implementation specifications. PCI-DSS v4.0 \
+has 12 requirements with ~250 sub-requirements.
+
+2. **Perform gap analysis** — identify which controls are already addressed \
+and which need new policies.
+
+3. **Apply industry defaults** based on Secure Controls Framework (SCF) \
+mappings and sector norms:
+   - Healthcare: minimum 6-year data retention (HIPAA §164.530(j)), PHI \
+encryption at rest and in transit (§164.312(a)(2)(iv)), role-based access \
+with minimum necessary principle, audit trails retained 6 years
+   - Finance: 7-year record retention (SOX §802, FCA SYSC 9), transaction \
+monitoring, strong customer authentication (PSD2 RTS), segregation of \
+duties (maker-checker), operational resilience (DORA Art. 11)
+   - IT: MFA for all privileged access (NIST 800-63B), annual penetration \
+testing, incident response within 72 hours (GDPR Art. 33), quarterly \
+access reviews, patch management within 48h for critical vulns
+
+4. **Risk-rate each control** — based on the regulation's own risk framework \
+and the project's specific context
+
+5. **Use "must" vs "should" language** — "must" for mandatory regulatory \
+requirements, "should" for recommended best practices. This distinction \
+matters for audits.
+
+6. **Document assumptions** — every decision that could go either way must \
+be captured. Distinguish between "accepted default" and "requires confirmation".
+
+7. **Map single policy to multiple regulations** — e.g. an Access Control \
+Policy may satisfy ISO 27001 A.5.15-A.5.18, HIPAA §164.312(a), PCI-DSS \
+Req 7-8, and SOX Section 404. One policy, many regulatory sources.
 
 Output ONLY valid JSON matching this schema:
 ```json
 {
   "regulation_summary": "Brief summary of the regulation and its scope",
   "industry": "it|health|finance|general",
+  "applicable_control_count": 0,
   "control_domains": [
     {
       "domain": "Domain name (e.g. Access Control)",
+      "regulation_references": ["Specific clause references"],
       "requirements": ["Requirement 1", "Requirement 2"],
       "risk_level": "low|medium|high|critical",
       "relevance_note": "Why this domain matters for this project"
@@ -81,8 +114,8 @@ Output ONLY valid JSON matching this schema:
   "recommended_policies": [
     {
       "name": "Policy name",
-      "description": "What this policy covers and enforces",
-      "regulation_reference": "Specific clause/section of the regulation",
+      "description": "What this policy covers — use 'must' for mandatory, 'should' for recommended",
+      "regulation_references": ["Specific clause/section of the regulation"],
       "risk_level": "low|medium|high|critical",
       "procedures": [
         {
@@ -94,16 +127,26 @@ Output ONLY valid JSON matching this schema:
     }
   ],
   "assumptions": [
-    "Assumption 1 (e.g. Data retention period set to 7 years per SOX defaults)",
-    "Assumption 2"
+    {
+      "assumption": "Data retention period set to 7 years",
+      "basis": "SOX §802 default for financial records",
+      "confidence": "high|medium|low",
+      "overridable": true
+    }
   ],
   "questions": [
-    "Question 1 (e.g. Does the project handle payment card data directly?)",
-    "Question 2"
+    {
+      "question": "Does the project handle payment card data directly?",
+      "why_it_matters": "Determines if PCI-DSS scope applies",
+      "default_if_no_answer": "Assume no direct card handling"
+    }
   ],
   "action_items": [
-    "Action 1 (e.g. Confirm data classification scheme with security team)",
-    "Action 2"
+    {
+      "action": "Confirm data classification scheme with security team",
+      "priority": "high|medium|low",
+      "owner_suggestion": "Security Lead"
+    }
   ]
 }
 ```
@@ -111,43 +154,60 @@ Do NOT include markdown fencing. Output raw JSON only.\
 """
 
 GENERATE_POLICIES_PROMPT = """\
-You are a compliance policy writer. Given the analysis below, produce the \
-final set of policies and procedures as JSON.
+You are a compliance policy writer. Given the regulation analysis below, \
+produce the final set of policies and procedures as JSON.
 
-Each policy must be specific and actionable — not vague platitudes. Include:
-- Concrete requirements (e.g. "All PII must be encrypted at rest using AES-256")
-- Measurable criteria (e.g. "Access reviews must be completed quarterly")
-- Clear ownership (e.g. "Security team", "Engineering lead", "DPO")
-- Review cadence (e.g. "Annual review", "After each incident")
+## Policy writing standards
 
-For each industry, apply standard defaults where the user hasn't specified:
+Each policy MUST be specific and actionable — not vague platitudes:
+- Use "must" for mandatory requirements (regulatory), "should" for \
+recommended practices (best practice). This distinction is critical for audits.
+- Include concrete, measurable requirements with specific values.
+- Reference the regulation clause(s) each policy statement satisfies.
+- Assign clear ownership and review cadence.
+- Design for attestation: every requirement must be testable/auditable.
 
-**IT/Information Security:**
-- Password policy: minimum 12 chars or MFA required
-- Patch management: critical patches within 48 hours
-- Incident response: detect within 24h, contain within 72h
-- Access reviews: quarterly for privileged, annual for standard
-- Data retention: as per legal minimum or 3 years default
-- Penetration testing: annual external, quarterly internal scans
-- Change management: peer review required for production changes
+## Industry-specific defaults (apply where not explicitly specified)
 
-**Healthcare:**
-- PHI encryption: AES-256 at rest, TLS 1.2+ in transit
-- Access control: role-based, minimum necessary principle
-- Audit trails: 6-year retention
-- Business associate agreements: required for all third parties
-- Breach notification: within 60 days (HIPAA) or 72 hours (GDPR)
-- Training: annual HIPAA awareness, role-specific quarterly
-- Data retention: minimum 6 years from last activity
+**IT/Information Security (ISO 27001, SOC 2, Cyber Essentials, NIST):**
+- Authentication: MFA required for all privileged access; passwords minimum \
+12 chars with complexity or passphrase (NIST 800-63B)
+- Patch management: critical/zero-day within 48h, high within 7 days, \
+medium within 30 days, low within 90 days
+- Incident response: detect within 24h, contain within 72h, notify within \
+72h for personal data (GDPR Art. 33)
+- Access reviews: quarterly for privileged accounts, annual for standard
+- Data retention: as per legal minimum or 3 years default; destruction \
+within 90 days of expiry
+- Penetration testing: annual external, quarterly internal vulnerability scans
+- Change management: peer review required for production; rollback plan mandatory
+- Backup: daily incremental, weekly full; tested restore quarterly
+- Vendor risk: annual due diligence for critical vendors, biennial for others
 
-**Finance:**
-- Transaction records: 7-year retention
-- Strong customer authentication: two-factor minimum
-- Segregation of duties: maker-checker for transactions
-- AML screening: real-time for high-risk, batch for standard
-- Operational resilience: RTO < 2 hours for critical systems
-- Third-party risk: annual due diligence reviews
-- Consumer duty: evidence of good outcomes monitoring
+**Healthcare (HIPAA, MDR, IEC 62304):**
+- PHI encryption: AES-256 at rest, TLS 1.2+ in transit (HIPAA §164.312(a)(2)(iv))
+- Access control: role-based, minimum necessary principle (§164.502(b))
+- Audit trails: all PHI access logged, logs retained 6 years (§164.530(j))
+- Business associate agreements: required for ALL third parties with PHI access
+- Breach notification: 60 days to individuals (HIPAA), 72 hours to \
+supervisory authority (GDPR), immediate internal escalation
+- Training: annual HIPAA awareness for all staff, role-specific quarterly \
+for PHI handlers
+- Data retention: minimum 6 years from creation or last effective date
+- Risk analysis: annual formal risk assessment (§164.308(a)(1)(ii)(A))
+
+**Finance (FCA, SOX, PSD2, DORA, AML):**
+- Transaction records: 7 years retention (SOX §802, FCA SYSC 9)
+- Strong customer authentication: two independent factors minimum (PSD2 RTS)
+- Segregation of duties: maker-checker for all financial transactions
+- AML screening: real-time for high-risk transactions, batch daily for standard
+- Operational resilience: RTO < 2h for critical systems, < 24h for important \
+(DORA Art. 11); tested semi-annually
+- Third-party risk: annual due diligence, contract clauses for audit rights \
+and data protection
+- Consumer duty: evidence of good outcomes monitoring, annual fair value \
+assessment (FCA Consumer Duty)
+- Record keeping: complete audit trail for all client interactions
 
 Output JSON matching this schema:
 ```json
@@ -157,10 +217,11 @@ Output JSON matching this schema:
       "name": "Policy name",
       "description": "Full policy description with specific requirements",
       "regulation_ids": ["reg-id-1"],
+      "regulation_references": ["ISO 27001 A.5.15", "HIPAA §164.312(a)"],
       "risk_level": "low|medium|high|critical",
-      "owner": "Suggested owner",
+      "owner": "Suggested owner role",
       "review_cadence": "annual|quarterly|after_incident",
-      "tags": ["tag1", "tag2"]
+      "tags": ["access-control", "authentication"]
     }
   ],
   "procedures": [
@@ -168,14 +229,32 @@ Output JSON matching this schema:
       "name": "Procedure name",
       "description": "What this procedure implements",
       "policy_name": "Parent policy name (must match a policy above)",
-      "steps": ["Step 1", "Step 2", "Step 3"],
-      "owner": "Suggested owner"
+      "steps": ["Step 1 (specific, actionable)", "Step 2", "Step 3"],
+      "owner": "Suggested owner role"
     }
   ],
-  "assumptions": ["Final list of assumptions made"],
-  "questions": ["Final list of questions for the user"],
-  "action_items": ["Final list of action items"],
-  "summary": "Executive summary of what was generated and key next steps"
+  "assumptions": [
+    {
+      "assumption": "Description of what was assumed",
+      "basis": "Why this default was chosen",
+      "confidence": "high|medium|low"
+    }
+  ],
+  "questions": [
+    {
+      "question": "What needs to be answered",
+      "impact": "What changes if the answer differs from the assumption",
+      "priority": "high|medium|low"
+    }
+  ],
+  "action_items": [
+    {
+      "action": "Specific next step",
+      "priority": "high|medium|low",
+      "owner_suggestion": "Who should do this"
+    }
+  ],
+  "summary": "Executive summary of what was generated and critical next steps"
 }
 ```
 Do NOT include markdown fencing. Output raw JSON only.\
@@ -183,39 +262,674 @@ Do NOT include markdown fencing. Output raw JSON only.\
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_configurable(config: RunnableConfig | None) -> dict[str, Any]:
+    """Extract configurable dict from LangGraph config."""
+    if config is None:
+        return {}
+    return config.get("configurable", {})
+
+
+def _get_runtime(config: RunnableConfig | None, state: dict[str, Any]) -> AgentRuntime | None:
+    """Get agent runtime from config or registry fallback."""
+    configurable = _get_configurable(config)
+    runtime = configurable.get("agent_runtime")
+    if runtime is None:
+        run_id = state.get("run_id", "")
+        if run_id:
+            from lintel.workflows.nodes._runtime_registry import get_runtime
+
+            runtime = get_runtime(run_id)
+    return runtime
+
+
+def _get_app_state(config: RunnableConfig | None, state: dict[str, Any]) -> Any:  # noqa: ANN401
+    """Get the app state for store access."""
+    configurable = _get_configurable(config)
+    app_state = configurable.get("app_state")
+    if app_state is None:
+        run_id = state.get("run_id", "")
+        if run_id:
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            app_state = get_app_state(run_id)
+    return app_state
+
+
+async def _resolve_project_description(
+    app_state: Any,  # noqa: ANN401
+    project_id: str,
+    sandbox_manager: Any = None,  # noqa: ANN401
+    sandbox_id: str | None = None,
+    workspace_path: str = "",
+) -> str:
+    """Get project description, falling back to README/CLAUDE.md from the repo.
+
+    Priority:
+    1. Project.description field (if non-empty)
+    2. CLAUDE.md from the sandbox workspace (if available)
+    3. README.md from the sandbox workspace (if available)
+    4. Empty string
+    """
+    # Try project store
+    project_store = getattr(app_state, "project_store", None) if app_state else None
+    if project_store is not None:
+        try:
+            project = await project_store.get(project_id)
+            if project and project.get("description"):
+                return project["description"]
+        except Exception:
+            logger.debug("resolve_project_description_store_failed", project_id=project_id)
+
+    # Try reading from sandbox
+    if sandbox_manager is not None and sandbox_id is not None:
+        repo_path = workspace_path or "/workspace/repo"
+        for filename in ("CLAUDE.md", "README.md"):
+            try:
+                result = await sandbox_manager.exec_in_sandbox(
+                    sandbox_id,
+                    ["cat", f"{repo_path}/{filename}"],
+                )
+                content = result.get("stdout", "").strip() if isinstance(result, dict) else ""
+                if content and len(content) > 20:
+                    return f"[From {filename}]\n{content[:3000]}"
+            except Exception:
+                continue
+
+    return ""
+
+
+def _parse_json_response(text: str) -> dict[str, Any]:
+    """Parse JSON from LLM response, handling markdown fencing."""
+    cleaned = text.strip()
+    # Strip markdown code fences if present
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        # Remove first line (```json) and last line (```)
+        lines = [line for line in lines if not line.strip().startswith("```")]
+        cleaned = "\n".join(lines)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Try to find JSON object in the text
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start != -1 and end != -1:
+            try:
+                return json.loads(cleaned[start : end + 1])
+            except json.JSONDecodeError:
+                pass
+        return {}
+
+
+# ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
 
 
-async def gather_context(state: ThreadWorkflowState) -> dict[str, Any]:
-    """Gather regulation details, project context, and additional user input."""
+async def gather_context(
+    state: ThreadWorkflowState,
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict[str, Any]:
+    """Gather regulation details, project context, and additional user input.
+
+    Reads from:
+    - regulation_store: fetches full regulation records
+    - project_store: gets project description
+    - sandbox: reads README/CLAUDE.md if description is empty
+    - state: additional_context, industry_context from the trigger
+    """
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+
+    tracker = StageTracker(config or {})
+    await tracker.mark_running("gather_context")
+
+    configurable = _get_configurable(config)
+    app_state = _get_app_state(config, state)
+    sandbox_manager = configurable.get("sandbox_manager")
+    sandbox_id: str | None = state.get("sandbox_id")
+
+    # Extract trigger context from sanitized_messages (set by the trigger endpoint)
+    messages = state.get("sanitized_messages", [])
+    trigger_context = "\n".join(messages) if messages else ""
+
+    project_id = state.get("project_id", "")
+
+    # Resolve project description with README fallback
+    await tracker.append_log("gather_context", "Resolving project description...")
+    project_description = await _resolve_project_description(
+        app_state,
+        project_id,
+        sandbox_manager=sandbox_manager,
+        sandbox_id=sandbox_id,
+        workspace_path=state.get("workspace_path", ""),
+    )
+    if project_description:
+        source = "project description" if not project_description.startswith("[From") else (
+            project_description.split("]")[0].replace("[From ", "")
+        )
+        await tracker.append_log("gather_context", f"Project context from: {source}")
+    else:
+        await tracker.append_log("gather_context", "No project description found")
+
+    # Fetch regulation details
+    regulation_details: list[dict[str, Any]] = []
+    regulation_store = getattr(app_state, "regulation_store", None) if app_state else None
+    if regulation_store is not None:
+        # Parse regulation IDs from trigger context
+        try:
+            trigger_data = json.loads(trigger_context) if trigger_context else {}
+        except json.JSONDecodeError:
+            trigger_data = {}
+        reg_ids = trigger_data.get("regulation_ids", [])
+        for reg_id in reg_ids:
+            try:
+                reg = await regulation_store.get(reg_id)
+                if reg:
+                    regulation_details.append(reg)
+            except Exception:
+                logger.debug("gather_context_reg_fetch_failed", reg_id=reg_id)
+
+    await tracker.append_log(
+        "gather_context",
+        f"Gathered {len(regulation_details)} regulation(s), "
+        f"project description: {len(project_description)} chars",
+    )
+
+    # Build the assembled context as research_context for downstream nodes
+    context_parts = []
+    if regulation_details:
+        context_parts.append("## Regulations\n")
+        for reg in regulation_details:
+            context_parts.append(
+                f"### {reg.get('name', 'Unknown')}\n"
+                f"- Authority: {reg.get('authority', 'N/A')}\n"
+                f"- Description: {reg.get('description', 'N/A')}\n"
+                f"- Risk level: {reg.get('risk_level', 'medium')}\n"
+                f"- Tags: {', '.join(reg.get('tags', []))}\n"
+                f"- ID: {reg.get('regulation_id', '')}\n"
+            )
+
+    if project_description:
+        context_parts.append(f"## Project Context\n{project_description}\n")
+
+    industry = ""
+    additional_context = ""
+    if trigger_context:
+        try:
+            td = json.loads(trigger_context)
+            industry = td.get("industry_context", "general")
+            additional_context = td.get("additional_context", "")
+        except json.JSONDecodeError:
+            additional_context = trigger_context
+
+    if industry:
+        context_parts.append(f"## Industry: {industry}\n")
+    if additional_context:
+        context_parts.append(f"## Additional Context\n{additional_context}\n")
+
+    assembled_context = "\n".join(context_parts)
+
+    await tracker.mark_completed(
+        "gather_context",
+        outputs={
+            "regulation_count": len(regulation_details),
+            "project_description_chars": len(project_description),
+            "industry": industry,
+        },
+    )
+
     return {
         "current_phase": "gathering_context",
-        "agent_outputs": [{"node": "gather_context", "summary": "Context gathered"}],
+        "research_context": assembled_context,
+        "agent_outputs": [
+            {
+                "node": "gather_context",
+                "summary": f"Gathered context: {len(regulation_details)} regulations, "
+                f"industry={industry or 'general'}",
+                "regulation_count": len(regulation_details),
+                "industry": industry or "general",
+            }
+        ],
     }
 
 
-async def analyse_regulation(state: ThreadWorkflowState) -> dict[str, Any]:
-    """Analyse regulation(s) to identify control domains and requirements."""
+async def analyse_regulation(
+    state: ThreadWorkflowState,
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict[str, Any]:
+    """Analyse regulation(s) using LLM to identify control domains and requirements."""
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+
+    tracker = StageTracker(config or {})
+    await tracker.mark_running("analyse_regulation")
+
+    runtime = _get_runtime(config, state)
+    context = state.get("research_context", "")
+
+    if not context:
+        await tracker.append_log("analyse_regulation", "No context available — cannot analyse")
+        await tracker.mark_completed("analyse_regulation", error="No regulation context gathered")
+        return {
+            "current_phase": "failed",
+            "error": "No regulation context to analyse",
+            "agent_outputs": [{"node": "analyse_regulation", "verdict": "failed"}],
+        }
+
+    # Without runtime, produce a structured placeholder from the context
+    if runtime is None:
+        logger.warning("analyse_no_runtime", msg="No AgentRuntime — returning raw context")
+        await tracker.append_log("analyse_regulation", "No LLM runtime — using raw context")
+        await tracker.mark_completed("analyse_regulation", outputs={"mode": "no_llm"})
+        return {
+            "current_phase": "analysing",
+            "agent_outputs": [
+                {
+                    "node": "analyse_regulation",
+                    "summary": "Analysis complete (no LLM — raw context passed through)",
+                    "analysis": {},
+                }
+            ],
+        }
+
+    await tracker.append_log("analyse_regulation", "Analysing regulations with LLM...")
+    await tracker.log_llm_context("analyse_regulation", "researcher", "analyse_regulation")
+
+    from lintel.agents.types import AgentRole
+    from lintel.contracts.types import ThreadRef
+
+    thread_ref_str = state.get("thread_ref", "")
+    parts = thread_ref_str.split("/")
+    thread_ref = (
+        ThreadRef(workspace_id=parts[0], channel_id=parts[1], thread_ts=parts[2])
+        if len(parts) == 3
+        else ThreadRef(workspace_id="compliance", channel_id="policy-gen", thread_ts=thread_ref_str)
+    )
+
+    async def _on_activity(activity: str) -> None:
+        if activity:
+            await tracker.append_log("analyse_regulation", activity)
+
+    result = await runtime.execute_step(
+        thread_ref=thread_ref,
+        agent_role=AgentRole.RESEARCHER,
+        step_name="analyse_regulation",
+        messages=[
+            {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT},
+            {"role": "user", "content": context},
+        ],
+        tools=[],
+        max_iterations=1,
+        on_activity=_on_activity,
+        run_id=state.get("run_id", ""),
+    )
+
+    response_text = result.get("content", "")
+    usage = StageTracker.extract_token_usage(result)
+    analysis = _parse_json_response(response_text)
+
+    if not analysis:
+        await tracker.append_log("analyse_regulation", "Failed to parse LLM response as JSON")
+        await tracker.mark_completed("analyse_regulation", error="Invalid JSON response from LLM")
+        return {
+            "current_phase": "failed",
+            "error": "Failed to parse regulation analysis",
+            "agent_outputs": [
+                {"node": "analyse_regulation", "verdict": "failed", "raw": response_text[:500]}
+            ],
+            "token_usage": [usage],
+        }
+
+    domain_count = len(analysis.get("control_domains", []))
+    policy_count = len(analysis.get("recommended_policies", []))
+    await tracker.append_log(
+        "analyse_regulation",
+        f"Analysis complete: {domain_count} control domains, {policy_count} recommended policies",
+    )
+    await tracker.append_log(
+        "analyse_regulation",
+        f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
+    )
+    await tracker.mark_completed(
+        "analyse_regulation",
+        outputs={"domain_count": domain_count, "policy_count": policy_count, "token_usage": usage},
+    )
+
     return {
         "current_phase": "analysing",
-        "agent_outputs": [{"node": "analyse_regulation", "summary": "Regulation analysed"}],
+        "agent_outputs": [
+            {
+                "node": "analyse_regulation",
+                "summary": f"Analysed: {domain_count} domains, {policy_count} policies recommended",
+                "analysis": analysis,
+            }
+        ],
+        "token_usage": [usage],
     }
 
 
-async def generate_policies(state: ThreadWorkflowState) -> dict[str, Any]:
-    """Generate draft policies, procedures, assumptions, and questions."""
+async def generate_policies(
+    state: ThreadWorkflowState,
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict[str, Any]:
+    """Generate draft policies and procedures from the regulation analysis."""
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+
+    tracker = StageTracker(config or {})
+    await tracker.mark_running("generate_policies")
+
+    runtime = _get_runtime(config, state)
+
+    # Find the analysis from the previous node
+    analysis: dict[str, Any] = {}
+    for output in reversed(state.get("agent_outputs", [])):
+        if isinstance(output, dict) and output.get("node") == "analyse_regulation":
+            analysis = output.get("analysis", {})
+            break
+
+    context = state.get("research_context", "")
+
+    if not analysis and not context:
+        await tracker.mark_completed("generate_policies", error="No analysis available")
+        return {
+            "current_phase": "failed",
+            "error": "No regulation analysis to generate policies from",
+            "agent_outputs": [{"node": "generate_policies", "verdict": "failed"}],
+        }
+
+    # Build the user message with analysis + original context
+    user_content_parts = []
+    if analysis:
+        analysis_json = json.dumps(analysis, indent=2)
+        user_content_parts.append(f"## Regulation Analysis\n```json\n{analysis_json}\n```\n")
+    if context:
+        user_content_parts.append(f"## Original Context\n{context}\n")
+    user_content = "\n".join(user_content_parts)
+
+    if runtime is None:
+        logger.warning("generate_no_runtime", msg="No AgentRuntime — returning analysis as-is")
+        await tracker.append_log("generate_policies", "No LLM runtime — passing analysis through")
+        await tracker.mark_completed("generate_policies", outputs={"mode": "no_llm"})
+        return {
+            "current_phase": "generating",
+            "agent_outputs": [
+                {
+                    "node": "generate_policies",
+                    "summary": "Policies drafted (no LLM — analysis passed through)",
+                    "generated": {"policies": [], "procedures": [], "assumptions": [],
+                                  "questions": [], "action_items": [], "summary": ""},
+                }
+            ],
+        }
+
+    await tracker.append_log("generate_policies", "Generating policies with LLM...")
+    await tracker.log_llm_context("generate_policies", "planner", "generate_policies")
+
+    from lintel.agents.types import AgentRole
+    from lintel.contracts.types import ThreadRef
+
+    thread_ref_str = state.get("thread_ref", "")
+    parts = thread_ref_str.split("/")
+    thread_ref = (
+        ThreadRef(workspace_id=parts[0], channel_id=parts[1], thread_ts=parts[2])
+        if len(parts) == 3
+        else ThreadRef(workspace_id="compliance", channel_id="policy-gen", thread_ts=thread_ref_str)
+    )
+
+    async def _on_activity(activity: str) -> None:
+        if activity:
+            await tracker.append_log("generate_policies", activity)
+
+    result = await runtime.execute_step(
+        thread_ref=thread_ref,
+        agent_role=AgentRole.PLANNER,
+        step_name="generate_policies",
+        messages=[
+            {"role": "system", "content": GENERATE_POLICIES_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        tools=[],
+        max_iterations=1,
+        on_activity=_on_activity,
+        run_id=state.get("run_id", ""),
+    )
+
+    response_text = result.get("content", "")
+    usage = StageTracker.extract_token_usage(result)
+    generated = _parse_json_response(response_text)
+
+    if not generated or not generated.get("policies"):
+        await tracker.append_log("generate_policies", "Failed to parse policy generation response")
+        await tracker.mark_completed("generate_policies", error="Invalid or empty policy response")
+        return {
+            "current_phase": "failed",
+            "error": "Failed to generate policies",
+            "agent_outputs": [
+                {"node": "generate_policies", "verdict": "failed", "raw": response_text[:500]}
+            ],
+            "token_usage": [usage],
+        }
+
+    pol_count = len(generated.get("policies", []))
+    proc_count = len(generated.get("procedures", []))
+    assumption_count = len(generated.get("assumptions", []))
+    question_count = len(generated.get("questions", []))
+
+    await tracker.append_log(
+        "generate_policies",
+        f"Generated {pol_count} policies, {proc_count} procedures, "
+        f"{assumption_count} assumptions, {question_count} questions",
+    )
+    await tracker.append_log(
+        "generate_policies",
+        f"Tokens: {usage['input_tokens']} in / {usage['output_tokens']} out",
+    )
+    await tracker.mark_completed(
+        "generate_policies",
+        outputs={
+            "policy_count": pol_count,
+            "procedure_count": proc_count,
+            "token_usage": usage,
+        },
+    )
+
     return {
         "current_phase": "generating",
-        "agent_outputs": [{"node": "generate_policies", "summary": "Policies generated"}],
+        "agent_outputs": [
+            {
+                "node": "generate_policies",
+                "summary": f"Generated {pol_count} policies, {proc_count} procedures",
+                "generated": generated,
+            }
+        ],
+        "token_usage": [usage],
     }
 
 
-async def finalise_policies(state: ThreadWorkflowState) -> dict[str, Any]:
-    """Persist approved policies and produce final summary."""
+async def finalise_policies(
+    state: ThreadWorkflowState,
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict[str, Any]:
+    """Persist approved policies/procedures and update the generation run.
+
+    Creates actual CompliancePolicy and Procedure records in their respective
+    stores, then updates the PolicyGenerationRun with results.
+    """
+    from lintel.workflows.nodes._stage_tracking import StageTracker
+
+    tracker = StageTracker(config or {})
+    await tracker.mark_running("finalise")
+
+    app_state = _get_app_state(config, state)
+
+    # Find the generated data from the previous node
+    generated: dict[str, Any] = {}
+    for output in reversed(state.get("agent_outputs", [])):
+        if isinstance(output, dict) and output.get("node") == "generate_policies":
+            generated = output.get("generated", {})
+            break
+
+    if not generated:
+        await tracker.append_log("finalise", "No generated policies found — skipping persistence")
+        await tracker.mark_completed("finalise", outputs={"persisted": False})
+        return {
+            "current_phase": "completed",
+            "agent_outputs": [{"node": "finalise", "summary": "Nothing to persist"}],
+        }
+
+    project_id = state.get("project_id", "")
+    run_id = state.get("run_id", "")
+
+    # Find regulation IDs from context
+    regulation_ids: list[str] = []
+    for output in state.get("agent_outputs", []):
+        if isinstance(output, dict) and output.get("node") == "gather_context":
+            break
+    # Also extract from generated policies
+    for pol in generated.get("policies", []):
+        for rid in pol.get("regulation_ids", []):
+            if rid not in regulation_ids:
+                regulation_ids.append(rid)
+
+    # Persist CompliancePolicy records
+    policy_store = getattr(app_state, "compliance_policy_store", None) if app_state else None
+    procedure_store = getattr(app_state, "procedure_store", None) if app_state else None
+    generation_store = getattr(app_state, "policy_generation_store", None) if app_state else None
+
+    created_policy_ids: list[str] = []
+    created_procedure_ids: list[str] = []
+    policy_name_to_id: dict[str, str] = {}
+
+    if policy_store is not None:
+        from lintel.domain.types import CompliancePolicy, ComplianceStatus, RiskLevel
+
+        for pol_data in generated.get("policies", []):
+            policy_id = f"{run_id}-pol-{uuid4().hex[:8]}"
+            risk = pol_data.get("risk_level", "medium")
+            try:
+                risk_level = RiskLevel(risk)
+            except ValueError:
+                risk_level = RiskLevel.MEDIUM
+
+            policy = CompliancePolicy(
+                policy_id=policy_id,
+                project_id=project_id,
+                name=pol_data.get("name", "Untitled Policy"),
+                description=pol_data.get("description", ""),
+                regulation_ids=tuple(pol_data.get("regulation_ids", regulation_ids)),
+                owner=pol_data.get("owner", ""),
+                status=ComplianceStatus.DRAFT,
+                risk_level=risk_level,
+                review_date=pol_data.get("review_cadence", ""),
+                tags=tuple(pol_data.get("tags", [])),
+            )
+            try:
+                await policy_store.add(policy)
+                created_policy_ids.append(policy_id)
+                policy_name_to_id[pol_data.get("name", "")] = policy_id
+                await tracker.append_log("finalise", f"Created policy: {pol_data.get('name', '')}")
+            except Exception:
+                logger.warning("finalise_policy_create_failed", policy_id=policy_id, exc_info=True)
+
+    if procedure_store is not None:
+        from lintel.domain.types import ComplianceStatus, Procedure
+
+        for proc_data in generated.get("procedures", []):
+            proc_id = f"{run_id}-proc-{uuid4().hex[:8]}"
+            parent_policy_name = proc_data.get("policy_name", "")
+            parent_policy_ids = []
+            if parent_policy_name in policy_name_to_id:
+                parent_policy_ids.append(policy_name_to_id[parent_policy_name])
+
+            procedure = Procedure(
+                procedure_id=proc_id,
+                project_id=project_id,
+                name=proc_data.get("name", "Untitled Procedure"),
+                description=proc_data.get("description", ""),
+                policy_ids=tuple(parent_policy_ids),
+                steps=tuple(proc_data.get("steps", [])),
+                owner=proc_data.get("owner", ""),
+                status=ComplianceStatus.DRAFT,
+            )
+            try:
+                await procedure_store.add(procedure)
+                created_procedure_ids.append(proc_id)
+                proc_name = proc_data.get("name", "")
+                await tracker.append_log("finalise", f"Created procedure: {proc_name}")
+            except Exception:
+                logger.warning("finalise_proc_create_failed", proc_id=proc_id, exc_info=True)
+
+    # Flatten assumptions/questions/action_items for the run record
+    assumptions = [
+        a.get("assumption", a) if isinstance(a, dict) else str(a)
+        for a in generated.get("assumptions", [])
+    ]
+    questions = [
+        q.get("question", q) if isinstance(q, dict) else str(q)
+        for q in generated.get("questions", [])
+    ]
+    action_items = [
+        a.get("action", a) if isinstance(a, dict) else str(a)
+        for a in generated.get("action_items", [])
+    ]
+    summary = generated.get("summary", "")
+
+    # Update the PolicyGenerationRun record
+    if generation_store is not None and run_id:
+        try:
+            from datetime import datetime
+
+            await generation_store.update(run_id, {
+                "status": "completed",
+                "generated_policy_ids": created_policy_ids,
+                "generated_procedure_ids": created_procedure_ids,
+                "assumptions": assumptions,
+                "questions": questions,
+                "action_items": action_items,
+                "summary": summary,
+                "completed_at": datetime.now(tz=UTC).isoformat(),
+            })
+            await tracker.append_log("finalise", "Updated generation run record")
+        except Exception:
+            logger.warning("finalise_update_run_failed", run_id=run_id, exc_info=True)
+
+    await tracker.append_log(
+        "finalise",
+        f"Finalised: {len(created_policy_ids)} policies, "
+        f"{len(created_procedure_ids)} procedures persisted",
+    )
+    await tracker.mark_completed(
+        "finalise",
+        outputs={
+            "policy_ids": created_policy_ids,
+            "procedure_ids": created_procedure_ids,
+            "assumption_count": len(assumptions),
+            "question_count": len(questions),
+            "action_item_count": len(action_items),
+        },
+    )
+
     return {
         "current_phase": "completed",
-        "agent_outputs": [{"node": "finalise", "summary": "Policies finalised"}],
+        "agent_outputs": [
+            {
+                "node": "finalise",
+                "summary": (
+                    f"Persisted {len(created_policy_ids)} policies and "
+                    f"{len(created_procedure_ids)} procedures. "
+                    f"{len(assumptions)} assumptions, {len(questions)} questions, "
+                    f"{len(action_items)} action items for review."
+                ),
+                "policy_ids": created_policy_ids,
+                "procedure_ids": created_procedure_ids,
+                "assumptions": assumptions,
+                "questions": questions,
+                "action_items": action_items,
+            }
+        ],
     }
 
 
