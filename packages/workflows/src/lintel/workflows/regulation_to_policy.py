@@ -38,6 +38,8 @@ from lintel.workflows.nodes._event_helpers import AuditEmitter
 from lintel.workflows.state import ThreadWorkflowState
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from langchain_core.runnables import RunnableConfig
 
     from lintel.agents.runtime import AgentRuntime
@@ -390,7 +392,7 @@ def _get_configurable(config: RunnableConfig | None) -> dict[str, Any]:
     return config.get("configurable", {})
 
 
-def _get_runtime(config: RunnableConfig | None, state: dict[str, Any]) -> AgentRuntime | None:
+def _get_runtime(config: RunnableConfig | None, state: Mapping[str, Any]) -> AgentRuntime | None:
     """Get agent runtime from config or registry fallback."""
     configurable = _get_configurable(config)
     runtime = configurable.get("agent_runtime")
@@ -403,7 +405,7 @@ def _get_runtime(config: RunnableConfig | None, state: dict[str, Any]) -> AgentR
     return runtime
 
 
-def _get_app_state(config: RunnableConfig | None, state: dict[str, Any]) -> Any:  # noqa: ANN401
+def _get_app_state(config: RunnableConfig | None, state: Mapping[str, Any]) -> Any:  # noqa: ANN401
     """Get the app state for store access."""
     configurable = _get_configurable(config)
     app_state = configurable.get("app_state")
@@ -437,7 +439,7 @@ async def _resolve_project_description(
         try:
             project = await project_store.get(project_id)
             if project and project.get("description"):
-                return project["description"]
+                return str(project["description"])
         except Exception:
             logger.debug("resolve_project_description_store_failed", project_id=project_id)
 
@@ -469,14 +471,16 @@ def _parse_json_response(text: str) -> dict[str, Any]:
         lines = [line for line in lines if not line.strip().startswith("```")]
         cleaned = "\n".join(lines)
     try:
-        return json.loads(cleaned)
+        result: dict[str, Any] = json.loads(cleaned)
+        return result
     except json.JSONDecodeError:
         # Try to find JSON object in the text
         start = cleaned.find("{")
         end = cleaned.rfind("}")
         if start != -1 and end != -1:
             try:
-                return json.loads(cleaned[start : end + 1])
+                result = json.loads(cleaned[start : end + 1])
+                return result
             except json.JSONDecodeError:
                 pass
         return {}
@@ -532,15 +536,16 @@ async def gather_context(
     else:
         await tracker.append_log("gather_context", "No project description found")
 
+    # Parse trigger context JSON once for use by regulation fetch and context assembly
+    try:
+        trigger_data = json.loads(trigger_context) if trigger_context else {}
+    except json.JSONDecodeError:
+        trigger_data = {}
+
     # Fetch regulation details
     regulation_details: list[dict[str, Any]] = []
     regulation_store = getattr(app_state, "regulation_store", None) if app_state else None
     if regulation_store is not None:
-        # Parse regulation IDs from trigger context
-        try:
-            trigger_data = json.loads(trigger_context) if trigger_context else {}
-        except json.JSONDecodeError:
-            trigger_data = {}
         reg_ids = trigger_data.get("regulation_ids", [])
         for reg_id in reg_ids:
             try:
@@ -573,15 +578,16 @@ async def gather_context(
     if project_description:
         context_parts.append(f"## Project Context\n{project_description}\n")
 
-    industry = ""
-    additional_context = ""
-    if trigger_context:
-        try:
-            td = json.loads(trigger_context)
-            industry = td.get("industry_context", "general")
-            additional_context = td.get("additional_context", "")
-        except json.JSONDecodeError:
-            additional_context = trigger_context
+    if trigger_data:
+        industry = trigger_data.get("industry_context", "general")
+        additional_context = trigger_data.get("additional_context", "")
+    elif trigger_context:
+        # Non-JSON trigger context — treat as raw additional context
+        industry = "general"
+        additional_context = trigger_context
+    else:
+        industry = ""
+        additional_context = ""
 
     if industry:
         context_parts.append(f"## Industry: {industry}\n")
@@ -1250,10 +1256,8 @@ async def approval_gate_policies(
     )
 
     return {
-        **state,
         "current_phase": "awaiting_approval",
         "pending_approvals": [
-            *(state.get("pending_approvals") or []),
             {
                 "approval_id": approval_id,
                 "gate_type": "policy_review",
