@@ -161,28 +161,31 @@ def _inject_github_token(repo_url: str, token: str) -> str:
     )
 
 
-async def _resolve_credentials(
+def _get_cred_type(cred: Any) -> str:  # noqa: ANN401
+    """Extract credential_type as a plain string from a Credential or dict."""
+    raw = (
+        cred.credential_type
+        if hasattr(cred, "credential_type")
+        else cred.get("credential_type", "")
+        if isinstance(cred, dict)
+        else ""
+    )
+    return raw.value if hasattr(raw, "value") else str(raw)
+
+
+async def resolve_credential_pairs(
     state: ThreadWorkflowState,
-    credential_store: CredentialStore | None,
-    sandbox_manager: SandboxManager,
-    sandbox_id: str,
-    repo_url: str,
-) -> tuple[str, bool]:
-    """Resolve credentials. Returns (clone_url, has_ssh_key).
+    credential_store: CredentialStore,
+) -> list[tuple[Any, str]]:
+    """Return (Credential, secret) pairs from the workflow state or store.
 
-    First tries explicit credential_ids from the workflow state.
-    Falls back to querying the credential store for any applicable credentials
-    (global credentials or those matching the repo).
+    Tries explicit ``credential_ids`` first. Falls back to querying the entire
+    credential store when none are linked.
     """
-    if credential_store is None:
-        return repo_url, False
-
     credential_ids: tuple[str, ...] = state.get("credential_ids", ())
-
-    credentials: list[tuple[Any, str]] = []  # (Credential, secret) pairs
+    credentials: list[tuple[Any, str]] = []
 
     if credential_ids:
-        # Use explicitly linked credentials
         for cred_id in credential_ids:
             cred = await credential_store.get(cred_id)
             if cred is None:
@@ -192,7 +195,6 @@ async def _resolve_credentials(
                 continue
             credentials.append((cred, secret))
     else:
-        # Fall back: search for any applicable credentials in the store
         all_creds = await credential_store.list_all()
         for cred in all_creds:
             cred_id = (
@@ -209,21 +211,43 @@ async def _resolve_credentials(
                 continue
             credentials.append((cred, secret))
         if credentials:
-            logger.info(
-                "credentials_auto_resolved",
-                count=len(credentials),
-                repo_url=repo_url,
-            )
+            logger.info("credentials_auto_resolved", count=len(credentials))
+
+    return credentials
+
+
+async def resolve_github_token(
+    state: ThreadWorkflowState,
+    credential_store: CredentialStore,
+) -> str:
+    """Return the first GitHub token found, or empty string."""
+    for cred, secret in await resolve_credential_pairs(state, credential_store):
+        if _get_cred_type(cred) == "github_token":
+            return secret
+    return ""
+
+
+async def resolve_credentials(
+    state: ThreadWorkflowState,
+    credential_store: CredentialStore | None,
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    repo_url: str,
+) -> tuple[str, bool]:
+    """Resolve credentials. Returns (clone_url, has_ssh_key).
+
+    First tries explicit credential_ids from the workflow state.
+    Falls back to querying the credential store for any applicable credentials
+    (global credentials or those matching the repo).
+    """
+    if credential_store is None:
+        return repo_url, False
+
+    credentials = await resolve_credential_pairs(state, credential_store)
 
     has_ssh_key = False
     for cred, secret in credentials:
-        cred_type = (
-            cred.credential_type
-            if hasattr(cred, "credential_type")
-            else cred.get("credential_type", "")
-            if isinstance(cred, dict)
-            else ""
-        )
+        cred_type = _get_cred_type(cred)
         if cred_type == "github_token":
             repo_url = _inject_github_token(repo_url, secret)
         elif cred_type == "ssh_key":
@@ -383,12 +407,14 @@ async def setup_workspace(
                 "repo_url": "",
                 "feature_branch": feature_branch or "lintel/task/work",
                 "workspace_path": repo_path,
+                "workspace_paths": (),
             },
         )
         return {
             "sandbox_id": sandbox_id,
             "feature_branch": feature_branch or "lintel/task/work",
             "workspace_path": repo_path,
+            "workspace_paths": (),
             "current_phase": "planning",
         }
 
@@ -524,7 +550,7 @@ async def setup_workspace(
         )
 
         # Resolve credentials and inject into clone URL if needed
-        clone_url, has_ssh_key = await _resolve_credentials(
+        clone_url, has_ssh_key = await resolve_credentials(
             state, credential_store, sandbox_manager, sandbox_id, repo_url
         )
 
@@ -645,7 +671,7 @@ async def setup_workspace(
         for idx, extra_url in enumerate(additional_repos, start=1):
             extra_clone_url = extra_url
             if credential_store is not None:
-                extra_clone_url, _ = await _resolve_credentials(
+                extra_clone_url, _ = await resolve_credentials(
                     state,
                     credential_store,
                     sandbox_manager,

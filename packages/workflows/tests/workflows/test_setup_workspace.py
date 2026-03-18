@@ -486,6 +486,39 @@ class TestSetupWorkspace:
         assert len(clone_cmds) == 2
         assert "repo2.git" in clone_cmds[1]
 
+        # workspace_paths should contain both repos
+        ws_paths = result["workspace_paths"]
+        assert len(ws_paths) == 2
+        assert ws_paths[0][0] == "https://github.com/test/repo.git"
+        assert ws_paths[1][0] == "https://github.com/test/repo2.git"
+        assert "repo-1" in ws_paths[1][1]
+
+    async def test_single_repo_workspace_paths(self) -> None:
+        """Single-repo project returns workspace_paths with one entry."""
+        manager = DummySandboxManager()
+        state = _make_state()
+
+        result = await setup_workspace(
+            state,  # type: ignore[arg-type]
+            _make_config(manager),
+        )
+
+        ws_paths = result["workspace_paths"]
+        assert len(ws_paths) == 1
+        assert ws_paths[0][0] == "https://github.com/test/repo.git"
+
+    async def test_no_repo_returns_empty_workspace_paths(self) -> None:
+        """No-repo project returns empty workspace_paths."""
+        manager = DummySandboxManager()
+        state = _make_state(repo_url="")
+
+        result = await setup_workspace(
+            state,  # type: ignore[arg-type]
+            _make_config(manager),
+        )
+
+        assert result["workspace_paths"] == ()
+
     async def test_clone_works_without_credentials(self) -> None:
         """Public repo clone works when no credential_store is given."""
         manager = DummySandboxManager()
@@ -502,3 +535,185 @@ class TestSetupWorkspace:
         assert len(clone_cmds) >= 1
         assert "x-access-token" not in clone_cmds[0]
         assert "https://github.com/test/repo.git" in clone_cmds[0]
+
+
+class TestResolveCredentialPairs:
+    """Tests for resolve_credential_pairs."""
+
+    async def test_explicit_credential_ids(self) -> None:
+        """When credential_ids are in state, only those are returned."""
+        from lintel.workflows.nodes.setup_workspace import resolve_credential_pairs
+
+        store = DummyCredentialStore()
+        await store.store("cred-1", "github_token", "my-token", "ghp_abc123")
+        await store.store("cred-2", "ssh_key", "my-key", "ssh-rsa AAAA")
+
+        state = _make_state(credential_ids=("cred-1",))
+        pairs = await resolve_credential_pairs(state, store)  # type: ignore[arg-type]
+
+        assert len(pairs) == 1
+        assert pairs[0][0].credential_id == "cred-1"
+        assert pairs[0][1] == "ghp_abc123"
+
+    async def test_fallback_to_all_credentials(self) -> None:
+        """When no credential_ids in state, returns all credentials from store."""
+        from lintel.workflows.nodes.setup_workspace import resolve_credential_pairs
+
+        store = DummyCredentialStore()
+        await store.store("cred-1", "github_token", "tok", "ghp_abc")
+        await store.store("cred-2", "ssh_key", "key", "ssh-rsa BBB")
+
+        state = _make_state(credential_ids=())
+        pairs = await resolve_credential_pairs(state, store)  # type: ignore[arg-type]
+
+        assert len(pairs) == 2
+
+    async def test_empty_store_returns_empty(self) -> None:
+        """Empty credential store returns no pairs."""
+        from lintel.workflows.nodes.setup_workspace import resolve_credential_pairs
+
+        store = DummyCredentialStore()
+        state = _make_state(credential_ids=())
+        pairs = await resolve_credential_pairs(state, store)  # type: ignore[arg-type]
+
+        assert pairs == []
+
+    async def test_skips_missing_credential(self) -> None:
+        """Credential IDs that don't exist in the store are skipped."""
+        from lintel.workflows.nodes.setup_workspace import resolve_credential_pairs
+
+        store = DummyCredentialStore()
+        state = _make_state(credential_ids=("nonexistent",))
+        pairs = await resolve_credential_pairs(state, store)  # type: ignore[arg-type]
+
+        assert pairs == []
+
+
+class TestResolveGithubToken:
+    """Tests for resolve_github_token."""
+
+    async def test_returns_github_token(self) -> None:
+        from lintel.workflows.nodes.setup_workspace import resolve_github_token
+
+        store = DummyCredentialStore()
+        await store.store("cred-1", "github_token", "tok", "ghp_secret")
+
+        state = _make_state(credential_ids=("cred-1",))
+        token = await resolve_github_token(state, store)  # type: ignore[arg-type]
+
+        assert token == "ghp_secret"
+
+    async def test_returns_empty_when_only_ssh(self) -> None:
+        from lintel.workflows.nodes.setup_workspace import resolve_github_token
+
+        store = DummyCredentialStore()
+        await store.store("cred-1", "ssh_key", "key", "ssh-rsa AAAA")
+
+        state = _make_state(credential_ids=("cred-1",))
+        token = await resolve_github_token(state, store)  # type: ignore[arg-type]
+
+        assert token == ""
+
+    async def test_fallback_finds_token(self) -> None:
+        """With no credential_ids, falls back and finds a github_token."""
+        from lintel.workflows.nodes.setup_workspace import resolve_github_token
+
+        store = DummyCredentialStore()
+        await store.store("cred-1", "ssh_key", "key", "ssh-rsa AAAA")
+        await store.store("cred-2", "github_token", "tok", "ghp_fallback")
+
+        state = _make_state(credential_ids=())
+        token = await resolve_github_token(state, store)  # type: ignore[arg-type]
+
+        assert token == "ghp_fallback"
+
+
+class TestGatherMultiRepoContext:
+    """Tests for gather_multi_repo_context."""
+
+    async def test_single_repo_delegates(self) -> None:
+        """Single entry delegates to gather_codebase_context."""
+        from unittest.mock import AsyncMock, patch
+
+        from lintel.workflows.nodes._codebase_context import gather_multi_repo_context
+
+        manager = AsyncMock()
+        with patch(
+            "lintel.workflows.nodes._codebase_context.gather_codebase_context",
+            new_callable=AsyncMock,
+            return_value="# Context",
+        ) as mock_gather:
+            result = await gather_multi_repo_context(
+                manager, "sbx-1", (("https://github.com/a/b", "/workspace/repo"),)
+            )
+            mock_gather.assert_called_once_with(manager, "sbx-1", repo_path="/workspace/repo")
+            assert result == "# Context"
+
+    async def test_multi_repo_combines(self) -> None:
+        """Multiple entries produce combined context with repo labels."""
+        from unittest.mock import AsyncMock, patch
+
+        from lintel.workflows.nodes._codebase_context import gather_multi_repo_context
+
+        manager = AsyncMock()
+        call_count = 0
+
+        async def fake_gather(_mgr: object, _sid: str, *, repo_path: str = "") -> str:
+            nonlocal call_count
+            call_count += 1
+            return f"# Context for {repo_path}"
+
+        with patch(
+            "lintel.workflows.nodes._codebase_context.gather_codebase_context",
+            side_effect=fake_gather,
+        ):
+            result = await gather_multi_repo_context(
+                manager,
+                "sbx-1",
+                (
+                    ("https://github.com/a/repo1", "/workspace/repo"),
+                    ("https://github.com/a/repo2", "/workspace/repo-1"),
+                ),
+            )
+
+        assert call_count == 2
+        assert "Repository: repo1" in result
+        assert "Repository: repo2" in result
+        assert "---" in result
+
+    async def test_empty_returns_empty(self) -> None:
+        from unittest.mock import AsyncMock
+
+        from lintel.workflows.nodes._codebase_context import gather_multi_repo_context
+
+        result = await gather_multi_repo_context(AsyncMock(), "sbx-1", ())
+        assert result == ""
+
+    async def test_missing_repo_skipped(self) -> None:
+        """A repo that raises FileNotFoundError is skipped."""
+        from unittest.mock import AsyncMock, patch
+
+        from lintel.workflows.nodes._codebase_context import gather_multi_repo_context
+
+        manager = AsyncMock()
+
+        async def fake_gather(_mgr: object, _sid: str, *, repo_path: str = "") -> str:
+            if "repo-1" in repo_path:
+                raise FileNotFoundError
+            return "# Context"
+
+        with patch(
+            "lintel.workflows.nodes._codebase_context.gather_codebase_context",
+            side_effect=fake_gather,
+        ):
+            result = await gather_multi_repo_context(
+                manager,
+                "sbx-1",
+                (
+                    ("https://github.com/a/repo1", "/workspace/repo"),
+                    ("https://github.com/a/repo2", "/workspace/repo-1"),
+                ),
+            )
+
+        assert "Repository: repo1" in result
+        assert "repo2" not in result

@@ -135,7 +135,7 @@ async def close_workflow(
             logger.warning("close_reconnect_network_failed")
 
         # Resolve credentials for push — reuse setup_workspace's resolver
-        from lintel.workflows.nodes.setup_workspace import _resolve_credentials
+        from lintel.workflows.nodes.setup_workspace import resolve_credentials
 
         credential_store = _configurable.get("credential_store")
         if credential_store is None and run_id:
@@ -152,7 +152,7 @@ async def close_workflow(
 
             # Inject credentials into remote URL
             if credential_store is not None:
-                auth_url, _ = await _resolve_credentials(
+                auth_url, _ = await resolve_credentials(
                     state, credential_store, sandbox_manager, sandbox_id, r_url
                 )
                 if auth_url != r_url:
@@ -325,39 +325,9 @@ async def _create_pull_request(
     if credential_store is None:
         return ""
 
-    # Resolve a GitHub token — try explicit credential_ids first, then fall back to all
-    github_token = ""
-    credential_ids: tuple[str, ...] = state.get("credential_ids", ())
-    cred_ids_to_try: list[str] = list(credential_ids)
-    if not cred_ids_to_try:
-        # Fall back: search all credentials for a github_token
-        all_creds = await credential_store.list_all()
-        for c in all_creds:
-            cid = (
-                c.credential_id
-                if hasattr(c, "credential_id")
-                else c.get("credential_id", "")
-                if isinstance(c, dict)
-                else ""
-            )
-            if cid:
-                cred_ids_to_try.append(cid)
+    from lintel.workflows.nodes.setup_workspace import resolve_github_token
 
-    for cred_id in cred_ids_to_try:
-        try:
-            cred = await credential_store.get(cred_id)
-            if cred is None:
-                continue
-            secret = await credential_store.get_secret(cred_id)
-            cred_type = cred.credential_type
-            if hasattr(cred_type, "value"):
-                cred_type = cred_type.value
-            if cred_type == "github_token" and secret:
-                github_token = secret
-                break
-        except Exception as exc:
-            logger.warning("close_credential_resolve_failed", error=str(exc)[:200])
-
+    github_token = await resolve_github_token(state, credential_store)
     if not github_token:
         return ""
 
