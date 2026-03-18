@@ -34,6 +34,7 @@ class CreatePipelineRequest(BaseModel):
     workflow_definition_id: str = "feature_to_pr"
     trigger_type: str = ""
     trigger_id: str = ""
+    trigger_context: str = ""
 
 
 @router.post("/pipelines", status_code=201)
@@ -61,6 +62,7 @@ async def create_pipeline(
         workflow_definition_id=body.workflow_definition_id,
         trigger_type=body.trigger_type,
         trigger_id=body.trigger_id,
+        trigger_context=body.trigger_context,
         stages=stages,
         created_at=datetime.now(UTC).isoformat(),
     )
@@ -130,6 +132,7 @@ async def create_pipeline(
             repo_urls=repo_urls,
             repo_branch=repo_branch,
             credential_ids=credential_ids,
+            trigger_context=body.trigger_context,
         )
         asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
         logger.info("workflow_dispatched_from_pipeline_create: %s", body.run_id)

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Title, Stack, Table, Button, Group, Modal, TextInput, Select,
+  Title, Stack, Table, Button, Group, Modal, TextInput, Select, Checkbox,
   Loader, Center, ActionIcon, Badge, Textarea, Collapse, Anchor,
   Card, Text, SimpleGrid, ThemeIcon, Box, UnstyledButton,
 } from '@mantine/core';
@@ -8,7 +8,7 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconShieldCheck, IconPlus, IconChevronDown, IconChevronRight, IconPencil, IconExternalLink } from '@tabler/icons-react';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
-import { regulationHooks, useRegulationTemplates, useAddRegulationFromTemplate } from '../api';
+import { regulationHooks, useRegulationTemplates, useAddRegulationFromTemplate, useGeneratePolicies } from '../api';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 interface RegulationItem {
@@ -90,7 +90,10 @@ export function Component() {
   const updateMut = regulationHooks.useUpdate();
   const removeMut = regulationHooks.useRemove();
   const addFromTemplate = useAddRegulationFromTemplate();
+  const generateMut = useGeneratePolicies();
   const [creating, setCreating] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [selectedRegulations, setSelectedRegulations] = useState<Set<string>>(new Set());
   const [editItem, setEditItem] = useState<RegulationItem | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -108,6 +111,10 @@ export function Component() {
       reference_url: '', version: '', status: 'active', risk_level: 'medium', tags: [] as string[],
     },
     validate: { name: (v) => (v.trim() ? null : 'Required'), project_id: (v) => (v ? null : 'Required') },
+  });
+
+  const generateForm = useForm({
+    initialValues: { industry_context: 'general', additional_context: '' },
   });
 
   const editForm = useForm({
@@ -184,6 +191,7 @@ export function Component() {
         <Group>
           <Select placeholder="Filter by project" data={projectOptions} value={filterProject} onChange={(v) => setFilterProject(v ?? '')} searchable clearable w={220} />
           <Button variant="light" onClick={() => setBrowsingTemplates(true)} leftSection={<IconShieldCheck size={16} />}>Browse Templates</Button>
+          <Button variant="light" color="teal" disabled={selectedRegulations.size === 0} onClick={() => setGenerating(true)} leftSection={<IconShieldCheck size={16} />}>Generate Policies ({selectedRegulations.size})</Button>
           <Button onClick={() => setCreating(true)}>Add Regulation</Button>
         </Group>
       </Group>
@@ -223,7 +231,23 @@ export function Component() {
                           <>
                             <Table.Tr key={item.regulation_id} style={{ cursor: 'pointer' }} onClick={() => toggleExpand(item.regulation_id)}>
                               <Table.Td>
-                                {isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                                <Group gap={4} wrap="nowrap">
+                                  <Checkbox
+                                    size="xs"
+                                    checked={selectedRegulations.has(item.regulation_id)}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedRegulations((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(item.regulation_id)) next.delete(item.regulation_id);
+                                        else next.add(item.regulation_id);
+                                        return next;
+                                      });
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  {isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                                </Group>
                               </Table.Td>
                               <Table.Td fw={500}>{item.name}</Table.Td>
                               <Table.Td>{item.authority || '—'}</Table.Td>
@@ -383,6 +407,61 @@ export function Component() {
             );
           })}
         </Stack>
+      </Modal>
+
+      {/* Generate policies modal */}
+      <Modal opened={generating} onClose={() => setGenerating(false)} title="Generate Policies" size="md">
+        <form onSubmit={generateForm.onSubmit((values) => {
+          const regIds = [...selectedRegulations];
+          const projectId = items.find((i) => regIds.includes(i.regulation_id))?.project_id ?? '';
+          if (!projectId) {
+            notifications.show({ title: 'Error', message: 'Could not determine project', color: 'red' });
+            return;
+          }
+          generateMut.mutate(
+            { project_id: projectId, regulation_ids: regIds, ...values },
+            {
+              onSuccess: () => {
+                notifications.show({ title: 'Started', message: 'Policy generation workflow started', color: 'green' });
+                setGenerating(false);
+                setSelectedRegulations(new Set());
+                generateForm.reset();
+              },
+              onError: () => notifications.show({ title: 'Error', message: 'Failed to start generation', color: 'red' }),
+            },
+          );
+        })}>
+          <Stack gap="sm">
+            <Text size="sm" c="dimmed">
+              Generating policies for {selectedRegulations.size} regulation{selectedRegulations.size > 1 ? 's' : ''}:
+            </Text>
+            <Stack gap={4}>
+              {[...selectedRegulations].map((id) => {
+                const reg = items.find((i) => i.regulation_id === id);
+                return <Badge key={id} variant="light" size="sm">{reg?.name ?? id}</Badge>;
+              })}
+            </Stack>
+            <Select
+              label="Industry Context"
+              data={[
+                { value: 'general', label: 'General' },
+                { value: 'it', label: 'IT / Software' },
+                { value: 'health', label: 'Healthcare' },
+                { value: 'finance', label: 'Finance' },
+              ]}
+              {...generateForm.getInputProps('industry_context')}
+            />
+            <Textarea
+              label="Additional Context"
+              placeholder="Optional instructions, scope, or context for the AI..."
+              autosize
+              minRows={3}
+              maxRows={8}
+              {...generateForm.getInputProps('additional_context')}
+            />
+            <Button type="submit" color="teal" loading={generateMut.isPending}>Generate Policies</Button>
+          </Stack>
+        </form>
       </Modal>
 
       {/* Edit modal */}

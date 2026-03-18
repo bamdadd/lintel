@@ -1105,4 +1105,86 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         tags=("process-mining", "data-flow", "analysis"),
         is_builtin=True,
     ),
+    WorkflowDefinitionRecord(
+        definition_id="regulation_to_policy",
+        name="Regulation to Policy",
+        description=(
+            "Convert regulations into actionable policies and procedures: gather context, "
+            "analyse regulation text, generate policies, approve, and finalise."
+        ),
+        is_template=True,
+        stage_names=(
+            "gather_context",
+            "analyse_regulation",
+            "generate_policies",
+            "approval_gate_policies",
+            "finalise",
+        ),
+        graph_nodes=(
+            "gather_context",
+            "analyse_regulation",
+            "generate_policies",
+            "approval_gate_policies",
+            "finalise",
+        ),
+        graph_edges=(
+            ("gather_context", "analyse_regulation"),
+            ("analyse_regulation", "generate_policies"),
+            ("generate_policies", "approval_gate_policies"),
+            ("approval_gate_policies", "finalise"),
+        ),
+        entry_point="gather_context",
+        interrupt_before=("approval_gate_policies",),
+        node_metadata=(
+            {
+                "node": "gather_context",
+                "label": "Gather Context",
+                "agent": "researcher",
+                "agent_id": "agent_researcher",
+                "description": (
+                    "Loads regulation text, project context, existing policies, "
+                    "and industry-specific frameworks."
+                ),
+            },
+            {
+                "node": "analyse_regulation",
+                "label": "Analyse Regulation",
+                "agent": "architect",
+                "agent_id": "agent_architect",
+                "description": (
+                    "Breaks down the regulation into key requirements, obligations, "
+                    "and compliance criteria."
+                ),
+            },
+            {
+                "node": "generate_policies",
+                "label": "Generate Policies",
+                "agent": "coder",
+                "agent_id": "agent_coder",
+                "description": (
+                    "Generates draft policies and procedures that address each "
+                    "identified regulatory requirement."
+                ),
+            },
+            {
+                "node": "approval_gate_policies",
+                "label": "Approve Policies",
+                "agent": "human",
+                "description": (
+                    "Human reviews generated policies and procedures before finalisation."
+                ),
+            },
+            {
+                "node": "finalise",
+                "label": "Finalise",
+                "agent": "system",
+                "description": (
+                    "Persists approved policies and procedures, updates the compliance "
+                    "store, and records audit trail."
+                ),
+            },
+        ),
+        tags=("compliance", "regulation", "policy-generation"),
+        is_builtin=True,
+    ),
 )

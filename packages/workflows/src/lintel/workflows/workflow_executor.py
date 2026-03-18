@@ -169,6 +169,9 @@ class WorkflowExecutor:
         await self._event_store.append(stream_id=stream_id, events=[start_event])
         await self._project_events([start_event])
 
+        # Ensure pipeline run exists in store (may not if triggered outside /pipelines)
+        await self._ensure_pipeline_run(command, run_id)
+
         # Mark first stage as running
         await _mark_first_stage_running(self._app_state, run_id)
 
@@ -189,6 +192,7 @@ class WorkflowExecutor:
             "repo_urls": command.repo_urls,
             "repo_branch": command.repo_branch,
             "credential_ids": command.credential_ids,
+            "trigger_context": command.trigger_context,
         }
 
         # Rehydrate state from previous run if continuing
@@ -494,6 +498,41 @@ class WorkflowExecutor:
 
     async def _determine_final_status(self, run_id: str) -> str:
         return await _determine_final_status(self._app_state, run_id)
+
+    async def _ensure_pipeline_run(self, command: StartWorkflow, run_id: str) -> None:
+        """Create a PipelineRun in the store if one doesn't already exist."""
+        if self._app_state is None:
+            return
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        if pipeline_store is None:
+            return
+        existing = await pipeline_store.get(run_id)
+        if existing is not None:
+            return
+        try:
+            from datetime import UTC, datetime
+
+            from lintel.pipelines_api._helpers import _stage_names_for_workflow
+            from lintel.workflows.types import PipelineRun, Stage
+
+            stage_names = _stage_names_for_workflow(command.workflow_type)
+            stages = tuple(
+                Stage(stage_id=str(uuid4()), name=name, stage_type=name) for name in stage_names
+            )
+            run = PipelineRun(
+                run_id=run_id,
+                project_id=command.project_id,
+                work_item_id=command.work_item_id,
+                workflow_definition_id=command.workflow_type,
+                trigger_type="workflow",
+                trigger_context=command.trigger_context,
+                stages=stages,
+                created_at=datetime.now(UTC).isoformat(),
+            )
+            await pipeline_store.add(run)
+            logger.info("pipeline_run_auto_created: %s", run_id)
+        except Exception:
+            logger.warning("pipeline_run_auto_create_failed: %s", run_id, exc_info=True)
 
     async def _mark_first_stage_running(self, run_id: str) -> None:
         await _mark_first_stage_running(self._app_state, run_id)

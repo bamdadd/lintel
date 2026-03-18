@@ -174,6 +174,26 @@ export const useUpdateComplianceConfig = () => {
   });
 };
 
+// Generate policies from regulations
+export const useGeneratePolicies = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      project_id: string;
+      regulation_ids: string[];
+      industry_context?: string;
+      additional_context?: string;
+    }) =>
+      customInstance<{ data: Record<string, unknown> }>(`${BASE}/compliance/generate-policies`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['/compliance/overview'] });
+    },
+  });
+};
+
 // Regulation templates
 export const useRegulationTemplates = () =>
   useQuery({

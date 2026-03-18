@@ -93,6 +93,7 @@ class PipelineRun:
     stages: tuple[Stage, ...] = ()
     trigger_type: str = ""
     trigger_id: str = ""
+    trigger_context: str = ""
     environment_id: str = ""
     created_at: str = ""
 

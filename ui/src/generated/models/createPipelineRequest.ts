@@ -12,4 +12,5 @@ export interface CreatePipelineRequest {
   workflow_definition_id?: string;
   trigger_type?: string;
   trigger_id?: string;
+  trigger_context?: string;
 }

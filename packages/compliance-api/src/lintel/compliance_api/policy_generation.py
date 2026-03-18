@@ -12,6 +12,9 @@ immediately. The actual generation happens asynchronously via the
 regulation_to_policy workflow.
 """
 
+import asyncio
+import json
+import logging
 from typing import Annotated, Any
 from uuid import uuid4
 
@@ -21,8 +24,12 @@ from pydantic import BaseModel, Field
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.compliance_api.store import ComplianceStore
+from lintel.contracts.types import ThreadRef
 from lintel.domain.events import PolicyGenerationStarted
 from lintel.domain.types import PolicyGenerationRun, PolicyGenerationStatus
+from lintel.workflows.commands import StartWorkflow
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -99,6 +106,31 @@ async def trigger_policy_generation(
         ),
         stream_id=f"policy_generation:{body.run_id}",
     )
+
+    # Dispatch the regulation_to_policy workflow
+    dispatcher = getattr(request.app.state, "command_dispatcher", None)
+    if dispatcher:
+        trigger_context = json.dumps(
+            {
+                "regulation_ids": body.regulation_ids,
+                "industry_context": body.industry_context,
+                "additional_context": body.additional_context,
+            }
+        )
+        command = StartWorkflow(
+            thread_ref=ThreadRef(
+                workspace_id="pipeline",
+                channel_id="compliance",
+                thread_ts=body.run_id,
+            ),
+            workflow_type="regulation_to_policy",
+            project_id=body.project_id,
+            run_id=body.run_id,
+            trigger_context=trigger_context,
+        )
+        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+        logger.info("regulation_to_policy_workflow_dispatched: %s", body.run_id)
+
     return result
 
 

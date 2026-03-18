@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Title, Stack, Table, Button, Group, Modal, TextInput, Select,
+  Title, Stack, Table, Button, Group, Modal, TextInput, Select, Textarea, MultiSelect,
   Loader, Center, ActionIcon, Badge, Text, Paper, SimpleGrid,
   ThemeIcon, Progress, Tooltip,
 } from '@mantine/core';
@@ -22,6 +22,7 @@ import {
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { useWorkflowDefinitionsListWorkflowDefinitions } from '@/generated/api/workflow-definitions/workflow-definitions';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { regulationHooks } from '@/features/compliance/api';
 import { TimeAgo } from '@/shared/components/TimeAgo';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 
@@ -103,8 +104,13 @@ export function Component() {
     .filter((o) => o.value !== '');
 
   const form = useForm({
-    initialValues: { project_id: '', workflow_definition_id: '', trigger: 'manual' },
+    initialValues: { project_id: '', workflow_definition_id: '', trigger: 'manual', trigger_context: '', regulation_ids: [] as string[], industry_context: 'general' },
   });
+
+  const isRegulationWorkflow = form.values.workflow_definition_id === 'regulation_to_policy';
+  const { data: regulationsResp } = regulationHooks.useList(form.values.project_id || undefined);
+  const regulations = (regulationsResp?.data ?? []) as unknown as { regulation_id: string; name: string }[];
+  const regulationOptions = regulations.map((r) => ({ value: r.regulation_id, label: r.name }));
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -134,8 +140,18 @@ export function Component() {
   });
 
   const handleCreate = form.onSubmit((values) => {
+    const data: Record<string, unknown> = { ...values };
+    if (values.workflow_definition_id === 'regulation_to_policy' && values.regulation_ids.length > 0) {
+      data.trigger_context = JSON.stringify({
+        regulation_ids: values.regulation_ids,
+        industry_context: values.industry_context,
+        additional_context: values.trigger_context,
+      });
+    }
+    delete data.regulation_ids;
+    delete data.industry_context;
     createMut.mutate(
-      { data: values },
+      { data: data as any },
       {
         onSuccess: () => {
           notifications.show({ title: 'Created', message: 'Pipeline started', color: 'green' });
@@ -332,7 +348,23 @@ export function Component() {
           <Stack gap="sm">
             <Select label="Project" placeholder="Select project" data={projectOptions} searchable {...form.getInputProps('project_id')} />
             <Select label="Workflow" placeholder="Select workflow" data={workflowOptions} searchable {...form.getInputProps('workflow_definition_id')} />
+            {isRegulationWorkflow && (
+              <>
+                <MultiSelect label="Regulations" placeholder="Select regulations to convert" data={regulationOptions} searchable {...form.getInputProps('regulation_ids')} />
+                <Select
+                  label="Industry Context"
+                  data={[
+                    { value: 'general', label: 'General' },
+                    { value: 'it', label: 'IT / Software' },
+                    { value: 'health', label: 'Healthcare' },
+                    { value: 'finance', label: 'Finance' },
+                  ]}
+                  {...form.getInputProps('industry_context')}
+                />
+              </>
+            )}
             <Select label="Trigger" data={[{ value: 'manual', label: 'Manual' }, { value: 'webhook', label: 'Webhook' }, { value: 'schedule', label: 'Schedule' }]} {...form.getInputProps('trigger')} />
+            <Textarea label="Additional Context" placeholder="Optional instructions or context for the workflow" autosize minRows={3} maxRows={8} {...form.getInputProps('trigger_context')} />
             <Button type="submit" loading={createMut.isPending}>Start Pipeline</Button>
           </Stack>
         </form>

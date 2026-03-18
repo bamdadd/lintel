@@ -22,6 +22,9 @@ class ThreadWorkflowState(TypedDict):
     pr_url: str
     error: str | None
 
+    # Trigger context (JSON string from the triggering endpoint, e.g. regulation IDs)
+    trigger_context: str
+
     # Pipeline tracking
     run_id: str
 

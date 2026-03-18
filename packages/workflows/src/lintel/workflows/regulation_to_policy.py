@@ -462,28 +462,50 @@ async def _resolve_project_description(
 
 
 def _parse_json_response(text: str) -> dict[str, Any]:
-    """Parse JSON from LLM response, handling markdown fencing."""
+    """Parse JSON from LLM response, handling markdown fencing and truncation."""
     cleaned = text.strip()
     # Strip markdown code fences if present
     if cleaned.startswith("```"):
         lines = cleaned.split("\n")
         # Remove first line (```json) and last line (```)
         lines = [line for line in lines if not line.strip().startswith("```")]
-        cleaned = "\n".join(lines)
+        cleaned = "\n".join(lines).strip()
     try:
         result: dict[str, Any] = json.loads(cleaned)
         return result
     except json.JSONDecodeError:
-        # Try to find JSON object in the text
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start != -1 and end != -1:
-            try:
-                result = json.loads(cleaned[start : end + 1])
-                return result
-            except json.JSONDecodeError:
-                pass
-        return {}
+        pass
+
+    # Try to find JSON object in the text
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1:
+        candidate = cleaned[start : end + 1]
+        try:
+            return json.loads(candidate)  # type: ignore[no-any-return]
+        except json.JSONDecodeError:
+            pass
+
+        # Try fixing truncated JSON by closing open structures
+        # Count unmatched brackets and braces
+        fixed = candidate
+        open_braces = fixed.count("{") - fixed.count("}")
+        open_brackets = fixed.count("[") - fixed.count("]")
+
+        # Strip trailing comma if present
+        stripped = fixed.rstrip()
+        if stripped.endswith(","):
+            fixed = stripped[:-1]
+
+        # Close open arrays then objects
+        fixed += "]" * max(0, open_brackets) + "}" * max(0, open_braces)
+        try:
+            result = json.loads(fixed)
+            return result
+        except json.JSONDecodeError:
+            pass
+
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -513,9 +535,11 @@ async def gather_context(
     sandbox_manager = configurable.get("sandbox_manager")
     sandbox_id: str | None = state.get("sandbox_id")
 
-    # Extract trigger context from sanitized_messages (set by the trigger endpoint)
-    messages = state.get("sanitized_messages", [])
-    trigger_context = "\n".join(messages) if messages else ""
+    # Extract trigger context: prefer trigger_context field, fall back to sanitized_messages
+    trigger_context = str(state.get("trigger_context", ""))
+    if not trigger_context:
+        messages = state.get("sanitized_messages", [])
+        trigger_context = "\n".join(messages) if messages else ""
 
     project_id = state.get("project_id", "")
 
@@ -710,10 +734,15 @@ async def analyse_regulation(
 
     response_text = result.get("content", "")
     usage = StageTracker.extract_token_usage(result)
+
     analysis = _parse_json_response(response_text)
 
     if not analysis:
-        await tracker.append_log("analyse_regulation", "Failed to parse LLM response as JSON")
+        await tracker.append_log(
+            "analyse_regulation",
+            f"Failed to parse LLM response as JSON (len={len(response_text)}, "
+            f"starts_with={response_text[:80]!r})",
+        )
         await tracker.mark_completed("analyse_regulation", error="Invalid JSON response from LLM")
         return {
             "current_phase": "failed",
