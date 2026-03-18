@@ -49,7 +49,12 @@ async def check_interrupt_timeouts(
             # Resume graph with TimeoutSentinel if executor is available
             if executor is not None and hasattr(executor, "resume"):
                 try:
-                    await executor.resume(record.run_id)
+                    from lintel.workflows.types import TimeoutSentinel
+
+                    sentinel = TimeoutSentinel(
+                        reason=f"Deadline passed for {record.stage}",
+                    )
+                    await executor.resume(record.run_id, human_input=sentinel)
                 except Exception:
                     logger.warning(
                         "timeout_resume_failed",

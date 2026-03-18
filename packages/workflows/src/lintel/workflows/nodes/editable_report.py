@@ -51,7 +51,7 @@ class EditableReportNode(HumanInterruptNode):
         payload["report_state_key"] = self._report_state_key
         return payload
 
-    def process_resume(
+    async def process_resume(
         self,
         state: dict[str, Any],
         human_input: Any,  # noqa: ANN401

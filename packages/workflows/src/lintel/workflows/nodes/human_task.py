@@ -49,7 +49,7 @@ class HumanTaskNode(HumanInterruptNode):
         payload["task_description"] = self._task_description
         return payload
 
-    def process_resume(
+    async def process_resume(
         self,
         state: dict[str, Any],
         human_input: Any,  # noqa: ANN401

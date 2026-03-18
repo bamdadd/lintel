@@ -47,8 +47,8 @@ class HumanInterruptNode(abc.ABC):
 
     Usage in a LangGraph graph::
 
-        node = ApprovalGateNode(node_name="approval_gate_research")
-        graph.add_node("approval_gate_research", node)
+        node = EditableReportNode(node_name="editable_report")
+        graph.add_node("editable_report", node)
     """
 
     def __init__(
@@ -78,7 +78,7 @@ class HumanInterruptNode(abc.ABC):
         """Behaviour when the interrupt deadline passes."""
 
     @abc.abstractmethod
-    def process_resume(
+    async def process_resume(
         self,
         state: dict[str, Any],
         human_input: Any,  # noqa: ANN401
@@ -176,7 +176,7 @@ class HumanInterruptNode(abc.ABC):
             return self._handle_timeout(state, human_input)
 
         # Delegate to subclass
-        result = self.process_resume(state, human_input)
+        result = await self.process_resume(state, human_input)
 
         # Publish resumed event
         await self._publish_resumed_event(request, human_input, configurable)

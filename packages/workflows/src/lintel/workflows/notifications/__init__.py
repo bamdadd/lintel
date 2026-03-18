@@ -1,1 +1,1 @@
-"""Workflow notification helpers."""
+"""Workflow notification dispatch — interrupt alerts via Slack, Telegram, etc."""

@@ -56,5 +56,6 @@ async def approval_gate(
     return {"pending_approvals": existing}
 
 
-# Alias for backward-compatible imports (e.g. from __init__.py __getattr__)
+# Legacy alias — this is the interrupt_before-based gate, NOT a HumanInterruptNode subclass.
+# Kept for backward-compatible imports via nodes/__init__.py.
 ApprovalGateNode = approval_gate

@@ -120,7 +120,7 @@ async def _resume_graph(
     """Helper to resume the graph via the workflow executor."""
     try:
         if hasattr(executor, "resume"):
-            await executor.resume(run_id)
+            await executor.resume(run_id, human_input=human_input)
     except Exception:
         import structlog
 

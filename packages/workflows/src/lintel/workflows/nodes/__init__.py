@@ -1,7 +1,8 @@
 """Workflow node implementations.
 
-Exports the shared HumanInterruptNode base and its three subclasses
-for human-in-the-loop interrupt/resume workflows.
+Exports the shared HumanInterruptNode base and its subclasses
+(EditableReportNode, HumanTaskNode) for human-in-the-loop interrupt/resume
+workflows, plus the legacy ApprovalGateNode (interrupt_before-based gate).
 """
 
 from lintel.workflows.nodes.human_interrupt import HumanInterruptNode
