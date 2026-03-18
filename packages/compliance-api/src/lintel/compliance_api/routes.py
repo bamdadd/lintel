@@ -33,6 +33,12 @@ from lintel.compliance_api.policies import (
 from lintel.compliance_api.policies import (
     router as policies_router,
 )
+from lintel.compliance_api.policy_generation import (
+    policy_generation_store_provider,
+)
+from lintel.compliance_api.policy_generation import (
+    router as policy_generation_router,
+)
 from lintel.compliance_api.regulations import (
     regulation_store_provider,
 )
@@ -45,6 +51,7 @@ __all__ = [
     "compliance_policy_store_provider",
     "knowledge_entry_store_provider",
     "knowledge_extraction_store_provider",
+    "policy_generation_store_provider",
     "practice_store_provider",
     "procedure_store_provider",
     "regulation_store_provider",
@@ -58,3 +65,4 @@ router.include_router(policies_router)
 router.include_router(knowledge_router)
 router.include_router(architecture_router)
 router.include_router(config_router)
+router.include_router(policy_generation_router)

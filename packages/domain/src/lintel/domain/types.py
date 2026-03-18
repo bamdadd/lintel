@@ -30,6 +30,7 @@ class Project:
 
     project_id: str
     name: str
+    description: str = ""
     repo_ids: tuple[str, ...] = ()
     default_branch: str = "main"
     credential_ids: tuple[str, ...] = ()
@@ -421,6 +422,41 @@ class Strategy:
     owner: str = ""
     status: ComplianceStatus = ComplianceStatus.ACTIVE
     tags: tuple[str, ...] = ()
+
+
+class PolicyGenerationStatus(StrEnum):
+    PENDING = "pending"
+    ANALYSING = "analysing"
+    GENERATING = "generating"
+    REVIEW = "review"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class PolicyGenerationRun:
+    """Tracks a regulation-to-policy generation workflow run.
+
+    Captures the AI-generated policies, plus assumptions made, questions
+    requiring human input, and action items for the user to resolve.
+    """
+
+    run_id: str
+    project_id: str
+    regulation_ids: tuple[str, ...] = ()
+    status: PolicyGenerationStatus = PolicyGenerationStatus.PENDING
+    industry_context: str = ""  # e.g. "healthcare", "finance", "it"
+    project_description: str = ""  # snapshot of project description at run time
+    additional_context: str = ""  # user-provided context for this run
+    generated_policy_ids: tuple[str, ...] = ()  # IDs of CompliancePolicy created
+    generated_procedure_ids: tuple[str, ...] = ()  # IDs of Procedure created
+    assumptions: tuple[str, ...] = ()  # AI assumptions (e.g. "Data retention: 7 years")
+    questions: tuple[str, ...] = ()  # questions for user to answer
+    action_items: tuple[str, ...] = ()  # things user needs to work out
+    summary: str = ""  # overall summary of what was generated
+    error: str = ""
+    started_at: str = ""
+    completed_at: str = ""
 
 
 class KPIDirection(StrEnum):

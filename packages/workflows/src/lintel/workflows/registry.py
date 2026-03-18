@@ -269,6 +269,7 @@ WORKFLOW_BUILDERS: dict[str, Any] = {
     "spike": build_spike_graph,
     "extract_integration_patterns": None,  # uses dedicated module
     "process_mining": None,  # uses dedicated module
+    "regulation_to_policy": None,  # uses dedicated module
 }
 
 
@@ -290,6 +291,11 @@ def get_workflow_builder(definition_id: str) -> Callable[[], StateGraph[Any]]:
         from lintel.workflows.process_mining import build_process_mining_graph
 
         return build_process_mining_graph
+
+    if definition_id == "regulation_to_policy":
+        from lintel.workflows.regulation_to_policy import build_regulation_to_policy_graph
+
+        return build_regulation_to_policy_graph
 
     builder = WORKFLOW_BUILDERS.get(definition_id)
     if builder is None:

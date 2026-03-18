@@ -33,6 +33,7 @@ from lintel.compliance_api.routes import (
     compliance_policy_store_provider,
     knowledge_entry_store_provider,
     knowledge_extraction_store_provider,
+    policy_generation_store_provider,
     practice_store_provider,
     procedure_store_provider,
     regulation_store_provider,
@@ -142,6 +143,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "knowledge_entry_store": ComplianceStore("entry_id"),
         "knowledge_extraction_store": ComplianceStore("run_id"),
         "architecture_decision_store": ComplianceStore("decision_id"),
+        "policy_generation_store": ComplianceStore("run_id"),
     }
 
 
@@ -361,6 +363,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     knowledge_entry_store_provider.override(stores["knowledge_entry_store"])
     knowledge_extraction_store_provider.override(stores["knowledge_extraction_store"])
     architecture_decision_store_provider.override(stores["architecture_decision_store"])
+    policy_generation_store_provider.override(stores["policy_generation_store"])
     kpi_store_provider.override(stores["kpi_store"])
     experiment_store_provider.override(stores["experiment_store"])
     compliance_metric_store_provider.override(stores["compliance_metric_store"])

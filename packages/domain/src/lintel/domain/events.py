@@ -644,6 +644,24 @@ class ArchitectureDecisionRemoved(EventEnvelope):
     event_type: str = "ArchitectureDecisionRemoved"
 
 
+# --- Policy Generation Events ---
+
+
+@dataclass(frozen=True)
+class PolicyGenerationStarted(EventEnvelope):
+    event_type: str = "PolicyGenerationStarted"
+
+
+@dataclass(frozen=True)
+class PolicyGenerationCompleted(EventEnvelope):
+    event_type: str = "PolicyGenerationCompleted"
+
+
+@dataclass(frozen=True)
+class PolicyGenerationFailed(EventEnvelope):
+    event_type: str = "PolicyGenerationFailed"
+
+
 # --- Human Approval Events ---
 
 
@@ -838,4 +856,7 @@ register_events(
     HookTriggered,
     HookExecutionFailed,
     HookLoopDetected,
+    PolicyGenerationStarted,
+    PolicyGenerationCompleted,
+    PolicyGenerationFailed,
 )
