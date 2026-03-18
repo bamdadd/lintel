@@ -6,6 +6,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
+class SandboxBackend(StrEnum):
+    DOCKER = "docker"
+    OPENSHELL = "openshell"
+
+
 class SandboxStatus(StrEnum):
     PENDING = "pending"
     CREATING = "creating"
@@ -27,6 +32,7 @@ class SandboxConfig:
     timeout_seconds: int = 3600
     environment: frozenset[tuple[str, str]] = frozenset()
     mounts: tuple[tuple[str, str, str], ...] = ()  # (source, target, type) triples
+    backend: SandboxBackend = SandboxBackend.DOCKER
 
 
 @dataclass(frozen=True)

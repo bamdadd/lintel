@@ -222,6 +222,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     sandbox_manager = DockerSandboxManager()
     app.state.sandbox_manager = sandbox_manager
 
+    # Optionally enable OpenShell backend alongside Docker
+    sandbox_backend_env = os.environ.get("SANDBOX_BACKEND", "docker")
+    if sandbox_backend_env in ("openshell", "both"):
+        from lintel.sandbox.openshell_backend import OpenShellSandboxManager
+
+        openshell_manager = OpenShellSandboxManager()
+        app.state.openshell_manager = openshell_manager
+
     try:
         recovered = await sandbox_manager.recover_containers()
         if recovered:
@@ -237,6 +245,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
                     logger.warning("Failed to restore metadata for %s", meta["sandbox_id"])
     except Exception:
         pass
+
+    # Recover OpenShell sandboxes if enabled
+    if hasattr(app.state, "openshell_manager"):
+        try:
+            os_recovered = await app.state.openshell_manager.recover_sandboxes()
+            if os_recovered:
+                import logging
+
+                logger = logging.getLogger("lintel")
+                logger.info("Recovered %d OpenShell sandboxes", len(os_recovered))
+                store = app.state.sandbox_store
+                for meta in os_recovered:
+                    try:
+                        await store.add(meta["sandbox_id"], meta)
+                    except Exception:
+                        logger.warning(
+                            "Failed to restore OpenShell metadata for %s", meta["sandbox_id"]
+                        )
+        except Exception:
+            pass
 
     github_token = os.environ.get("GITHUB_TOKEN", "")
     repo_provider = GitHubRepoProvider(token=github_token) if github_token else None

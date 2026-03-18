@@ -15,7 +15,8 @@ from lintel.sandbox.events import (
     SandboxCreated,
     SandboxDestroyed,
 )
-from lintel.sandbox.types import SandboxConfig
+from lintel.sandbox.protocols import SandboxManager
+from lintel.sandbox.types import SandboxBackend, SandboxConfig
 
 router = APIRouter()
 
@@ -194,6 +195,7 @@ class CreateSandboxRequest(BaseModel):
     network_enabled: bool = False
     devcontainer: DevcontainerConfig | None = None
     mounts: list[MountConfig] = []
+    backend: str = "docker"  # "docker" or "openshell"
 
 
 @router.get("/sandboxes/presets")
@@ -236,7 +238,25 @@ async def create_sandbox(
             "Destroy unused sandboxes or increase max_sandboxes in settings.",
         )
 
-    manager = request.app.state.sandbox_manager
+    # Resolve backend and pick the appropriate manager
+    try:
+        backend = SandboxBackend(body.backend)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown backend: {body.backend!r}. Use 'docker' or 'openshell'.",
+        ) from None
+
+    if backend == SandboxBackend.OPENSHELL:
+        manager = getattr(request.app.state, "openshell_manager", None)
+        if manager is None:
+            raise HTTPException(
+                status_code=400,
+                detail="OpenShell backend is not configured. Set SANDBOX_BACKEND=openshell.",
+            )
+    else:
+        manager = request.app.state.sandbox_manager
+
     # Resolve preset if specified
     mounts_raw: list[dict[str, str]] = []
     if body.preset:
@@ -272,6 +292,7 @@ async def create_sandbox(
         image=image,
         network_enabled=body.network_enabled,
         mounts=resolved_mounts,
+        backend=backend,
     )
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
@@ -286,6 +307,7 @@ async def create_sandbox(
         "workspace_id": body.workspace_id,
         "channel_id": body.channel_id,
         "mounts": [{"source": s, "target": t, "type": tp} for s, t, tp in resolved_mounts],
+        "backend": backend.value,
     }
     if body.devcontainer:
         entry["devcontainer"] = body.devcontainer.model_dump()
@@ -299,13 +321,25 @@ async def create_sandbox(
     return {"sandbox_id": sandbox_id}
 
 
+def _resolve_manager(request: Request, sandbox_id: str) -> SandboxManager:
+    """Pick the correct sandbox manager based on stored metadata backend."""
+    store = request.app.state.sandbox_store
+    # Synchronous dict lookup — SandboxStore._sandboxes is an in-memory dict
+    meta = store._sandboxes.get(sandbox_id)
+    if meta and meta.get("backend") == SandboxBackend.OPENSHELL.value:
+        mgr: SandboxManager | None = getattr(request.app.state, "openshell_manager", None)
+        if mgr is not None:
+            return mgr
+    return request.app.state.sandbox_manager  # type: ignore[no-any-return]
+
+
 @router.get("/sandboxes/{sandbox_id}")
 async def get_sandbox_status(
     sandbox_id: str,
     request: Request,
 ) -> dict[str, Any]:
     """Get sandbox status."""
-    manager = request.app.state.sandbox_manager
+    manager = _resolve_manager(request, sandbox_id)
     try:
         status = await manager.get_status(sandbox_id)
         return {"sandbox_id": sandbox_id, "status": status.value}
@@ -316,7 +350,7 @@ async def get_sandbox_status(
 @router.delete("/sandboxes/{sandbox_id}", status_code=204)
 async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
     """Destroy a sandbox."""
-    manager = request.app.state.sandbox_manager
+    manager = _resolve_manager(request, sandbox_id)
     try:
         await manager.destroy(sandbox_id)
         store = request.app.state.sandbox_store
