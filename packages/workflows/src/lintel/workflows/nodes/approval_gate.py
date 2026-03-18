@@ -54,3 +54,8 @@ async def approval_gate(
 
     await tracker.mark_completed(node_name)
     return {"pending_approvals": existing}
+
+
+# Legacy alias — this is the interrupt_before-based gate, NOT a HumanInterruptNode subclass.
+# Kept for backward-compatible imports via nodes/__init__.py.
+ApprovalGateNode = approval_gate

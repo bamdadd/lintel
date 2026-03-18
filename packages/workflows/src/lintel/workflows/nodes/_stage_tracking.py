@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
+from typing import Any
 
 import structlog
 
@@ -31,6 +28,10 @@ NODE_TO_STAGE: dict[str, str] = {
     "review": "review",
     "approval_gate_pr": "approved_for_pr",
     "close": "raise_pr",
+    # Human interrupt nodes (shared F013, F017, F018)
+    "approval_gate_interrupt": "approval_gate_interrupt",
+    "editable_report": "editable_report",
+    "human_task": "human_task",
     # Extract-integration-patterns workflow
     "scan_repo": "scan_repo",
     "classify_integrations": "classify_integrations",
@@ -184,7 +185,7 @@ class StageTracker:
     async def mark_completed(
         self,
         node_name: str,
-        outputs: dict[str, object] | None = None,
+        outputs: Mapping[str, object] | None = None,
         error: str = "",
     ) -> None:
         """Mark a pipeline stage as succeeded or failed. Call at the end of a node."""
@@ -204,7 +205,7 @@ class StageTracker:
                 logger.warning("on_failure_hook_error", node_name=node_name)
         elif not error and self._on_success is not None:
             try:
-                await self._on_success(node_name, outputs)
+                await self._on_success(node_name, dict(outputs) if outputs else None)
             except Exception:
                 logger.warning("on_success_hook_error", node_name=node_name)
 
@@ -255,7 +256,7 @@ class StageTracker:
         self,
         stage_name: str,
         status: str,
-        outputs: dict[str, object] | None = None,
+        outputs: Mapping[str, object] | None = None,
         error: str = "",
     ) -> None:
         from lintel.workflows.types import Stage, StageStatus
@@ -281,7 +282,7 @@ class StageTracker:
                         stage_type=s.stage_type,
                         status=StageStatus(status),
                         inputs=s.inputs,
-                        outputs=outputs if outputs is not None else s.outputs,
+                        outputs=dict(outputs) if outputs is not None else s.outputs,
                         error=error or s.error,
                         duration_ms=s.duration_ms,
                         started_at=s.started_at,
@@ -489,7 +490,7 @@ async def mark_completed(
     config: Mapping[str, Any],
     node_name: str,
     state: Mapping[str, Any] | None = None,
-    outputs: dict[str, object] | None = None,
+    outputs: Mapping[str, object] | None = None,
     error: str = "",
 ) -> None:
     """Mark a pipeline stage as succeeded or failed. Call at the end of a node."""
@@ -524,7 +525,7 @@ async def update_stage(
     run_id: str,
     stage_name: str,
     status: str,
-    outputs: dict[str, object] | None = None,
+    outputs: Mapping[str, object] | None = None,
     error: str = "",
     state: Mapping[str, Any] | None = None,
 ) -> None:

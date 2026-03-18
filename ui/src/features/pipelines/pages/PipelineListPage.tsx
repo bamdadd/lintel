@@ -1,15 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Select,
   Loader, Center, ActionIcon, Badge, Text, Paper, SimpleGrid,
-  SegmentedControl, Box, ThemeIcon, Progress, Tooltip, TextInput as SearchInput,
+  ThemeIcon, Progress, Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconTrash, IconPlayerStop, IconPlayerPlay, IconCircleCheck,
-  IconCircleX, IconClock, IconSearch, IconFilter,
+  IconCircleX, IconClock, IconSearch,
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
@@ -23,7 +23,7 @@ import { useProjectsListProjects } from '@/generated/api/projects/projects';
 import { useWorkflowDefinitionsListWorkflowDefinitions } from '@/generated/api/workflow-definitions/workflow-definitions';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
-import { StatusBadge, getStatusColor } from '@/shared/components/StatusBadge';
+import { StatusBadge } from '@/shared/components/StatusBadge';
 
 interface PipelineRun {
   run_id: string;

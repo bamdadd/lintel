@@ -109,6 +109,24 @@ class WorkflowDefinitionRemoved(EventEnvelope):
     event_type: str = "WorkflowDefinitionRemoved"
 
 
+# --- Human Interrupt Events (shared by F013, F017, F018) ---
+
+
+@dataclass(frozen=True)
+class HumanInterruptRequested(EventEnvelope):
+    event_type: str = "HumanInterruptRequested"
+
+
+@dataclass(frozen=True)
+class HumanInterruptResumed(EventEnvelope):
+    event_type: str = "HumanInterruptResumed"
+
+
+@dataclass(frozen=True)
+class HumanInterruptTimedOut(EventEnvelope):
+    event_type: str = "HumanInterruptTimedOut"
+
+
 register_events(
     IntentRouted,
     WorkflowStarted,
@@ -128,4 +146,7 @@ register_events(
     WorkflowDefinitionCreated,
     WorkflowDefinitionUpdated,
     WorkflowDefinitionRemoved,
+    HumanInterruptRequested,
+    HumanInterruptResumed,
+    HumanInterruptTimedOut,
 )

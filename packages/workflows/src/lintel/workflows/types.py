@@ -6,8 +6,13 @@ workflow definitions.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import TYPE_CHECKING, Any
+from uuid import UUID, uuid4
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class WorkflowPhase(StrEnum):
@@ -124,3 +129,75 @@ class WorkflowDefinitionRecord:
     tags: tuple[str, ...] = ()
     is_builtin: bool = False
     enabled: bool = True
+
+
+# --- Human Interrupt Types (shared by F013, F017, F018) ---
+
+
+class InterruptType(StrEnum):
+    """Type of human interrupt in a workflow."""
+
+    APPROVAL_GATE = "approval_gate"
+    EDITABLE_REPORT = "editable_report"
+    HUMAN_TASK = "human_task"
+
+
+class InterruptStatus(StrEnum):
+    """Lifecycle status of a human interrupt."""
+
+    PENDING = "pending"
+    RESUMED = "resumed"
+    TIMED_OUT = "timed_out"
+
+
+@dataclass(frozen=True)
+class InterruptRequest:
+    """Payload emitted when a workflow node requests human input.
+
+    Passed to ``langgraph.types.interrupt()`` and persisted in the
+    ``human_interrupts`` table so the resume API can correlate.
+    """
+
+    id: UUID = field(default_factory=uuid4)
+    run_id: str = ""
+    stage: str = ""
+    interrupt_type: InterruptType = InterruptType.APPROVAL_GATE
+    payload: dict[str, Any] = field(default_factory=dict)
+    timeout_seconds: int = 0
+    deadline: datetime | None = None
+
+
+@dataclass(frozen=True)
+class InterruptResumeInput:
+    """Human-supplied input that resumes a paused interrupt."""
+
+    input: Any = None
+    resumed_by: str = ""
+
+
+@dataclass(frozen=True)
+class TimeoutSentinel:
+    """Marker value passed as resume input when an interrupt times out.
+
+    Subclasses inspect ``isinstance(human_input, TimeoutSentinel)`` to decide
+    whether to auto-proceed or auto-escalate.
+    """
+
+    reason: str = "deadline_exceeded"
+
+
+@dataclass(frozen=True)
+class InterruptRecord:
+    """Persisted state of a human interrupt."""
+
+    id: UUID = field(default_factory=uuid4)
+    run_id: str = ""
+    stage: str = ""
+    interrupt_type: InterruptType = InterruptType.APPROVAL_GATE
+    payload: dict[str, Any] = field(default_factory=dict)
+    status: InterruptStatus = InterruptStatus.PENDING
+    deadline: datetime | None = None
+    resumed_by: str | None = None
+    resume_input: dict[str, Any] | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
