@@ -894,7 +894,8 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         definition_id="extract_integration_patterns",
         name="Integration Analysis",
         description=(
-            "Analyse a repository's integration patterns, service dependencies, and coupling scores."
+            "Analyse a repository's integration patterns, service dependencies,"
+            " and coupling scores."
         ),
         is_template=True,
         stage_names=(
@@ -951,14 +952,18 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                 "label": "Scan Repository",
                 "agent": "researcher",
                 "agent_id": "agent_researcher",
-                "description": "Scans the repository for API endpoints, imports, and service boundaries.",
+                "description": (
+                    "Scans the repository for API endpoints, imports, and service boundaries."
+                ),
             },
             {
                 "node": "classify_integrations",
                 "label": "Classify Integrations",
                 "agent": "architect",
                 "agent_id": "agent_architect",
-                "description": "Classifies each integration by pattern (REST, gRPC, pub/sub, etc.).",
+                "description": (
+                    "Classifies each integration by pattern (REST, gRPC, pub/sub, etc.)."
+                ),
             },
             {
                 "node": "build_graph",

@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
-from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 import structlog
+
+if TYPE_CHECKING:
+    from langchain_core.runnables import RunnableConfig
 
 logger = structlog.get_logger(__name__)
 
@@ -231,8 +233,6 @@ def _generate_mermaid_diagram(
         source = flow.get("source", {})
         steps = flow.get("steps", [])
         sink = flow.get("sink") or {}
-        flow_name = flow.get("name", "flow")
-
         all_steps = [s for s in [source, *steps, sink] if s]
         if len(all_steps) < 2:
             continue
@@ -324,8 +324,10 @@ async def discover_endpoints_node(
             sandbox_id,
             SandboxJob(
                 command=(
-                    f"find {workspace_path} -name '*.py' -o -name '*.ts' -o -name '*.go' "
-                    f"-o -name '*.java' | grep -v __pycache__ | grep -v node_modules | grep -v .venv"
+                    f"find {workspace_path} -name '*.py' -o -name '*.ts'"
+                    f" -o -name '*.go' -o -name '*.java'"
+                    " | grep -v __pycache__ | grep -v node_modules"
+                    " | grep -v .venv"
                 ),
                 workdir="/",
                 timeout_seconds=30,
@@ -428,7 +430,6 @@ async def trace_flows_node(
         if app_state is not None:
             sandbox_manager = getattr(app_state, "sandbox_manager", None)
 
-    workspace_path = state.get("workspace_path") or ""
     sandbox_id = state.get("sandbox_id") or ""
 
     # Group endpoints by file to minimise reads
@@ -530,7 +531,7 @@ async def classify_flows_node(
     flows = state.get("traced_flows", [])
     classified: dict[str, list[dict[str, Any]]] = {}
 
-    _EP_TO_FLOW = {
+    ep_to_flow = {
         "http_route": "http_request",
         "event_handler": "event_sourcing",
         "command_handler": "command_dispatch",
@@ -541,7 +542,7 @@ async def classify_flows_node(
 
     for flow in flows:
         ep_type = flow.get("metadata", {}).get("endpoint_type", "")
-        flow_type = _EP_TO_FLOW.get(ep_type, "external_integration")
+        flow_type = ep_to_flow.get(ep_type, "external_integration")
 
         # Refine based on sink type
         sink = flow.get("sink") or {}
@@ -555,7 +556,7 @@ async def classify_flows_node(
 
     summary = {k: len(v) for k, v in classified.items()}
     await tracker.append_log("classify_flows", f"Classified flows: {summary}")
-    await tracker.mark_completed("classify_flows", outputs=summary)
+    await tracker.mark_completed("classify_flows", outputs=dict(summary))
 
     return {"traced_flows": flows, "classified_flows": classified}
 
@@ -773,14 +774,14 @@ def build_process_mining_graph() -> StateGraph[Any]:
     g: StateGraph[Any] = StateGraph(ProcessMiningState)
 
     # Nodes
-    g.add_node("ingest", ingest_message)  # type: ignore[arg-type]
-    g.add_node("setup_workspace", setup_workspace)  # type: ignore[arg-type]
-    g.add_node("discover_endpoints", discover_endpoints_node)  # type: ignore[arg-type]
-    g.add_node("trace_flows", trace_flows_node)  # type: ignore[arg-type]
-    g.add_node("classify_flows", classify_flows_node)  # type: ignore[arg-type]
-    g.add_node("generate_diagrams", generate_diagrams_node)  # type: ignore[arg-type]
-    g.add_node("persist_results", persist_results_node)  # type: ignore[arg-type]
-    g.add_node("error", error_node)  # type: ignore[arg-type]
+    g.add_node("ingest", ingest_message)
+    g.add_node("setup_workspace", setup_workspace)
+    g.add_node("discover_endpoints", discover_endpoints_node)
+    g.add_node("trace_flows", trace_flows_node)
+    g.add_node("classify_flows", classify_flows_node)
+    g.add_node("generate_diagrams", generate_diagrams_node)
+    g.add_node("persist_results", persist_results_node)
+    g.add_node("error", error_node)
 
     # Entry
     g.set_entry_point("ingest")
