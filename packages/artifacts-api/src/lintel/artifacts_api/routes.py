@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
+from lintel.contracts.protocols.artifact_store import ArtifactStore
 from lintel.domain.events import ArtifactStored, TestRunCompleted
 from lintel.domain.types import CodeArtifact, TestResult, TestVerdict
 
@@ -22,6 +23,7 @@ router = APIRouter()
 code_artifact_store_provider: StoreProvider[CodeArtifactStore] = StoreProvider()
 test_result_store_provider: StoreProvider[TestResultStore] = StoreProvider()
 pipeline_store_provider: StoreProvider[object] = StoreProvider()
+artifact_content_store_provider: StoreProvider[ArtifactStore] = StoreProvider()
 
 
 # --- Helpers ---

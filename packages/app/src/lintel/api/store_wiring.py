@@ -15,6 +15,7 @@ from lintel.ai_providers_api.store import InMemoryAIProviderStore
 from lintel.approval_requests_api.routes import approval_request_store_provider
 from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 from lintel.artifacts_api.routes import (
+    artifact_content_store_provider,
     code_artifact_store_provider,
     test_result_store_provider,
 )
@@ -97,6 +98,44 @@ def _dc_to_dict(obj: Any) -> dict[str, Any]:  # noqa: ANN401
     return d
 
 
+def _create_fake_artifact_content_store() -> Any:  # noqa: ANN401
+    """Create an in-memory FakeArtifactStore for dev mode."""
+    from lintel.contracts.protocols.artifact_store import ArtifactRef
+
+    class _InMemoryArtifactContentStore:
+        def __init__(self) -> None:
+            self._content: dict[str, bytes] = {}
+            self._refs: dict[str, ArtifactRef] = {}
+
+        async def store(
+            self,
+            artifact_id: str,
+            content: bytes,
+            metadata: dict[str, object],
+        ) -> str:
+            self._content[artifact_id] = content
+            self._refs[artifact_id] = ArtifactRef(
+                artifact_id=artifact_id,
+                storage_backend="postgres",
+                location=f"mem://{artifact_id}",
+                size_bytes=len(content),
+                content_type=str(metadata.get("content_type", "application/octet-stream")),
+                pipeline_run_id=str(metadata.get("pipeline_run_id", "")),
+            )
+            return f"mem://{artifact_id}"
+
+        async def retrieve(self, artifact_id: str) -> bytes:
+            if artifact_id not in self._content:
+                msg = f"Artifact {artifact_id} not found"
+                raise KeyError(msg)
+            return self._content[artifact_id]
+
+        async def list_refs(self, pipeline_run_id: str) -> list[ArtifactRef]:
+            return [r for r in self._refs.values() if r.pipeline_run_id == pipeline_run_id]
+
+    return _InMemoryArtifactContentStore()
+
+
 def create_in_memory_stores() -> dict[str, Any]:
     """Create all in-memory stores for development without a database."""
     return {
@@ -118,6 +157,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "notification_rule_store": NotificationRuleStore(),
         "audit_entry_store": AuditEntryStore(),
         "code_artifact_store": CodeArtifactStore(),
+        "artifact_content_store": _create_fake_artifact_content_store(),
         "test_result_store": TestResultStore(),
         "approval_request_store": InMemoryApprovalRequestStore(),
         "chat_store": ChatStore(),
@@ -145,6 +185,15 @@ def create_in_memory_stores() -> dict[str, Any]:
         "architecture_decision_store": ComplianceStore("decision_id"),
         "policy_generation_store": ComplianceStore("run_id"),
     }
+
+
+def _create_postgres_artifact_content_store(pool: asyncpg.Pool) -> Any:  # noqa: ANN401
+    """Create a PostgresArtifactStore (content storage) for production."""
+    from lintel.infrastructure.stores.postgres_artifact_store import (
+        PostgresArtifactStore as PgArtifactContentStore,
+    )
+
+    return PgArtifactContentStore(pool)
 
 
 def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
@@ -295,6 +344,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "notification_rule_store": PostgresNotificationRuleStore(pool),
         "audit_entry_store": PostgresAuditEntryStore(pool),
         "code_artifact_store": PostgresCodeArtifactStore(pool),
+        "artifact_content_store": _create_postgres_artifact_content_store(pool),
         "test_result_store": PostgresTestResultStore(pool),
         "approval_request_store": PostgresApprovalRequestStore(pool),
         "chat_store": PostgresChatStore(pool),
@@ -339,6 +389,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     board_store_provider.override(stores["board_store"])
     trigger_store_provider.override(stores["trigger_store"])
     code_artifact_store_provider.override(stores["code_artifact_store"])
+    artifact_content_store_provider.override(stores["artifact_content_store"])
     test_result_store_provider.override(stores["test_result_store"])
     artifact_pipeline_store_provider.override(stores["pipeline_store"])
     project_store_provider.override(stores["project_store"])
