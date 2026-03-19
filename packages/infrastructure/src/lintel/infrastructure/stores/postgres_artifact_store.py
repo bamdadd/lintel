@@ -86,6 +86,21 @@ class PostgresArtifactStore:
         content = data.get("content", "")
         return content.encode("utf-8") if isinstance(content, str) else bytes(content)
 
+    async def get_backend(self, artifact_id: str) -> str:
+        """Look up the storage_backend for an artifact."""
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT storage_backend
+                FROM entities
+                WHERE kind = 'code_artifact' AND entity_id = $1
+                """,
+                artifact_id,
+            )
+            if row is not None:
+                return str(row["storage_backend"] or "postgres")
+        return "postgres"
+
     async def list_refs(self, pipeline_run_id: str) -> list[ArtifactRef]:
         """Query artifacts for a pipeline run and return ArtifactRef list."""
         async with self._pool.acquire() as conn:

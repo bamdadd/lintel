@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -231,7 +231,7 @@ class CodeArtifact:
     path: str = ""
     content: str = ""
     metadata: dict[str, object] | None = None
-    storage_backend: str = "postgres"  # 'postgres' or 's3'
+    storage_backend: Literal["postgres", "s3"] = "postgres"
     storage_location: str | None = None
     size_bytes: int | None = None
     content_type: str | None = None
