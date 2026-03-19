@@ -45,6 +45,7 @@ class StageStatus(StrEnum):
     WAITING_APPROVAL = "waiting_approval"
     APPROVED = "approved"
     REJECTED = "rejected"
+    TIMED_OUT = "timed_out"
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,19 @@ class PipelineRun:
 
 
 @dataclass(frozen=True)
+class StepTimeoutConfig:
+    """Per-pipeline timeout configuration for step execution.
+
+    Attributes:
+        default_seconds: Default timeout per step (default: 2 hours).
+        aggregate_seconds: Optional pipeline-level total timeout across all steps.
+    """
+
+    default_seconds: int = 7200
+    aggregate_seconds: int | None = None
+
+
+@dataclass(frozen=True)
 class WorkflowStepConfig:
     """Per-step configuration binding an agent, model, and provider to a workflow node."""
 
@@ -109,6 +123,7 @@ class WorkflowStepConfig:
     requires_approval: bool = False
     label: str = ""
     description: str = ""
+    timeout_seconds: int | None = None
 
 
 @dataclass(frozen=True)

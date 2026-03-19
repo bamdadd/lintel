@@ -3,14 +3,17 @@
 import asyncio
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
+from lintel.contracts.types import ThreadRef
 from lintel.pipelines_api._helpers import _find_stage
 from lintel.pipelines_api._store import InMemoryPipelineStore, pipeline_store_provider
+from lintel.workflows.commands import StartWorkflow
 from lintel.workflows.events import (
     PipelineStageApproved,
     PipelineStageRejected,
@@ -18,7 +21,9 @@ from lintel.workflows.events import (
     StageReportEdited,
     StageReportRegenerated,
 )
-from lintel.workflows.types import PipelineStatus, StageStatus
+from lintel.workflows.types import PipelineRun, PipelineStatus, StageStatus
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -112,6 +117,83 @@ async def get_stage(
     raise HTTPException(status_code=404, detail="Stage not found")
 
 
+async def _redispatch_pipeline(request: Request, run: PipelineRun) -> None:
+    """Re-dispatch a pipeline via StartWorkflow when the graph session is lost."""
+    dispatcher = getattr(request.app.state, "command_dispatcher", None)
+    if dispatcher is None:
+        logger.warning("redispatch_no_dispatcher", extra={"run_id": run.run_id})
+        return
+
+    # Resolve repo info from project
+    repo_url = ""
+    repo_urls: tuple[str, ...] = ()
+    repo_branch = "main"
+    credential_ids: tuple[str, ...] = ()
+    project_store = getattr(request.app.state, "project_store", None)
+    repo_store = getattr(request.app.state, "repo_store", None)
+    if project_store and run.project_id:
+        try:
+            project = await project_store.get(run.project_id)
+            if project:
+                repo_branch = project.get("default_branch", "main")
+                credential_ids = tuple(project.get("credential_ids", ()))
+                repo_ids = project.get("repo_ids", ())
+                if isinstance(repo_ids, list | tuple) and repo_ids and repo_store:
+                    first_repo = await repo_store.get(repo_ids[0])
+                    if first_repo is not None:
+                        repo_url = (
+                            first_repo.url
+                            if hasattr(first_repo, "url")
+                            else first_repo.get("url", "")
+                        )
+                        all_urls: list[str] = [repo_url] if repo_url else []
+                        for rid in repo_ids[1:]:
+                            extra = await repo_store.get(rid)
+                            if extra is not None:
+                                u = extra.url if hasattr(extra, "url") else extra.get("url", "")
+                                if u:
+                                    all_urls.append(u)
+                        repo_urls = tuple(all_urls)
+        except Exception:
+            logger.warning("redispatch_project_lookup_failed", exc_info=True)
+
+    # Resolve work item description for sanitized_messages
+    description = ""
+    work_item_store = getattr(request.app.state, "work_item_store", None)
+    if work_item_store and run.work_item_id:
+        try:
+            item = await work_item_store.get(run.work_item_id)
+            if item:
+                description = item.get("description", item.get("title", ""))
+        except Exception:
+            pass
+
+    thread_ref = ThreadRef(
+        workspace_id="lintel",
+        channel_id=f"pipeline:{run.project_id}",
+        thread_ts=run.run_id,
+    )
+    command = StartWorkflow(
+        thread_ref=thread_ref,
+        workflow_type=run.workflow_definition_id or "feature_to_pr",
+        sanitized_messages=(description,) if description else (),
+        project_id=run.project_id,
+        work_item_id=run.work_item_id,
+        run_id=run.run_id,
+        repo_url=repo_url,
+        repo_urls=repo_urls,
+        repo_branch=repo_branch,
+        credential_ids=credential_ids,
+        continue_from_run_id=run.run_id,
+    )
+    task = asyncio.create_task(dispatcher.dispatch(command))
+    bg: set[asyncio.Task[None]] = getattr(request.app.state, "_background_tasks", set())
+    request.app.state._background_tasks = bg
+    bg.add(task)
+    task.add_done_callback(bg.discard)
+    logger.info("pipeline_redispatched", extra={"run_id": run.run_id})
+
+
 @router.post("/pipelines/{run_id}/stages/{stage_id}/retry")
 async def retry_stage(
     run_id: str,
@@ -185,27 +267,9 @@ async def retry_stage(
         request.app.state._background_tasks = bg
         bg.add(task)
         task.add_done_callback(bg.discard)
-    elif executor is not None:
-        # Session lost (server restart) — mark stage and pipeline as failed
-        failed_stages = []
-        for s in updated.stages:
-            if s.stage_id == stage_id:
-                failed_stages.append(
-                    replace(
-                        s,
-                        status=StageStatus.FAILED,
-                        error="Workflow session expired after server restart. "
-                        "Re-dispatch this work item to start a new pipeline.",
-                    )
-                )
-            else:
-                failed_stages.append(s)
-        updated = replace(
-            updated,
-            stages=tuple(failed_stages),
-            status=PipelineStatus.FAILED,
-        )
-        await store.update(updated)
+    else:
+        # Session lost (server restart or failed pipeline) — re-dispatch workflow
+        await _redispatch_pipeline(request, updated)
 
     return asdict(_find_stage(updated, stage_id))  # type: ignore[arg-type]
 

@@ -531,7 +531,7 @@ async def classify_flows_node(
     flows = state.get("traced_flows", [])
     classified: dict[str, list[dict[str, Any]]] = {}
 
-    ep_to_flow = {
+    _ep_to_flow = {
         "http_route": "http_request",
         "event_handler": "event_sourcing",
         "command_handler": "command_dispatch",
@@ -542,7 +542,7 @@ async def classify_flows_node(
 
     for flow in flows:
         ep_type = flow.get("metadata", {}).get("endpoint_type", "")
-        flow_type = ep_to_flow.get(ep_type, "external_integration")
+        flow_type = _ep_to_flow.get(ep_type, "external_integration")
 
         # Refine based on sink type
         sink = flow.get("sink") or {}
