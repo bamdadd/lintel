@@ -92,6 +92,7 @@ interface SandboxEntry {
   pipeline_id?: string;
   devcontainer?: Record<string, unknown>;
   mounts?: MountEntry[];
+  backend?: string;
 }
 
 export function Component() {
@@ -126,6 +127,7 @@ export function Component() {
       network_enabled: false,
       devcontainer_json: DEFAULT_DEVCONTAINER,
       count: 1,
+      backend: 'docker',
     },
     validate: {
       devcontainer_json: (v) => {
@@ -173,6 +175,7 @@ export function Component() {
         thread_ts: `${Date.now()}`,
         image: devcontainer.image ?? values.image,
         network_enabled: values.network_enabled,
+        backend: values.backend,
         devcontainer: {
           name: devcontainer.name ?? 'sandbox',
           image: devcontainer.image ?? values.image,
@@ -334,6 +337,7 @@ export function Component() {
                 <Table.Th>ID</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>Allocated To</Table.Th>
+                <Table.Th>Backend</Table.Th>
                 <Table.Th>Image</Table.Th>
                 <Table.Th>Network</Table.Th>
                 <Table.Th />
@@ -364,6 +368,7 @@ export function Component() {
                       <Badge size="sm" variant="light" color="green">free</Badge>
                     )}
                   </Table.Td>
+                  <Table.Td><Badge size="sm" variant="light" color={s.backend === 'openshell' ? 'violet' : 'blue'}>{s.backend ?? 'docker'}</Badge></Table.Td>
                   <Table.Td><Text size="xs">{s.devcontainer?.image as string ?? s.image}</Text></Table.Td>
                   <Table.Td><Badge color={s.network_enabled ? 'green' : 'gray'} size="sm">{s.network_enabled ? 'on' : 'off'}</Badge></Table.Td>
                   <Table.Td>
@@ -390,14 +395,25 @@ export function Component() {
       <Modal opened={opened} onClose={close} title="Create Sandbox" size="lg">
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
-            <Select
-              label="Preset"
-              description="Choose a preset or customise the devcontainer config below"
-              data={presetOptions}
-              value={form.values.preset}
-              onChange={handlePresetChange}
-              searchable
-            />
+            <Group grow>
+              <Select
+                label="Preset"
+                description="Choose a preset or customise the devcontainer config below"
+                data={presetOptions}
+                value={form.values.preset}
+                onChange={handlePresetChange}
+                searchable
+              />
+              <Select
+                label="Backend"
+                description="Execution backend for the sandbox"
+                data={[
+                  { value: 'docker', label: 'Docker' },
+                  { value: 'openshell', label: 'OpenShell (NVIDIA)' },
+                ]}
+                {...form.getInputProps('backend')}
+              />
+            </Group>
             {form.values.preset && presets?.[form.values.preset]?.mounts && (
               <Paper withBorder p="xs" radius="md" bg="dark.8">
                 <Text size="xs" fw={600} mb={4}>Mounts (from preset)</Text>

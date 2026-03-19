@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -15,8 +15,10 @@ from lintel.sandbox.events import (
     SandboxCreated,
     SandboxDestroyed,
 )
-from lintel.sandbox.protocols import SandboxManager
 from lintel.sandbox.types import SandboxBackend, SandboxConfig
+
+if TYPE_CHECKING:
+    from lintel.sandbox.protocols import SandboxManager
 
 router = APIRouter()
 
