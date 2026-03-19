@@ -383,6 +383,10 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "integration_patterns": _PgIntegrationPatternStore(pool),
         "process_mining": _PgProcessMiningStore(pool),
         "workflow_definition_store": PostgresWorkflowDefinitionStore(pool),
+        # REQ-010: in-memory until Postgres implementations exist
+        "parsed_result_store": ParsedTestResultStore(),
+        "coverage_metric_store": CoverageMetricStore(),
+        "quality_gate_rule_store": QualityGateRuleStore(),
     }
 
 
