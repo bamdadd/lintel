@@ -17,12 +17,21 @@ from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 from lintel.artifacts_api.routes import (
     artifact_content_store_provider,
     code_artifact_store_provider,
+    coverage_metric_store_provider,
+    parsed_result_store_provider,
+    quality_gate_rule_store_provider,
     test_result_store_provider,
 )
 from lintel.artifacts_api.routes import (
     pipeline_store_provider as artifact_pipeline_store_provider,
 )
-from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
+from lintel.artifacts_api.store import (
+    CodeArtifactStore,
+    CoverageMetricStore,
+    ParsedTestResultStore,
+    QualityGateRuleStore,
+    TestResultStore,
+)
 from lintel.audit_api.routes import audit_entry_store_provider
 from lintel.audit_api.store import AuditEntryStore
 from lintel.automations_api.routes import InMemoryAutomationStore, automation_store_provider
@@ -159,6 +168,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "code_artifact_store": CodeArtifactStore(),
         "artifact_content_store": _create_fake_artifact_content_store(),
         "test_result_store": TestResultStore(),
+        "parsed_result_store": ParsedTestResultStore(),
+        "coverage_metric_store": CoverageMetricStore(),
+        "quality_gate_rule_store": QualityGateRuleStore(),
         "approval_request_store": InMemoryApprovalRequestStore(),
         "chat_store": ChatStore(),
         "agent_definition_store": AgentDefinitionStore(),
@@ -391,6 +403,11 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     code_artifact_store_provider.override(stores["code_artifact_store"])
     artifact_content_store_provider.override(stores["artifact_content_store"])
     test_result_store_provider.override(stores["test_result_store"])
+    parsed_result_store_provider.override(stores["parsed_result_store"])
+    coverage_metric_store_provider.override(stores["coverage_metric_store"])
+    quality_gate_rule_store_provider.override(
+        stores["quality_gate_rule_store"],
+    )
     artifact_pipeline_store_provider.override(stores["pipeline_store"])
     project_store_provider.override(stores["project_store"])
     work_item_store_provider.override(stores["work_item_store"])

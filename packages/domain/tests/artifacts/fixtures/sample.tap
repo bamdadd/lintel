@@ -1,0 +1,7 @@
+TAP version 13
+1..5
+ok 1 - addition works
+ok 2 - subtraction works
+not ok 3 - division by zero
+ok 4 - string concat # SKIP not ready
+ok 5 - multiplication
