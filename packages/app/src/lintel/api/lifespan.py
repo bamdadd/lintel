@@ -222,21 +222,41 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     sandbox_manager = DockerSandboxManager()
     app.state.sandbox_manager = sandbox_manager
 
-    try:
-        recovered = await sandbox_manager.recover_containers()
-        if recovered:
-            import logging
+    # Optionally enable OpenShell backend alongside Docker
+    sandbox_backend_env = os.environ.get("SANDBOX_BACKEND", "docker")
+    if sandbox_backend_env in ("openshell", "both"):
+        from lintel.sandbox.openshell_backend import OpenShellSandboxManager
 
-            logger = logging.getLogger("lintel")
-            logger.info("Recovered %d sandbox containers", len(recovered))
-            store = app.state.sandbox_store
-            for meta in recovered:
-                try:
-                    await store.add(meta["sandbox_id"], meta)
-                except Exception:
-                    logger.warning("Failed to restore metadata for %s", meta["sandbox_id"])
-    except Exception:
-        pass
+        openshell_manager = OpenShellSandboxManager()
+        app.state.openshell_manager = openshell_manager
+
+    async def _recover_sandboxes(
+        recover_fn: Any,  # noqa: ANN401
+        store: Any,  # noqa: ANN401
+        label: str,
+    ) -> None:
+        import logging
+
+        try:
+            recovered = await recover_fn()
+            if recovered:
+                logger = logging.getLogger("lintel")
+                logger.info("Recovered %d %s sandboxes", len(recovered), label)
+                for meta in recovered:
+                    try:
+                        await store.add(meta["sandbox_id"], meta)
+                    except Exception:
+                        logger.warning(
+                            "Failed to restore %s metadata for %s", label, meta["sandbox_id"]
+                        )
+        except Exception:
+            pass
+
+    await _recover_sandboxes(sandbox_manager.recover_containers, app.state.sandbox_store, "Docker")
+    if hasattr(app.state, "openshell_manager"):
+        await _recover_sandboxes(
+            app.state.openshell_manager.recover_sandboxes, app.state.sandbox_store, "OpenShell"
+        )
 
     github_token = os.environ.get("GITHUB_TOKEN", "")
     repo_provider = GitHubRepoProvider(token=github_token) if github_token else None
