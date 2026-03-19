@@ -323,11 +323,10 @@ async def create_sandbox(
     return {"sandbox_id": sandbox_id}
 
 
-def _resolve_manager(request: Request, sandbox_id: str) -> SandboxManager:
+async def _resolve_manager(request: Request, sandbox_id: str) -> SandboxManager:
     """Pick the correct sandbox manager based on stored metadata backend."""
     store = request.app.state.sandbox_store
-    # Synchronous dict lookup — SandboxStore._sandboxes is an in-memory dict
-    meta = store._sandboxes.get(sandbox_id)
+    meta = await store.get(sandbox_id)
     if meta and meta.get("backend") == SandboxBackend.OPENSHELL.value:
         mgr: SandboxManager | None = getattr(request.app.state, "openshell_manager", None)
         if mgr is not None:
@@ -341,7 +340,7 @@ async def get_sandbox_status(
     request: Request,
 ) -> dict[str, Any]:
     """Get sandbox status."""
-    manager = _resolve_manager(request, sandbox_id)
+    manager = await _resolve_manager(request, sandbox_id)
     try:
         status = await manager.get_status(sandbox_id)
         return {"sandbox_id": sandbox_id, "status": status.value}
@@ -352,7 +351,7 @@ async def get_sandbox_status(
 @router.delete("/sandboxes/{sandbox_id}", status_code=204)
 async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
     """Destroy a sandbox."""
-    manager = _resolve_manager(request, sandbox_id)
+    manager = await _resolve_manager(request, sandbox_id)
     try:
         await manager.destroy(sandbox_id)
         store = request.app.state.sandbox_store
@@ -370,7 +369,6 @@ async def destroy_sandbox(sandbox_id: str, request: Request) -> None:
 async def cleanup_unassigned_sandboxes(request: Request) -> dict[str, Any]:
     """Destroy all sandboxes that are not assigned to a pipeline."""
     store = request.app.state.sandbox_store
-    manager = request.app.state.sandbox_manager
     all_sandboxes = await store.list_all()
     unassigned = [s for s in all_sandboxes if not s.get("pipeline_id")]
     destroyed: list[str] = []
@@ -380,6 +378,7 @@ async def cleanup_unassigned_sandboxes(request: Request) -> dict[str, Any]:
         if not sid:
             continue
         try:
+            manager = await _resolve_manager(request, sid)
             await manager.destroy(sid)
             await store.remove(sid)
             await dispatch_event(

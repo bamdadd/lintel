@@ -89,6 +89,17 @@ def client() -> Generator[TestClient]:
         yield c
 
 
+@pytest.fixture()
+def client_with_openshell() -> Generator[TestClient]:
+    """Client with both Docker and OpenShell managers available."""
+    app = create_app()
+    with TestClient(app) as c:
+        app.state.sandbox_manager = DummySandboxManager()
+        app.state.openshell_manager = DummySandboxManager()
+        app.state.sandbox_store = SandboxStore()
+        yield c
+
+
 class TestCreateSandbox:
     def test_creates_sandbox(self, client: TestClient) -> None:
         resp = client.post(
@@ -267,3 +278,105 @@ class TestDestroySandbox:
     def test_not_found(self, client: TestClient) -> None:
         resp = client.delete("/api/v1/sandboxes/nonexistent")
         assert resp.status_code == 404
+
+
+class TestOpenShellBackendRouting:
+    def test_create_with_openshell_backend(self, client_with_openshell: TestClient) -> None:
+        resp = client_with_openshell.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "backend": "openshell",
+            },
+        )
+        assert resp.status_code == 201
+        sandbox_id = resp.json()["sandbox_id"]
+
+        # Verify stored metadata has backend=openshell
+        list_resp = client_with_openshell.get("/api/v1/sandboxes")
+        entry = next(s for s in list_resp.json() if s["sandbox_id"] == sandbox_id)
+        assert entry["backend"] == "openshell"
+
+    def test_create_openshell_not_configured(self, client: TestClient) -> None:
+        """Creating with openshell backend when not configured returns 400."""
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "backend": "openshell",
+            },
+        )
+        assert resp.status_code == 400
+        assert "not configured" in resp.json()["detail"]
+
+    def test_create_unknown_backend(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "backend": "unknown",
+            },
+        )
+        assert resp.status_code == 400
+        assert "Unknown backend" in resp.json()["detail"]
+
+    def test_resolve_manager_routes_to_openshell(self, client_with_openshell: TestClient) -> None:
+        """Status/destroy should use the openshell manager for openshell sandboxes."""
+        resp = client_with_openshell.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "backend": "openshell",
+            },
+        )
+        sandbox_id = resp.json()["sandbox_id"]
+
+        # get_status should route to openshell manager
+        status_resp = client_with_openshell.get(f"/api/v1/sandboxes/{sandbox_id}")
+        assert status_resp.status_code == 200
+        assert status_resp.json()["status"] == "running"
+
+        # destroy should route to openshell manager
+        del_resp = client_with_openshell.delete(f"/api/v1/sandboxes/{sandbox_id}")
+        assert del_resp.status_code == 204
+
+    def test_cleanup_unassigned_mixed_backends(self, client_with_openshell: TestClient) -> None:
+        """Cleanup should use the correct manager for each sandbox's backend."""
+        # Create a Docker sandbox
+        resp1 = client_with_openshell.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "backend": "docker",
+            },
+        )
+        assert resp1.status_code == 201
+
+        # Create an OpenShell sandbox
+        resp2 = client_with_openshell.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "2.0",
+                "backend": "openshell",
+            },
+        )
+        assert resp2.status_code == 201
+
+        # Neither is assigned to a pipeline, so cleanup should destroy both
+        cleanup_resp = client_with_openshell.post("/api/v1/sandboxes/cleanup-unassigned")
+        assert cleanup_resp.status_code == 200
+        data = cleanup_resp.json()
+        assert data["destroyed"] == 2
+        assert data["failed"] == 0

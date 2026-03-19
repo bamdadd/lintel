@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shlex
 import shutil
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -161,7 +162,7 @@ class OpenShellSandboxManager:
 
         result = await self.execute(
             sandbox_id,
-            SandboxJob(command=f"cat {path}", timeout_seconds=30),
+            SandboxJob(command=f"cat {shlex.quote(path)}", timeout_seconds=30),
         )
         if result.exit_code != 0:
             raise SandboxExecutionError(f"Failed to read {path}: {result.stderr}")
@@ -178,7 +179,7 @@ class OpenShellSandboxManager:
         dest_dir = "/".join(path.rsplit("/", 1)[:-1]) or "/"
         await self.execute(
             sandbox_id,
-            SandboxJob(command=f"mkdir -p {dest_dir}", timeout_seconds=10),
+            SandboxJob(command=f"mkdir -p {shlex.quote(dest_dir)}", timeout_seconds=10),
         )
 
         # Write to a local temp file and upload via openshell sandbox upload
@@ -198,7 +199,7 @@ class OpenShellSandboxManager:
 
         result = await self.execute(
             sandbox_id,
-            SandboxJob(command=f"ls -1 {path}", timeout_seconds=10),
+            SandboxJob(command=f"ls -1 {shlex.quote(path)}", timeout_seconds=10),
         )
         if result.exit_code != 0:
             raise SandboxExecutionError(f"Failed to list {path}: {result.stderr}")
