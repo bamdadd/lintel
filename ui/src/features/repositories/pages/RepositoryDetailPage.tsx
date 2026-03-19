@@ -82,6 +82,8 @@ export function Component() {
 
   const commits = (commitsResp?.data ?? []) as Commit[];
   const pullRequests = (prsResp?.data ?? []) as PullRequest[];
+  const openPRs = pullRequests.filter((pr) => pr.state === 'open');
+  const closedPRs = pullRequests.filter((pr) => pr.state !== 'open');
 
   const startEdit = () => {
     form.setValues({
@@ -182,41 +184,50 @@ export function Component() {
           ) : pullRequests.length === 0 ? (
             <Text c="dimmed" py="md">No pull requests found. Ensure GITHUB_TOKEN is configured.</Text>
           ) : (
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>#</Table.Th>
-                  <Table.Th>Title</Table.Th>
-                  <Table.Th>State</Table.Th>
-                  <Table.Th>Author</Table.Th>
-                  <Table.Th>Branch</Table.Th>
-                  <Table.Th>Updated</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {pullRequests.map((pr) => (
-                  <Table.Tr key={pr.number}>
-                    <Table.Td>
-                      <Anchor href={pr.html_url} target="_blank" size="sm">#{pr.number}</Anchor>
-                    </Table.Td>
-                    <Table.Td><Text size="sm" lineClamp={1}>{pr.title}</Text></Table.Td>
-                    <Table.Td>
-                      <Badge
-                        size="sm"
-                        color={pr.state === 'open' ? 'green' : pr.state === 'closed' ? 'red' : 'purple'}
-                      >
-                        {pr.state}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td><Text size="sm">{pr.author}</Text></Table.Td>
-                    <Table.Td>
-                      <Text size="sm" ff="monospace">{pr.head_branch} &rarr; {pr.base_branch}</Text>
-                    </Table.Td>
-                    <Table.Td><Text size="sm">{new Date(pr.updated_at).toLocaleDateString()}</Text></Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+            <Tabs defaultValue="open">
+              <Tabs.List>
+                <Tabs.Tab value="open">Open ({openPRs.length})</Tabs.Tab>
+                <Tabs.Tab value="closed">Closed ({closedPRs.length})</Tabs.Tab>
+              </Tabs.List>
+
+              {(['open', 'closed'] as const).map((tab) => {
+                const prs = tab === 'open' ? openPRs : closedPRs;
+                return (
+                  <Tabs.Panel key={tab} value={tab} pt="sm">
+                    {prs.length === 0 ? (
+                      <Text c="dimmed" py="md">No {tab} pull requests.</Text>
+                    ) : (
+                      <Table striped highlightOnHover>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>#</Table.Th>
+                            <Table.Th>Title</Table.Th>
+                            <Table.Th>Author</Table.Th>
+                            <Table.Th>Branch</Table.Th>
+                            <Table.Th>Updated</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {prs.map((pr) => (
+                            <Table.Tr key={pr.number}>
+                              <Table.Td>
+                                <Anchor href={pr.html_url} target="_blank" size="sm">#{pr.number}</Anchor>
+                              </Table.Td>
+                              <Table.Td><Text size="sm" lineClamp={1}>{pr.title}</Text></Table.Td>
+                              <Table.Td><Text size="sm">{pr.author}</Text></Table.Td>
+                              <Table.Td>
+                                <Text size="sm" ff="monospace">{pr.head_branch} &rarr; {pr.base_branch}</Text>
+                              </Table.Td>
+                              <Table.Td><Text size="sm">{new Date(pr.updated_at).toLocaleDateString()}</Text></Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    )}
+                  </Tabs.Panel>
+                );
+              })}
+            </Tabs>
           )}
         </Tabs.Panel>
       </Tabs>
