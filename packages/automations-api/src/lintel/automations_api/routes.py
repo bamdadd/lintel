@@ -1,7 +1,9 @@
 """Automation CRUD endpoints."""
 
+import asyncio
 from dataclasses import asdict
 from datetime import UTC, datetime
+import logging
 from typing import Any
 from uuid import uuid4
 
@@ -10,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.automations_api.schemas import CreateAutomationRequest, UpdateAutomationRequest
+from lintel.contracts.types import ThreadRef
 from lintel.domain.events import (
     AutomationCreated,
     AutomationDisabled,
@@ -19,7 +22,10 @@ from lintel.domain.events import (
     AutomationUpdated,
 )
 from lintel.domain.types import AutomationDefinition
+from lintel.workflows.commands import StartWorkflow
 from lintel.workflows.types import PipelineRun
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -183,7 +189,7 @@ async def trigger_automation(
     if not automation.enabled:
         raise HTTPException(status_code=409, detail="Automation is disabled")
 
-    pipeline_store = request.app.state.pipeline_store
+    pipeline_store = getattr(request.app.state, "pipeline_store", None)
     run_id = str(uuid4())
     pipeline_run = PipelineRun(
         run_id=run_id,
@@ -192,7 +198,8 @@ async def trigger_automation(
         workflow_definition_id=automation.workflow_definition_id,
         trigger_type=f"automation:{automation_id}",
     )
-    await pipeline_store.add(pipeline_run)
+    if pipeline_store:
+        await pipeline_store.add(pipeline_run)
     await dispatch_event(
         request,
         AutomationFired(
@@ -204,6 +211,32 @@ async def trigger_automation(
         ),
         stream_id=f"automation:{automation_id}",
     )
+
+    # Dispatch StartWorkflow to actually execute the pipeline
+    dispatcher = getattr(request.app.state, "command_dispatcher", None)
+    if dispatcher:
+        thread_ref = ThreadRef(
+            workspace_id="lintel",
+            channel_id=f"automation:{automation_id}",
+            thread_ts=run_id,
+        )
+        command = StartWorkflow(
+            thread_ref=thread_ref,
+            workflow_type=automation.workflow_definition_id or "feature_to_pr",
+            project_id=automation.project_id,
+            run_id=run_id,
+            trigger_context=f"automation:{automation_id}",
+        )
+        task = asyncio.create_task(dispatcher.dispatch(command))
+        bg: set[asyncio.Task[None]] = getattr(request.app.state, "_background_tasks", set())
+        request.app.state._background_tasks = bg
+        bg.add(task)
+        task.add_done_callback(bg.discard)
+        logger.info(
+            "automation_workflow_dispatched",
+            extra={"automation_id": automation_id, "run_id": run_id},
+        )
+
     return {"automation_id": automation_id, "pipeline_run_id": run_id}
 
 

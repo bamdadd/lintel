@@ -121,7 +121,7 @@ const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'cancelled', 'complete
  */
 export function useAllPipelines() {
   return useQuery({
-    queryKey: ['/api/v1/pipelines'],
+    queryKey: ['/api/v1/pipelines', 'all-normalized'],
     queryFn: async () => {
       const resp = await customInstance<ListResponse<PipelineRun>>('/api/v1/pipelines');
       const all = (resp?.data ?? resp) as unknown as PipelineRun[];
