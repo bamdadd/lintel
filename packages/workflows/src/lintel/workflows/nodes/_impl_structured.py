@@ -165,22 +165,53 @@ async def implement_structured(
 
         await tracker.append_log("implement", f"Pushing branch {feature_branch}...")
         try:
-            push_result = await sandbox_manager.execute(
-                sandbox_id,
-                SandboxJob(
-                    command=(
-                        f"git add -A && git diff --cached --quiet"
-                        f" || git commit -m 'wip: implement stage progress'"
-                        f" && git push --force-with-lease -u origin {feature_branch} 2>&1"
-                    ),
-                    workdir=workspace_path,
-                    timeout_seconds=60,
-                ),
+            commit_cmd = (
+                "git add -A && git diff --cached --quiet"
+                " || git commit -m 'wip: implement stage progress'"
             )
-            push_out = (push_result.stdout + push_result.stderr).strip()
+            await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(command=commit_cmd, workdir=workspace_path, timeout_seconds=30),
+            )
+            # Retry push — force-with-lease can fail on stale refs
+            push_result = None
+            for push_attempt in range(3):
+                if push_attempt > 0:
+                    await sandbox_manager.execute(
+                        sandbox_id,
+                        SandboxJob(
+                            command="git fetch origin 2>&1 || true",
+                            workdir=workspace_path,
+                            timeout_seconds=30,
+                        ),
+                    )
+                push_result = await sandbox_manager.execute(
+                    sandbox_id,
+                    SandboxJob(
+                        command=(f"git push --force-with-lease -u origin {feature_branch} 2>&1"),
+                        workdir=workspace_path,
+                        timeout_seconds=60,
+                    ),
+                )
+                if push_result.exit_code == 0:
+                    break
+                push_out = (push_result.stdout + push_result.stderr).strip()
+                if "stale info" not in push_out:
+                    break
+            # Fallback to force push if force-with-lease keeps failing
+            if push_result and push_result.exit_code != 0:
+                push_result = await sandbox_manager.execute(
+                    sandbox_id,
+                    SandboxJob(
+                        command=f"git push --force -u origin {feature_branch} 2>&1",
+                        workdir=workspace_path,
+                        timeout_seconds=60,
+                    ),
+                )
+            push_out = (push_result.stdout + push_result.stderr).strip() if push_result else ""
             await tracker.append_log(
                 "implement",
-                f"Push: {'OK' if push_result.exit_code == 0 else 'FAILED'}"
+                f"Push: {'OK' if push_result and push_result.exit_code == 0 else 'FAILED'}"
                 f" — {push_out[-100:] if push_out else 'no output'}",
             )
         except Exception:

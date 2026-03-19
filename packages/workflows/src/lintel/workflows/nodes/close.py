@@ -173,14 +173,51 @@ async def close_workflow(
 
             repo_label = r_url.rstrip("/").rsplit("/", 1)[-1]
             await tracker.append_log("close", f"Pushing branch {feature_branch} to {repo_label}...")
-            push_result = await sandbox_manager.execute(
-                sandbox_id,
-                SandboxJob(
-                    command=(f"cd {wd} && git push --force-with-lease -u origin {feature_branch}"),
-                    timeout_seconds=60,
-                ),
-            )
-            if push_result.exit_code != 0:
+
+            # Retry push up to 3 times — force-with-lease can fail on stale refs
+            push_result = None
+            for push_attempt in range(3):
+                if push_attempt > 0:
+                    await tracker.append_log(
+                        "close", f"Retrying push (attempt {push_attempt + 1}/3)..."
+                    )
+                    await sandbox_manager.execute(
+                        sandbox_id,
+                        SandboxJob(
+                            command=f"cd {wd} && git fetch origin 2>&1 || true",
+                            timeout_seconds=30,
+                        ),
+                    )
+                push_result = await sandbox_manager.execute(
+                    sandbox_id,
+                    SandboxJob(
+                        command=(
+                            f"cd {wd} && git push --force-with-lease -u origin {feature_branch}"
+                        ),
+                        timeout_seconds=60,
+                    ),
+                )
+                if push_result.exit_code == 0:
+                    break
+                push_output = push_result.stderr or push_result.stdout
+                # Only retry on stale ref errors; other failures are not transient
+                if "stale info" not in (push_output or ""):
+                    break
+
+            if push_result and push_result.exit_code != 0:
+                repo_push_error = push_result.stderr or push_result.stdout
+                # Last resort: force push if force-with-lease keeps failing
+                await tracker.append_log(
+                    "close", "force-with-lease failed, falling back to force push..."
+                )
+                push_result = await sandbox_manager.execute(
+                    sandbox_id,
+                    SandboxJob(
+                        command=(f"cd {wd} && git push --force -u origin {feature_branch}"),
+                        timeout_seconds=60,
+                    ),
+                )
+            if push_result and push_result.exit_code != 0:
                 repo_push_error = push_result.stderr or push_result.stdout
                 logger.warning("close_push_failed", repo=repo_label, error=repo_push_error[:200])
                 await tracker.append_log(
