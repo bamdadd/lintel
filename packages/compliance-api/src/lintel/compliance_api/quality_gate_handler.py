@@ -7,11 +7,12 @@ events.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 
 if TYPE_CHECKING:
+    from lintel.artifacts_api.store import CoverageMetricStore, QualityGateRuleStore
     from lintel.contracts.events import EventEnvelope
     from lintel.contracts.protocols import EventBus
 
@@ -25,8 +26,8 @@ class QualityGateGuardrailHandler:
 
     def __init__(
         self,
-        rule_store: Any,  # noqa: ANN401
-        coverage_store: Any,  # noqa: ANN401
+        rule_store: QualityGateRuleStore,
+        coverage_store: CoverageMetricStore,
         event_bus: EventBus | None = None,
     ) -> None:
         self._rule_store = rule_store

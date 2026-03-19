@@ -1,6 +1,7 @@
 """Code artifact and test result endpoints."""
 
 import asyncio
+import base64
 from collections.abc import AsyncGenerator
 from dataclasses import asdict
 import json
@@ -308,8 +309,6 @@ async def upload_artifact(
     ),
 ) -> dict[str, Any]:
     """Upload and parse a test result or coverage artifact."""
-    import base64
-
     from lintel.domain.artifacts.parsers.registry import ParserRegistry
 
     raw_bytes = base64.b64decode(body.content_base64)

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
+    from lintel.artifacts_api.store import CoverageMetricStore, ParsedTestResultStore
     from lintel.contracts.protocols import EventBus
 
 logger = structlog.get_logger()
@@ -25,8 +26,8 @@ class TestStageHook:
 
     def __init__(
         self,
-        parsed_result_store: Any,  # noqa: ANN401
-        coverage_store: Any,  # noqa: ANN401
+        parsed_result_store: ParsedTestResultStore,
+        coverage_store: CoverageMetricStore,
         event_bus: EventBus | None = None,
     ) -> None:
         self._parsed_result_store = parsed_result_store
@@ -126,7 +127,7 @@ class TestStageHook:
                                 }
                             )
                         )
-            except (ValueError, Exception):
+            except Exception:
                 logger.warning(
                     "artifact_parse_failed",
                     run_id=run_id,
