@@ -371,6 +371,62 @@ async def mark_running_stages_failed(app_state: Any, run_id: str, error: str) ->
         )
 
 
+async def mark_stage_timed_out(
+    app_state: Any,
+    run_id: str,
+    node_name: str,
+    timeout_seconds: float,
+) -> None:
+    """Mark a specific pipeline stage as timed_out and skip remaining stages."""
+    from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+
+    node_name = NODE_TO_STAGE.get(node_name, node_name)
+    if app_state is None:
+        return
+    pipeline_store = getattr(app_state, "pipeline_store", None)
+    if pipeline_store is None:
+        return
+    try:
+        from dataclasses import replace
+        from datetime import UTC, datetime
+
+        from lintel.workflows.types import StageStatus
+
+        run = await pipeline_store.get(run_id)
+        if run is None:
+            return
+        now = datetime.now(UTC).isoformat()
+        updated_stages = []
+        found = False
+        for stage in run.stages:
+            if isinstance(stage, dict):
+                stage = _dict_to_stage_local(stage)
+            if stage.name == node_name and not found:
+                found = True
+                updated_stages.append(
+                    replace(
+                        stage,
+                        status=StageStatus.TIMED_OUT,
+                        error=f"Step timed out after {timeout_seconds:.0f}s",
+                        finished_at=now,
+                    )
+                )
+            elif found and stage.status == StageStatus.PENDING:
+                updated_stages.append(replace(stage, status=StageStatus.SKIPPED))
+            else:
+                updated_stages.append(stage)
+        if found:
+            updated = replace(run, stages=tuple(updated_stages))
+            await pipeline_store.update(updated)
+    except Exception as exc:
+        logger.warning(
+            "mark_stage_timed_out_failed",
+            run_id=run_id,
+            node_name=node_name,
+            error=str(exc),
+        )
+
+
 async def mark_stage_waiting_approval(app_state: Any, run_id: str, node_name: str) -> None:
     """Mark an approval gate stage as waiting_approval."""
     if app_state is None:

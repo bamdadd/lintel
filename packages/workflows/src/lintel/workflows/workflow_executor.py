@@ -44,6 +44,9 @@ from lintel.workflows._executor_lifecycle import (
     mark_stage_completed as _mark_stage_completed,
 )
 from lintel.workflows._executor_lifecycle import (
+    mark_stage_timed_out as _mark_stage_timed_out,  # noqa: F401
+)
+from lintel.workflows._executor_lifecycle import (
     mark_stage_waiting_approval as _mark_stage_waiting_approval,
 )
 from lintel.workflows._executor_lifecycle import (
@@ -60,6 +63,7 @@ from lintel.workflows.events import (
     PipelineRunFailed,
     PipelineRunStarted,
     PipelineStageCompleted,
+    PipelineStageTimedOut,
 )
 
 if TYPE_CHECKING:
@@ -433,6 +437,27 @@ class WorkflowExecutor:
                     f"🎉 **Workflow completed successfully**{token_summary}\n"
                     f"[View pipeline →](/pipelines/{run_id})",
                 )
+        except TimeoutError:
+            # Aggregate pipeline timeout exceeded
+            self._suspended_runs.pop(run_id, None)
+            last_node = "unknown"
+            await _mark_running_stages_failed(self._app_state, run_id, "Pipeline timed out")
+            timed_out_event = PipelineStageTimedOut(
+                event_type="PipelineStageTimedOut",
+                payload={
+                    "run_id": run_id,
+                    "node_name": last_node,
+                    "timeout_seconds": 0,
+                },
+            )
+            await self._event_store.append(stream_id=stream_id, events=[timed_out_event])
+            await self._project_events([timed_out_event])
+            await _update_pipeline_status(self._app_state, run_id, "failed")
+            await _notify_chat(
+                self._app_state,
+                run_id,
+                f"⏱️ **Pipeline timed out**\n[View pipeline →](/pipelines/{run_id})",
+            )
         except Exception as exc:
             self._suspended_runs.pop(run_id, None)
             await _mark_running_stages_failed(self._app_state, run_id, str(exc))

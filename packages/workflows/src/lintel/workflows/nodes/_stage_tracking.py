@@ -209,6 +209,21 @@ class StageTracker:
             except Exception:
                 logger.warning("on_success_hook_error", node_name=node_name)
 
+    async def mark_timed_out(
+        self,
+        node_name: str,
+        timeout_seconds: float,
+    ) -> None:
+        """Mark a pipeline stage as timed out. Call when a step exceeds its timeout."""
+        stage_name = NODE_TO_STAGE.get(node_name)
+        if not stage_name:
+            return
+        if not self.run_id:
+            return
+        error = f"Step timed out after {timeout_seconds:.0f}s"
+        await self._update_stage(stage_name, "timed_out", error=error)
+        await self._dispatch_notifications(stage_name, "timed_out")
+
     async def log_llm_context(
         self,
         node_name: str,
@@ -533,6 +548,16 @@ async def update_stage(
     tracker = StageTracker(config, state)
     tracker._run_id = run_id
     await tracker._update_stage(stage_name, status, outputs=outputs, error=error)
+
+
+async def mark_timed_out(
+    config: Mapping[str, Any],
+    node_name: str,
+    timeout_seconds: float,
+    state: Mapping[str, Any] | None = None,
+) -> None:
+    """Mark a pipeline stage as timed out."""
+    await StageTracker(config, state).mark_timed_out(node_name, timeout_seconds)
 
 
 def _get_pipeline_store(

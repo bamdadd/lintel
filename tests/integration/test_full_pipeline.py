@@ -72,3 +72,36 @@ async def test_message_ingestion_pipeline(event_store: PostgresEventStore) -> No
     assert status is not None
     assert status["status"] == "active"
     assert status["event_count"] == 2
+
+
+def test_timed_out_stage_status_enum() -> None:
+    """Verify TIMED_OUT status is a valid StageStatus value usable in Stage dataclass."""
+    from lintel.workflows.types import PipelineRun, Stage, StageStatus
+
+    stage = Stage(
+        stage_id="s1",
+        name="implement",
+        stage_type="implement",
+        status=StageStatus.TIMED_OUT,
+        error="Step timed out after 300s",
+    )
+    assert stage.status == StageStatus.TIMED_OUT
+    assert stage.error == "Step timed out after 300s"
+
+    run = PipelineRun(
+        run_id="run-1",
+        project_id="proj-1",
+        work_item_id="wi-1",
+        workflow_definition_id="feature_to_pr",
+        stages=(stage,),
+    )
+    assert run.stages[0].status == StageStatus.TIMED_OUT
+
+
+def test_pipeline_stage_timed_out_event_registered() -> None:
+    """PipelineStageTimedOut is registered in the global event type map."""
+    from lintel.contracts.events import EVENT_TYPE_MAP
+    from lintel.workflows.events import PipelineStageTimedOut
+
+    assert "PipelineStageTimedOut" in EVENT_TYPE_MAP
+    assert EVENT_TYPE_MAP["PipelineStageTimedOut"] is PipelineStageTimedOut

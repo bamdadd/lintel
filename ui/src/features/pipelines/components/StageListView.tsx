@@ -16,6 +16,7 @@ import {
   IconCircle,
   IconPlayerPause,
   IconCircleDashed,
+  IconClock,
 } from '@tabler/icons-react';
 import { StageCard } from './StageCard';
 import type { StageItem } from './StageCard';
@@ -38,6 +39,7 @@ const statusIcon: Record<string, { icon: React.ElementType; color: string }> = {
   failed: { icon: IconCircleX, color: 'var(--mantine-color-red-6)' },
   rejected: { icon: IconCircleX, color: 'var(--mantine-color-red-6)' },
   cancelled: { icon: IconCircleX, color: 'var(--mantine-color-orange-6)' },
+  timed_out: { icon: IconClock, color: 'var(--mantine-color-orange-6)' },
   running: { icon: Loader, color: 'var(--mantine-color-blue-6)' },
   waiting_approval: { icon: IconPlayerPause, color: 'var(--mantine-color-yellow-6)' },
   skipped: { icon: IconCircleDashed, color: 'var(--mantine-color-gray-6)' },

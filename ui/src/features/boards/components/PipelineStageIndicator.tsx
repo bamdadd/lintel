@@ -12,6 +12,7 @@ const STATUS_COLOR: Record<string, string> = {
   waiting_approval: 'var(--mantine-color-yellow-5)',
   approved: 'var(--mantine-color-green-4)',
   rejected: 'var(--mantine-color-red-4)',
+  timed_out: 'var(--mantine-color-orange-5)',
 };
 
 function formatDuration(ms: number): string {
