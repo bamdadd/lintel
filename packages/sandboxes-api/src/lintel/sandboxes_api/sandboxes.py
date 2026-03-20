@@ -250,12 +250,7 @@ async def create_sandbox(
         ) from None
 
     if backend == SandboxBackend.OPENSHELL:
-        manager = getattr(request.app.state, "openshell_manager", None)
-        if manager is None:
-            raise HTTPException(
-                status_code=400,
-                detail="OpenShell backend is not configured. Set SANDBOX_BACKEND=openshell.",
-            )
+        manager = _get_or_create_openshell_manager(request)
     else:
         manager = request.app.state.sandbox_manager
 
@@ -323,14 +318,23 @@ async def create_sandbox(
     return {"sandbox_id": sandbox_id}
 
 
+def _get_or_create_openshell_manager(request: Request) -> SandboxManager:
+    """Return the OpenShell manager, lazily creating it on first use."""
+    mgr: SandboxManager | None = getattr(request.app.state, "openshell_manager", None)
+    if mgr is None:
+        from lintel.sandbox.openshell_backend import OpenShellSandboxManager
+
+        mgr = OpenShellSandboxManager()
+        request.app.state.openshell_manager = mgr
+    return mgr
+
+
 async def _resolve_manager(request: Request, sandbox_id: str) -> SandboxManager:
     """Pick the correct sandbox manager based on stored metadata backend."""
     store = request.app.state.sandbox_store
     meta = await store.get(sandbox_id)
     if meta and meta.get("backend") == SandboxBackend.OPENSHELL.value:
-        mgr: SandboxManager | None = getattr(request.app.state, "openshell_manager", None)
-        if mgr is not None:
-            return mgr
+        return _get_or_create_openshell_manager(request)
     return request.app.state.sandbox_manager  # type: ignore[no-any-return]
 
 
