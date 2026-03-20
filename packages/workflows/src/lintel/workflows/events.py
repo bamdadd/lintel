@@ -132,6 +132,16 @@ class HumanInterruptTimedOut(EventEnvelope):
     event_type: str = "HumanInterruptTimedOut"
 
 
+# --- Concurrency / Backpressure Events (REQ-034.1) ---
+
+
+@dataclass(frozen=True)
+class WorkflowQueued(EventEnvelope):
+    """Published when a workflow is queued behind the concurrency semaphore."""
+
+    event_type: str = "WorkflowQueued"
+
+
 register_events(
     IntentRouted,
     WorkflowStarted,
@@ -155,4 +165,5 @@ register_events(
     HumanInterruptRequested,
     HumanInterruptResumed,
     HumanInterruptTimedOut,
+    WorkflowQueued,
 )
