@@ -29,3 +29,15 @@ class NoSandboxAvailableError(SandboxError):
             "No sandbox available in pool. "
             "Pre-provision sandboxes via the API or wait for one to be released."
         )
+
+
+class SandboxCapacityExceededError(SandboxError):
+    """Raised when the sandbox pool has reached its maximum capacity."""
+
+    def __init__(self, active: int, capacity: int) -> None:
+        super().__init__(
+            f"Sandbox capacity exceeded: {active}/{capacity} active. "
+            f"Wait for a sandbox to be destroyed before creating a new one."
+        )
+        self.active = active
+        self.capacity = capacity
