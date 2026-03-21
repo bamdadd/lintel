@@ -4,12 +4,13 @@ import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, ScrollArea, Box,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconArrowLeft, IconPlayerStop, IconLayoutList } from '@tabler/icons-react';
+import { IconArrowLeft, IconPlayerStop, IconLayoutList, IconTrash } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
   usePipelinesGetPipeline,
   usePipelinesListStages,
   usePipelinesCancelPipeline,
+  usePipelinesDeletePipeline,
 } from '@/generated/api/pipelines/pipelines';
 import { PipelineDAG } from '../components/PipelineDAG';
 import type { DAGNode, DAGEdge } from '../components/PipelineDAG';
@@ -79,6 +80,7 @@ export function Component() {
   const pipeline = (pipelineResp?.data ?? {}) as Record<string, unknown>;
   const stages = (stagesResp?.data ?? []) as StageItem[];
   const cancelMut = usePipelinesCancelPipeline();
+  const deleteMut = usePipelinesDeletePipeline();
   const handleActionComplete = useCallback(() => {
     refetchPipeline();
     refetchStages();
@@ -95,6 +97,22 @@ export function Component() {
         },
         onError: () => {
           notifications.show({ title: 'Error', message: 'Failed to cancel pipeline', color: 'red' });
+        },
+      },
+    );
+  };
+
+  const handleDelete = () => {
+    if (!window.confirm('Delete this pipeline? This cannot be undone.')) return;
+    deleteMut.mutate(
+      { runId: runId! },
+      {
+        onSuccess: () => {
+          notifications.show({ title: 'Deleted', message: 'Pipeline deleted', color: 'green' });
+          navigate('/pipelines');
+        },
+        onError: () => {
+          notifications.show({ title: 'Error', message: 'Failed to delete pipeline', color: 'red' });
         },
       },
     );
@@ -287,6 +305,16 @@ export function Component() {
             onClick={() => navigate(`/pipelines/runs/${runId}`)}
           >
             Event Log
+          </Button>
+          <Button
+            variant="light"
+            size="compact-sm"
+            color="red"
+            leftSection={<IconTrash size={14} />}
+            loading={deleteMut.isPending}
+            onClick={handleDelete}
+          >
+            Delete
           </Button>
         </Group>
       </Stack>
