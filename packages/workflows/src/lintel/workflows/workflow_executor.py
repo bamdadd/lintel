@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 import contextlib
 import time
@@ -44,6 +45,9 @@ from lintel.workflows._executor_lifecycle import (
     mark_stage_completed as _mark_stage_completed,
 )
 from lintel.workflows._executor_lifecycle import (
+    mark_stage_timed_out as _mark_stage_timed_out,
+)
+from lintel.workflows._executor_lifecycle import (
     mark_stage_waiting_approval as _mark_stage_waiting_approval,
 )
 from lintel.workflows._executor_lifecycle import (
@@ -60,7 +64,9 @@ from lintel.workflows.events import (
     PipelineRunFailed,
     PipelineRunStarted,
     PipelineStageCompleted,
+    PipelineStageTimedOut,
 )
+from lintel.workflows.timeout import resolve_timeout
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import EventStore
@@ -226,6 +232,101 @@ class WorkflowExecutor:
         # Pass None as input to resume from the interrupt point
         await self._stream_graph(run_id, graph, None, config)
 
+    async def _resolve_step_timeout(self, run_id: str, node_name: str) -> float:
+        """Resolve the effective timeout for a given node in a pipeline run."""
+        step_config = None
+        pipeline_timeout = None
+        global_default = None
+
+        # Look up step configs from the workflow definition via the pipeline run
+        if self._app_state is not None:
+            pipeline_store = getattr(self._app_state, "pipeline_store", None)
+            wf_def_store = getattr(self._app_state, "workflow_definition_store", None)
+            if pipeline_store is not None:
+                try:
+                    run = await pipeline_store.get(run_id)
+                    if run is not None and wf_def_store is not None:
+                        wf_def = await wf_def_store.get(run.workflow_definition_id)
+                        if wf_def is not None:
+                            from lintel.workflows.types import StepTimeoutConfig
+
+                            for sc in getattr(wf_def, "step_configs", ()):
+                                if sc.node_name == node_name:
+                                    step_config = sc
+                                    break
+                            # Build pipeline-level timeout from step_timeout_seconds
+                            # stored on the run or definition
+                            agg = getattr(wf_def, "step_timeout_seconds", None)
+                            if agg:
+                                pipeline_timeout = StepTimeoutConfig(default_seconds=agg)
+                except Exception:
+                    logger.debug("resolve_step_timeout_lookup_failed", run_id=run_id)
+
+            # Global default from settings
+            settings = getattr(self._app_state, "settings", None)
+            if settings is not None:
+                global_default = getattr(settings, "default_step_timeout_seconds", None)
+
+        return resolve_timeout(
+            step_config=step_config,
+            pipeline_timeout=pipeline_timeout,
+            global_default=global_default,
+        )
+
+    @staticmethod
+    def _get_current_node(graph: Any, config: dict[str, Any]) -> str:  # noqa: ANN401
+        """Query the graph to determine which node is about to execute."""
+        try:
+            graph_state = graph.get_state(config)
+            if graph_state.next:
+                return str(graph_state.next[0])
+        except Exception:
+            pass
+        return "unknown"
+
+    async def _handle_step_timeout(
+        self,
+        stream_id: str,
+        run_id: str,
+        node_name: str,
+        timeout_seconds: float,
+    ) -> None:
+        """Handle a per-step timeout: mark stage, emit event, update status, notify."""
+        logger.warning(
+            "step_timed_out",
+            run_id=run_id,
+            node_name=node_name,
+            timeout_seconds=timeout_seconds,
+        )
+        await _mark_stage_timed_out(self._app_state, run_id, node_name, timeout_seconds)
+        await self._emit_timeout_event(stream_id, run_id, node_name, timeout_seconds)
+        await _update_pipeline_status(self._app_state, run_id, "failed")
+        await _notify_chat(
+            self._app_state,
+            run_id,
+            f"⏱️ **{node_name}** timed out after {timeout_seconds:.0f}s\n"
+            f"[View pipeline →](/pipelines/{run_id})",
+        )
+
+    async def _emit_timeout_event(
+        self,
+        stream_id: str,
+        run_id: str,
+        node_name: str,
+        timeout_seconds: float,
+    ) -> None:
+        """Emit a PipelineStageTimedOut event and project it."""
+        timed_out_event = PipelineStageTimedOut(
+            event_type="PipelineStageTimedOut",
+            payload={
+                "run_id": run_id,
+                "node_name": node_name,
+                "timeout_seconds": timeout_seconds,
+            },
+        )
+        await self._event_store.append(stream_id=stream_id, events=[timed_out_event])
+        await self._project_events([timed_out_event])
+
     async def _stream_graph(
         self,
         run_id: str,
@@ -243,69 +344,98 @@ class WorkflowExecutor:
         total_tokens["_step_start"] = time.time()
 
         try:
-            async for chunk in graph.astream(input_data, config=config):
-                for node_name, output in chunk.items():
-                    if node_name == "__end__":
-                        continue
-                    phase = (
-                        output.get("current_phase", node_name)
-                        if isinstance(output, dict)
-                        else node_name
-                    )
-                    timestamp_ms = int(time.time() * 1000)
+            # Determine which node is about to run so we can apply its timeout.
+            current_node = self._get_current_node(graph, config)
+            node_timeout = await self._resolve_step_timeout(run_id, current_node)
 
-                    # Record step metrics
-                    step_start = total_tokens.get("_step_start", time.time())
-                    duration = time.time() - step_start
-                    if self._step_metrics is not None:
-                        self._step_metrics.record_step_duration(
-                            run_id,
-                            node_name,
-                            node_name,
-                            "completed",
-                            duration,
+            stream = graph.astream(input_data, config=config)
+            try:
+                async_iter = stream.__aiter__()
+                while True:
+                    try:
+                        async with asyncio.timeout(node_timeout):
+                            chunk = await async_iter.__anext__()
+                    except StopAsyncIteration:
+                        break
+                    except TimeoutError:
+                        await self._handle_step_timeout(
+                            stream_id, run_id, current_node, node_timeout
                         )
-                    if isinstance(output, dict):
-                        for entry in output.get("token_usage", []):
-                            if isinstance(entry, dict):
-                                step_total = entry.get("total_tokens", 0)
-                                model_id = entry.get("model", "unknown")
-                                if step_total and self._step_metrics is not None:
-                                    self._step_metrics.record_step_tokens(
-                                        run_id,
-                                        node_name,
-                                        model_id,
-                                        step_total,
-                                    )
-                    total_tokens["_step_start"] = time.time()
+                        return
 
-                    stage_event = PipelineStageCompleted(
-                        event_type="PipelineStageCompleted",
-                        payload={
-                            "run_id": run_id,
-                            "node_name": node_name,
-                            "output": output,
-                            "timestamp_ms": timestamp_ms,
-                        },
-                    )
-                    await self._event_store.append(stream_id=stream_id, events=[stage_event])
-                    await self._project_events([stage_event])
-                    await _mark_stage_completed(self._app_state, run_id, node_name, timestamp_ms)
+                    for node_name, output in chunk.items():
+                        if node_name == "__end__":
+                            continue
+                        phase = (
+                            output.get("current_phase", node_name)
+                            if isinstance(output, dict)
+                            else node_name
+                        )
+                        timestamp_ms = int(time.time() * 1000)
 
-                    # Accumulate token usage from node output
-                    if isinstance(output, dict):
-                        for entry in output.get("token_usage", []):
-                            if isinstance(entry, dict):
-                                total_tokens["input_tokens"] += entry.get("input_tokens", 0)
-                                total_tokens["output_tokens"] += entry.get("output_tokens", 0)
-                                total_tokens["total_tokens"] += entry.get("total_tokens", 0)
+                        # Record step metrics
+                        step_start = total_tokens.get("_step_start", time.time())
+                        duration = time.time() - step_start
+                        if self._step_metrics is not None:
+                            self._step_metrics.record_step_duration(
+                                run_id,
+                                node_name,
+                                node_name,
+                                "completed",
+                                duration,
+                            )
+                        if isinstance(output, dict):
+                            for entry in output.get("token_usage", []):
+                                if isinstance(entry, dict):
+                                    step_total = entry.get("total_tokens", 0)
+                                    model_id = entry.get("model", "unknown")
+                                    if step_total and self._step_metrics is not None:
+                                        self._step_metrics.record_step_tokens(
+                                            run_id,
+                                            node_name,
+                                            model_id,
+                                            step_total,
+                                        )
+                        total_tokens["_step_start"] = time.time()
 
-                    # Chat notifications
-                    await _send_stage_notification(self._app_state, run_id, node_name, output)
+                        stage_event = PipelineStageCompleted(
+                            event_type="PipelineStageCompleted",
+                            payload={
+                                "run_id": run_id,
+                                "node_name": node_name,
+                                "output": output,
+                                "timestamp_ms": timestamp_ms,
+                            },
+                        )
+                        await self._event_store.append(stream_id=stream_id, events=[stage_event])
+                        await self._project_events([stage_event])
+                        await _mark_stage_completed(
+                            self._app_state, run_id, node_name, timestamp_ms
+                        )
 
-                    if self._on_stage_complete is not None:
-                        with contextlib.suppress(Exception):
-                            await self._on_stage_complete(node_name, phase)
+                        # Accumulate token usage from node output
+                        if isinstance(output, dict):
+                            for entry in output.get("token_usage", []):
+                                if isinstance(entry, dict):
+                                    total_tokens["input_tokens"] += entry.get("input_tokens", 0)
+                                    total_tokens["output_tokens"] += entry.get("output_tokens", 0)
+                                    total_tokens["total_tokens"] += entry.get("total_tokens", 0)
+
+                        # Chat notifications
+                        await _send_stage_notification(self._app_state, run_id, node_name, output)
+
+                        if self._on_stage_complete is not None:
+                            with contextlib.suppress(Exception):
+                                await self._on_stage_complete(node_name, phase)
+
+                    # Resolve timeout for the next node before awaiting the next chunk.
+                    current_node = self._get_current_node(graph, config)
+                    node_timeout = await self._resolve_step_timeout(run_id, current_node)
+            finally:
+                # Ensure the async generator is properly closed to avoid
+                # "coroutine was never awaited" warnings.
+                with contextlib.suppress(Exception):
+                    await stream.aclose()
 
             # Check if graph is interrupted (has pending next nodes)
             graph_state = graph.get_state(config)
@@ -433,6 +563,20 @@ class WorkflowExecutor:
                     f"🎉 **Workflow completed successfully**{token_summary}\n"
                     f"[View pipeline →](/pipelines/{run_id})",
                 )
+        except TimeoutError:
+            # Aggregate pipeline timeout exceeded
+            self._suspended_runs.pop(run_id, None)
+            last_node = "unknown"
+            elapsed = time.time() - total_tokens.get("_step_start", time.time())
+            await _mark_running_stages_failed(self._app_state, run_id, "Pipeline timed out")
+            await self._emit_timeout_event(stream_id, run_id, last_node, elapsed)
+            await _update_pipeline_status(self._app_state, run_id, "failed")
+            await _notify_chat(
+                self._app_state,
+                run_id,
+                f"⏱️ **Pipeline timed out** after {elapsed:.0f}s\n"
+                f"[View pipeline →](/pipelines/{run_id})",
+            )
         except Exception as exc:
             self._suspended_runs.pop(run_id, None)
             await _mark_running_stages_failed(self._app_state, run_id, str(exc))

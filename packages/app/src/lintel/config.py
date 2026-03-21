@@ -77,3 +77,8 @@ class Settings(BaseSettings):
         default=5,
         validation_alias="LINTEL_MAX_CONCURRENT_AGENTS",
     )
+
+    default_step_timeout_seconds: int = Field(
+        default=7200,
+        validation_alias="LINTEL_DEFAULT_STEP_TIMEOUT_SECONDS",
+    )

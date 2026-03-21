@@ -10,6 +10,7 @@ const statusColors: Record<string, string> = {
   error: 'red',
   errored: 'red',
   cancelled: 'orange',
+  timed_out: 'orange',
   skipped: 'gray',
   waiting_approval: 'yellow',
   approved: 'teal',
