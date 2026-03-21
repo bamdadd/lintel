@@ -71,11 +71,19 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import { ClaudeCredentialsBanner } from '@/shared/components/ClaudeCredentialsBanner';
 import { CommandPalette, spotlight } from '@/shared/components/CommandPalette';
 import { ConnectionStatus } from '@/shared/components/ConnectionStatus';
+import { useCachedBoards } from '@/shared/hooks/useCachedBoards';
+
+interface NavItem {
+  label: string;
+  path: string;
+  icon: Icon;
+  children?: { label: string; path: string }[];
+}
 
 interface NavSection {
   label: string;
   icon: Icon;
-  items: { label: string; path: string; icon: Icon }[];
+  items: NavItem[];
   defaultOpen?: boolean;
 }
 
@@ -196,7 +204,11 @@ function NavSectionGroup({
   onNavigate: (path: string) => void;
 }) {
   const location = useLocation();
-  const isActive = section.items.some((item) => location.pathname === item.path);
+  const isActive = section.items.some(
+    (item) =>
+      location.pathname === item.path ||
+      item.children?.some((c) => location.pathname === c.path),
+  );
   const [opened, setOpened] = useState(section.defaultOpen || isActive);
 
   useEffect(() => {
@@ -270,21 +282,68 @@ function NavSectionGroup({
       </UnstyledButton>
       <Collapse in={opened}>
         <Box pl={4}>
-          {section.items.map((item) => (
-            <NavLink
-              key={item.path}
-              label={item.label}
-              leftSection={<item.icon size={16} stroke={1.5} />}
-              active={location.pathname === item.path}
-              onClick={() => onNavigate(item.path)}
-              py={5}
-              px="sm"
-              style={{
-                borderRadius: 'var(--mantine-radius-sm)',
-                fontSize: 'var(--mantine-font-size-sm)',
-              }}
-            />
-          ))}
+          {section.items.map((item) => {
+            const hasChildren = item.children && item.children.length > 0;
+            const childActive = item.children?.some((c) => location.pathname === c.path);
+            if (hasChildren) {
+              return (
+                <NavLink
+                  key={item.path}
+                  label={item.label}
+                  leftSection={<item.icon size={16} stroke={1.5} />}
+                  active={location.pathname === item.path || childActive}
+                  defaultOpened={childActive}
+                  py={5}
+                  px="sm"
+                  style={{
+                    borderRadius: 'var(--mantine-radius-sm)',
+                    fontSize: 'var(--mantine-font-size-sm)',
+                  }}
+                >
+                  <NavLink
+                    label="All Boards"
+                    active={location.pathname === item.path}
+                    onClick={() => onNavigate(item.path)}
+                    py={4}
+                    px="sm"
+                    style={{
+                      borderRadius: 'var(--mantine-radius-sm)',
+                      fontSize: 'var(--mantine-font-size-xs)',
+                    }}
+                  />
+                  {item.children!.map((child) => (
+                    <NavLink
+                      key={child.path}
+                      label={child.label}
+                      active={location.pathname === child.path}
+                      onClick={() => onNavigate(child.path)}
+                      py={4}
+                      px="sm"
+                      style={{
+                        borderRadius: 'var(--mantine-radius-sm)',
+                        fontSize: 'var(--mantine-font-size-xs)',
+                      }}
+                    />
+                  ))}
+                </NavLink>
+              );
+            }
+            return (
+              <NavLink
+                key={item.path}
+                label={item.label}
+                leftSection={<item.icon size={16} stroke={1.5} />}
+                active={location.pathname === item.path}
+                onClick={() => onNavigate(item.path)}
+                py={5}
+                px="sm"
+                style={{
+                  borderRadius: 'var(--mantine-radius-sm)',
+                  fontSize: 'var(--mantine-font-size-sm)',
+                }}
+              />
+            );
+          })}
         </Box>
       </Collapse>
     </Box>
@@ -300,9 +359,21 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
+  const cachedBoards = useCachedBoards();
+
   useHotkeys([
     ['mod+b', () => setNavCollapsed((c) => !c)],
   ]);
+
+  // Inject cached boards as children of the Boards nav item
+  const enrichedNavSections = navSections.map((section) => ({
+    ...section,
+    items: section.items.map((item) =>
+      item.path === '/boards' && cachedBoards.length > 0
+        ? { ...item, children: cachedBoards }
+        : item,
+    ),
+  }));
 
   const handleNavigate = (path: string) => {
     void navigate(path);
@@ -402,7 +473,7 @@ export function AppLayout() {
         }}
       >
         <AppShell.Section grow component={ScrollArea} scrollbarSize={4} p={navCollapsed ? 4 : 'xs'}>
-          {navSections.map((section) => (
+          {enrichedNavSections.map((section) => (
             <NavSectionGroup
               key={section.label}
               section={section}
