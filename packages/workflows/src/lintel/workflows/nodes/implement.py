@@ -313,11 +313,15 @@ async def spawn_implementation(
     else:
         await tracker.mark_completed("implement", outputs=stage_outputs or None)
 
+    # Signal failure through the workflow state so _check_phase routes to close
+    # instead of continuing to review/raise_pr with broken code.
     result_dict: dict[str, Any] = {
         "current_phase": "reviewing",
         "agent_outputs": outputs,
         "sandbox_results": [artifacts],
     }
+    if agent_runtime is not None and not test_passed:
+        result_dict["error"] = "Tests failed after all fix attempts"
     if total_usage:
         result_dict["token_usage"] = total_usage
     return result_dict

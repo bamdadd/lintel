@@ -427,6 +427,16 @@ async def _trigger_workflow_for_work_item(
         except Exception:
             logger.warning("continuation_lookup_failed", exc_info=True)
 
+    if not repo_url:
+        logger.warning(
+            "dispatch_work_item_no_repo_url",
+            extra={
+                "work_item_id": work_item_id,
+                "project_id": project_id,
+                "workflow_type": workflow_type,
+            },
+        )
+
     command = StartWorkflow(
         thread_ref=thread_ref,
         workflow_type=workflow_type,

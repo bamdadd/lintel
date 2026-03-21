@@ -250,9 +250,19 @@ class TestSetupWorkspace:
         assert any("git checkout -b" in cmd or "git checkout" in cmd for cmd in manager.executed)
         assert result["workspace_path"] == "/workspace/test-run-1/repo"
 
-    async def test_creates_empty_sandbox_without_repo_url(self) -> None:
+    async def test_fails_fast_without_repo_url_for_code_workflows(self) -> None:
         manager = DummySandboxManager()
-        state = _make_state(repo_url="")
+        state = _make_state(repo_url="", intent="feature")
+
+        with pytest.raises(RuntimeError, match="No repository URL configured"):
+            await setup_workspace(
+                state,  # type: ignore[arg-type]
+                _make_config(manager),
+            )
+
+    async def test_creates_empty_sandbox_without_repo_url_for_non_code_workflow(self) -> None:
+        manager = DummySandboxManager()
+        state = _make_state(repo_url="", intent="documentation")
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
@@ -508,9 +518,9 @@ class TestSetupWorkspace:
         assert ws_paths[0][0] == "https://github.com/test/repo.git"
 
     async def test_no_repo_returns_empty_workspace_paths(self) -> None:
-        """No-repo project returns empty workspace_paths."""
+        """No-repo non-code workflow returns empty workspace_paths."""
         manager = DummySandboxManager()
-        state = _make_state(repo_url="")
+        state = _make_state(repo_url="", intent="documentation")
 
         result = await setup_workspace(
             state,  # type: ignore[arg-type]
