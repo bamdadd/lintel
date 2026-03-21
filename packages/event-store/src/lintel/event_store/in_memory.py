@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import AsyncGenerator, Sequence
     from datetime import datetime
     from uuid import UUID
 
@@ -128,3 +128,15 @@ class InMemoryEventStore:
                     result.append(event)
         result.sort(key=lambda e: e.occurred_at)
         return result
+
+    async def read_all_from_position(
+        self, position: int = 0, batch_size: int = 100
+    ) -> AsyncGenerator[EventEnvelope, None]:
+        """Yield all events after the given global_position."""
+        all_events: list[EventEnvelope] = []
+        for stream in self._streams.values():
+            all_events.extend(stream)
+        all_events.sort(key=lambda e: e.global_position or 0)
+        for event in all_events:
+            if (event.global_position or 0) > position:
+                yield event
