@@ -327,8 +327,33 @@ async def setup_workspace(
     repo_path = f"{workspace_root}/repo"
 
     if not repo_url:
-        # No repo configured — acquire a sandbox from the pool so downstream
-        # nodes (research, plan, implement) can still operate on the user's request
+        # Code-producing workflows need a repo to push changes. Fail early
+        # instead of wasting compute on research/plan/implement only to fail
+        # at raise_pr with "No PR raised".
+        # Workflows NOT in this set (documentation, onboarding, spike,
+        # process_mining, regulation_to_policy, extract_integration_patterns)
+        # can operate without a repo.
+        workflow_type = state.get("intent", "") or state.get("workflow_type", "")
+        code_workflows = {
+            "feature_to_pr",
+            "feature",
+            "bug_fix",
+            "code_review",
+            "refactor",
+            "security_audit",
+            "incident_response",
+            "release",
+        }
+        if workflow_type in code_workflows:
+            error_msg = (
+                f"No repository URL configured for workflow '{workflow_type}'. "
+                "Link a repository to the project before dispatching code changes."
+            )
+            await tracker.append_log("setup_workspace", error_msg)
+            await tracker.mark_completed("setup_workspace", error=error_msg)
+            raise RuntimeError(error_msg)
+
+        # Non-code workflows (research, documentation, etc.) can proceed without a repo
         await tracker.append_log(
             "setup_workspace", "No repository URL — acquiring sandbox from pool"
         )
