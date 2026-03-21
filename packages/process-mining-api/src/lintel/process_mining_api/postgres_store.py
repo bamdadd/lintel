@@ -52,7 +52,8 @@ class PostgresProcessMiningStore:
             )
             if row is None:
                 return None
-            return json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            result: dict[str, Any] = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            return result
 
     async def _list(self, kind: str, **filters: object) -> list[dict[str, Any]]:
         conditions = ["kind = $1"]
