@@ -1,5 +1,6 @@
 """Compliance policy, procedure, practice, and strategy CRUD endpoints."""
 
+import logging
 from typing import Annotated, Any
 from uuid import uuid4
 
@@ -8,11 +9,17 @@ from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
+from lintel.compliance_api.gdrive_service import (
+    GDriveError,
+    GDriveInvalidURLError,
+    create_gdrive_service,
+)
 from lintel.compliance_api.store import ComplianceStore
 from lintel.domain.events import (
     CompliancePolicyCreated,
     CompliancePolicyRemoved,
     CompliancePolicyUpdated,
+    PolicyImportedFromGDrive,
     PracticeCreated,
     PracticeRemoved,
     PracticeUpdated,
@@ -32,6 +39,8 @@ from lintel.domain.types import (
     Strategy,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 compliance_policy_store_provider: StoreProvider[ComplianceStore] = StoreProvider()
@@ -41,6 +50,23 @@ strategy_store_provider: StoreProvider[ComplianceStore] = StoreProvider()
 
 
 # ===================== COMPLIANCE POLICIES =====================
+
+
+# ===================== GOOGLE DRIVE IMPORT =====================
+
+
+class GDriveImportRequest(BaseModel):
+    """Request to fetch content from a Google Drive document."""
+
+    url: str
+
+
+class GDriveImportResponse(BaseModel):
+    """Response containing fetched Google Drive document content."""
+
+    content: str
+    file_id: str
+    title: str
 
 
 class CreateCompliancePolicyRequest(BaseModel):
@@ -54,6 +80,7 @@ class CreateCompliancePolicyRequest(BaseModel):
     risk_level: RiskLevel = RiskLevel.MEDIUM
     review_date: str = ""
     tags: list[str] = []
+    gdrive_source_url: str = ""
 
 
 class UpdateCompliancePolicyRequest(BaseModel):
@@ -65,6 +92,24 @@ class UpdateCompliancePolicyRequest(BaseModel):
     risk_level: RiskLevel | None = None
     review_date: str | None = None
     tags: list[str] | None = None
+    gdrive_source_url: str | None = None
+
+
+@router.post("/compliance-policies/import-gdrive")
+async def import_from_gdrive(body: GDriveImportRequest) -> dict[str, str]:
+    """Fetch content from a Google Drive document for preview.
+
+    This is a preview-only endpoint — it does not persist anything.
+    The returned content can be used to populate the policy description field.
+    """
+    try:
+        svc = create_gdrive_service()
+        result = svc.fetch_from_url(body.url)
+    except GDriveInvalidURLError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except GDriveError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result
 
 
 @router.post("/compliance-policies", status_code=201)
@@ -87,6 +132,7 @@ async def create_compliance_policy(
         risk_level=body.risk_level,
         review_date=body.review_date,
         tags=tuple(body.tags),
+        gdrive_source_url=body.gdrive_source_url,
     )
     result = await store.add(policy)
     await dispatch_event(
@@ -94,6 +140,17 @@ async def create_compliance_policy(
         CompliancePolicyCreated(payload={"resource_id": body.policy_id, "name": body.name}),
         stream_id=f"compliance_policy:{body.policy_id}",
     )
+    if body.gdrive_source_url:
+        await dispatch_event(
+            request,
+            PolicyImportedFromGDrive(
+                payload={
+                    "policy_id": body.policy_id,
+                    "gdrive_url": body.gdrive_source_url,
+                }
+            ),
+            stream_id=f"compliance_policy:{body.policy_id}",
+        )
     return result
 
 
@@ -134,6 +191,17 @@ async def update_compliance_policy(
         CompliancePolicyUpdated(payload={"resource_id": policy_id}),
         stream_id=f"compliance_policy:{policy_id}",
     )
+    if body.gdrive_source_url:
+        await dispatch_event(
+            request,
+            PolicyImportedFromGDrive(
+                payload={
+                    "policy_id": policy_id,
+                    "gdrive_url": body.gdrive_source_url,
+                }
+            ),
+            stream_id=f"compliance_policy:{policy_id}",
+        )
     return result
 
 
