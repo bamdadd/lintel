@@ -65,6 +65,7 @@ from lintel.workflows.events import (
     PipelineRunStarted,
     PipelineStageCompleted,
     PipelineStageTimedOut,
+    WorkflowQueued,
 )
 from lintel.workflows.timeout import resolve_timeout
 
@@ -114,6 +115,7 @@ class WorkflowExecutor:
         app_state: Any = None,  # noqa: ANN401
         graph_factory: Callable[[str], Any] | None = None,
         step_metrics: StepMetricsRecorder | None = None,
+        max_concurrent_workflows: int = 10,
     ) -> None:
         self._event_store = event_store
         self._graph = graph
@@ -124,6 +126,10 @@ class WorkflowExecutor:
         self._step_metrics = step_metrics
         # Store compiled graphs and configs per run_id for resumption
         self._suspended_runs: dict[str, dict[str, Any]] = {}
+        # Semaphore-gated concurrency control
+        self._semaphore = asyncio.Semaphore(max_concurrent_workflows)
+        self._max_concurrent_workflows = max_concurrent_workflows
+        self._queue_depth = 0
 
     async def _project_events(self, events: list[Any]) -> None:
         """Forward events to the projection engine (if available)."""
@@ -150,9 +156,41 @@ class WorkflowExecutor:
         }
 
     async def execute(self, command: StartWorkflow) -> str:
+        run_id = command.run_id or str(uuid4())
+
+        # Publish queued event and acquire semaphore for concurrency control
+        self._queue_depth += 1
+        position = self._queue_depth
+        queued_event = WorkflowQueued(
+            event_type="WorkflowQueued",
+            payload={
+                "run_id": run_id,
+                "workflow_id": command.workflow_type,
+                "queue_position": position,
+            },
+        )
+        await self._event_store.append(stream_id=f"run:{run_id}", events=[queued_event])
+        await self._project_events([queued_event])
+
+        # Update pipeline status to queued while waiting
+        await _update_pipeline_status(self._app_state, run_id, "queued")
+
+        try:
+            await self._semaphore.acquire()
+        except BaseException:
+            self._queue_depth -= 1
+            raise
+        self._queue_depth -= 1
+
+        try:
+            return await self._execute_inner(command, run_id)
+        finally:
+            self._semaphore.release()
+
+    async def _execute_inner(self, command: StartWorkflow, run_id: str) -> str:
+        """Inner execution logic, called while holding the semaphore."""
         from lintel.workflows.nodes._runtime_registry import register as _register_runtime
 
-        run_id = command.run_id or str(uuid4())
         stream_id = f"run:{run_id}"
 
         # Register services so nodes can look them up after LangGraph interrupts

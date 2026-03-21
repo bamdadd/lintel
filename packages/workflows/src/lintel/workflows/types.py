@@ -28,6 +28,7 @@ class WorkflowPhase(StrEnum):
 
 class PipelineStatus(StrEnum):
     PENDING = "pending"
+    QUEUED = "queued"
     RUNNING = "running"
     PAUSED = "paused"
     WAITING_APPROVAL = "waiting_approval"
