@@ -299,19 +299,26 @@ class TestOpenShellBackendRouting:
         entry = next(s for s in list_resp.json() if s["sandbox_id"] == sandbox_id)
         assert entry["backend"] == "openshell"
 
-    def test_create_openshell_not_configured(self, client: TestClient) -> None:
-        """Creating with openshell backend when not configured returns 400."""
-        resp = client.post(
-            "/api/v1/sandboxes",
-            json={
-                "workspace_id": "ws1",
-                "channel_id": "ch1",
-                "thread_ts": "1.0",
-                "backend": "openshell",
-            },
-        )
-        assert resp.status_code == 400
-        assert "not configured" in resp.json()["detail"]
+    def test_create_openshell_lazy_init(self, client: TestClient) -> None:
+        """OpenShell manager is lazily created when not pre-configured."""
+        from unittest.mock import patch
+
+        dummy = DummySandboxManager()
+        with patch(
+            "lintel.sandbox.openshell_backend.OpenShellSandboxManager",
+            return_value=dummy,
+        ):
+            resp = client.post(
+                "/api/v1/sandboxes",
+                json={
+                    "workspace_id": "ws1",
+                    "channel_id": "ch1",
+                    "thread_ts": "1.0",
+                    "backend": "openshell",
+                },
+            )
+        assert resp.status_code == 201
+        assert "sandbox_id" in resp.json()
 
     def test_create_unknown_backend(self, client: TestClient) -> None:
         resp = client.post(
