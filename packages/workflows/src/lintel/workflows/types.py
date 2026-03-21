@@ -164,6 +164,7 @@ class InterruptStatus(StrEnum):
     PENDING = "pending"
     RESUMED = "resumed"
     TIMED_OUT = "timed_out"
+    CANCELLED = "cancelled"
 
 
 @dataclass(frozen=True)
