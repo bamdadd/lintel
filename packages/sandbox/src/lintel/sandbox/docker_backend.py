@@ -23,9 +23,12 @@ if TYPE_CHECKING:
 class DockerSandboxManager:
     """Implements SandboxManager protocol using Docker containers."""
 
-    def __init__(self) -> None:
+    def __init__(self, max_sandboxes: int = 8) -> None:
         self._containers: dict[str, Any] = {}
         self._client: Any | None = None
+        self._max_sandboxes = max_sandboxes
+        self._active = 0
+        self._lock = asyncio.Lock()
 
     def _get_client(self) -> Any:  # noqa: ANN401
         if self._client is None:
