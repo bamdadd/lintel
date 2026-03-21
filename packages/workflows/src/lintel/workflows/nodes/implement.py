@@ -306,7 +306,8 @@ async def spawn_implementation(
         stage_outputs["token_usage"] = merged
     if diff_text:
         stage_outputs["diff"] = diff_text[:50000]
-    if agent_runtime is not None and not test_passed:
+    has_test_failure = agent_runtime is not None and not test_passed
+    if has_test_failure:
         await tracker.mark_completed(
             "implement", outputs=stage_outputs or None, error="Tests failed"
         )
@@ -320,7 +321,7 @@ async def spawn_implementation(
         "agent_outputs": outputs,
         "sandbox_results": [artifacts],
     }
-    if agent_runtime is not None and not test_passed:
+    if has_test_failure:
         result_dict["error"] = "Tests failed after all fix attempts"
     if total_usage:
         result_dict["token_usage"] = total_usage

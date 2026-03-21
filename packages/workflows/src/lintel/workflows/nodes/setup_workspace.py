@@ -327,16 +327,22 @@ async def setup_workspace(
     repo_path = f"{workspace_root}/repo"
 
     if not repo_url:
-        # Code-producing workflows (feature_to_pr, bug_fix, refactor) need a repo
-        # to push changes. Fail early instead of wasting compute on research/plan/
-        # implement only to fail at raise_pr with "No PR raised".
+        # Code-producing workflows need a repo to push changes. Fail early
+        # instead of wasting compute on research/plan/implement only to fail
+        # at raise_pr with "No PR raised".
+        # Workflows NOT in this set (documentation, onboarding, spike,
+        # process_mining, regulation_to_policy, extract_integration_patterns)
+        # can operate without a repo.
         workflow_type = state.get("intent", "") or state.get("workflow_type", "")
         code_workflows = {
             "feature_to_pr",
             "feature",
             "bug_fix",
+            "code_review",
             "refactor",
             "security_audit",
+            "incident_response",
+            "release",
         }
         if workflow_type in code_workflows:
             error_msg = (

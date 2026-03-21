@@ -250,9 +250,22 @@ class TestSetupWorkspace:
         assert any("git checkout -b" in cmd or "git checkout" in cmd for cmd in manager.executed)
         assert result["workspace_path"] == "/workspace/test-run-1/repo"
 
-    async def test_fails_fast_without_repo_url_for_code_workflows(self) -> None:
+    @pytest.mark.parametrize(
+        "intent",
+        [
+            "feature",
+            "feature_to_pr",
+            "bug_fix",
+            "code_review",
+            "refactor",
+            "security_audit",
+            "incident_response",
+            "release",
+        ],
+    )
+    async def test_fails_fast_without_repo_url_for_code_workflows(self, intent: str) -> None:
         manager = DummySandboxManager()
-        state = _make_state(repo_url="", intent="feature")
+        state = _make_state(repo_url="", intent=intent)
 
         with pytest.raises(RuntimeError, match="No repository URL configured"):
             await setup_workspace(

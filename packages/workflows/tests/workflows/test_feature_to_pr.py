@@ -6,6 +6,7 @@ from typing import Any
 
 from lintel.workflows.feature_to_pr import (
     MAX_REVIEW_CYCLES,
+    _check_phase,
     _review_decision,
     _route_decision,
     build_feature_to_pr_graph,
@@ -87,6 +88,43 @@ class TestRouteDecision:
     def test_empty_intent_routes_to_close(self) -> None:
         state: dict[str, Any] = {"intent": ""}
         assert _route_decision(state) == "close"  # type: ignore[arg-type]
+
+
+class TestCheckPhase:
+    """Tests for _check_phase routing after implement."""
+
+    def test_continues_when_no_error(self) -> None:
+        state: dict[str, Any] = {
+            "error": None,
+            "current_phase": "reviewing",
+            "agent_outputs": [],
+        }
+        assert _check_phase(state) == "continue"  # type: ignore[arg-type]
+
+    def test_closes_when_state_has_error(self) -> None:
+        """Implement node sets state error on test failure — _check_phase must route to close."""
+        state: dict[str, Any] = {
+            "error": "Tests failed after all fix attempts",
+            "current_phase": "reviewing",
+            "agent_outputs": [],
+        }
+        assert _check_phase(state) == "close"  # type: ignore[arg-type]
+
+    def test_closes_on_failed_verdict(self) -> None:
+        state: dict[str, Any] = {
+            "error": None,
+            "current_phase": "reviewing",
+            "agent_outputs": [{"verdict": "failed", "node": "implement"}],
+        }
+        assert _check_phase(state) == "close"  # type: ignore[arg-type]
+
+    def test_closes_when_phase_is_closed(self) -> None:
+        state: dict[str, Any] = {
+            "error": None,
+            "current_phase": "closed",
+            "agent_outputs": [],
+        }
+        assert _check_phase(state) == "close"  # type: ignore[arg-type]
 
 
 class TestGraphStructure:
