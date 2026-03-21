@@ -378,6 +378,7 @@ class CompliancePolicy:
     risk_level: RiskLevel = RiskLevel.MEDIUM
     review_date: str = ""
     tags: tuple[str, ...] = ()
+    gdrive_source_url: str = ""  # Google Drive URL when imported from GDrive
 
 
 @dataclass(frozen=True)

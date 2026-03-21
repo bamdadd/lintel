@@ -662,6 +662,14 @@ class ArchitectureDecisionRemoved(EventEnvelope):
     event_type: str = "ArchitectureDecisionRemoved"
 
 
+# --- Google Drive Import Events ---
+
+
+@dataclass(frozen=True)
+class PolicyImportedFromGDrive(EventEnvelope):
+    event_type: str = "PolicyImportedFromGDrive"
+
+
 # --- Policy Generation Events ---
 
 
@@ -877,6 +885,7 @@ register_events(
     HookTriggered,
     HookExecutionFailed,
     HookLoopDetected,
+    PolicyImportedFromGDrive,
     PolicyGenerationStarted,
     PolicyGenerationCompleted,
     PolicyGenerationFailed,
