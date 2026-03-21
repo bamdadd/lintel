@@ -53,6 +53,7 @@ members = [
     "lintel-settings-api",
     "lintel-skills-api",
     "lintel-slack",
+    "lintel-stage-catalogue-api",
     "lintel-teams",
     "lintel-telegram",
     "lintel-triggers-api",
@@ -1655,6 +1656,7 @@ dependencies = [
     { name = "lintel-settings-api" },
     { name = "lintel-skills-api" },
     { name = "lintel-slack" },
+    { name = "lintel-stage-catalogue-api" },
     { name = "lintel-teams" },
     { name = "lintel-telegram" },
     { name = "lintel-triggers-api" },
@@ -1720,6 +1722,7 @@ requires-dist = [
     { name = "lintel-settings-api", editable = "packages/settings-api" },
     { name = "lintel-skills-api", editable = "packages/skills-api" },
     { name = "lintel-slack", editable = "packages/slack" },
+    { name = "lintel-stage-catalogue-api", editable = "packages/stage-catalogue-api" },
     { name = "lintel-teams", editable = "packages/teams" },
     { name = "lintel-telegram", editable = "packages/telegram" },
     { name = "lintel-triggers-api", editable = "packages/triggers-api" },
@@ -2684,6 +2687,23 @@ requires-dist = [
     { name = "slack-bolt", specifier = ">=1.21" },
     { name = "slack-sdk", specifier = ">=3.33" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-stage-catalogue-api"
+version = "0.1.0"
+source = { editable = "packages/stage-catalogue-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-workflows" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-workflows", editable = "packages/workflows" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]

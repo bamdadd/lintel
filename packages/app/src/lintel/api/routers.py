@@ -43,6 +43,7 @@ from lintel.sandboxes_api.routes import router as sandboxes_router
 from lintel.settings_api.channels_router import router as channels_settings_router
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
+from lintel.stage_catalogue_api.routes import router as stage_catalogue_router
 from lintel.teams.routes import router as teams_router
 from lintel.telegram.webhook import router as telegram_router
 from lintel.triggers_api.routes import router as triggers_router
@@ -97,6 +98,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(memory_router, prefix="/api/v1", tags=["memory"])
     app.include_router(integration_patterns_router, prefix="/api/v1", tags=["integration-patterns"])
     app.include_router(process_mining_router, prefix="/api/v1", tags=["process-mining"])
+    app.include_router(stage_catalogue_router, prefix="/api/v1", tags=["stage-catalogue"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
     app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])
