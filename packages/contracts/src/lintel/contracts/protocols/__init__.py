@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Protocol
 from lintel.contracts.protocols.artifact_store import ArtifactRef, ArtifactStore
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
     from datetime import datetime
     from uuid import UUID
 
@@ -24,6 +24,9 @@ __all__ = [
     "EventBus",
     "EventHandler",
     "EventStore",
+    "EventSubscription",
+    "SubscriptionHandler",
+    "SubscriptionToken",
 ]
 
 
@@ -93,3 +96,30 @@ class EventStore(Protocol):
         to_time: datetime,
         event_types: frozenset[str] | None = None,
     ) -> list[EventEnvelope]: ...
+
+    async def read_all_from_position(
+        self,
+        position: int = 0,
+        batch_size: int = 100,
+    ) -> AsyncGenerator[EventEnvelope, None]: ...
+
+
+type SubscriptionHandler = Callable[[EventEnvelope], Awaitable[None]]
+"""Async callback invoked for each event delivered to a subscription."""
+
+
+class SubscriptionToken(Protocol):
+    """Handle returned by a subscription, used to cancel it."""
+
+    async def cancel(self) -> None: ...
+
+
+class EventSubscription(Protocol):
+    """Persistent subscription that delivers events to a handler."""
+
+    async def subscribe(
+        self,
+        handler: SubscriptionHandler,
+        event_types: frozenset[str],
+        from_position: int = 0,
+    ) -> SubscriptionToken: ...

@@ -437,3 +437,79 @@ async def test_read_all_uses_global_position(event_store: PostgresEventStore) ->
 
     from_mid = await event_store.read_all(from_position=mid_pos)
     assert all(e.global_position is not None and e.global_position >= mid_pos for e in from_mid)
+
+
+# ---------------------------------------------------------------------------
+# EVT-2: read_all_from_position async generator
+# ---------------------------------------------------------------------------
+
+
+async def test_read_all_from_position_returns_all(event_store: PostgresEventStore) -> None:
+    """read_all_from_position(0) yields all events in global_position order."""
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(5)
+    ]
+    await event_store.append(stream_id, events)
+
+    result = [e async for e in event_store.read_all_from_position(0)]
+    assert len(result) >= 5
+    # Positions should be monotonically increasing
+    positions = [e.global_position for e in result]
+    assert all(p is not None for p in positions)
+    for i in range(1, len(positions)):
+        assert positions[i] > positions[i - 1]  # type: ignore[operator]
+
+
+async def test_read_all_from_position_skips_earlier(event_store: PostgresEventStore) -> None:
+    """read_all_from_position(n) returns only events with global_position > n."""
+    stream_id = f"test:{uuid4()}"
+    events = [
+        ThreadMessageReceived(
+            actor_type=ActorType.SYSTEM,
+            actor_id="system",
+            correlation_id=uuid4(),
+            payload={"sanitized_text": f"msg {i}"},
+        )
+        for i in range(5)
+    ]
+    await event_store.append(stream_id, events)
+
+    all_events = await event_store.read_all()
+    mid_pos = all_events[2].global_position
+    assert mid_pos is not None
+
+    result = [e async for e in event_store.read_all_from_position(mid_pos)]
+    assert len(result) == 2
+    assert all(e.global_position is not None and e.global_position > mid_pos for e in result)
+
+
+async def test_read_all_from_position_empty_store(event_store: PostgresEventStore) -> None:
+    """read_all_from_position on an empty store yields nothing."""
+    result = [e async for e in event_store.read_all_from_position(0)]
+    assert result == []
+
+
+async def test_read_all_from_position_populates_global_position(
+    event_store: PostgresEventStore,
+) -> None:
+    """Events yielded by read_all_from_position have global_position set."""
+    stream_id = f"test:{uuid4()}"
+    event = ThreadMessageReceived(
+        actor_type=ActorType.SYSTEM,
+        actor_id="system",
+        correlation_id=uuid4(),
+        payload={"sanitized_text": "position-check"},
+    )
+    await event_store.append(stream_id, [event])
+
+    result = [e async for e in event_store.read_all_from_position(0)]
+    assert len(result) >= 1
+    assert result[0].global_position is not None
+    assert result[0].global_position > 0

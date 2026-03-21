@@ -11,7 +11,7 @@ import structlog
 from lintel.contracts.events import EVENT_TYPE_MAP, EventEnvelope
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import AsyncGenerator, Mapping, Sequence
     from datetime import datetime
     from uuid import UUID
 
@@ -237,6 +237,32 @@ class PostgresEventStore:
                     to_time,
                 )
             return [_row_to_event(row) for row in rows]
+
+    async def read_all_from_position(
+        self, position: int = 0, batch_size: int = 100
+    ) -> AsyncGenerator[EventEnvelope, None]:
+        """Yield all events after the given global_position, ordered by position.
+
+        Unlike read_all() this returns an async generator suitable for
+        streaming large result sets without loading everything into memory.
+        """
+        current_pos = position
+        while True:
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT * FROM events "
+                    "WHERE global_position > $1 "
+                    "ORDER BY global_position "
+                    "LIMIT $2",
+                    current_pos,
+                    batch_size,
+                )
+            if not rows:
+                break
+            for row in rows:
+                envelope = _row_to_event(row)
+                current_pos = envelope.global_position or current_pos
+                yield envelope
 
 
 class OptimisticConcurrencyError(Exception):
