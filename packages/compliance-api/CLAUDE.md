@@ -6,6 +6,7 @@ Compliance policy, regulation, practice, procedure, strategy, and knowledge entr
 
 - `src/lintel/compliance_api/store.py` — In-memory compliance store implementations
 - `src/lintel/compliance_api/routes.py` — FastAPI router + request/response models
+- `src/lintel/compliance_api/guardrail_rules.py` — Guardrail rule CRUD endpoints
 - `src/lintel/compliance_api/seed.py` — Seed data for built-in regulation templates
 
 ## Testing

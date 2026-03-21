@@ -41,6 +41,7 @@ from lintel.chat_api.routes import ChatStore, chat_store_provider
 from lintel.compliance_api.routes import (
     architecture_decision_store_provider,
     compliance_policy_store_provider,
+    guardrail_rule_store_provider,
     knowledge_entry_store_provider,
     knowledge_extraction_store_provider,
     policy_generation_store_provider,
@@ -196,6 +197,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "knowledge_extraction_store": ComplianceStore("run_id"),
         "architecture_decision_store": ComplianceStore("decision_id"),
         "policy_generation_store": ComplianceStore("run_id"),
+        "guardrail_rule_store": ComplianceStore("rule_id"),
     }
 
 
@@ -380,6 +382,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
         "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
         "policy_generation_store": PgCompliance(pool, "policy_generation", "run_id"),
+        "guardrail_rule_store": PgCompliance(pool, "guardrail_rules", "id"),
         "integration_patterns": _PgIntegrationPatternStore(pool),
         "process_mining": _PgProcessMiningStore(pool),
         "workflow_definition_store": PostgresWorkflowDefinitionStore(pool),
@@ -443,6 +446,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     integration_pattern_store_provider.override(stores["integration_patterns"])
     process_mining_store_provider.override(stores["process_mining"])
     workflow_definition_store_provider.override(stores["workflow_definition_store"])
+    guardrail_rule_store_provider.override(stores["guardrail_rule_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
