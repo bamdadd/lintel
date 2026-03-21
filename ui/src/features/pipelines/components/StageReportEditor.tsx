@@ -4,8 +4,9 @@ import {
   Collapse, TextInput,
 } from '@mantine/core';
 import {
-  IconPencil, IconDeviceFloppy, IconRefresh, IconHistory, IconX,
+  IconPencil, IconDeviceFloppy, IconRefresh, IconHistory, IconX, IconGitCompare,
 } from '@tabler/icons-react';
+import { computeLineDiff } from '@/shared/utils/computeLineDiff';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '../../chat/chat-markdown.css';
@@ -43,9 +44,13 @@ export function StageReportEditor({
   const [guidance, setGuidance] = useState('');
   const [regenerating, setRegenerating] = useState(false);
 
+  const [showDiff, setShowDiff] = useState(false);
+
   const [showHistory, setShowHistory] = useState(false);
   const [versions, setVersions] = useState<ReportVersion[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
+
+  const hasChanges = content !== initialContent;
 
   const canEdit = status === 'succeeded' || status === 'waiting_approval';
 
@@ -137,6 +142,17 @@ export function StageReportEditor({
               Regenerate
             </Button>
           )}
+          {hasChanges && (
+            <Button
+              variant={showDiff ? 'filled' : 'light'}
+              size="compact-xs"
+              color="grape"
+              leftSection={<IconGitCompare size={12} />}
+              onClick={() => setShowDiff((v) => !v)}
+            >
+              {showDiff ? 'Hide Diff' : 'Show Diff'}
+            </Button>
+          )}
           <Button
             variant="subtle"
             size="compact-xs"
@@ -192,6 +208,45 @@ export function StageReportEditor({
           </ScrollArea.Autosize>
         </Paper>
       )}
+
+      {/* Inline diff view */}
+      <Collapse in={showDiff && hasChanges}>
+        <Paper withBorder p="sm">
+          <Stack gap="xs">
+            <Text size="sm" fw={500}>Changes from original</Text>
+            <ScrollArea.Autosize mah={400}>
+              <pre
+                style={{
+                  margin: 0,
+                  padding: 8,
+                  fontSize: '0.75rem',
+                  lineHeight: 1.6,
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                }}
+              >
+                {computeLineDiff(initialContent, content).map((entry, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      padding: '0 8px',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      ...(entry.type === 'removed'
+                        ? { background: '#ffebe9', color: '#cf222e' }
+                        : entry.type === 'added'
+                          ? { background: '#e6ffec', color: '#1a7f37' }
+                          : { background: 'transparent', color: '#656d76' }),
+                    }}
+                  >
+                    {entry.type === 'removed' ? '- ' : entry.type === 'added' ? '+ ' : '  '}
+                    {entry.text}
+                  </div>
+                ))}
+              </pre>
+            </ScrollArea.Autosize>
+          </Stack>
+        </Paper>
+      </Collapse>
 
       {/* Regenerate section */}
       <Collapse in={showRegenerate}>
