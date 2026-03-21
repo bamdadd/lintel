@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from lintel.workflows.events import PipelineStageTimedOut
 from lintel.workflows.types import StageStatus
@@ -135,3 +136,129 @@ class TestStageTrackerMarkTimedOut:
         updated = pipeline_store.update.call_args[0][0]
         assert updated.stages[0].status == StageStatus.TIMED_OUT
         assert "timed out" in updated.stages[0].error
+
+
+class TestExecutorEnforcesStepTimeout:
+    """Verify WorkflowExecutor actually cancels a slow node via asyncio.timeout."""
+
+    async def test_slow_node_is_timed_out(self) -> None:
+        """A node that exceeds its timeout is cancelled and marked TIMED_OUT."""
+        from lintel.workflows.workflow_executor import WorkflowExecutor
+
+        # Build a fake async graph that hangs forever on astream
+        async def _slow_astream(
+            _input: Any,  # noqa: ANN401
+            *,
+            config: Any = None,  # noqa: ANN401
+        ) -> Any:  # noqa: ANN401
+            # Yield nothing — just sleep forever simulating a stuck node
+            await asyncio.sleep(999)
+            yield {}  # pragma: no cover — never reached
+
+        graph_state = MagicMock()
+        graph_state.next = ["implement"]
+
+        graph = MagicMock()
+        graph.astream = _slow_astream
+        graph.get_state = MagicMock(return_value=graph_state)
+
+        event_store = AsyncMock()
+        event_store.append = AsyncMock()
+
+        pipeline_store = AsyncMock()
+        pipeline_store.get = AsyncMock(return_value=None)
+        pipeline_store.update = AsyncMock()
+
+        app_state = MagicMock()
+        app_state.pipeline_store = pipeline_store
+        app_state.workflow_definition_store = None
+        app_state.settings = None
+        app_state.chat_store = None
+        app_state.projection_engine = None
+
+        executor = WorkflowExecutor(
+            event_store=event_store,
+            graph=graph,
+            app_state=app_state,
+        )
+
+        # Patch _resolve_step_timeout to return a very short timeout (0.05s)
+        with patch.object(executor, "_resolve_step_timeout", AsyncMock(return_value=0.05)):
+            # Store the run in suspended_runs so _stream_graph can find it
+            executor._suspended_runs["run-timeout"] = {
+                "graph": graph,
+                "command": None,
+                "stream_id": "run:run-timeout",
+                "total_tokens": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            await executor._stream_graph(
+                "run-timeout", graph, {"test": True}, {"configurable": {"thread_id": "t"}}
+            )
+
+        # Verify PipelineStageTimedOut event was emitted
+        appended_events = [
+            call.kwargs.get("events", call.args[1] if len(call.args) > 1 else [])
+            for call in event_store.append.call_args_list
+        ]
+        timed_out_events = [
+            e for events in appended_events for e in events if isinstance(e, PipelineStageTimedOut)
+        ]
+        assert len(timed_out_events) == 1
+        assert timed_out_events[0].payload["node_name"] == "implement"
+
+    async def test_fast_node_completes_normally(self) -> None:
+        """A node that finishes before timeout is not affected."""
+        from lintel.workflows.workflow_executor import WorkflowExecutor
+
+        async def _fast_astream(
+            _input: Any,  # noqa: ANN401
+            *,
+            config: Any = None,  # noqa: ANN401
+        ) -> Any:  # noqa: ANN401
+            yield {"research": {"result": "done"}}
+
+        graph_state = MagicMock()
+        graph_state.next = []  # No interrupt
+
+        graph = MagicMock()
+        graph.astream = _fast_astream
+        graph.get_state = MagicMock(return_value=graph_state)
+
+        event_store = AsyncMock()
+        event_store.append = AsyncMock()
+
+        app_state = MagicMock()
+        app_state.pipeline_store = AsyncMock()
+        app_state.pipeline_store.get = AsyncMock(return_value=None)
+        app_state.workflow_definition_store = None
+        app_state.settings = None
+        app_state.chat_store = None
+        app_state.projection_engine = None
+
+        executor = WorkflowExecutor(
+            event_store=event_store,
+            graph=graph,
+            app_state=app_state,
+        )
+
+        with patch.object(executor, "_resolve_step_timeout", AsyncMock(return_value=10.0)):
+            executor._suspended_runs["run-fast"] = {
+                "graph": graph,
+                "command": None,
+                "stream_id": "run:run-fast",
+                "total_tokens": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            await executor._stream_graph(
+                "run-fast", graph, {"test": True}, {"configurable": {"thread_id": "t"}}
+            )
+
+        # Should have emitted PipelineStageCompleted, not PipelineStageTimedOut
+        appended_events = [
+            e
+            for call in event_store.append.call_args_list
+            for e in (call.kwargs.get("events", call.args[1] if len(call.args) > 1 else []))
+        ]
+        assert not any(isinstance(e, PipelineStageTimedOut) for e in appended_events)
+        from lintel.workflows.events import PipelineStageCompleted
+
+        assert any(isinstance(e, PipelineStageCompleted) for e in appended_events)

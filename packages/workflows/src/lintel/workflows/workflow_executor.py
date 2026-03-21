@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 import contextlib
 import time
@@ -44,7 +45,7 @@ from lintel.workflows._executor_lifecycle import (
     mark_stage_completed as _mark_stage_completed,
 )
 from lintel.workflows._executor_lifecycle import (
-    mark_stage_timed_out as _mark_stage_timed_out,  # noqa: F401
+    mark_stage_timed_out as _mark_stage_timed_out,
 )
 from lintel.workflows._executor_lifecycle import (
     mark_stage_waiting_approval as _mark_stage_waiting_approval,
@@ -65,6 +66,7 @@ from lintel.workflows.events import (
     PipelineStageCompleted,
     PipelineStageTimedOut,
 )
+from lintel.workflows.timeout import resolve_timeout
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import EventStore
@@ -230,6 +232,47 @@ class WorkflowExecutor:
         # Pass None as input to resume from the interrupt point
         await self._stream_graph(run_id, graph, None, config)
 
+    async def _resolve_step_timeout(self, run_id: str, node_name: str) -> float:
+        """Resolve the effective timeout for a given node in a pipeline run."""
+        step_config = None
+        pipeline_timeout = None
+        global_default = None
+
+        # Look up step configs from the workflow definition via the pipeline run
+        if self._app_state is not None:
+            pipeline_store = getattr(self._app_state, "pipeline_store", None)
+            wf_def_store = getattr(self._app_state, "workflow_definition_store", None)
+            if pipeline_store is not None:
+                try:
+                    run = await pipeline_store.get(run_id)
+                    if run is not None and wf_def_store is not None:
+                        wf_def = await wf_def_store.get(run.workflow_definition_id)
+                        if wf_def is not None:
+                            from lintel.workflows.types import StepTimeoutConfig
+
+                            for sc in getattr(wf_def, "step_configs", ()):
+                                if sc.node_name == node_name:
+                                    step_config = sc
+                                    break
+                            # Build pipeline-level timeout from step_timeout_seconds
+                            # stored on the run or definition
+                            agg = getattr(wf_def, "step_timeout_seconds", None)
+                            if agg:
+                                pipeline_timeout = StepTimeoutConfig(default_seconds=agg)
+                except Exception:
+                    logger.debug("resolve_step_timeout_lookup_failed", run_id=run_id)
+
+            # Global default from settings
+            settings = getattr(self._app_state, "settings", None)
+            if settings is not None:
+                global_default = getattr(settings, "default_step_timeout_seconds", None)
+
+        return resolve_timeout(
+            step_config=step_config,
+            pipeline_timeout=pipeline_timeout,
+            global_default=global_default,
+        )
+
     async def _stream_graph(
         self,
         run_id: str,
@@ -247,7 +290,59 @@ class WorkflowExecutor:
         total_tokens["_step_start"] = time.time()
 
         try:
-            async for chunk in graph.astream(input_data, config=config):
+            stream = graph.astream(input_data, config=config)
+            async_iter = stream.__aiter__()
+            while True:
+                # Resolve timeout for the next step. We don't know which node
+                # will run next, so we use a default. Once the chunk arrives we
+                # know the node name — if it differs we'll use the correct
+                # timeout on the *next* iteration.
+                next_timeout = await self._resolve_step_timeout(run_id, "__next__")
+
+                try:
+                    async with asyncio.timeout(next_timeout):
+                        chunk = await async_iter.__anext__()
+                except StopAsyncIteration:
+                    break
+                except TimeoutError:
+                    # Per-step timeout — determine which node was running
+                    timed_out_node = "unknown"
+                    try:
+                        graph_state = graph.get_state(config)
+                        if graph_state.next:
+                            timed_out_node = graph_state.next[0]
+                    except Exception:
+                        pass
+
+                    timeout_secs = await self._resolve_step_timeout(run_id, timed_out_node)
+                    logger.warning(
+                        "step_timed_out",
+                        run_id=run_id,
+                        node_name=timed_out_node,
+                        timeout_seconds=timeout_secs,
+                    )
+                    await _mark_stage_timed_out(
+                        self._app_state, run_id, timed_out_node, timeout_secs
+                    )
+                    timed_out_event = PipelineStageTimedOut(
+                        event_type="PipelineStageTimedOut",
+                        payload={
+                            "run_id": run_id,
+                            "node_name": timed_out_node,
+                            "timeout_seconds": timeout_secs,
+                        },
+                    )
+                    await self._event_store.append(stream_id=stream_id, events=[timed_out_event])
+                    await self._project_events([timed_out_event])
+                    await _update_pipeline_status(self._app_state, run_id, "failed")
+                    await _notify_chat(
+                        self._app_state,
+                        run_id,
+                        f"⏱️ **{timed_out_node}** timed out after {timeout_secs:.0f}s\n"
+                        f"[View pipeline →](/pipelines/{run_id})",
+                    )
+                    return
+
                 for node_name, output in chunk.items():
                     if node_name == "__end__":
                         continue
