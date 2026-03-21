@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from lintel.api.store_wiring import create_in_memory_stores, create_postgres_stores, wire_stores
 from lintel.event_bus.in_memory import InMemoryEventBus
 from lintel.projections.audit import AuditProjection
+from lintel.projections.cost_metrics import CostMetricsProjection
 from lintel.projections.engine import InMemoryProjectionEngine
 from lintel.projections.quality_metrics import QualityMetricsProjection
 from lintel.projections.task_backlog import TaskBacklogProjection
@@ -207,16 +208,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     task_backlog = TaskBacklogProjection()
     audit_projection = AuditProjection(stores["audit_entry_store"])
     quality_metrics = QualityMetricsProjection()
+    cost_metrics = CostMetricsProjection()
     engine = InMemoryProjectionEngine(event_bus=event_bus)
     await engine.register(thread_status)
     await engine.register(task_backlog)
     await engine.register(audit_projection)
     await engine.register(quality_metrics)
+    await engine.register(cost_metrics)
     await engine.start()
 
     app.state.thread_status_projection = thread_status
     app.state.task_backlog_projection = task_backlog
     app.state.quality_metrics_projection = quality_metrics
+    app.state.cost_metrics_projection = cost_metrics
     app.state.projection_engine = engine
 
     sandbox_manager = DockerSandboxManager()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -10,6 +11,11 @@ import structlog
 
 from lintel.agents.events import AgentStepCompleted, AgentStepStarted
 from lintel.contracts.types import ActorType
+from lintel.infrastructure.models.cost_tracker import (
+    LLMCostTracker,
+    clear_cost_context,
+    set_cost_context,
+)
 from lintel.models.events import ModelCallCompleted, ModelSelected
 
 if TYPE_CHECKING:
@@ -42,6 +48,7 @@ class AgentRuntime:
         self._model_router = model_router
         self._mcp_tool_client = mcp_tool_client
         self._mcp_server_store = mcp_server_store
+        self._cost_tracker = LLMCostTracker()
 
     async def _gather_mcp_tools(self) -> list[dict[str, Any]]:
         """Collect tools from all enabled MCP servers in litellm format."""
@@ -133,6 +140,8 @@ class AgentRuntime:
         on_tool_call: Callable[[int, str, dict[str, Any], str], Awaitable[None]] | None = None,
         on_activity: Callable[[str], Awaitable[None]] | None = None,
         run_id: str = "",
+        stage: str = "",
+        project_id: str = "",
     ) -> dict[str, Any]:
         cid = correlation_id or uuid4()
 
@@ -217,6 +226,7 @@ class AgentRuntime:
         loop_messages: list[dict[str, Any]] = list(messages)
         total_input_tokens = 0
         total_output_tokens = 0
+        total_cost_usd = 0.0
         iteration = 0
 
         # Pass sandbox context for providers that need it (e.g. claude_code)
@@ -229,6 +239,15 @@ class AgentRuntime:
             model_kwargs["on_activity"] = on_activity
 
         is_claude_code = policy.provider == "claude_code"
+
+        # Set cost tracking context
+        set_cost_context(
+            run_id=run_id,
+            stage=stage,
+            agent_role=agent_role.value,
+            project_id=project_id,
+        )
+        step_start_time = time.monotonic()
 
         result = await self._model_router.call_model(
             policy,
@@ -331,9 +350,33 @@ class AgentRuntime:
             )
 
         # Aggregate usage across all iterations
+        step_duration_ms = int((time.monotonic() - step_start_time) * 1000)
+
+        # Compute cost via litellm (best-effort)
+        try:
+            import litellm
+
+            model_str = f"{policy.provider}/{policy.model_name}"
+            # cost_per_token returns (prompt_cost, completion_cost) tuple
+            cost_result = litellm.cost_per_token(
+                model=model_str,
+                prompt_tokens=total_input_tokens,
+                completion_tokens=total_output_tokens,
+            )
+            if isinstance(cost_result, tuple):
+                total_cost_usd = sum(cost_result)
+            else:
+                total_cost_usd = cost_result
+        except Exception:
+            total_cost_usd = 0.0
+
+        clear_cost_context()
+
         result["usage"] = {
             "input_tokens": total_input_tokens,
             "output_tokens": total_output_tokens,
+            "cost_usd": round(total_cost_usd, 8),
+            "duration_ms": step_duration_ms,
         }
         result["tool_iterations"] = iteration
 
@@ -349,8 +392,13 @@ class AgentRuntime:
                         "provider": policy.provider,
                         "model": result.get("model", policy.model_name),
                         "input_tokens": total_input_tokens,
-                        **({"run_id": run_id} if run_id else {}),
                         "output_tokens": total_output_tokens,
+                        "cost_usd": round(total_cost_usd, 8),
+                        "duration_ms": step_duration_ms,
+                        "agent_role": agent_role.value,
+                        **({"run_id": run_id} if run_id else {}),
+                        **({"stage": stage} if stage else {}),
+                        **({"project_id": project_id} if project_id else {}),
                         "mcp_tools_available": len(mcp_tools),
                         "tool_iterations": iteration,
                     },
@@ -390,6 +438,8 @@ class AgentRuntime:
         sandbox_id: str | None = None,
         on_activity: Callable[[str], Awaitable[None]] | None = None,
         run_id: str = "",
+        stage: str = "",
+        project_id: str = "",
     ) -> dict[str, Any]:
         """Like execute_step but streams content, calling on_chunk for each piece.
 
