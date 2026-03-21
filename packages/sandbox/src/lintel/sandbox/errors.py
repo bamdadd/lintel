@@ -37,7 +37,7 @@ class SandboxCapacityExceededError(SandboxError):
     def __init__(self, active: int, capacity: int) -> None:
         super().__init__(
             f"Sandbox capacity exceeded: {active}/{capacity} active. "
-            f"Wait for a sandbox to be destroyed before creating a new one."
+            "Wait for a sandbox to be destroyed before creating a new one."
         )
         self.active = active
         self.capacity = capacity

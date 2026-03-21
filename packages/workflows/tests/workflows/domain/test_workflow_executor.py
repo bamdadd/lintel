@@ -43,13 +43,18 @@ async def test_execute_emits_start_and_complete_events() -> None:
     assert isinstance(run_id, str)
     assert len(run_id) > 0
 
-    # At least 2 event store appends: PipelineRunStarted + PipelineRunCompleted
-    assert event_store.append.call_count >= 2
+    # At least 3 event store appends: WorkflowQueued + PipelineRunStarted + PipelineRunCompleted
+    assert event_store.append.call_count >= 3
 
-    # First call is PipelineRunStarted
+    # First call is WorkflowQueued (semaphore-gated concurrency)
     first_call = event_store.append.call_args_list[0]
     assert first_call.kwargs["stream_id"] == f"run:{run_id}"
     events = first_call.kwargs["events"]
+    assert events[0].event_type == "WorkflowQueued"
+
+    # Second call is PipelineRunStarted
+    second_call = event_store.append.call_args_list[1]
+    events = second_call.kwargs["events"]
     assert events[0].event_type == "PipelineRunStarted"
 
     # Last call is PipelineRunCompleted
@@ -69,8 +74,8 @@ async def test_execute_emits_step_events_for_graph_chunks() -> None:
     executor = WorkflowExecutor(event_store=event_store, graph=graph)
     await executor.execute(_make_command())
 
-    # Start + 2 step chunks + Complete = 4 appends
-    assert event_store.append.call_count == 4
+    # Queued + Start + 2 step chunks + Complete = 5 appends
+    assert event_store.append.call_count == 5
 
 
 async def test_execute_emits_failed_on_error() -> None:
