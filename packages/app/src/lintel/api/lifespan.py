@@ -64,6 +64,29 @@ async def _seed_defaults(stores: dict[str, Any]) -> None:
             }
 
 
+async def _seed_guardrail_defaults(stores: dict[str, Any]) -> None:
+    """Seed default guardrail rules into the guardrail rule store."""
+    import logging
+
+    from lintel.domain.guardrails.default_rules import DEFAULT_RULES
+
+    grd_store = stores.get("guardrail_rule_store")
+    if grd_store is None:
+        return
+
+    inserted = 0
+    for rule in DEFAULT_RULES:
+        existing = await grd_store.get(rule.rule_id)
+        if existing is not None:
+            continue
+        await grd_store.add(rule)
+        inserted += 1
+
+    if inserted:
+        logger = logging.getLogger("lintel")
+        logger.info("Seeded %d default guardrail rules", inserted)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan: creates stores, wires services, starts background tasks."""
@@ -198,6 +221,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.mcp_tool_client = mcp_tool_client
 
     await _seed_defaults(stores)
+    await _seed_guardrail_defaults(stores)
 
     event_bus = InMemoryEventBus()
     app.state.event_bus = event_bus

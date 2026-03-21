@@ -6,6 +6,7 @@ All route handlers live in domain-specific sub-modules:
   - knowledge.py    — Knowledge entry + extraction run CRUD
   - architecture.py — Architecture decision record CRUD
   - config.py       — Compliance config get/update + overview
+  - guardrail_rules.py — Guardrail rule CRUD
 """
 
 from fastapi import APIRouter
@@ -17,6 +18,12 @@ from lintel.compliance_api.architecture import (
     router as architecture_router,
 )
 from lintel.compliance_api.config import router as config_router
+from lintel.compliance_api.guardrail_rules import (
+    guardrail_rule_store_provider,
+)
+from lintel.compliance_api.guardrail_rules import (
+    router as guardrail_rules_router,
+)
 from lintel.compliance_api.knowledge import (
     knowledge_entry_store_provider,
     knowledge_extraction_store_provider,
@@ -49,6 +56,7 @@ from lintel.compliance_api.regulations import (
 __all__ = [
     "architecture_decision_store_provider",
     "compliance_policy_store_provider",
+    "guardrail_rule_store_provider",
     "knowledge_entry_store_provider",
     "knowledge_extraction_store_provider",
     "policy_generation_store_provider",
@@ -66,3 +74,4 @@ router.include_router(knowledge_router)
 router.include_router(architecture_router)
 router.include_router(config_router)
 router.include_router(policy_generation_router)
+router.include_router(guardrail_rules_router)

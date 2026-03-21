@@ -4,6 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "lintel-contracts",
+    "lintel-domain",
     "lintel-agents",
     "lintel-infrastructure",
     "lintel-workflows",
@@ -67,6 +68,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
+lintel-domain = { workspace = true }
 lintel-contracts = { workspace = true }
 lintel-agents = { workspace = true }
 lintel-infrastructure = { workspace = true }
