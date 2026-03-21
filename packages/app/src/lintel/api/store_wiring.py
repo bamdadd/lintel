@@ -200,12 +200,58 @@ def create_in_memory_stores() -> dict[str, Any]:
 
 
 def _create_postgres_artifact_content_store(pool: asyncpg.Pool) -> Any:  # noqa: ANN401
-    """Create a PostgresArtifactStore (content storage) for production."""
+    """Create an artifact content store based on LINTEL_ARTIFACT_* settings.
+
+    Supports three modes:
+    - ``postgres`` (default): inline content in Postgres JSONB
+    - ``s3``: all content in S3/MinIO with metadata in Postgres
+    - ``routing``: auto-routes by size threshold (small → Postgres, large → S3)
+    """
+    import os
+
     from lintel.infrastructure.stores.postgres_artifact_store import (
         PostgresArtifactStore as PgArtifactContentStore,
     )
 
-    return PgArtifactContentStore(pool)
+    backend = os.environ.get("LINTEL_ARTIFACT_STORAGE_BACKEND", "postgres").lower()
+
+    pg_store = PgArtifactContentStore(pool)
+
+    if backend in ("s3", "routing"):
+        import aioboto3
+
+        from lintel.infrastructure.stores.object_artifact_store import ObjectArtifactStore
+
+        bucket = os.environ.get("LINTEL_ARTIFACT_S3_BUCKET", "artifacts")
+        endpoint_url = os.environ.get("LINTEL_ARTIFACT_S3_ENDPOINT_URL")
+
+        session = aioboto3.Session(
+            aws_access_key_id=os.environ.get("LINTEL_ARTIFACT_S3_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("LINTEL_ARTIFACT_S3_SECRET_ACCESS_KEY"),
+        )
+        obj_store = ObjectArtifactStore(
+            session=session,
+            pool=pool,
+            bucket=bucket,
+            endpoint_url=endpoint_url,
+        )
+
+        if backend == "s3":
+            return obj_store
+
+        # routing mode
+        from lintel.infrastructure.stores.routing_artifact_store import RoutingArtifactStore
+
+        threshold = int(
+            os.environ.get("LINTEL_ARTIFACT_SIZE_THRESHOLD_BYTES", "1048576"),
+        )
+        return RoutingArtifactStore(
+            postgres_store=pg_store,
+            object_store=obj_store,
+            size_threshold_bytes=threshold,
+        )
+
+    return pg_store
 
 
 def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
