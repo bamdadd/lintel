@@ -122,3 +122,30 @@ class TestGeneralSettingsAPI:
         assert data["pii_detection_enabled"] is True
         assert data["sandbox_enabled"] is True
         assert data["max_concurrent_workflows"] == 10
+
+
+class TestSandboxStorageSettings:
+    def test_get_settings_storage_defaults(self, client: TestClient) -> None:
+        resp = client.get(BASE)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sandbox_storage_default_gb"] == 4
+        assert data["sandbox_storage_max_gb"] == 10
+        assert data["sandbox_storage_min_free_mb"] == 500
+        assert data["sandbox_cleanup_retention_hours"] == 24
+
+    def test_update_storage_settings(self, client: TestClient) -> None:
+        resp = client.patch(
+            BASE,
+            json={
+                "sandbox_storage_default_gb": 8,
+                "sandbox_storage_max_gb": 20,
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sandbox_storage_default_gb"] == 8
+        assert data["sandbox_storage_max_gb"] == 20
+        # unchanged defaults
+        assert data["sandbox_storage_min_free_mb"] == 500
+        assert data["sandbox_cleanup_retention_hours"] == 24

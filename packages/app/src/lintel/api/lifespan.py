@@ -290,6 +290,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             app.state.openshell_manager.recover_sandboxes, app.state.sandbox_store, "OpenShell"
         )
 
+    # --- Sandbox storage monitor and cleanup scheduler (REQ-031) ---
+    from lintel.sandbox.cleanup_scheduler import SandboxCleanupScheduler
+    from lintel.sandbox.storage_monitor import SandboxStorageMonitor
+
+    general_settings = getattr(app.state, "general_settings", None)
+    if general_settings is None:
+        from lintel.persistence.data_models import GeneralSettings
+
+        general_settings = GeneralSettings().model_dump()
+        app.state.general_settings = general_settings
+
+    cleanup_retention = general_settings.get("sandbox_cleanup_retention_hours", 24)
+    cleanup_scheduler = SandboxCleanupScheduler(
+        sandbox_store=app.state.sandbox_store,
+        sandbox_manager=sandbox_manager,
+        retention_hours=cleanup_retention,
+    )
+    app.state.cleanup_scheduler = cleanup_scheduler
+
+    storage_monitor = SandboxStorageMonitor(
+        sandbox_store=app.state.sandbox_store,
+        sandbox_manager=sandbox_manager,
+        poll_interval_seconds=300.0,
+    )
+    app.state.storage_monitor = storage_monitor
+
     github_token = os.environ.get("GITHUB_TOKEN", "")
     repo_provider = GitHubRepoProvider(token=github_token) if github_token else None
 
@@ -393,11 +419,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         type("_PipelineCompleteHandler", (), {"handle": staticmethod(_on_pipeline_complete)})(),
     )
 
+    async def _on_pipeline_cleanup(event: Any) -> None:  # noqa: ANN401
+        payload = event.payload or {}
+        sandbox_id = payload.get("sandbox_id", "")
+        if not sandbox_id:
+            return
+        success = event.event_type == "PipelineRunCompleted"
+        await cleanup_scheduler.on_pipeline_completed(sandbox_id, success=success)
+
+    await event_bus.subscribe(
+        frozenset({"PipelineRunCompleted", "PipelineRunFailed"}),
+        type("_PipelineCleanupHandler", (), {"handle": staticmethod(_on_pipeline_cleanup)})(),
+    )
+
     background_tasks: set[asyncio.Task[Any]] = set()
     app.state._background_tasks = background_tasks
     scheduler_task = asyncio.create_task(automation_scheduler.run())
     app.state._background_tasks.add(scheduler_task)
     scheduler_task.add_done_callback(app.state._background_tasks.discard)
+    await storage_monitor.start()
 
     # Start Telegram polling if adapter is configured
     tg_adapter: object | None = getattr(app.state, "telegram_adapter", None)
@@ -408,6 +448,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     yield
 
+    await storage_monitor.stop()
     container.unwire()
     scheduler_task.cancel()
     from lintel.settings_api.channels_router import stop_telegram_polling

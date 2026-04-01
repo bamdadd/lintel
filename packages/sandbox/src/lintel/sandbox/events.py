@@ -37,6 +37,16 @@ class SandboxDestroyed(EventEnvelope):
     event_type: str = "SandboxDestroyed"
 
 
+@dataclass(frozen=True)
+class SandboxStorageLimitExceeded(EventEnvelope):
+    event_type: str = "SandboxStorageLimitExceeded"
+
+
+@dataclass(frozen=True)
+class SandboxCleanupScheduled(EventEnvelope):
+    event_type: str = "SandboxCleanupScheduled"
+
+
 register_events(
     SandboxJobScheduled,
     SandboxCreated,
@@ -44,4 +54,6 @@ register_events(
     SandboxFileWritten,
     SandboxArtifactsCollected,
     SandboxDestroyed,
+    SandboxStorageLimitExceeded,
+    SandboxCleanupScheduled,
 )

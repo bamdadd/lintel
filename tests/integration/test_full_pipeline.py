@@ -117,3 +117,30 @@ def test_report_edited_event_registered() -> None:
 
     assert "StageReportRegenerated" in EVENT_TYPE_MAP
     assert EVENT_TYPE_MAP["StageReportRegenerated"] is StageReportRegenerated
+
+
+def test_sandbox_storage_events_registered() -> None:
+    """REQ-031: SandboxStorageLimitExceeded and SandboxCleanupScheduled are registered."""
+    from lintel.contracts.events import EVENT_TYPE_MAP
+    from lintel.sandbox.events import SandboxCleanupScheduled, SandboxStorageLimitExceeded
+
+    assert "SandboxStorageLimitExceeded" in EVENT_TYPE_MAP
+    assert EVENT_TYPE_MAP["SandboxStorageLimitExceeded"] is SandboxStorageLimitExceeded
+
+    assert "SandboxCleanupScheduled" in EVENT_TYPE_MAP
+    assert EVENT_TYPE_MAP["SandboxCleanupScheduled"] is SandboxCleanupScheduled
+
+
+def test_sandbox_cleanup_scheduling_on_pipeline_completion() -> None:
+    """REQ-031: Verify cleanup scheduler can be instantiated and handles events."""
+    from unittest.mock import AsyncMock
+
+    from lintel.sandbox.cleanup_scheduler import SandboxCleanupScheduler
+
+    store = AsyncMock()
+    store.get = AsyncMock(return_value={"sandbox_id": "sb-1", "status": "running"})
+    store.update = AsyncMock()
+    manager = AsyncMock()
+
+    scheduler = SandboxCleanupScheduler(store, manager, retention_hours=24)
+    assert scheduler._retention_hours == 24

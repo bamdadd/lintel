@@ -57,3 +57,15 @@ class FileWriteLimitExceededError(SandboxError):
     def __init__(self, limit: int) -> None:
         super().__init__(f"File write limit exceeded: max {limit} writes per session")
         self.limit = limit
+
+
+class InsufficientStorageError(SandboxError):
+    """Raised when host storage is below minimum threshold for sandbox operations."""
+
+    def __init__(self, available_bytes: int, required_bytes: int) -> None:
+        super().__init__(
+            f"Insufficient storage: {available_bytes} bytes available, "
+            f"minimum {required_bytes} bytes required"
+        )
+        self.available_bytes = available_bytes
+        self.required_bytes = required_bytes

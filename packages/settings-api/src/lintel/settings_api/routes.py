@@ -52,6 +52,10 @@ class UpdateSettingsRequest(BaseModel):
     sandbox_enabled: bool | None = None
     max_concurrent_workflows: int | None = None
     max_sandboxes: int | None = None
+    sandbox_storage_default_gb: int | None = None
+    sandbox_storage_max_gb: int | None = None
+    sandbox_storage_min_free_mb: int | None = None
+    sandbox_cleanup_retention_hours: int | None = None
 
 
 @router.post("/settings/connections", status_code=201)

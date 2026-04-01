@@ -175,3 +175,38 @@ async def claude_credentials_status(request: Request) -> dict[str, Any]:
         "expires_at": exp_dt.isoformat(),
         "minutes_remaining": minutes_remaining,
     }
+
+
+@router.get("/admin/sandbox-storage")
+async def get_sandbox_storage(request: Request) -> dict[str, Any]:
+    """Return per-sandbox storage usage stats.
+
+    Data comes from the background storage monitor; no live Docker exec
+    is performed during this request.
+    """
+    sandbox_store = getattr(request.app.state, "sandbox_store", None)
+    if sandbox_store is None:
+        return {"sandboxes": []}
+
+    all_sandboxes: list[dict[str, Any]] = await sandbox_store.list_all()
+    usage_list: list[dict[str, Any]] = []
+    for sb in all_sandboxes:
+        sandbox_id = sb.get("sandbox_id", "")
+        if not sandbox_id:
+            continue
+        storage_limit_gb: int = sb.get("storage_limit_gb", 4)
+        limit_bytes = storage_limit_gb * 1024 * 1024 * 1024
+        usage_bytes: int = sb.get("storage_usage_bytes") or 0
+        available_bytes = max(0, limit_bytes - usage_bytes)
+        usage_list.append(
+            {
+                "sandbox_id": sandbox_id,
+                "usage_bytes": usage_bytes,
+                "limit_bytes": limit_bytes,
+                "available_bytes": available_bytes,
+                "last_checked_at": sb.get("storage_checked_at"),
+                "scheduled_cleanup_at": sb.get("scheduled_cleanup_at"),
+            }
+        )
+
+    return {"sandboxes": usage_list}

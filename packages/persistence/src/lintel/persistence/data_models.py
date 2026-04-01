@@ -55,6 +55,10 @@ class GeneralSettings(BaseModel):
     sandbox_enabled: bool = True
     max_concurrent_workflows: int = 10
     max_sandboxes: int = 20
+    sandbox_storage_default_gb: int = 4
+    sandbox_storage_max_gb: int = 10
+    sandbox_storage_min_free_mb: int = 500
+    sandbox_cleanup_retention_hours: int = 24
 
 
 class AgentDefinitionData(BaseModel):
@@ -84,6 +88,10 @@ class SandboxMetadata(BaseModel):
     created_at: str = ""
     repo_url: str = ""
     branch: str = ""
+    storage_limit_gb: int = 4
+    storage_usage_bytes: int | None = None
+    storage_checked_at: str | None = None
+    scheduled_cleanup_at: str | None = None
 
     model_config = ConfigDict(extra="allow")
 

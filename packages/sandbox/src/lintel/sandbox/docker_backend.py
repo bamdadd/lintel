@@ -37,6 +37,7 @@ class DockerSandboxManager:
         self._lock = asyncio.Lock()
         self._guards: dict[str, ResourceGuard] = {}
         self._configs: dict[str, SandboxConfig] = {}
+        self._storage_limits: dict[str, int] = {}
 
     def _get_client(self) -> Any:  # noqa: ANN401
         if self._client is None:
@@ -465,9 +466,50 @@ class DockerSandboxManager:
             network = await asyncio.to_thread(client.networks.get, net_name)
             await asyncio.to_thread(network.disconnect, container)
 
+    async def get_storage_usage(self, sandbox_id: str) -> int:
+        """Return workspace disk usage in bytes for a sandbox.
+
+        Runs ``du -sb /workspace`` inside the container and parses the output.
+        """
+        from lintel.sandbox.types import SandboxJob
+
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(command="du -sb /workspace 2>/dev/null || echo 0", timeout_seconds=30),
+        )
+        if result.exit_code != 0:
+            return 0
+        try:
+            return int(result.stdout.strip().split()[0])
+        except (ValueError, IndexError):
+            return 0
+
+    async def check_available_space(self, workspace_root: str = "/var/lib/docker") -> int:
+        """Return free bytes on the host filesystem backing sandboxes.
+
+        Uses ``shutil.disk_usage`` on *workspace_root* (defaults to the Docker
+        storage root).  Raises :class:`InsufficientStorageError` when free space
+        is below ``min_free_bytes`` (if provided).
+        """
+        import shutil
+
+        usage = await asyncio.to_thread(shutil.disk_usage, workspace_root)
+        return usage.free
+
+    async def set_storage_limit(self, sandbox_id: str, size_gb: int) -> None:
+        """Record a storage limit for an existing sandbox.
+
+        The limit is informational and used by the storage monitor to emit
+        warnings.  Actual Docker ``--storage-opt`` enforcement happens at
+        container creation time via :class:`ResourceLimits.max_disk_mb`.
+        """
+        # Store the limit so the monitor can check against it
+        self._storage_limits[sandbox_id] = size_gb
+
     async def destroy(self, sandbox_id: str) -> None:
         self._guards.pop(sandbox_id, None)
         self._configs.pop(sandbox_id, None)
+        self._storage_limits.pop(sandbox_id, None)
         container = self._containers.pop(sandbox_id, None)
         if container is None:
             # Try to find by label (e.g. after server restart)

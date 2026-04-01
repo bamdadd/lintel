@@ -56,6 +56,11 @@ class SandboxSettings(BaseSettings):
     max_memory: str = "4g"
     timeout_seconds: int = 1800
     network_mode: str = "none"
+    storage_default_gb: int = 4
+    storage_max_gb: int = 10
+    storage_min_free_mb: int = 500
+    cleanup_retention_hours: int = 24
+    storage_opt_enabled: bool = False
 
 
 class ArtifactSettings(BaseSettings):
