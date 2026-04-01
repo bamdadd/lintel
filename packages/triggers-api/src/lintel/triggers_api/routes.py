@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import TriggerCreated, TriggerRemoved, TriggerUpdated
-from lintel.domain.types import Trigger, TriggerType
+from lintel.domain.types import HookType, Trigger, TriggerType
 from lintel.triggers_api.store import InMemoryTriggerStore
 
 router = APIRouter()
@@ -30,12 +30,20 @@ class CreateTriggerRequest(BaseModel):
     name: str
     config: dict[str, object] | None = None
     enabled: bool = True
+    hook_type: HookType | None = None
+    event_pattern: str | None = None
+    condition: str | None = None
+    max_chain_depth: int = 5
 
 
 class UpdateTriggerRequest(BaseModel):
     name: str | None = None
     config: dict[str, object] | None = None
     enabled: bool | None = None
+    hook_type: HookType | None = None
+    event_pattern: str | None = None
+    condition: str | None = None
+    max_chain_depth: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -52,6 +60,12 @@ async def create_trigger(
     existing = await store.get(body.trigger_id)
     if existing is not None:
         raise HTTPException(status_code=409, detail="Trigger already exists")
+    # Validate: event_pattern required when hook_type is set
+    if body.hook_type is not None and not body.event_pattern:
+        raise HTTPException(
+            status_code=422,
+            detail="event_pattern is required when hook_type is set",
+        )
     trigger = Trigger(
         trigger_id=body.trigger_id,
         project_id=body.project_id,
@@ -59,6 +73,10 @@ async def create_trigger(
         name=body.name,
         config=body.config,
         enabled=body.enabled,
+        hook_type=body.hook_type,
+        event_pattern=body.event_pattern,
+        condition=body.condition,
+        max_chain_depth=body.max_chain_depth,
     )
     await store.add(trigger)
     await dispatch_event(

@@ -162,6 +162,10 @@ class Trigger:
     name: str
     config: dict[str, object] | None = None
     enabled: bool = True
+    hook_type: HookType | None = None
+    event_pattern: str | None = None
+    condition: str | None = None
+    max_chain_depth: int = 5
 
 
 class HookType(StrEnum):

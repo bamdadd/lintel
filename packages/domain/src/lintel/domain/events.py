@@ -812,6 +812,11 @@ class HookLoopDetected(EventEnvelope):
     event_type: str = "HookLoopDetected"
 
 
+@dataclass(frozen=True)
+class HookChainDepthExceeded(EventEnvelope):
+    event_type: str = "HookChainDepthExceeded"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -951,6 +956,7 @@ register_events(
     HookTriggered,
     HookExecutionFailed,
     HookLoopDetected,
+    HookChainDepthExceeded,
     PolicyImportedFromGDrive,
     PolicyGenerationStarted,
     PolicyGenerationCompleted,

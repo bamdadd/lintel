@@ -12,6 +12,7 @@ from lintel.api.routes import (
     debug,
     events,
     health,
+    hooks,
     metrics,
     onboarding,
     pii,
@@ -79,6 +80,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(pipelines_router, prefix="/api/v1", tags=["pipelines"])
     app.include_router(environments_router, prefix="/api/v1", tags=["environments"])
     app.include_router(triggers_router, prefix="/api/v1", tags=["triggers"])
+    app.include_router(hooks.router, prefix="/api/v1", tags=["hooks"])
     app.include_router(automations_router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables_router, prefix="/api/v1", tags=["variables"])
     app.include_router(users_router, prefix="/api/v1", tags=["users"])
