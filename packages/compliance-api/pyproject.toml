@@ -8,6 +8,10 @@ dependencies = [
     "lintel-api-support",
     "fastapi>=0.115",
     "pydantic>=2.10",
+    "google-api-python-client>=2.0",
+    "google-auth>=2.0",
+    "google-auth-httplib2>=0.2",
+    "google-auth-oauthlib>=1.0",
 ]
 
 [tool.uv.sources]
