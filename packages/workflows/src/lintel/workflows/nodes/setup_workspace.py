@@ -759,7 +759,26 @@ async def setup_workspace(
             feature_branch,
             work_item_id,
         )
-        # TODO: emit AuditEntry when store injection is available
+
+        # Emit audit entry for workspace setup
+        audit_store = getattr(app_state, "audit_entry_store", None) if app_state else None
+        if audit_store is not None:
+            from lintel.workflows.nodes._event_helpers import AuditEmitter
+
+            await AuditEmitter.emit(
+                audit_store,
+                actor_id="lintel-workflow",
+                actor_type="system",
+                action="workspace_cloned",
+                resource_type="pipeline_run",
+                resource_id=run_id or work_item_id,
+                details={
+                    "sandbox_id": sandbox_id,
+                    "repo_url": repo_url,
+                    "feature_branch": feature_branch,
+                    "work_item_id": work_item_id,
+                },
+            )
 
         # Update work item with feature branch so re-dispatch reuses it
         work_item_store = _configurable.get("app_state")

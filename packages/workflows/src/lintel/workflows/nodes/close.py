@@ -284,6 +284,37 @@ async def close_workflow(
             error=push_error or "No PR raised",
         )
 
+    # Emit audit entry for pipeline closure
+    app_state = _configurable.get("app_state")
+    if app_state is None and run_id:
+        from lintel.workflows.nodes._runtime_registry import get_app_state
+
+        app_state = get_app_state(run_id)
+    audit_store = getattr(app_state, "audit_entry_store", None) if app_state else None
+    if audit_store is not None:
+        from lintel.workflows.nodes._event_helpers import AuditEmitter
+
+        details: dict[str, object] = {
+            "work_item_id": state.get("work_item_id", ""),
+            "feature_branch": feature_branch,
+            "has_failure": has_failure,
+        }
+        if pr_url:
+            details["pr_url"] = pr_url
+        if all_pr_urls and len(all_pr_urls) > 1:
+            details["pr_urls"] = all_pr_urls
+        if push_error:
+            details["push_error"] = push_error[:200]
+        await AuditEmitter.emit(
+            audit_store,
+            actor_id="lintel-workflow",
+            actor_type="system",
+            action="pr_created" if pr_url else "pipeline_closed",
+            resource_type="pipeline_run",
+            resource_id=run_id,
+            details=details,
+        )
+
     await _release_sandbox()
     return {
         "current_phase": "closed",

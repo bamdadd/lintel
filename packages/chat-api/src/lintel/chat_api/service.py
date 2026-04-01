@@ -383,6 +383,32 @@ class ChatService:
             stream_id=f"conversation:{conversation_id}",
         )
 
+        # Emit audit entry for pipeline creation
+        audit_store = getattr(request.app.state, "audit_entry_store", None)
+        if audit_store is not None:
+            from lintel.domain.types import AuditEntry
+
+            audit_entry = AuditEntry(
+                entry_id=uuid4().hex,
+                actor_id="lintel-chat",
+                actor_type="system",
+                action="pipeline_created",
+                resource_type="pipeline_run",
+                resource_id=run_id,
+                details={
+                    "work_item_id": work_item_id,
+                    "workflow_type": workflow_type,
+                    "conversation_id": conversation_id,
+                    "project_id": project_id,
+                    "repo_url": cmd_repo_url,
+                },
+                timestamp=datetime.now(UTC).isoformat(),
+            )
+            try:
+                await audit_store.add(audit_entry)
+            except Exception:
+                logger.warning("audit_entry_creation_failed", run_id=run_id)
+
     async def get_enabled_workflows(self) -> set[str]:
         """Return set of enabled workflow definition IDs."""
         from lintel.workflow_definitions_api.routes import workflow_definition_store_provider
