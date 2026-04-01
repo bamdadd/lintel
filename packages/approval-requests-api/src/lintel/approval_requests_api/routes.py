@@ -1,7 +1,9 @@
 """Approval request CRUD and action endpoints."""
 
+from __future__ import annotations
+
 from dataclasses import asdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -9,13 +11,15 @@ from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
-from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 from lintel.domain.events import (
     ApprovalRequestApproved,
     ApprovalRequestCreated,
     ApprovalRequestRejected,
 )
 from lintel.domain.types import ApprovalRequest, ApprovalStatus
+
+if TYPE_CHECKING:
+    from lintel.approval_requests_api.store import InMemoryApprovalRequestStore
 
 router = APIRouter()
 
@@ -28,6 +32,18 @@ class CreateApprovalRequestBody(BaseModel):
     gate_type: str
     requested_by: str = ""
     expires_at: str = ""
+    confidence: float = 0.0
+    threshold: float = 0.85
+
+
+class ResolveApprovalBody(BaseModel):
+    """Unified resolve request supporting approve, reject, and correction."""
+
+    decision: str  # "approve" or "reject"
+    decided_by: str = ""
+    comment: str = ""
+    correction: dict[str, Any] | None = None
+    reasoning: str = ""
 
 
 class DecisionBody(BaseModel):
@@ -54,6 +70,8 @@ async def create_approval_request(
         gate_type=body.gate_type,
         requested_by=body.requested_by,
         expires_at=body.expires_at,
+        confidence=body.confidence,
+        threshold=body.threshold,
     )
     await store.add(approval)
     await dispatch_event(
@@ -95,6 +113,92 @@ async def get_approval_request(
     if approval is None:
         raise HTTPException(status_code=404, detail="Approval request not found")
     return asdict(approval)
+
+
+@router.post("/approval-requests/{approval_id}/resolve")
+async def resolve_approval_request(
+    approval_id: str,
+    body: ResolveApprovalBody,
+    request: Request,
+    store: InMemoryApprovalRequestStore = Depends(  # noqa: B008
+        approval_request_store_provider,
+    ),
+) -> dict[str, Any]:
+    """Unified resolve endpoint: approve, reject, or approve-with-correction."""
+    approval = await store.get(approval_id)
+    if approval is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Approval request not found",
+        )
+    if approval.status != ApprovalStatus.PENDING:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot resolve: status is {approval.status}",
+        )
+
+    if body.decision not in ("approve", "reject"):
+        raise HTTPException(
+            status_code=422,
+            detail="decision must be 'approve' or 'reject'",
+        )
+
+    new_status = ApprovalStatus.APPROVED if body.decision == "approve" else ApprovalStatus.REJECTED
+    updated = ApprovalRequest(
+        **{
+            **asdict(approval),
+            "status": new_status,
+            "decided_by": body.decided_by,
+            "reason": body.comment,
+            "correction": body.correction,
+            "reasoning": body.reasoning,
+        }
+    )
+    await store.update(updated)
+
+    # Emit appropriate event
+    if body.decision == "approve":
+        event_payload: dict[str, Any] = {"resource_id": approval_id}
+        if body.correction is not None:
+            event_payload["correction"] = body.correction
+            event_payload["reasoning"] = body.reasoning
+        await dispatch_event(
+            request,
+            ApprovalRequestApproved(payload=event_payload),
+            stream_id=f"approval_request:{approval_id}",
+        )
+        # If correction provided, also emit AgentCorrected
+        if body.correction is not None:
+            from lintel.domain.events import AgentCorrected
+
+            await dispatch_event(
+                request,
+                AgentCorrected(
+                    payload={
+                        "approval_id": approval_id,
+                        "run_id": approval.run_id,
+                        "stage": approval.gate_type,
+                        "original_output": {},
+                        "correction": body.correction,
+                        "reasoning": body.reasoning,
+                        "corrected_by": body.decided_by,
+                    },
+                ),
+                stream_id=f"approval_request:{approval_id}",
+            )
+    else:
+        await dispatch_event(
+            request,
+            ApprovalRequestRejected(
+                payload={
+                    "resource_id": approval_id,
+                    "reason": body.comment,
+                },
+            ),
+            stream_id=f"approval_request:{approval_id}",
+        )
+
+    return asdict(updated)
 
 
 @router.post("/approval-requests/{approval_id}/approve")

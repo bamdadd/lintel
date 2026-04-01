@@ -44,6 +44,7 @@ from lintel.sandboxes_api.routes import router as sandboxes_router
 from lintel.settings_api.channels_router import router as channels_settings_router
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
+from lintel.slack.actions import router as slack_actions_router
 from lintel.stage_catalogue_api.routes import router as stage_catalogue_router
 from lintel.teams.routes import router as teams_router
 from lintel.telegram.webhook import router as telegram_router
@@ -105,3 +106,4 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])
     app.include_router(channels_settings_router, prefix="/api/v1", tags=["channels"])
     app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
+    app.include_router(slack_actions_router, prefix="/api/v1", tags=["slack"])

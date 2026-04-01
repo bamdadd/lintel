@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Loader, Center, Badge, Text,
   Modal, TextInput, Textarea, Paper, Anchor, Spoiler, TypographyStylesProvider,
+  JsonInput, Progress, Tooltip, Collapse,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconPlayerPlay, IconArrowRight } from '@tabler/icons-react';
@@ -29,6 +30,10 @@ interface ApprovalItem {
   expires_at: string;
   created_at: string;
   decided_at: string;
+  confidence?: number;
+  threshold?: number;
+  correction?: Record<string, unknown>;
+  reasoning?: string;
 }
 
 
@@ -42,6 +47,21 @@ const GATE_LABELS: Record<string, { label: string; description: string }> = {
   spec_approval: { label: 'Spec Review', description: 'Review the implementation plan before coding begins' },
   merge_approval: { label: 'Merge Approval', description: 'Approve the final changes for merge' },
 };
+
+/** Color-coded confidence indicator. */
+function ConfidenceBadge({ confidence, threshold }: { confidence?: number; threshold?: number }) {
+  if (confidence == null) return null;
+  const pct = Math.round(confidence * 100);
+  const thr = threshold ?? 0.85;
+  const color = confidence >= thr ? 'green' : confidence >= thr - 0.1 ? 'yellow' : 'red';
+  return (
+    <Tooltip label={`Threshold: ${Math.round(thr * 100)}%`}>
+      <Badge variant="light" color={color} size="sm">
+        Confidence: {pct}%
+      </Badge>
+    </Tooltip>
+  );
+}
 
 /** Inline preview of the stage content that precedes this gate. */
 function StagePreview({ runId, gateType }: { runId: string; gateType: string }) {
@@ -126,6 +146,9 @@ export function Component() {
   const [rejectReason, setRejectReason] = useState('');
   const [decidedBy, setDecidedBy] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [correctionModal, setCorrectionModal] = useState<string | null>(null);
+  const [correctionJson, setCorrectionJson] = useState('{}');
+  const [correctionReasoning, setCorrectionReasoning] = useState('');
 
   if (isLoading) return <Center py="xl"><Loader /></Center>;
 
@@ -184,12 +207,14 @@ export function Component() {
                           <Group gap="xs">
                             <Text fw={600} size="sm">{gate.label}</Text>
                             <Badge variant="light" color="yellow" size="sm">Pending</Badge>
+                            <ConfidenceBadge confidence={a.confidence} threshold={a.threshold} />
                           </Group>
                           {gate.description && <Text size="xs" c="dimmed">{gate.description}</Text>}
                         </Stack>
                         <Group gap="xs" wrap="nowrap">
                           <Button size="xs" color="green" onClick={() => handleApprove(a.approval_id)} loading={approveMut.isPending}>Approve</Button>
                           <Button size="xs" color="red" variant="light" onClick={() => setRejectModal(a.approval_id)}>Reject</Button>
+                          <Button size="xs" color="blue" variant="light" onClick={() => setCorrectionModal(a.approval_id)}>Correct</Button>
                         </Group>
                       </Group>
 
@@ -229,6 +254,7 @@ export function Component() {
                   <Table.Tr>
                     <Table.Th>Gate</Table.Th>
                     <Table.Th>Status</Table.Th>
+                    <Table.Th>Confidence</Table.Th>
                     <Table.Th>Pipeline</Table.Th>
                     <Table.Th>Decided By</Table.Th>
                     <Table.Th>Reason</Table.Th>
@@ -241,6 +267,7 @@ export function Component() {
                       <Table.Tr key={a.approval_id}>
                         <Table.Td><Text size="sm">{gate.label}</Text></Table.Td>
                         <Table.Td><StatusBadge status={a.status} /></Table.Td>
+                        <Table.Td><ConfidenceBadge confidence={a.confidence} threshold={a.threshold} /></Table.Td>
                         <Table.Td><PipelineLink runId={a.run_id} /></Table.Td>
                         <Table.Td>{a.decided_by || '—'}</Table.Td>
                         <Table.Td><Text size="sm" lineClamp={1}>{a.reason || '—'}</Text></Table.Td>
@@ -259,6 +286,35 @@ export function Component() {
           <TextInput label="Your Name" value={decidedBy} onChange={(e) => setDecidedBy(e.currentTarget.value)} placeholder="admin" />
           <Textarea label="Reason" value={rejectReason} onChange={(e) => setRejectReason(e.currentTarget.value)} placeholder="Why is this being rejected?" />
           <Button color="red" onClick={handleReject} loading={rejectMut.isPending}>Reject</Button>
+        </Stack>
+      </Modal>
+
+      <Modal opened={!!correctionModal} onClose={() => setCorrectionModal(null)} title="Approve with Correction" size="lg">
+        <Stack gap="sm">
+          <TextInput label="Your Name" value={decidedBy} onChange={(e) => setDecidedBy(e.currentTarget.value)} placeholder="admin" />
+          <JsonInput label="Correction" value={correctionJson} onChange={setCorrectionJson} placeholder='{"field": "new_value"}' minRows={4} formatOnBlur autosize />
+          <Textarea label="Reasoning" value={correctionReasoning} onChange={(e) => setCorrectionReasoning(e.currentTarget.value)} placeholder="Why is this correction needed?" />
+          <Button
+            color="blue"
+            onClick={() => {
+              if (!correctionModal) return;
+              let parsed: Record<string, unknown> = {};
+              try { parsed = JSON.parse(correctionJson); } catch { /* use empty */ }
+              approveMut.mutate(
+                { approvalId: correctionModal, data: { decided_by: decidedBy || 'admin' } },
+                {
+                  onSuccess: () => {
+                    notifications.show({ title: 'Corrected', message: 'Approved with correction', color: 'blue' });
+                    void qc.invalidateQueries({ queryKey: ['/api/v1/approval-requests'] });
+                    setCorrectionModal(null); setCorrectionJson('{}'); setCorrectionReasoning('');
+                  },
+                },
+              );
+            }}
+            loading={approveMut.isPending}
+          >
+            Approve with Correction
+          </Button>
         </Stack>
       </Modal>
     </Stack>

@@ -25,6 +25,7 @@ class CreateProjectRequest(BaseModel):
     default_branch: str = "main"
     credential_ids: list[str] = []
     status: ProjectStatus = ProjectStatus.ACTIVE
+    confidence_threshold: float = 0.85
 
 
 class UpdateProjectRequest(BaseModel):
@@ -34,6 +35,7 @@ class UpdateProjectRequest(BaseModel):
     default_branch: str | None = None
     credential_ids: list[str] | None = None
     status: ProjectStatus | None = None
+    confidence_threshold: float | None = None
     ai_provider_id: str | None = None
     model_id: str | None = None
     workflow_definition_id: str | None = None
@@ -59,6 +61,7 @@ async def create_project(
         default_branch=body.default_branch,
         credential_ids=tuple(body.credential_ids),
         status=body.status,
+        confidence_threshold=body.confidence_threshold,
     )
     await store.add(project)
     await dispatch_event(

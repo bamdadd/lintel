@@ -35,6 +35,7 @@ class Project:
     default_branch: str = "main"
     credential_ids: tuple[str, ...] = ()
     status: ProjectStatus = ProjectStatus.ACTIVE
+    confidence_threshold: float = 0.85
 
 
 class WorkItemStatus(StrEnum):
@@ -297,6 +298,7 @@ class ApprovalStatus(StrEnum):
     APPROVED = "approved"
     REJECTED = "rejected"
     EXPIRED = "expired"
+    AUTO_APPROVED = "auto_approved"
 
 
 @dataclass(frozen=True)
@@ -311,6 +313,25 @@ class ApprovalRequest:
     decided_by: str = ""
     reason: str = ""
     expires_at: str = ""
+    confidence: float = 0.0
+    threshold: float = 0.85
+    correction: dict[str, object] | None = None
+    reasoning: str = ""
+
+
+@dataclass(frozen=True)
+class CorrectionRecord:
+    """Stores agent correction data — training signal for strategy improvement."""
+
+    correction_id: str
+    approval_id: str
+    run_id: str
+    stage: str
+    original_output: dict[str, object] | None = None
+    correction: dict[str, object] | None = None
+    reasoning: str = ""
+    corrected_by: str = ""
+    corrected_at: str = ""
 
 
 # --- Notifications ---

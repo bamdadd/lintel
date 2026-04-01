@@ -1,7 +1,11 @@
 """Workflow node implementations.
 
 Exports the shared HumanInterruptNode base and its subclasses
+<<<<<<< Updated upstream
 (EditableReportNode, HumanTaskNode, ApprovalGateNode) for human-in-the-loop
+=======
+(ApprovalGateNode, EditableReportNode, HumanTaskNode) for human-in-the-loop
+>>>>>>> Stashed changes
 interrupt/resume workflows.
 """
 
@@ -13,6 +17,7 @@ __all__ = [
     "EditableReportNode",
     "HumanInterruptNode",
     "HumanTaskNode",
+    "NodeRejectedError",
 ]
 
 
@@ -22,6 +27,10 @@ def __getattr__(name: str) -> object:
         from lintel.workflows.nodes.approval_gate import ApprovalGateNode
 
         return ApprovalGateNode
+    if name == "NodeRejectedError":
+        from lintel.workflows.nodes.approval_gate import NodeRejectedError
+
+        return NodeRejectedError
     if name == "EditableReportNode":
         from lintel.workflows.nodes.editable_report import EditableReportNode
 

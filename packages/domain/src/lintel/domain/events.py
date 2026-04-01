@@ -201,6 +201,20 @@ class ApprovalRequestRejected(EventEnvelope):
     event_type: str = "ApprovalRequestRejected"
 
 
+@dataclass(frozen=True)
+class ApprovalAutoApproved(EventEnvelope):
+    """Emitted when confidence exceeds threshold and approval is auto-granted."""
+
+    event_type: str = "ApprovalAutoApproved"
+
+
+@dataclass(frozen=True)
+class AgentCorrected(EventEnvelope):
+    """Stores (original_output, correction, reasoning) — training signal for REQ-034."""
+
+    event_type: str = "AgentCorrected"
+
+
 # --- Notification Events ---
 
 
@@ -860,6 +874,8 @@ register_events(
     ApprovalRequestCreated,
     ApprovalRequestApproved,
     ApprovalRequestRejected,
+    ApprovalAutoApproved,
+    AgentCorrected,
     NotificationSent,
     NotificationRuleCreated,
     NotificationRuleUpdated,

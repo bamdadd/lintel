@@ -141,6 +141,7 @@ class ProjectData(BaseModel):
     default_branch: str = "main"
     credential_ids: list[str] = Field(default_factory=list)
     status: str = "active"
+    confidence_threshold: float = 0.85
     compliance_config: ComplianceConfig = Field(default_factory=ComplianceConfig)
 
     model_config = ConfigDict(extra="allow")
