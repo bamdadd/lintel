@@ -1,16 +1,30 @@
-"""Guardrail evaluation engine (GRD-7).
+"""Guardrail evaluation engine (GRD-1).
 
 Subscribes to domain events via the EventBus, evaluates matching guardrail
-rules, and emits GuardrailTriggered events when conditions are met.
+rules using the generic expression evaluator, respects cooldowns, and emits
+GuardrailTriggered events when conditions are met.
 """
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import structlog
 
+from lintel.domain.guardrails.evaluator import evaluate_condition
+from lintel.domain.guardrails.models import (
+    CooldownState,
+    EvaluationResult,
+    GuardrailAction,
+    RuleEvaluation,
+    RuleVerdict,
+)
+
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any
+
     from lintel.contracts.events import EventEnvelope
     from lintel.contracts.protocols import EventBus
     from lintel.domain.guardrails.models import GuardrailRule
@@ -29,7 +43,15 @@ class GuardrailBlockError(Exception):
 
 
 class GuardrailEngine:
-    """Evaluates guardrail rules against incoming events."""
+    """Evaluates guardrail rules against incoming events.
+
+    The engine supports two usage patterns:
+
+    1. **EventBus subscriber** — call :meth:`register` to subscribe, then
+       the engine is invoked automatically via :meth:`handle`.
+    2. **Direct evaluation** — call :meth:`evaluate` with a list of rules
+       and a context dict to get structured :class:`EvaluationResult`.
+    """
 
     HANDLED_TYPES: frozenset[str] = frozenset(
         {
@@ -38,6 +60,7 @@ class GuardrailEngine:
             "TestResultRecorded",
             "ArtifactCreated",
             "PullRequestCreated",
+            "ModelCallCompleted",
         }
     )
 
@@ -45,9 +68,18 @@ class GuardrailEngine:
         self,
         rule_repo: RuleRepository,
         event_bus: EventBus | None = None,
+        *,
+        cooldown: CooldownState | None = None,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self._rule_repo = rule_repo
         self._event_bus = event_bus
+        self._cooldown = cooldown or CooldownState()
+        self._clock = clock or time.monotonic
+
+    # -----------------------------------------------------------------
+    # EventBus integration
+    # -----------------------------------------------------------------
 
     async def register(self, bus: EventBus) -> None:
         """Subscribe to all handled event types on the given bus."""
@@ -60,58 +92,119 @@ class GuardrailEngine:
         if not rules:
             return
 
-        payload = event.payload
+        payload: dict[str, Any] = dict(event.payload)
+        result = self.evaluate(rules, payload)
+
+        for evaluation in result.triggered_rules:
+            await self._fire(evaluation.rule, event)
+
+    # -----------------------------------------------------------------
+    # Direct evaluation API
+    # -----------------------------------------------------------------
+
+    def evaluate(
+        self,
+        rules: list[GuardrailRule],
+        context: dict[str, Any],
+        *,
+        scope_key: str = "",
+    ) -> EvaluationResult:
+        """Evaluate a list of rules against a context dict.
+
+        Args:
+            rules: Rules to evaluate.
+            context: The payload / context dict (action type, token count, etc.).
+            scope_key: Optional scope for cooldown tracking (e.g. project_id).
+
+        Returns:
+            An :class:`EvaluationResult` with per-rule verdicts.
+        """
+        evaluations: list[RuleEvaluation] = []
+        has_block = False
+        now = self._clock()
+
         for rule in rules:
             if not rule.enabled:
+                evaluations.append(
+                    RuleEvaluation(
+                        rule=rule,
+                        verdict=RuleVerdict.PASS,
+                        triggered=False,
+                        message="Rule disabled",
+                    )
+                )
                 continue
-            triggered = self._evaluate_condition(rule, payload)
-            if triggered:
-                await self._fire(rule, event)
 
-    def _evaluate_condition(self, rule: GuardrailRule, payload: dict[str, object]) -> bool:
-        """Evaluate a rule's condition against an event payload."""
-        condition = rule.condition
-        threshold = rule.threshold
+            # Cooldown check
+            if self._cooldown.in_cooldown(rule.rule_id, rule.cooldown_seconds, now, scope_key):
+                evaluations.append(
+                    RuleEvaluation(
+                        rule=rule,
+                        verdict=RuleVerdict.PASS,
+                        triggered=False,
+                        message="In cooldown",
+                    )
+                )
+                continue
 
-        # rework_rate > threshold
-        if condition == "rework_rate > threshold" and threshold is not None:
-            return float(payload.get("rework_rate", 0)) > threshold
+            # Evaluate condition
+            try:
+                triggered = evaluate_condition(rule.condition, context, threshold=rule.threshold)
+            except ValueError as exc:
+                evaluations.append(
+                    RuleEvaluation(
+                        rule=rule,
+                        verdict=RuleVerdict.ERROR,
+                        triggered=False,
+                        message=str(exc),
+                    )
+                )
+                continue
 
-        # run_cost > threshold
-        if condition == "run_cost > threshold" and threshold is not None:
-            return float(payload.get("run_cost", 0)) > threshold
+            if not triggered:
+                evaluations.append(
+                    RuleEvaluation(
+                        rule=rule,
+                        verdict=RuleVerdict.PASS,
+                        triggered=False,
+                    )
+                )
+                continue
 
-        # project_daily_cost > threshold
-        if condition == "project_daily_cost > threshold" and threshold is not None:
-            return float(payload.get("project_daily_cost", 0)) > threshold
+            # Triggered — record cooldown and determine verdict
+            self._cooldown.record(rule.rule_id, now, scope_key)
 
-        # duration_seconds > threshold
-        if condition == "duration_seconds > threshold" and threshold is not None:
-            return float(payload.get("duration_seconds", 0)) > threshold
+            if rule.action == GuardrailAction.BLOCK:
+                verdict = RuleVerdict.FAIL
+                has_block = True
+            elif rule.action == GuardrailAction.WARN:
+                verdict = RuleVerdict.WARN
+            else:
+                # REQUIRE_APPROVAL — treat as FAIL (blocks progression)
+                verdict = RuleVerdict.FAIL
+                has_block = True
 
-        # verdict == 'failed'
-        if condition == "verdict == 'failed'":
-            return str(payload.get("verdict", "")).lower() == "failed"
+            evaluations.append(
+                RuleEvaluation(
+                    rule=rule,
+                    verdict=verdict,
+                    triggered=True,
+                    message=f"{rule.action.value}: {rule.name}",
+                )
+            )
 
-        # lines_changed > threshold
-        if condition == "lines_changed > threshold" and threshold is not None:
-            return float(payload.get("lines_changed", 0)) > threshold
-
-        # pii_detected == true
-        if condition == "pii_detected == true":
-            return bool(payload.get("pii_detected", False))
-
-        logger.warning(
-            "guardrail_unknown_condition",
-            condition=condition,
-            rule_id=rule.rule_id,
+        return EvaluationResult(
+            evaluations=tuple(evaluations),
+            passed=not has_block,
         )
-        return False
+
+    # -----------------------------------------------------------------
+    # Internal helpers
+    # -----------------------------------------------------------------
 
     async def _fire(self, rule: GuardrailRule, event: EventEnvelope) -> None:
         """Emit a GuardrailTriggered event and handle BLOCK actions."""
         from lintel.domain.events import GuardrailTriggered
-        from lintel.domain.guardrails.models import GuardrailAction
 
         triggered_event = GuardrailTriggered(
             payload={
@@ -142,5 +235,5 @@ class GuardrailEngine:
             raise GuardrailBlockError(
                 rule_id=rule.rule_id,
                 rule_name=rule.name,
-                message=(f"Guardrail BLOCK: {rule.name} triggered on {event.event_type}"),
+                message=f"Guardrail BLOCK: {rule.name} triggered on {event.event_type}",
             )
