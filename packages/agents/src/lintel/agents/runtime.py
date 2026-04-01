@@ -363,10 +363,7 @@ class AgentRuntime:
                 prompt_tokens=total_input_tokens,
                 completion_tokens=total_output_tokens,
             )
-            if isinstance(cost_result, tuple):
-                total_cost_usd = sum(cost_result)
-            else:
-                total_cost_usd = cost_result
+            total_cost_usd = sum(cost_result) if isinstance(cost_result, tuple) else cost_result
         except Exception:
             total_cost_usd = 0.0
 
