@@ -12,6 +12,12 @@ from lintel.sandbox.errors import (
     SandboxNotFoundError,
     SandboxTimeoutError,
 )
+from lintel.sandbox.resource_guard import (
+    ResourceGuard,
+    build_egress_iptables_script,
+    build_security_opt,
+    build_storage_opt,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -29,6 +35,8 @@ class DockerSandboxManager:
         self._max_sandboxes = max_sandboxes
         self._active = 0
         self._lock = asyncio.Lock()
+        self._guards: dict[str, ResourceGuard] = {}
+        self._configs: dict[str, SandboxConfig] = {}
 
     def _get_client(self) -> Any:  # noqa: ANN401
         if self._client is None:
@@ -88,13 +96,14 @@ class DockerSandboxManager:
             "command": "sleep infinity",
             "detach": True,
             "cap_drop": ["ALL"],
-            "security_opt": ["no-new-privileges:true"],
+            "security_opt": build_security_opt(config.resource_limits),
             "read_only": False,
             "network_mode": "bridge" if config.network_enabled else "none",
             "mem_limit": config.memory_limit,
             "nano_cpus": config.cpu_quota * 10000,
             "cpuset_cpus": f"0-{max(0, config.cpu_quota // 100000 - 1)}",
-            "pids_limit": 256,
+            "pids_limit": min(config.resource_limits.max_processes, 256),
+            "storage_opt": build_storage_opt(config.resource_limits),
             "tmpfs": {
                 "/tmp": "size=200m,exec,uid=1000,gid=1000",
             },
@@ -161,8 +170,24 @@ class DockerSandboxManager:
                 await asyncio.to_thread(vol.remove, force=True)
             raise
         self._containers[sandbox_id] = container
+        self._configs[sandbox_id] = config
+        self._guards[sandbox_id] = ResourceGuard(config.tool_limits)
+
+        # Apply network egress restrictions if configured
+        if config.network_enabled and config.network_egress.allowed_domains:
+            egress_script = build_egress_iptables_script(config.network_egress)
+            if egress_script:
+                await asyncio.to_thread(
+                    container.exec_run,
+                    ["/bin/sh", "-c", egress_script],
+                    user="root",
+                )
 
         return sandbox_id
+
+    def get_guard(self, sandbox_id: str) -> ResourceGuard | None:
+        """Return the resource guard for a sandbox, if it exists."""
+        return self._guards.get(sandbox_id)
 
     async def execute(
         self,
@@ -170,6 +195,10 @@ class DockerSandboxManager:
         job: SandboxJob,
     ) -> SandboxResult:
         from lintel.sandbox.types import SandboxResult
+
+        guard = self._guards.get(sandbox_id)
+        if guard is not None:
+            guard.record_tool_call()
 
         container = self._get_container(sandbox_id)
 
@@ -299,6 +328,10 @@ class DockerSandboxManager:
         return result.stdout
 
     async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
+        guard = self._guards.get(sandbox_id)
+        if guard is not None:
+            guard.record_file_write()
+
         import io
         import tarfile
 
@@ -433,6 +466,8 @@ class DockerSandboxManager:
             await asyncio.to_thread(network.disconnect, container)
 
     async def destroy(self, sandbox_id: str) -> None:
+        self._guards.pop(sandbox_id, None)
+        self._configs.pop(sandbox_id, None)
         container = self._containers.pop(sandbox_id, None)
         if container is None:
             # Try to find by label (e.g. after server restart)

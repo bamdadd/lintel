@@ -41,3 +41,19 @@ class SandboxCapacityExceededError(SandboxError):
         )
         self.active = active
         self.capacity = capacity
+
+
+class ToolCallLimitExceededError(SandboxError):
+    """Raised when tool call limit per step is exceeded."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"Tool call limit exceeded: max {limit} calls per step")
+        self.limit = limit
+
+
+class FileWriteLimitExceededError(SandboxError):
+    """Raised when file write limit per session is exceeded."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"File write limit exceeded: max {limit} writes per session")
+        self.limit = limit
