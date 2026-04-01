@@ -8,6 +8,11 @@ from lintel.contracts.concurrency import (
     SlotReleasedEvent,
 )
 from lintel.contracts.inbound_message import InboundMessage
+from lintel.contracts.protocols import (
+    EventSubscription,
+    SubscriptionHandler,
+    SubscriptionToken,
+)
 from lintel.contracts.protocols.artifact_store import ArtifactRef, ArtifactStore
 from lintel.contracts.step_models import (
     NodeType,
@@ -28,6 +33,7 @@ __all__ = [
     "ChannelAdapter",
     "ChannelType",
     "ConcurrencyState",
+    "EventSubscription",
     "InboundMessage",
     "NodeType",
     "ProjectStepModelOverride",
@@ -35,6 +41,8 @@ __all__ = [
     "SlotReleasedEvent",
     "StepModelOverrideRequest",
     "StepModelOverrideResponse",
+    "SubscriptionHandler",
+    "SubscriptionToken",
     "WorkQueueEntry",
     "WorkQueueStatus",
 ]
