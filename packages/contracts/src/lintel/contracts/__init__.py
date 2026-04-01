@@ -1,5 +1,6 @@
 """Contracts package — shared domain types and protocols."""
 
+from lintel.contracts.auth import AuthUser, TokenPair, UserRole
 from lintel.contracts.channel_adapter import ChannelAdapter
 from lintel.contracts.channel_type import ChannelType
 from lintel.contracts.concurrency import (
@@ -14,6 +15,7 @@ from lintel.contracts.protocols import (
     SubscriptionToken,
 )
 from lintel.contracts.protocols.artifact_store import ArtifactRef, ArtifactStore
+from lintel.contracts.protocols.auth_provider import AuthProvider
 from lintel.contracts.step_models import (
     NodeType,
     ProjectStepModelOverride,
@@ -30,6 +32,8 @@ __all__ = [
     "AgentQueuedEvent",
     "ArtifactRef",
     "ArtifactStore",
+    "AuthProvider",
+    "AuthUser",
     "ChannelAdapter",
     "ChannelType",
     "ConcurrencyState",
@@ -43,6 +47,8 @@ __all__ = [
     "StepModelOverrideResponse",
     "SubscriptionHandler",
     "SubscriptionToken",
+    "TokenPair",
+    "UserRole",
     "WorkQueueEntry",
     "WorkQueueStatus",
 ]

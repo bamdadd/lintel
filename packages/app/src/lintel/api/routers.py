@@ -9,6 +9,7 @@ from lintel.ai_providers_api.routes import router as ai_providers_router
 from lintel.api.routes import (
     admin,
     approvals,
+    auth,
     debug,
     events,
     health,
@@ -59,6 +60,7 @@ if TYPE_CHECKING:
 def mount_routers(app: FastAPI) -> None:
     """Register all API routers on the application."""
     app.include_router(health.router, tags=["health"])
+    app.include_router(auth.router, tags=["auth"])
     app.include_router(threads.router, prefix="/api/v1", tags=["threads"])
     app.include_router(repositories_router, prefix="/api/v1", tags=["repositories"])
     app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])

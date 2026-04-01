@@ -16,6 +16,16 @@ from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routers import mount_routers
 
 
+def _build_auth_provider() -> object | None:
+    """Eagerly build the auth provider so middleware can reference it.
+
+    The real provider is only usable after lifespan wires the user store,
+    but we need the *instance* at middleware registration time. The lifespan
+    will call ``_attach_auth_store`` to finish initialisation.
+    """
+    return None  # Placeholder — lifespan sets app.state.auth_provider
+
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
 

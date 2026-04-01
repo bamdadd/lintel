@@ -71,6 +71,28 @@ class ArtifactSettings(BaseSettings):
     s3_secret_access_key: str | None = None
 
 
+class AuthSettings(BaseSettings):
+    """JWT and admin seed configuration."""
+
+    model_config = {"env_prefix": "LINTEL_"}
+
+    jwt_secret_key: str = Field(
+        default="INSECURE-DEV-KEY-CHANGE-IN-PRODUCTION",
+        validation_alias="LINTEL_JWT_SECRET_KEY",
+    )
+    jwt_algorithm: str = Field(default="HS256", validation_alias="LINTEL_JWT_ALGORITHM")
+    jwt_access_token_expire_minutes: int = Field(
+        default=30,
+        validation_alias="LINTEL_JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=7,
+        validation_alias="LINTEL_JWT_REFRESH_TOKEN_EXPIRE_DAYS",
+    )
+    admin_email: str | None = Field(default=None, validation_alias="LINTEL_ADMIN_EMAIL")
+    admin_password: str | None = Field(default=None, validation_alias="LINTEL_ADMIN_PASSWORD")
+
+
 class Settings(BaseSettings):
     """Root settings aggregating all subsystems."""
 
@@ -81,6 +103,7 @@ class Settings(BaseSettings):
     model: ModelSettings = Field(default_factory=ModelSettings)
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
     artifact: ArtifactSettings = Field(default_factory=ArtifactSettings)
+    auth: AuthSettings = Field(default_factory=AuthSettings)
 
     log_level: str = "INFO"
     log_format: str = "json"

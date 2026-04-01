@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from lintel.contracts.protocols.artifact_store import ArtifactRef, ArtifactStore
+from lintel.contracts.protocols.auth_provider import AuthProvider
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 __all__ = [
     "ArtifactRef",
     "ArtifactStore",
+    "AuthProvider",
     "CommandDispatcher",
     "EventBus",
     "EventHandler",
