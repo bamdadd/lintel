@@ -646,6 +646,21 @@ class ComplianceMetricRemoved(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class RunMetricRecorded(EventEnvelope):
+    event_type: str = "RunMetricRecorded"
+
+
+@dataclass(frozen=True)
+class StrategyMutationSuggested(EventEnvelope):
+    event_type: str = "StrategyMutationSuggested"
+
+
+@dataclass(frozen=True)
+class TournamentCompleted(EventEnvelope):
+    event_type: str = "TournamentCompleted"
+
+
+@dataclass(frozen=True)
 class KnowledgeEntryCreated(EventEnvelope):
     event_type: str = "KnowledgeEntryCreated"
 
@@ -911,6 +926,9 @@ register_events(
     ComplianceMetricCreated,
     ComplianceMetricUpdated,
     ComplianceMetricRemoved,
+    RunMetricRecorded,
+    StrategyMutationSuggested,
+    TournamentCompleted,
     KnowledgeEntryCreated,
     KnowledgeEntryUpdated,
     KnowledgeEntryRemoved,

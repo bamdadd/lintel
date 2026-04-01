@@ -28,22 +28,42 @@ from lintel.experimentation_api.metrics import (
 from lintel.experimentation_api.metrics import (
     router as metrics_router,
 )
+from lintel.experimentation_api.run_metrics import (
+    CreateMutationRequest,
+    CreateRunMetricRequest,
+    RunTournamentRequest,
+    mutation_store_provider,
+    run_metric_store_provider,
+    suggest_mutations_for_failure,
+    tournament_store_provider,
+)
+from lintel.experimentation_api.run_metrics import (
+    router as run_metrics_router,
+)
 
 # Re-export for backward compatibility
 __all__ = [
     "CreateComplianceMetricRequest",
     "CreateExperimentRequest",
     "CreateKPIRequest",
+    "CreateMutationRequest",
+    "CreateRunMetricRequest",
+    "RunTournamentRequest",
     "UpdateComplianceMetricRequest",
     "UpdateExperimentRequest",
     "UpdateKPIRequest",
     "compliance_metric_store_provider",
     "experiment_store_provider",
     "kpi_store_provider",
+    "mutation_store_provider",
     "router",
+    "run_metric_store_provider",
+    "suggest_mutations_for_failure",
+    "tournament_store_provider",
 ]
 
 router = APIRouter()
 router.include_router(kpis_router)
 router.include_router(experiments_router)
 router.include_router(metrics_router)
+router.include_router(run_metrics_router)
