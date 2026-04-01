@@ -81,7 +81,10 @@ class GuardrailApprovalBridge:
             If the decision does not require approval (``should_pause`` is False).
         """
         if not decision.should_pause:
-            msg = f"Cannot request approval for tier {decision.tier.name}: should_pause is False"
+            msg = (
+                f"Cannot request approval for tier {decision.tier.name}: "
+                "should_pause is False"
+            )
             raise ValueError(msg)
 
         from lintel.domain.types import ApprovalRequest, ApprovalStatus
