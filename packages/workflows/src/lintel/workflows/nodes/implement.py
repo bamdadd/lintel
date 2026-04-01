@@ -263,6 +263,35 @@ async def spawn_implementation(
     if rebase_warning:
         outputs.append({"node": "implement_rebase", "output": rebase_warning})
 
+    # Persist TestResult entity
+    if agent_runtime is not None:
+        test_result_store = _configurable.get("test_result_store")
+        if test_result_store is None:
+            _app = _configurable.get("app_state")
+            if _app is None and run_id:
+                from lintel.workflows.nodes._runtime_registry import get_app_state
+
+                _app = get_app_state(run_id)
+            if _app is not None:
+                test_result_store = getattr(_app, "test_result_store", None)
+        if test_result_store is not None:
+            from uuid import uuid4
+
+            from lintel.domain.types import TestResult, TestVerdict
+
+            test_verdict_enum = TestVerdict.PASSED if test_passed else TestVerdict.FAILED
+            test_result = TestResult(
+                result_id=str(uuid4()),
+                run_id=state.get("run_id", ""),
+                stage_id="implement",
+                verdict=test_verdict_enum,
+            )
+            try:
+                await test_result_store.add(test_result)
+                logger.info("test_result_stored", result_id=test_result.result_id)
+            except Exception:
+                logger.warning("test_result_persist_failed", exc_info=True)
+
     # Persist code artifact
     diff_text = artifacts.get("content", "") if isinstance(artifacts, dict) else ""
     if diff_text:

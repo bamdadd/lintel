@@ -263,3 +263,38 @@ async def test_build_pr_body_includes_review_and_test_status() -> None:
     body = _build_pr_body(state, plan)
     assert "review passed" in body.lower() or "Review" in body
     assert "tests passing" in body.lower() or "Tests" in body
+
+
+async def test_close_emits_audit_entry() -> None:
+    """Close node emits an audit entry when audit_entry_store is available."""
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_success_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    audit_entries: list[Any] = []
+    audit_store = AsyncMock()
+    audit_store.add = AsyncMock(side_effect=lambda e: audit_entries.append(e))
+
+    app_state = MagicMock()
+    app_state.audit_entry_store = audit_store
+    app_state.sandbox_store = None
+
+    pipeline_store = AsyncMock()
+    pipeline_store.get = AsyncMock(return_value=None)
+
+    config: dict[str, Any] = {
+        "configurable": {
+            "sandbox_manager": sandbox,
+            "pipeline_store": pipeline_store,
+            "app_state": app_state,
+        }
+    }
+
+    await close_workflow(_make_state(), config)
+
+    assert len(audit_entries) == 1
+    entry = audit_entries[0]
+    assert entry.action in ("pr_created", "pipeline_closed")
+    assert entry.resource_type == "pipeline_run"
+    assert entry.resource_id == "run-1"
