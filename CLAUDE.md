@@ -12,7 +12,7 @@ Lintel is an open-source AI collaboration infrastructure platform. It orchestrat
 
 ## Workspace Structure
 
-This is a **uv workspace monorepo** with 44+ packages under `packages/`:
+This is a **uv workspace monorepo** with 45+ packages under `packages/`:
 
 **Core packages:**
 
@@ -73,6 +73,7 @@ This is a **uv workspace monorepo** with 44+ packages under `packages/`:
 | `packages/sandboxes-api/` | `lintel-sandboxes-api` | `lintel.sandboxes_api` | Sandbox lifecycle routes (proxies to lintel-sandbox) |
 | `packages/pipelines-api/` | `lintel-pipelines-api` | `lintel.pipelines_api` | Pipeline run + stage routes, SSE delivery loop |
 | `packages/chat-api/` | `lintel-chat-api` | `lintel.chat_api` | Chat conversation routes + ChatService |
+| `packages/auth-api/` | `lintel-auth-api` | `lintel.auth_api` | JWT authentication, login routes, auth middleware |
 
 Each package has `src/lintel/<pkg>/` source and colocated `tests/` directory. The `lintel` namespace is shared across packages via implicit namespace packages (no `__init__.py` in `src/lintel/`).
 
@@ -129,7 +130,7 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 **Event-sourced CQRS** with clean architecture boundaries enforced by workspace package dependencies:
 
 - `packages/contracts/` — **Slim kernel only** (EventEnvelope, ThreadRef, ActorType, core protocols). NEVER add new types, events, or commands here — put them in the relevant domain package instead.
-- `packages/domain/` — Domain types and events (projects, work items, boards, users, teams, compliance, etc.)
+- `packages/domain/` — Domain types, events, and sub-packages: `metrics/` (agent/DORA/human/team metrics + engine), `hooks/` (workflow hook engine + pattern matching), `notifications/` (multi-channel dispatcher), `reviews/` (review engine), `guardrails/` (condition language, approval bridge, cost rules, escalation), `auth/` (JWT, passwords), `git_events.py` (git webhook listeners)
 - `packages/agents/` — AI agent definitions and runtime, agent types/protocols/events
 - `packages/workflows/` — LangGraph workflow orchestration, workflow/pipeline types/events/commands
 - `packages/event-store/` — Append-only event persistence (Postgres + in-memory)
@@ -160,6 +161,13 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 - `lintel.contracts.protocols` — ONLY EventHandler, EventBus, CommandDispatcher, EventStore
 - `lintel.domain.types` — All domain types (Project, WorkItem, Board, User, Team, Policy, etc.)
 - `lintel.domain.events` — All domain events (ProjectCreated, WorkItemUpdated, etc.)
+- `lintel.domain.metrics` — Metrics engine, agent/DORA/human/team metric collectors
+- `lintel.domain.hooks` — HookEngine, pattern matching for workflow hooks
+- `lintel.domain.notifications` — NotificationDispatcher, notification types
+- `lintel.domain.reviews` — ReviewEngine, review models
+- `lintel.domain.guardrails` — GuardrailEvaluator, condition language, approval bridge
+- `lintel.domain.auth` — JWT utilities, password hashing
+- `lintel.domain.git_events` — GitEventListener, git webhook event types
 - `lintel.workflows.types` — Workflow types (PipelineRun, Stage, StageStatus, etc.)
 - `lintel.workflows.events` — Workflow events (PipelineRunStarted, WorkflowStarted, etc.)
 - `lintel.workflows.commands` — Workflow commands (StartWorkflow)
@@ -230,6 +238,15 @@ Domain logic is encapsulated in typed classes, not standalone functions:
 | `AuditEmitter` | `workflows/nodes/_event_helpers.py` | Audit entry recording |
 | `NotificationService` | `workflows/nodes/_notifications.py` | Phase change notifications |
 | `ReportVersionService` | `app/routes/pipelines.py` | Pipeline report versioning |
+| `MetricsEngine` | `domain/metrics/engine.py` | Aggregates agent, DORA, human, and team metrics |
+| `HookEngine` | `domain/hooks/engine.py` | Workflow hook registration and pattern-matched dispatch |
+| `NotificationDispatcher` | `domain/notifications/dispatcher.py` | Multi-channel notification delivery |
+| `ReviewEngine` | `domain/reviews/engine.py` | Automated codebase review orchestration |
+| `GuardrailEvaluator` | `domain/guardrails/evaluator.py` | Guardrail condition language evaluation |
+| `ApprovalBridge` | `domain/guardrails/approval_bridge.py` | Event-driven approval flow for guardrails |
+| `GitEventListener` | `domain/git_events.py` | Git webhook event handling and workflow triggers |
+| `WorkflowNode` | `workflows/base.py` | Base class for all workflow graph nodes |
+| `ApprovalGateNode` | `workflows/nodes/approval_gate.py` | Human approval gate within workflow graphs |
 
 **Workflow node pattern** — nodes instantiate `StageTracker` at the top:
 ```python

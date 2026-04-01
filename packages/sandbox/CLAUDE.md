@@ -6,6 +6,7 @@ Docker-based isolated code execution sandbox with defense-in-depth security.
 
 - `DockerSandboxManager` — implements `SandboxManager` protocol; creates/destroys Docker containers, executes commands, reads/writes files, streams output via `AsyncIterator`; recovers containers by label after server restart
 - `_tar_helpers` — internal helpers for packing/unpacking file trees via tar streams (not part of public API)
+- `StorageLimits` / `StorageUsage` — per-sandbox disk quota enforcement (REQ-031), defined in `types.py` and enforced in `docker_backend.py`
 
 ## Dependencies
 
