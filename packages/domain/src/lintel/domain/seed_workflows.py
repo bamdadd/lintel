@@ -1187,4 +1187,138 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         tags=("compliance", "regulation", "policy-generation"),
         is_builtin=True,
     ),
+    WorkflowDefinitionRecord(
+        definition_id="review_and_improve",
+        name="Review and Improve",
+        description=(
+            "Multi-dimension code review pipeline: fetch commits, analyse correctness, "
+            "security, performance, maintainability, and architecture, then aggregate "
+            "scores and optionally generate a fix PR."
+        ),
+        is_template=True,
+        stage_names=(
+            "fetch_commits",
+            "analyze_correctness",
+            "analyze_security",
+            "analyze_performance",
+            "analyze_maintainability",
+            "analyze_architecture",
+            "aggregate_scores",
+            "generate_review_report",
+            "generate_fix_pr",
+        ),
+        graph_nodes=(
+            "fetch_commits",
+            "analyze_correctness",
+            "analyze_security",
+            "analyze_performance",
+            "analyze_maintainability",
+            "analyze_architecture",
+            "aggregate_scores",
+            "generate_review_report",
+            "generate_fix_pr",
+        ),
+        graph_edges=(
+            ("fetch_commits", "analyze_correctness"),
+            ("analyze_correctness", "analyze_security"),
+            ("analyze_security", "analyze_performance"),
+            ("analyze_performance", "analyze_maintainability"),
+            ("analyze_maintainability", "analyze_architecture"),
+            ("analyze_architecture", "aggregate_scores"),
+            ("aggregate_scores", "generate_review_report"),
+        ),
+        conditional_edges=(
+            {
+                "source": "generate_review_report",
+                "targets": {
+                    "generate_fix_pr": "generate_fix_pr",
+                    "complete": "__end__",
+                },
+            },
+        ),
+        entry_point="fetch_commits",
+        node_metadata=(
+            {
+                "node": "fetch_commits",
+                "label": "Fetch Commits",
+                "agent": "system",
+                "description": ("Fetches recent commits and PR diffs for analysis."),
+            },
+            {
+                "node": "analyze_correctness",
+                "label": "Analyze Correctness",
+                "agent": "reviewer",
+                "agent_id": "agent_reviewer",
+                "description": (
+                    "Analyzes code correctness including logic errors, type mismatches, "
+                    "and missing edge cases."
+                ),
+            },
+            {
+                "node": "analyze_security",
+                "label": "Analyze Security",
+                "agent": "security",
+                "agent_id": "agent_security",
+                "description": (
+                    "Analyzes security against OWASP top-10 and common vulnerability patterns."
+                ),
+            },
+            {
+                "node": "analyze_performance",
+                "label": "Analyze Performance",
+                "agent": "reviewer",
+                "agent_id": "agent_reviewer",
+                "description": (
+                    "Analyzes performance issues including N+1 queries, missing indexes, "
+                    "and inefficient algorithms."
+                ),
+            },
+            {
+                "node": "analyze_maintainability",
+                "label": "Analyze Maintainability",
+                "agent": "reviewer",
+                "agent_id": "agent_reviewer",
+                "description": (
+                    "Analyzes maintainability including cyclomatic complexity, code duplication, "
+                    "and naming conventions."
+                ),
+            },
+            {
+                "node": "analyze_architecture",
+                "label": "Analyze Architecture",
+                "agent": "architect",
+                "agent_id": "agent_architect",
+                "description": (
+                    "Analyzes architecture adherence including layer violations, dependency "
+                    "direction, and pattern consistency."
+                ),
+            },
+            {
+                "node": "aggregate_scores",
+                "label": "Aggregate Scores",
+                "agent": "system",
+                "description": (
+                    "Combines dimension results into unified quality scores and severity ratings."
+                ),
+            },
+            {
+                "node": "generate_review_report",
+                "label": "Generate Review Report",
+                "agent": "system",
+                "description": ("Persists the ReviewReport with all findings and scores."),
+            },
+            {
+                "node": "generate_fix_pr",
+                "label": "Generate Fix PR",
+                "agent": "coder",
+                "agent_id": "agent_coder",
+                "description": (
+                    "Creates a fix PR when improvement_mode is enabled and severity "
+                    "exceeds the configured threshold."
+                ),
+            },
+        ),
+        tags=("review", "quality", "improvement"),
+        is_builtin=True,
+    ),
 )

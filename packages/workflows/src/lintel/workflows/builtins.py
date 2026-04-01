@@ -68,6 +68,17 @@ def _default_linear(_state: dict[str, Any]) -> str:
     return "continue"
 
 
+def _review_fix_decision(state: dict[str, Any]) -> str:
+    """Route to fix PR if improvement_mode is on and severity exceeds threshold."""
+    if not state.get("improvement_mode", False):
+        return "complete"
+    severity = state.get("max_severity", 0)
+    threshold = state.get("severity_threshold", 7)
+    if severity >= threshold:
+        return "generate_fix_pr"
+    return "complete"
+
+
 # ---------------------------------------------------------------------------
 # Registration helpers
 # ---------------------------------------------------------------------------
@@ -84,6 +95,12 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
     """Register all built-in workflow node types into *registry*."""
     from lintel.workflows.nodes.close import close_workflow
     from lintel.workflows.nodes.generic import (
+        aggregate_scores,
+        analyze_architecture,
+        analyze_correctness,
+        analyze_maintainability,
+        analyze_performance,
+        analyze_security,
         build_release,
         code_scan,
         codebase_tour,
@@ -92,8 +109,11 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
         dependency_scan,
         deploy,
         draft_docs,
+        fetch_commits,
         first_task,
         fix_bug,
+        generate_fix_pr,
+        generate_review_report,
         hotfix,
         investigate,
         lint_code,
@@ -556,6 +576,90 @@ def register_builtin_nodes(registry: NodeRegistry) -> None:
             ),
             prototype,
         ),
+        # ---- Review-and-improve ----
+        (
+            NodeDescriptor(
+                node_type="fetch_commits",
+                display_name="Fetch Commits",
+                description="Fetches recent commits and PR diffs for analysis.",
+                tags=("review", "quality", "improvement"),
+            ),
+            fetch_commits,
+        ),
+        (
+            NodeDescriptor(
+                node_type="analyze_correctness",
+                display_name="Analyze Correctness",
+                description="Analyzes code correctness.",
+                tags=("review", "quality", "improvement"),
+            ),
+            analyze_correctness,
+        ),
+        (
+            NodeDescriptor(
+                node_type="analyze_security",
+                display_name="Analyze Security",
+                description="Analyzes security (OWASP).",
+                tags=("review", "quality", "improvement"),
+            ),
+            analyze_security,
+        ),
+        (
+            NodeDescriptor(
+                node_type="analyze_performance",
+                display_name="Analyze Performance",
+                description="Analyzes performance (N+1, indexes).",
+                tags=("review", "quality", "improvement"),
+            ),
+            analyze_performance,
+        ),
+        (
+            NodeDescriptor(
+                node_type="analyze_maintainability",
+                display_name="Analyze Maintainability",
+                description="Analyzes maintainability (complexity, duplication).",
+                tags=("review", "quality", "improvement"),
+            ),
+            analyze_maintainability,
+        ),
+        (
+            NodeDescriptor(
+                node_type="analyze_architecture",
+                display_name="Analyze Architecture",
+                description="Analyzes architecture adherence.",
+                tags=("review", "quality", "improvement"),
+            ),
+            analyze_architecture,
+        ),
+        (
+            NodeDescriptor(
+                node_type="aggregate_scores",
+                display_name="Aggregate Scores",
+                description="Combines dimension results into unified scores.",
+                tags=("review", "quality", "improvement"),
+            ),
+            aggregate_scores,
+        ),
+        (
+            NodeDescriptor(
+                node_type="generate_review_report",
+                display_name="Generate Review Report",
+                description="Persists ReviewReport.",
+                router_type="review_fix_decision",
+                output_edges=("generate_fix_pr", "complete"),
+                tags=("review", "quality", "improvement"),
+            ),
+            generate_review_report,
+        ),
+        (
+            NodeDescriptor(
+                node_type="generate_fix_pr",
+                display_name="Generate Fix PR",
+                description="Conditional: creates fix PR if severity exceeds threshold.",
+                tags=("review", "quality", "improvement"),
+            ),
+            generate_fix_pr,
+        ),
     ]
 
     for descriptor, handler in _nodes:
@@ -568,6 +672,7 @@ def register_builtin_routers(factory: RouterFactory) -> None:
     factory.register_router("check_phase", _check_phase)
     factory.register_router("review_decision", _review_decision)
     factory.register_router("default_linear", _default_linear)
+    factory.register_router("review_fix_decision", _review_fix_decision)
 
 
 def ensure_builtins_registered() -> None:

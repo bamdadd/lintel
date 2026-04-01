@@ -40,6 +40,8 @@ from lintel.policies_api.routes import router as policies_router
 from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
 from lintel.repositories_api.routes import router as repositories_router
+from lintel.review_reports_api.routes import router as review_reports_router
+from lintel.review_scores_api.routes import router as review_scores_router
 from lintel.sandboxes_api.routes import router as sandboxes_router
 from lintel.settings_api.channels_router import router as channels_settings_router
 from lintel.settings_api.routes import router as settings_router
@@ -100,6 +102,8 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(integration_patterns_router, prefix="/api/v1", tags=["integration-patterns"])
     app.include_router(process_mining_router, prefix="/api/v1", tags=["process-mining"])
     app.include_router(stage_catalogue_router, prefix="/api/v1", tags=["stage-catalogue"])
+    app.include_router(review_reports_router, prefix="/api/v1", tags=["review-reports"])
+    app.include_router(review_scores_router, prefix="/api/v1", tags=["review-scores"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
     app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])

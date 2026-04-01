@@ -258,6 +258,19 @@ export const router = createBrowserRouter([
         path: 'settings/channels',
         lazy: () => import('@/features/channels/ChannelsPage'),
       },
+      // --- Review Reports ---
+      {
+        path: 'review/reports/:repoId',
+        lazy: () => import('@/features/review/ReviewReportsList'),
+      },
+      {
+        path: 'review/reports/detail/:reportId',
+        lazy: () => import('@/features/review/ReviewReportDetail'),
+      },
+      {
+        path: 'review/trends/:repoId',
+        lazy: () => import('@/features/review/ReviewScoreTrends'),
+      },
     ],
   },
   {

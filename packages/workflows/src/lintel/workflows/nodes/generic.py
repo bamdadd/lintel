@@ -73,3 +73,26 @@ complete_onboarding = _stub("complete", "complete", "Onboarding complete")
 define_scope = _stub("define_scope", "scoping", "Scope defined")
 research = _stub("research", "researching", "Research complete")
 prototype = _stub("prototype", "prototyping", "Prototype built")
+
+# Review-and-improve nodes
+fetch_commits = _stub("fetch_commits", "fetching", "Recent commits and PR diffs fetched")
+analyze_correctness = _stub(
+    "analyze_correctness", "analyzing", "Code correctness analysis complete"
+)
+analyze_security = _stub("analyze_security", "analyzing", "Security (OWASP) analysis complete")
+analyze_performance = _stub(
+    "analyze_performance", "analyzing", "Performance (N+1, indexes) analysis complete"
+)
+analyze_maintainability = _stub(
+    "analyze_maintainability",
+    "analyzing",
+    "Maintainability (complexity, duplication) analysis complete",
+)
+analyze_architecture = _stub(
+    "analyze_architecture", "analyzing", "Architecture adherence analysis complete"
+)
+aggregate_scores = _stub(
+    "aggregate_scores", "aggregating", "Dimension results combined into unified scores"
+)
+generate_review_report = _stub("generate_review_report", "reporting", "ReviewReport persisted")
+generate_fix_pr = _stub("generate_fix_pr", "fixing", "Fix PR created for high-severity findings")

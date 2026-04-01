@@ -85,6 +85,10 @@ from lintel.projects_api.routes import project_store_provider
 from lintel.projects_api.store import ProjectStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import repo_provider_provider, repository_store_provider
+from lintel.review_reports_api.routes import review_report_store_provider
+from lintel.review_reports_api.store import ReviewReportStore
+from lintel.review_scores_api.routes import review_score_store_provider
+from lintel.review_scores_api.store import ReviewScoreStore
 from lintel.sandboxes_api.routes import SandboxStore
 from lintel.skills_api.routes import skill_store_provider
 from lintel.skills_api.store import InMemorySkillStore
@@ -206,6 +210,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "architecture_decision_store": ComplianceStore("decision_id"),
         "policy_generation_store": ComplianceStore("run_id"),
         "guardrail_rule_store": ComplianceStore("rule_id"),
+        "review_report_store": ReviewReportStore(),
+        "review_score_store": ReviewScoreStore(),
     }
 
 
@@ -508,6 +514,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     workflow_definition_store_provider.override(stores["workflow_definition_store"])
     guardrail_rule_store_provider.override(stores["guardrail_rule_store"])
     auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
+    review_report_store_provider.override(stores["review_report_store"])
+    review_score_store_provider.override(stores["review_score_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
