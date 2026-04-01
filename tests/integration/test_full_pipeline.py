@@ -105,3 +105,15 @@ def test_pipeline_stage_timed_out_event_registered() -> None:
 
     assert "PipelineStageTimedOut" in EVENT_TYPE_MAP
     assert EVENT_TYPE_MAP["PipelineStageTimedOut"] is PipelineStageTimedOut
+
+
+def test_report_edited_event_registered() -> None:
+    """StageReportEdited and StageReportRegenerated are registered in the global event type map."""
+    from lintel.contracts.events import EVENT_TYPE_MAP
+    from lintel.workflows.events import StageReportEdited, StageReportRegenerated
+
+    assert "StageReportEdited" in EVENT_TYPE_MAP
+    assert EVENT_TYPE_MAP["StageReportEdited"] is StageReportEdited
+
+    assert "StageReportRegenerated" in EVENT_TYPE_MAP
+    assert EVENT_TYPE_MAP["StageReportRegenerated"] is StageReportRegenerated

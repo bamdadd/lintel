@@ -31,6 +31,8 @@ import {
   IconGitPullRequest,
   IconCode,
   IconListCheck,
+  IconPencil,
+  IconRefresh,
 } from '@tabler/icons-react';
 import '@xyflow/react/dist/style.css';
 
@@ -124,6 +126,20 @@ const STATUS_CONFIG: Record<string, {
     color: '#f97316',
     bg: 'rgba(249, 115, 22, 0.08)',
     border: 'rgba(249, 115, 22, 0.3)',
+  },
+  report_ready: {
+    icon: IconPencil,
+    color: '#f59e0b',
+    bg: 'rgba(245, 158, 11, 0.08)',
+    border: 'rgba(245, 158, 11, 0.4)',
+    glow: '0 0 10px rgba(245, 158, 11, 0.2)',
+  },
+  regenerating: {
+    icon: IconRefresh,
+    color: '#3b82f6',
+    bg: 'rgba(59, 130, 246, 0.1)',
+    border: 'rgba(59, 130, 246, 0.5)',
+    glow: '0 0 12px rgba(59, 130, 246, 0.3)',
   },
 };
 
