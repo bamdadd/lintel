@@ -26,11 +26,19 @@ export async function customInstance<T>(
   url: string,
   options?: RequestInit,
 ): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Correlation-ID': globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
+  };
+  const token = localStorage.getItem('lintel_access_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${getBaseUrl()}${url}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      'X-Correlation-ID': globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2),
+      ...headers,
       ...options?.headers,
     },
   });

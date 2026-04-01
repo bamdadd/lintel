@@ -1,9 +1,18 @@
 import { createBrowserRouter } from 'react-router';
 import { AppLayout } from '@/shared/layout/AppLayout';
 import { RouteError } from '@/shared/components/RouteError';
+import { ProtectedRoute } from '@/features/auth';
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    lazy: () => import('@/features/auth/LoginPage'),
+  },
+  {
+    element: <ProtectedRoute />,
+    errorElement: <RouteError />,
+    children: [
+      {
     path: '/',
     element: <AppLayout />,
     errorElement: <RouteError />,
@@ -263,5 +272,7 @@ export const router = createBrowserRouter([
   {
     path: '/setup',
     lazy: () => import('@/features/settings/pages/SetupWizardPage'),
+  },
+    ],
   },
 ]);
