@@ -1,0 +1,24 @@
+.output {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(20, 184, 166, 0.10);
+  border: 1.5px solid rgba(20, 184, 166, 0.35);
+  cursor: default;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #14b8a6;
+  white-space: nowrap;
+}
+
+.handle {
+  background: rgba(20, 184, 166, 0.4) !important;
+  border: none !important;
+  width: 6px !important;
+  height: 6px !important;
+}

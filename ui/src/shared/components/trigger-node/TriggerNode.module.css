@@ -1,0 +1,30 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(234, 179, 8, 0.10);
+  border: 1.5px solid rgba(234, 179, 8, 0.4);
+  cursor: default;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #eab308;
+  white-space: nowrap;
+}
+
+.timestamp {
+  font-size: 10px;
+  color: rgba(234, 179, 8, 0.6);
+  white-space: nowrap;
+}
+
+.handle {
+  background: rgba(234, 179, 8, 0.4) !important;
+  border: none !important;
+  width: 6px !important;
+  height: 6px !important;
+}

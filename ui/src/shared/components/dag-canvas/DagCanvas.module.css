@@ -1,0 +1,21 @@
+.canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.animatedEdge {
+  stroke-dasharray: 5;
+  animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.edgeLabel {
+  font-size: 10px;
+  fill: var(--mantine-color-dimmed, #6b7280);
+  pointer-events: none;
+}
