@@ -160,3 +160,89 @@ class TestGuardrailRuleFieldTypes:
             "is_default",
             "enabled",
         }
+
+
+# ---------------------------------------------------------------------------
+# RuleVerdict enum
+# ---------------------------------------------------------------------------
+
+
+class TestRuleVerdict:
+    def test_members(self) -> None:
+        from lintel.domain.guardrails.models import RuleVerdict
+
+        assert set(RuleVerdict) == {
+            RuleVerdict.PASS,
+            RuleVerdict.WARN,
+            RuleVerdict.FAIL,
+            RuleVerdict.ERROR,
+        }
+
+    def test_is_str(self) -> None:
+        from lintel.domain.guardrails.models import RuleVerdict
+
+        assert isinstance(RuleVerdict.PASS, str)
+
+
+# ---------------------------------------------------------------------------
+# CooldownState
+# ---------------------------------------------------------------------------
+
+
+class TestCooldownState:
+    def test_not_in_cooldown_initially(self) -> None:
+        from lintel.domain.guardrails.models import CooldownState
+
+        cs = CooldownState()
+        assert not cs.in_cooldown("r1", 300, now=100.0)
+
+    def test_in_cooldown_after_record(self) -> None:
+        from lintel.domain.guardrails.models import CooldownState
+
+        cs = CooldownState()
+        cs.record("r1", now=100.0)
+        assert cs.in_cooldown("r1", 300, now=200.0)
+
+    def test_cooldown_expires(self) -> None:
+        from lintel.domain.guardrails.models import CooldownState
+
+        cs = CooldownState()
+        cs.record("r1", now=100.0)
+        assert not cs.in_cooldown("r1", 300, now=500.0)
+
+    def test_zero_cooldown_never_blocks(self) -> None:
+        from lintel.domain.guardrails.models import CooldownState
+
+        cs = CooldownState()
+        cs.record("r1", now=100.0)
+        assert not cs.in_cooldown("r1", 0, now=100.0)
+
+    def test_scoped_cooldown(self) -> None:
+        from lintel.domain.guardrails.models import CooldownState
+
+        cs = CooldownState()
+        cs.record("r1", now=100.0, scope_key="project-a")
+        assert cs.in_cooldown("r1", 300, now=200.0, scope_key="project-a")
+        assert not cs.in_cooldown("r1", 300, now=200.0, scope_key="project-b")
+
+
+# ---------------------------------------------------------------------------
+# EvaluationResult
+# ---------------------------------------------------------------------------
+
+
+class TestEvaluationResult:
+    def test_triggered_rules(self) -> None:
+        from lintel.domain.guardrails.models import EvaluationResult, RuleEvaluation, RuleVerdict
+
+        rule = GuardrailRule(
+            rule_id="r1", name="n", event_type="E", condition="c", action=GuardrailAction.WARN
+        )
+        evals = (
+            RuleEvaluation(rule=rule, verdict=RuleVerdict.WARN, triggered=True),
+            RuleEvaluation(rule=rule, verdict=RuleVerdict.PASS, triggered=False),
+        )
+        result = EvaluationResult(evaluations=evals, passed=True)
+        assert len(result.triggered_rules) == 1
+        assert len(result.warnings) == 1
+        assert len(result.failures) == 0
