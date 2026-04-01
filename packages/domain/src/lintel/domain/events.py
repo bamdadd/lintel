@@ -797,6 +797,39 @@ class HookLoopDetected(EventEnvelope):
     event_type: str = "HookLoopDetected"
 
 
+# --- Evolutionary Strategy Events (REQ-034.2) ---
+
+
+@dataclass(frozen=True)
+class RunMetricRecorded(EventEnvelope):
+    event_type: str = "RunMetricRecorded"
+
+
+@dataclass(frozen=True)
+class EvolutionaryStrategyCreated(EventEnvelope):
+    event_type: str = "EvolutionaryStrategyCreated"
+
+
+@dataclass(frozen=True)
+class EvolutionaryStrategyUpdated(EventEnvelope):
+    event_type: str = "EvolutionaryStrategyUpdated"
+
+
+@dataclass(frozen=True)
+class EvolutionaryStrategyRemoved(EventEnvelope):
+    event_type: str = "EvolutionaryStrategyRemoved"
+
+
+@dataclass(frozen=True)
+class StrategyPromoted(EventEnvelope):
+    event_type: str = "StrategyPromoted"
+
+
+@dataclass(frozen=True)
+class StrategyPruned(EventEnvelope):
+    event_type: str = "StrategyPruned"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -937,4 +970,10 @@ register_events(
     PolicyGenerationStarted,
     PolicyGenerationCompleted,
     PolicyGenerationFailed,
+    RunMetricRecorded,
+    EvolutionaryStrategyCreated,
+    EvolutionaryStrategyUpdated,
+    EvolutionaryStrategyRemoved,
+    StrategyPromoted,
+    StrategyPruned,
 )
