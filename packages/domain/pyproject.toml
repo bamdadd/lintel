@@ -8,6 +8,8 @@ dependencies = [
     "lintel-observability",
     "lintel-sandbox",
     "structlog>=24.4",
+    "PyJWT>=2.9",
+    "bcrypt>=4.2",
     "langgraph>=0.3",
     "croniter>=6.0.0",
 ]

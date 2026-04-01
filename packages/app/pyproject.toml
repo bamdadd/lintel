@@ -55,6 +55,7 @@ dependencies = [
     "lintel-memory",
     "lintel-memory-api",
     "lintel-stage-catalogue-api",
+    "lintel-auth-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -121,6 +122,7 @@ lintel-chat-api = { workspace = true }
 lintel-memory = { workspace = true }
 lintel-memory-api = { workspace = true }
 lintel-stage-catalogue-api = { workspace = true }
+lintel-auth-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

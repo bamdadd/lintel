@@ -34,6 +34,8 @@ from lintel.artifacts_api.store import (
 )
 from lintel.audit_api.routes import audit_entry_store_provider
 from lintel.audit_api.store import AuditEntryStore
+from lintel.auth_api.routes import auth_user_store_provider
+from lintel.auth_api.store import InMemoryAuthUserStore
 from lintel.automations_api.routes import InMemoryAutomationStore, automation_store_provider
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
@@ -505,6 +507,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     process_mining_store_provider.override(stores["process_mining"])
     workflow_definition_store_provider.override(stores["workflow_definition_store"])
     guardrail_rule_store_provider.override(stores["guardrail_rule_store"])
+    auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
