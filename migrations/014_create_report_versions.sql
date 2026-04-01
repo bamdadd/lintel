@@ -17,9 +17,15 @@ CREATE TABLE IF NOT EXISTS report_versions (
 );
 
 -- Prevent duplicate version numbers for the same run + stage
-ALTER TABLE report_versions
-    ADD CONSTRAINT uq_report_versions_run_stage_version
-    UNIQUE (run_id, stage_id, version_number);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_report_versions_run_stage_version') THEN
+        ALTER TABLE report_versions
+            ADD CONSTRAINT uq_report_versions_run_stage_version
+            UNIQUE (run_id, stage_id, version_number);
+    END IF;
+END
+$$;
 
 -- Fast lookup by run + stage + version number
 CREATE INDEX IF NOT EXISTS idx_report_versions_run_stage
