@@ -162,6 +162,7 @@ class Trigger:
     name: str
     config: dict[str, object] | None = None
     enabled: bool = True
+    repo_id: str | None = None
 
 
 class HookType(StrEnum):

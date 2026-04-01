@@ -1,6 +1,7 @@
 """Repository CRUD endpoints."""
 
 from dataclasses import asdict
+import secrets
 from typing import Any
 from uuid import uuid4
 
@@ -67,12 +68,19 @@ async def register_repository(
     return asdict(repo)
 
 
+def _strip_secret(data: dict[str, Any]) -> dict[str, Any]:
+    """Remove webhook_secret from response data."""
+    result = {**data}
+    result.pop("webhook_secret", None)
+    return result
+
+
 @router.get("/repositories")
 async def list_repositories(
     store: InMemoryRepositoryStore = Depends(repository_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     repos = await store.list_all()
-    return [asdict(r) for r in repos]
+    return [_strip_secret(asdict(r)) for r in repos]
 
 
 @router.get("/repositories/{repo_id}")
@@ -83,7 +91,7 @@ async def get_repository(
     repo = await store.get(repo_id)
     if repo is None:
         raise HTTPException(status_code=404, detail="Repository not found")
-    return asdict(repo)
+    return _strip_secret(asdict(repo))
 
 
 @router.patch("/repositories/{repo_id}")
@@ -157,3 +165,30 @@ async def list_repository_pull_requests(
         raise HTTPException(status_code=503, detail="Repository provider not configured")
     result: list[dict[str, Any]] = await repo_provider.list_pull_requests(repo.url, state, limit)
     return result
+
+
+@router.post("/repositories/{repo_id}/webhook-secret", status_code=201)
+async def generate_webhook_secret(
+    repo_id: str,
+    request: Request,
+    store: InMemoryRepositoryStore = Depends(repository_store_provider),  # noqa: B008
+) -> dict[str, str]:
+    """Generate or rotate the webhook secret for a repository.
+
+    Returns the plain-text secret once.  Subsequent GET /repositories/{id}
+    responses will NOT include the secret.
+    """
+    repo = await store.get(repo_id)
+    if repo is None:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    new_secret = secrets.token_hex(32)
+    updated = Repository(**{**asdict(repo), "webhook_secret": new_secret})
+    await store.update(updated)
+    await dispatch_event(
+        request,
+        RepositoryUpdated(
+            payload={"resource_id": repo_id, "fields": ["webhook_secret"]},
+        ),
+        stream_id=f"repository:{repo_id}",
+    )
+    return {"webhook_secret": new_secret}

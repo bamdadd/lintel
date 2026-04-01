@@ -47,6 +47,20 @@ class PRCommentAdded(EventEnvelope):
     event_type: str = "PRCommentAdded"
 
 
+@dataclass(frozen=True)
+class GitCommitPushed(EventEnvelope):
+    """Webhook-originated push event with delivery tracking."""
+
+    event_type: str = "git.commit_pushed"
+
+
+@dataclass(frozen=True)
+class GitPullRequestOpened(EventEnvelope):
+    """Webhook-originated pull request event with delivery tracking."""
+
+    event_type: str = "git.pull_request_opened"
+
+
 register_events(
     RepositoryRegistered,
     RepositoryUpdated,
@@ -56,4 +70,6 @@ register_events(
     CommitPushed,
     PRCreated,
     PRCommentAdded,
+    GitCommitPushed,
+    GitPullRequestOpened,
 )
