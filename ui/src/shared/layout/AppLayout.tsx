@@ -56,6 +56,7 @@ import {
   IconTool,
   IconTarget,
   IconChartBar,
+  IconChartLine,
   IconFlask,
   IconBulb,
   IconBug,
@@ -99,6 +100,7 @@ const navSections: NavSection[] = [
       { label: 'Threads', path: '/threads', icon: IconMessages },
       { label: 'Work Items', path: '/work-items', icon: IconListCheck },
       { label: 'Boards', path: '/boards', icon: IconLayoutKanban },
+      { label: 'Metrics', path: '/metrics', icon: IconChartLine },
     ],
   },
   {
