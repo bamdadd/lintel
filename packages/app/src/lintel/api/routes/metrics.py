@@ -1,8 +1,13 @@
 """Metrics and statistics endpoints."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Query, Request
+
+if TYPE_CHECKING:
+    from lintel.projections.cost_metrics import CostMetricsProjection
 
 router = APIRouter()
 
@@ -188,4 +193,62 @@ async def quality_metrics(
             "window_days": days,
         }
     result: dict[str, Any] = proj.get_quality_summary(project_id=project_id, days=days)
+    return result
+
+
+@router.get("/metrics/costs")
+async def cost_metrics(
+    request: Request,
+    project_id: str = Query(..., description="Project ID (required)"),
+    period: str = Query("daily", description="Aggregation period: daily or weekly"),
+    run_id: str = Query("", description="Filter by pipeline run ID"),
+    stage: str = Query("", description="Filter by pipeline stage"),
+    agent_role: str = Query("", description="Filter by agent role"),
+    start_date: str = Query("", description="Start date (YYYY-MM-DD)"),
+    end_date: str = Query("", description="End date (YYYY-MM-DD)"),
+) -> dict[str, Any]:
+    """LLM cost metrics: total cost, token usage, breakdowns by model/stage/role."""
+    proj: CostMetricsProjection | None = getattr(request.app.state, "cost_metrics_projection", None)
+    if proj is None:
+        return {
+            "project_id": project_id,
+            "total_cost_usd": 0.0,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "call_count": 0,
+            "breakdown_by_model": [],
+            "breakdown_by_stage": [],
+            "breakdown_by_role": [],
+            "time_series": [],
+        }
+
+    # If filtering by run_id, return run-specific data
+    if run_id:
+        run_data = proj.get_costs_by_run(run_id)
+        stage_data = proj.get_costs_by_stage(run_id)
+        if stage and stage_data:
+            stage_data = [s for s in stage_data if s.get("stage") == stage]
+        return {
+            "project_id": project_id,
+            **{k: v for k, v in run_data.items() if k != "run_id"},
+            "breakdown_by_model": [],
+            "breakdown_by_stage": stage_data,
+            "breakdown_by_role": [],
+            "time_series": [],
+        }
+
+    # Project-level cost data
+    result = proj.get_costs_by_project(
+        project_id,
+        period=period,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    # Apply optional agent_role filter to breakdown
+    if agent_role and result.get("breakdown_by_role"):
+        result["breakdown_by_role"] = [
+            r for r in result["breakdown_by_role"] if r.get("agent_role") == agent_role
+        ]
+
     return result
