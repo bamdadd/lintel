@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 _UNSET = object()
 
@@ -43,7 +43,7 @@ class StoreProvider[T]:
         """Return the store instance."""
         if self._instance is _UNSET:
             raise RuntimeError("Store not configured — call .override() at app startup")
-        return self._instance  # type: ignore[return-value]
+        return cast("T", self._instance)
 
     def __call__(self) -> T:
         """Return the store instance (called by FastAPI Depends)."""
