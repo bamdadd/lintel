@@ -73,6 +73,7 @@ testpaths = [
     "packages/chat-api/tests",
     "packages/memory/tests",
     "packages/memory-api/tests",
+    "packages/auth-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
