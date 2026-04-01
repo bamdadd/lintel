@@ -100,6 +100,47 @@ class PipelineRun:
     created_at: str = ""
 
 
+class RecoveryStrategy(StrEnum):
+    """How to recover when a workflow step fails."""
+
+    RETRY = "retry"  # Re-run the same step from scratch
+    SKIP = "skip"  # Mark stage as skipped and continue the pipeline
+    FAIL_FAST = "fail_fast"  # Immediately fail the pipeline (default behaviour)
+
+
+class ErrorCategory(StrEnum):
+    """Classification of workflow step errors for recovery decisions."""
+
+    TRANSIENT = "transient"  # Network/timeout/rate-limit — safe to retry
+    DETERMINISTIC = "deterministic"  # Bad input/validation — retry won't help
+    RESOURCE = "resource"  # OOM/disk/sandbox — may recover after backoff
+    UNKNOWN = "unknown"  # Unclassified errors
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    """Configurable retry behaviour for a workflow step.
+
+    Attributes:
+        max_retries: Maximum number of automatic retry attempts (0 = no auto-retry).
+        backoff_seconds: Initial delay before the first retry.
+        backoff_multiplier: Multiplier applied to backoff_seconds after each attempt.
+        max_backoff_seconds: Upper bound on backoff delay.
+        retryable_categories: Error categories eligible for auto-retry.
+        recovery_strategy: What to do when all retries are exhausted.
+    """
+
+    max_retries: int = 2
+    backoff_seconds: float = 5.0
+    backoff_multiplier: float = 2.0
+    max_backoff_seconds: float = 120.0
+    retryable_categories: tuple[ErrorCategory, ...] = (
+        ErrorCategory.TRANSIENT,
+        ErrorCategory.RESOURCE,
+    )
+    recovery_strategy: RecoveryStrategy = RecoveryStrategy.FAIL_FAST
+
+
 @dataclass(frozen=True)
 class StepTimeoutConfig:
     """Per-pipeline timeout configuration for step execution.
@@ -125,6 +166,7 @@ class WorkflowStepConfig:
     label: str = ""
     description: str = ""
     timeout_seconds: int | None = None
+    retry_policy: RetryPolicy | None = None
 
 
 @dataclass(frozen=True)

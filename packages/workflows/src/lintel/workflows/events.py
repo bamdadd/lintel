@@ -89,6 +89,11 @@ class PipelineStageRetried(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class PipelineStageAutoRetried(EventEnvelope):
+    event_type: str = "PipelineStageAutoRetried"
+
+
+@dataclass(frozen=True)
 class PipelineStageTimedOut(EventEnvelope):
     event_type: str = "PipelineStageTimedOut"
 
@@ -157,6 +162,7 @@ register_events(
     PipelineStageApproved,
     PipelineStageRejected,
     PipelineStageRetried,
+    PipelineStageAutoRetried,
     PipelineStageTimedOut,
     StageReportEdited,
     StageReportRegenerated,

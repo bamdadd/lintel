@@ -63,6 +63,7 @@ from lintel.workflows.events import (
     PipelineRunCompleted,
     PipelineRunFailed,
     PipelineRunStarted,
+    PipelineStageAutoRetried,
     PipelineStageCompleted,
     PipelineStageTimedOut,
     WorkflowQueued,
@@ -322,6 +323,125 @@ class WorkflowExecutor:
             pass
         return "unknown"
 
+    async def _resolve_retry_policy(self, run_id: str, node_name: str) -> Any:  # noqa: ANN401
+        """Resolve the RetryPolicy for a given node, if configured."""
+        from lintel.workflows.types import RetryPolicy
+
+        if self._app_state is None:
+            return RetryPolicy()
+        pipeline_store = getattr(self._app_state, "pipeline_store", None)
+        wf_def_store = getattr(self._app_state, "workflow_definition_store", None)
+        if pipeline_store is None:
+            return RetryPolicy()
+        try:
+            run = await pipeline_store.get(run_id)
+            if run is not None and wf_def_store is not None:
+                wf_def = await wf_def_store.get(run.workflow_definition_id)
+                if wf_def is not None:
+                    for sc in getattr(wf_def, "step_configs", ()):
+                        if sc.node_name == node_name and sc.retry_policy is not None:
+                            return sc.retry_policy
+        except Exception:
+            logger.debug("resolve_retry_policy_failed", run_id=run_id)
+        return RetryPolicy()
+
+    async def _attempt_auto_retry(
+        self,
+        run_id: str,
+        node_name: str,
+        error_message: str,
+        stream_id: str,
+    ) -> bool:
+        """Check if auto-retry is applicable and perform it.
+
+        Returns True if the step will be retried (caller should not fail the pipeline).
+        """
+        from lintel.workflows.nodes._retry import (
+            classify_error,
+            should_retry,
+            wait_backoff,
+        )
+
+        policy = await self._resolve_retry_policy(run_id, node_name)
+
+        # Determine current attempt count from the pipeline stage
+        attempt = 0
+        if self._app_state is not None:
+            pipeline_store = getattr(self._app_state, "pipeline_store", None)
+            if pipeline_store is not None:
+                try:
+                    from lintel.workflows.nodes._stage_tracking import NODE_TO_STAGE
+
+                    stage_name = NODE_TO_STAGE.get(node_name, node_name)
+                    run = await pipeline_store.get(run_id)
+                    if run is not None:
+                        for s in run.stages:
+                            if s.name == stage_name:
+                                attempt = s.retry_count
+                                break
+                except Exception:
+                    pass
+
+        if not should_retry(policy, attempt, error_message):
+            category = classify_error(error_message)
+            logger.info(
+                "auto_retry_not_applicable",
+                run_id=run_id,
+                node=node_name,
+                attempt=attempt,
+                max_retries=policy.max_retries,
+                error_category=str(category),
+            )
+            return False
+
+        category = classify_error(error_message)
+        logger.info(
+            "auto_retry_triggered",
+            run_id=run_id,
+            node=node_name,
+            attempt=attempt + 1,
+            max_retries=policy.max_retries,
+            error_category=str(category),
+            error=error_message[:200],
+        )
+
+        # Wait with exponential backoff
+        delay = await wait_backoff(policy, attempt)
+
+        # Emit auto-retry event
+        retry_event = PipelineStageAutoRetried(
+            event_type="PipelineStageAutoRetried",
+            payload={
+                "run_id": run_id,
+                "node_name": node_name,
+                "attempt": attempt + 1,
+                "max_retries": policy.max_retries,
+                "error_category": str(category),
+                "backoff_seconds": delay,
+                "error": error_message[:500],
+            },
+        )
+        await self._event_store.append(stream_id=stream_id, events=[retry_event])
+        await self._project_events([retry_event])
+
+        # Reset the stage to running via mark_running (archives previous attempt)
+        from lintel.workflows.nodes._stage_tracking import StageTracker
+
+        config = self._build_config(run_id)
+        tracker = StageTracker(config)
+        await tracker.mark_running(node_name)
+
+        # Notify chat
+        await _notify_chat(
+            self._app_state,
+            run_id,
+            f"🔄 **{node_name}** failed ({category}) — auto-retrying "
+            f"(attempt {attempt + 1}/{policy.max_retries})\n"
+            f"[View pipeline →](/pipelines/{run_id})",
+        )
+
+        return True
+
     async def _handle_step_timeout(
         self,
         stream_id: str,
@@ -396,6 +516,23 @@ class WorkflowExecutor:
                     except StopAsyncIteration:
                         break
                     except TimeoutError:
+                        # Attempt auto-retry on timeout before failing
+                        timeout_msg = f"Step timed out after {node_timeout:.0f}s"
+                        retry_ok = False
+                        if current_node != "unknown":
+                            try:
+                                retry_ok = await self._attempt_auto_retry(
+                                    run_id, current_node, timeout_msg, stream_id
+                                )
+                            except Exception:
+                                logger.warning(
+                                    "auto_retry_timeout_check_failed",
+                                    run_id=run_id,
+                                )
+                        if retry_ok:
+                            # Re-stream from checkpoint
+                            await self._stream_graph(run_id, graph, None, config)
+                            return
                         await self._handle_step_timeout(
                             stream_id, run_id, current_node, node_timeout
                         )
@@ -616,6 +753,31 @@ class WorkflowExecutor:
                 f"[View pipeline →](/pipelines/{run_id})",
             )
         except Exception as exc:
+            # Attempt auto-retry before giving up
+            failed_node = current_node if current_node != "unknown" else "unknown"
+            should_retry = False
+            if failed_node != "unknown":
+                try:
+                    should_retry = await self._attempt_auto_retry(
+                        run_id, failed_node, str(exc), stream_id
+                    )
+                except Exception:
+                    logger.warning("auto_retry_check_failed", run_id=run_id, exc_info=True)
+
+            if should_retry:
+                # Re-stream the graph from the current checkpoint
+                try:
+                    await self._stream_graph(run_id, graph, None, config)
+                    return
+                except Exception as retry_exc:
+                    logger.warning(
+                        "auto_retry_restream_failed",
+                        run_id=run_id,
+                        error=str(retry_exc),
+                    )
+                    # Fall through to normal failure handling
+                    exc = retry_exc
+
             self._suspended_runs.pop(run_id, None)
             await _mark_running_stages_failed(self._app_state, run_id, str(exc))
             failed_event = PipelineRunFailed(
