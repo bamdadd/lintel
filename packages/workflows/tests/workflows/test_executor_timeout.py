@@ -183,7 +183,10 @@ class TestExecutorEnforcesStepTimeout:
         )
 
         # Patch _resolve_step_timeout to return a very short timeout (0.05s)
-        with patch.object(executor, "_resolve_step_timeout", AsyncMock(return_value=0.05)):
+        with (
+            patch.object(executor, "_resolve_step_timeout", AsyncMock(return_value=0.05)),
+            patch.object(executor, "_attempt_auto_retry", AsyncMock(return_value=False)),
+        ):
             # Store the run in suspended_runs so _stream_graph can find it
             executor._suspended_runs["run-timeout"] = {
                 "graph": graph,
