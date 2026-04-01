@@ -57,6 +57,52 @@ User message (Slack)
 
 Each Slack thread maps to a `ThreadRef(workspace_id, channel_id, thread_ts)` which serves as the canonical workflow instance identifier. The thread progresses through phases: `ingesting → planning → awaiting_spec_approval → implementing → reviewing → awaiting_merge_approval → merging → closed`.
 
+## Domain sub-systems
+
+### Metrics (`domain/metrics/`)
+
+The metrics engine (`MetricsEngine`) aggregates four metric families: agent metrics (token usage, task completion, error rates), DORA metrics (deployment frequency, lead time, change failure rate, MTTR), human metrics (review turnaround, approval latency), and team metrics (throughput, velocity, collaboration scores). Each family has its own collector module; the engine provides a unified query interface.
+
+### Workflow hooks (`domain/hooks/`)
+
+`HookEngine` allows registering callbacks that fire at workflow lifecycle points (before/after node execution, on error, on completion). Hooks are matched via glob-style patterns against node names and workflow types. Used for audit trails, custom notifications, and guardrail enforcement.
+
+### Notifications (`domain/notifications/`)
+
+`NotificationDispatcher` delivers notifications across channels (Slack, email, webhook) based on configurable notification rules. Integrates with the event bus to react to domain events (stage completion, approval requests, pipeline failures).
+
+### Reviews (`domain/reviews/`)
+
+`ReviewEngine` orchestrates automated codebase reviews. Manages review models (findings, severity, suggestions) and coordinates between the reviewer agent and the review API surface.
+
+### Guardrails (`domain/guardrails/`)
+
+A condition language (`condition_lang.py`) for expressing guardrail rules evaluated by `GuardrailEvaluator`. Includes cost rules, escalation policies, and an `ApprovalBridge` that connects guardrail violations to the approval request workflow. Default rules are seeded from `seeds.py`.
+
+### Authentication (`domain/auth/` + `auth-api/`)
+
+Builtin JWT authentication. `domain/auth/` provides JWT token creation/validation and password hashing. `packages/auth-api/` exposes login routes and FastAPI middleware for request authentication.
+
+### Git events (`domain/git_events.py`)
+
+`GitEventListener` processes incoming git webhook events (push, PR opened/merged, branch created/deleted) and translates them into domain events that can trigger workflows or update project state.
+
+### Workflow base class (`workflows/base.py`)
+
+`WorkflowNode` is the abstract base class for all LangGraph workflow nodes, providing a standard interface for stage tracking, error handling, and config access.
+
+### Approval gates (`workflows/nodes/approval_gate.py`)
+
+`ApprovalGateNode` implements human-in-the-loop approval within workflow graphs using LangGraph interrupts. Pauses execution until an approval or rejection is received.
+
+### Sandbox storage limits (`sandbox/`)
+
+`StorageLimits` and `StorageUsage` types enforce per-sandbox disk quotas, preventing runaway file creation during code execution.
+
+### Experiment run metrics (`experimentation-api/run_metrics.py`)
+
+Extends the experimentation API with per-run metric tracking, allowing experiments to record and query time-series metric data.
+
 ## Security
 
 - PII is detected and replaced with stable placeholders before reaching any LLM
