@@ -812,6 +812,20 @@ class HookLoopDetected(EventEnvelope):
     event_type: str = "HookLoopDetected"
 
 
+@dataclass(frozen=True)
+class PreHookBlocked(EventEnvelope):
+    """A pre-hook denied the event from proceeding."""
+
+    event_type: str = "PreHookBlocked"
+
+
+@dataclass(frozen=True)
+class PreHookAllowed(EventEnvelope):
+    """All pre-hooks allowed the event to proceed."""
+
+    event_type: str = "PreHookAllowed"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -951,6 +965,8 @@ register_events(
     HookTriggered,
     HookExecutionFailed,
     HookLoopDetected,
+    PreHookBlocked,
+    PreHookAllowed,
     PolicyImportedFromGDrive,
     PolicyGenerationStarted,
     PolicyGenerationCompleted,

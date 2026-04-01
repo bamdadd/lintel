@@ -170,6 +170,13 @@ class HookType(StrEnum):
     SCHEDULED = "scheduled"
 
 
+class HookActionType(StrEnum):
+    """What a hook does when it fires."""
+
+    TRIGGER_WORKFLOW = "trigger_workflow"
+    WEBHOOK = "webhook"
+
+
 @dataclass(frozen=True)
 class WorkflowHook:
     """Binds an event pattern to a workflow trigger."""
@@ -179,11 +186,31 @@ class WorkflowHook:
     name: str
     event_pattern: str  # glob-style, e.g. "pipeline.stage.completed", "*.succeeded"
     hook_type: HookType = HookType.POST
+    action_type: HookActionType = HookActionType.TRIGGER_WORKFLOW
     workflow_id: str = ""  # workflow definition to trigger
+    webhook_url: str = ""  # URL for webhook action type
     conditions: dict[str, object] | None = None  # filter on event payload
     params_template: dict[str, str] | None = None  # map event fields to workflow params
     enabled: bool = True
     max_chain_depth: int = 5  # prevent infinite hook loops
+
+
+class PreHookDecision(StrEnum):
+    """Result of a pre-hook evaluation."""
+
+    ALLOW = "allow"
+    DENY = "deny"
+
+
+@dataclass(frozen=True)
+class HookResult:
+    """Outcome of evaluating a single hook against an event."""
+
+    hook_id: str
+    hook_name: str
+    hook_type: HookType
+    decision: PreHookDecision = PreHookDecision.ALLOW
+    reason: str = ""
 
 
 class AutomationTriggerType(StrEnum):
