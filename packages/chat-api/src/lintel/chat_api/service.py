@@ -420,6 +420,35 @@ class ChatService:
             thread_ts=conversation_id,
         )
 
+    async def _get_conversation_history(
+        self,
+        conversation_id: str,
+    ) -> list[dict[str, str]]:
+        """Load prior messages from the store and convert to LLM message format.
+
+        Excludes the current (latest) user message since the caller appends that
+        separately. Only includes user and agent messages (system messages like
+        workflow status are skipped).
+        """
+        conv = await self._store.get(conversation_id)
+        if conv is None:
+            return []
+        raw_messages: list[dict[str, Any]] = conv.get("messages", [])
+        if not raw_messages:
+            return []
+        # Exclude the last message (just added by the caller)
+        prior = raw_messages[:-1] if raw_messages else []
+        history: list[dict[str, str]] = []
+        for m in prior:
+            role = m.get("role", "")
+            content = m.get("content", "")
+            if role == "user":
+                history.append({"role": "user", "content": content})
+            elif role == "agent":
+                history.append({"role": "assistant", "content": content})
+            # Skip system/status messages — they're internal
+        return history
+
     async def handle_classified_message(
         self,
         conversation_id: str,
@@ -477,12 +506,17 @@ class ChatService:
         project, repo_url, branch = await self.resolve_project_context(conversation_id)
         proj_ctx = self.build_project_context(project, repo_url, branch)
         chat_router = self._request.app.state.chat_router
+
+        # Fetch conversation history for context
+        conv_history = await self._get_conversation_history(conversation_id)
+
         try:
             reply: str = await chat_router.reply(
                 message,
                 model_policy=model_policy,
                 api_base=api_base,
                 project_context=proj_ctx,
+                conversation_history=conv_history,
             )
         except Exception:
             logger.exception("chat_reply_failed")
