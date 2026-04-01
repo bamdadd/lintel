@@ -92,6 +92,14 @@ def evaluate_condition(
         msg = "Empty condition expression"
         raise ValueError(msg)
 
+    # Delegate to extended parser for compound expressions (AND/OR/NOT/parens)
+    # or operators not supported by the simple regex (starts_with, matches, not_in).
+    extended_keywords = {"AND", "OR", "NOT", "starts_with", "matches", "not_in"}
+    if any(f" {kw} " in f" {condition} " for kw in extended_keywords) or "(" in condition:
+        from lintel.domain.guardrails.condition_lang import evaluate_expression
+
+        return evaluate_expression(condition, context, threshold=threshold)
+
     match = _EXPR_RE.match(condition)
     if not match:
         msg = f"Cannot parse condition: {condition!r}"
