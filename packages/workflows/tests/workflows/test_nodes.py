@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from lintel.workflows.nodes.generic import _stub
 from lintel.workflows.nodes.ingest import ingest_message
@@ -31,39 +31,41 @@ class TestIngestNode:
 
 
 class TestRouteNode:
+    _config: ClassVar[dict[str, Any]] = {"configurable": {}}
+
     async def test_detects_bug_intent(self) -> None:
         state: dict[str, Any] = {"sanitized_messages": ["there is a bug in login"]}
-        result = await route_intent(state)  # type: ignore[arg-type]
+        result = await route_intent(state, self._config)  # type: ignore[arg-type]
         assert result["intent"] == "bug"
 
     async def test_detects_refactor_intent(self) -> None:
         state: dict[str, Any] = {"sanitized_messages": ["refactor the database module"]}
-        result = await route_intent(state)  # type: ignore[arg-type]
+        result = await route_intent(state, self._config)  # type: ignore[arg-type]
         assert result["intent"] == "refactor"
 
     async def test_defaults_to_feature(self) -> None:
         state: dict[str, Any] = {"sanitized_messages": ["add a new dashboard page"]}
-        result = await route_intent(state)  # type: ignore[arg-type]
+        result = await route_intent(state, self._config)  # type: ignore[arg-type]
         assert result["intent"] == "feature"
 
     async def test_sets_phase_to_planning(self) -> None:
         state: dict[str, Any] = {"sanitized_messages": ["anything"]}
-        result = await route_intent(state)  # type: ignore[arg-type]
+        result = await route_intent(state, self._config)  # type: ignore[arg-type]
         assert result["current_phase"] == "planning"
 
     async def test_error_keyword_detected(self) -> None:
         state: dict[str, Any] = {"sanitized_messages": ["error in production"]}
-        result = await route_intent(state)  # type: ignore[arg-type]
+        result = await route_intent(state, self._config)  # type: ignore[arg-type]
         assert result["intent"] == "bug"
 
     async def test_clean_keyword_triggers_refactor(self) -> None:
         state: dict[str, Any] = {"sanitized_messages": ["clean up this module"]}
-        result = await route_intent(state)  # type: ignore[arg-type]
+        result = await route_intent(state, self._config)  # type: ignore[arg-type]
         assert result["intent"] == "refactor"
 
     async def test_empty_messages(self) -> None:
         state: dict[str, Any] = {"sanitized_messages": []}
-        result = await route_intent(state)  # type: ignore[arg-type]
+        result = await route_intent(state, self._config)  # type: ignore[arg-type]
         assert result["intent"] == "feature"
 
 

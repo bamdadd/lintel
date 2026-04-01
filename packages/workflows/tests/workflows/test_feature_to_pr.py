@@ -242,7 +242,7 @@ class TestNodeFunctions:
             pr_url="",
             error=None,
         )
-        result = await route_intent(state)
+        result = await route_intent(state, {"configurable": {}})
         assert result["intent"] == "bug"
 
     async def test_route_classifies_refactor(self) -> None:
@@ -262,7 +262,7 @@ class TestNodeFunctions:
             pr_url="",
             error=None,
         )
-        result = await route_intent(state)
+        result = await route_intent(state, {"configurable": {}})
         assert result["intent"] == "refactor"
 
     async def test_route_defaults_to_feature(self) -> None:
@@ -282,7 +282,7 @@ class TestNodeFunctions:
             pr_url="",
             error=None,
         )
-        result = await route_intent(state)
+        result = await route_intent(state, {"configurable": {}})
         assert result["intent"] == "feature"
 
     async def test_plan_produces_tasks(self) -> None:
