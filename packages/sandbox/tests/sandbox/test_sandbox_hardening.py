@@ -60,9 +60,7 @@ class TestResourceLimitsApplied:
 
     async def test_custom_seccomp_profile(self) -> None:
         manager, mock_client = _make_manager_with_mock()
-        config = SandboxConfig(
-            resource_limits=ResourceLimits(seccomp_profile="/etc/seccomp.json")
-        )
+        config = SandboxConfig(resource_limits=ResourceLimits(seccomp_profile="/etc/seccomp.json"))
         thread_ref = ThreadRef("W1", "C1", "t1")
 
         await manager.create(config, thread_ref)
@@ -108,9 +106,7 @@ class TestToolCallLimitsEnforced:
     async def test_execute_tracks_tool_calls(self) -> None:
         manager = DockerSandboxManager()
         mock_container = MagicMock()
-        mock_container.exec_run.return_value = MagicMock(
-            exit_code=0, output=(b"ok", b"")
-        )
+        mock_container.exec_run.return_value = MagicMock(exit_code=0, output=(b"ok", b""))
         manager._containers["s1"] = mock_container
         from lintel.sandbox.resource_guard import ResourceGuard
 
@@ -126,9 +122,7 @@ class TestToolCallLimitsEnforced:
     async def test_write_file_tracks_writes(self) -> None:
         manager = DockerSandboxManager()
         mock_container = MagicMock()
-        mock_container.exec_run.return_value = MagicMock(
-            exit_code=0, output=(b"", b"")
-        )
+        mock_container.exec_run.return_value = MagicMock(exit_code=0, output=(b"", b""))
         manager._containers["s1"] = mock_container
         from lintel.sandbox.resource_guard import ResourceGuard
 

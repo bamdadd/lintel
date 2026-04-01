@@ -95,9 +95,7 @@ def build_egress_iptables_script(policy: NetworkEgressPolicy) -> str:
 
     for domain in policy.allowed_domains:
         # Resolve each domain and allow its IPs
-        lines.append(
-            f'for ip in $(getent hosts {domain} | awk \'{{print $1}}\'); do'
-        )
+        lines.append(f"for ip in $(getent hosts {domain} | awk '{{print $1}}'); do")
         lines.append("  iptables -A OUTPUT -d $ip -j ACCEPT")
         lines.append("done")
 
