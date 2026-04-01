@@ -31,7 +31,11 @@ def _seed_workflow_definitions(app: object) -> None:
             },
         )
 
-    asyncio.get_event_loop().run_until_complete(_seed())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_seed())
+    finally:
+        loop.close()
 
 
 @pytest.fixture()
