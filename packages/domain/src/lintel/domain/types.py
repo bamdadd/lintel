@@ -530,6 +530,58 @@ class ComplianceMetric:
     tags: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class RunMetric:
+    """A single metric captured during a pipeline run."""
+
+    run_metric_id: str
+    run_id: str
+    experiment_id: str = ""
+    metric_name: str = ""
+    value: float = 0.0
+    unit: str = ""
+    timestamp: str = ""
+    tags: tuple[str, ...] = ()
+
+
+class MutationStrategy(StrEnum):
+    """How a strategy config should be mutated on failure."""
+
+    INCREASE_TIMEOUT = "increase_timeout"
+    REDUCE_CONCURRENCY = "reduce_concurrency"
+    SWITCH_MODEL = "switch_model"
+    ADD_RETRY = "add_retry"
+    CUSTOM = "custom"
+
+
+@dataclass(frozen=True)
+class StrategyMutation:
+    """A suggested config mutation after a failed run."""
+
+    mutation_id: str
+    experiment_id: str
+    source_run_id: str
+    strategy: MutationStrategy = MutationStrategy.CUSTOM
+    description: str = ""
+    config_patch: dict[str, object] | None = None
+    applied: bool = False
+    created_at: str = ""
+
+
+@dataclass(frozen=True)
+class TournamentResult:
+    """Result of comparing runs for the same task to select best strategy."""
+
+    tournament_id: str
+    experiment_id: str
+    task_key: str = ""  # identifies the repeated task
+    run_ids: tuple[str, ...] = ()
+    winning_run_id: str = ""
+    metric_name: str = ""  # metric used for comparison
+    scores: dict[str, float] | None = None  # run_id -> score
+    selected_at: str = ""
+
+
 class KnowledgeEntryType(StrEnum):
     LOGIC_FLOW = "logic_flow"
     EVENT_HANDLER = "event_handler"
