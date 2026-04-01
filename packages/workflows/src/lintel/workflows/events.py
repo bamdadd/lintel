@@ -33,6 +33,13 @@ class WorkflowTriggered(EventEnvelope):
     event_type: str = "WorkflowTriggered"
 
 
+@dataclass(frozen=True)
+class WorkflowQueued(EventEnvelope):
+    """Published when a workflow enters the semaphore queue before execution."""
+
+    event_type: str = "WorkflowQueued"
+
+
 # --- Pipeline Events ---
 
 
@@ -135,18 +142,12 @@ class HumanInterruptTimedOut(EventEnvelope):
 # --- Concurrency / Backpressure Events (REQ-034.1) ---
 
 
-@dataclass(frozen=True)
-class WorkflowQueued(EventEnvelope):
-    """Published when a workflow is queued behind the concurrency semaphore."""
-
-    event_type: str = "WorkflowQueued"
-
-
 register_events(
     IntentRouted,
     WorkflowStarted,
     WorkflowAdvanced,
     WorkflowTriggered,
+    WorkflowQueued,
     PipelineRunStarted,
     PipelineStageCompleted,
     PipelineRunCompleted,
