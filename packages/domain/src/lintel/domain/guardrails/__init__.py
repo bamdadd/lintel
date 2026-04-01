@@ -1,5 +1,6 @@
 """Guardrail rule domain models, default rules, and evaluation engine (GRD-7)."""
 
+from lintel.domain.guardrails.approval_bridge import GuardrailApprovalBridge
 from lintel.domain.guardrails.cost_rules import (
     COST_GUARDRAIL_RULES,
     CostBudget,
@@ -39,6 +40,7 @@ __all__ = [
     "EscalationTier",
     "EvaluationResult",
     "GuardrailAction",
+    "GuardrailApprovalBridge",
     "GuardrailBlockError",
     "GuardrailEngine",
     "GuardrailRule",

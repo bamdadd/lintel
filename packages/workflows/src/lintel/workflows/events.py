@@ -144,6 +144,16 @@ class HumanInterruptTimedOut(EventEnvelope):
     event_type: str = "HumanInterruptTimedOut"
 
 
+# --- Guardrail Approval Events (GRD-6) ---
+
+
+@dataclass(frozen=True)
+class GuardrailApprovalRequested(EventEnvelope):
+    """Emitted when a guardrail escalation with REQUIRE_APPROVAL creates an approval request."""
+
+    event_type: str = "GuardrailApprovalRequested"
+
+
 # --- Concurrency / Backpressure Events (REQ-034.1) ---
 
 
@@ -172,5 +182,6 @@ register_events(
     HumanInterruptRequested,
     HumanInterruptResumed,
     HumanInterruptTimedOut,
+    GuardrailApprovalRequested,
     WorkflowQueued,
 )
