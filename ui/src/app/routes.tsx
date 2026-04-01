@@ -210,6 +210,11 @@ export const router = createBrowserRouter([
         path: 'compliance/architecture-decisions',
         lazy: () => import('@/features/compliance/pages/ArchitectureDecisionListPage'),
       },
+      // --- Metrics Dashboard ---
+      {
+        path: 'metrics',
+        lazy: () => import('@/features/metrics/pages/MetricsPage'),
+      },
       // --- Experimentation ---
       {
         path: 'experimentation/strategies',
