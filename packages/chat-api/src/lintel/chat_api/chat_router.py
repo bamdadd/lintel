@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
     from lintel.infrastructure.mcp.tool_client import MCPToolClient
     from lintel.mcp_servers_api.store import InMemoryMCPServerStore
@@ -236,6 +236,26 @@ class ChatRouter:
             "This will be answered by the LLM once fully wired.",
         )
 
+    def _make_summary_callback(
+        self,
+        policy: ModelPolicy,
+        api_base: str | None = None,
+    ) -> Callable[[str], Awaitable[str]]:
+        """Create a summarisation callback bound to the current model router."""
+        router = self._model_router
+        assert router is not None
+
+        async def _summarise(text: str) -> str:
+            from lintel.agents.history import default_summary_callback
+
+            return await default_summary_callback(
+                text,
+                call_model=lambda p, messages: router.call_model(p, messages, api_base=api_base),
+                policy=policy,
+            )
+
+        return _summarise
+
     # Read-only tools to pre-fetch for context (GET-like operations)
     _PREFETCH_TOOLS: tuple[str, ...] = (
         "models_list_models",
@@ -450,8 +470,19 @@ class ChatRouter:
         model_policy: ModelPolicy | None = None,
         api_base: str | None = None,
         project_context: str = "",
+        conversation_history: list[dict[str, str]] | None = None,
     ) -> str:
-        """Generate a direct chat reply using the LLM, or return a fallback."""
+        """Generate a direct chat reply using the LLM, or return a fallback.
+
+        Args:
+            message: The current user message.
+            model_policy: Optional model policy override.
+            api_base: Optional API base URL override.
+            project_context: Project context string for the system prompt.
+            conversation_history: Previous messages from the conversation store.
+                If provided, these are trimmed via sliding window + summarisation
+                before being sent to the LLM.
+        """
         if self._model_router is None:
             return (
                 "AI responses aren't connected yet. "
@@ -513,10 +544,31 @@ class ChatRouter:
                 "Do NOT make up information that isn't here:\n\n" + mcp_context
             )
 
+        # Build message list: system prompt + conversation history + current message
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": message},
         ]
+        if conversation_history:
+            messages.extend(conversation_history)
+        messages.append({"role": "user", "content": message})
+
+        # Apply sliding window + summarisation to keep context manageable
+        from lintel.agents.history import HistoryConfig, MessageHistoryManager
+
+        summary_cb = self._make_summary_callback(policy, api_base)
+        manager = MessageHistoryManager(
+            config=HistoryConfig(max_window=20),
+            summary_callback=summary_cb,
+        )
+        history_result = await manager.apply(messages)
+        messages = history_result.messages
+        if history_result.evicted_count > 0:
+            logger.info(
+                "chat_history_trimmed",
+                evicted=history_result.evicted_count,
+                summary_added=history_result.summary_added,
+                remaining=len(messages),
+            )
 
         # Try with MCP tools if available; fall back to plain call if provider
         # doesn't support tool calling.
@@ -571,6 +623,7 @@ class ChatRouter:
         model_policy: ModelPolicy | None = None,
         api_base: str | None = None,
         project_context: str = "",
+        conversation_history: list[dict[str, str]] | None = None,
     ) -> AsyncIterator[str]:
         """Stream a direct chat reply token by token."""
         if self._model_router is None:
@@ -619,12 +672,34 @@ class ChatRouter:
                 "Do NOT make up information that isn't here:\n\n" + mcp_context
             )
 
+        # Build message list with conversation history
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": system_prompt},
+        ]
+        if conversation_history:
+            messages.extend(conversation_history)
+        messages.append({"role": "user", "content": message})
+
+        # Apply sliding window + summarisation
+        from lintel.agents.history import HistoryConfig, MessageHistoryManager
+
+        summary_cb = self._make_summary_callback(policy, api_base)
+        manager = MessageHistoryManager(
+            config=HistoryConfig(max_window=20),
+            summary_callback=summary_cb,
+        )
+        history_result = await manager.apply(messages)
+        trimmed: list[dict[str, str]] = history_result.messages
+        if history_result.evicted_count > 0:
+            logger.info(
+                "chat_stream_history_trimmed",
+                evicted=history_result.evicted_count,
+                summary_added=history_result.summary_added,
+            )
+
         async for token in self._model_router.stream_model(
             policy,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message},
-            ],
+            messages=trimmed,
             api_base=api_base,
         ):
             yield token
