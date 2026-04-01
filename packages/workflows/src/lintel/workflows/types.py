@@ -261,3 +261,28 @@ class InterruptRecord:
     resume_input: dict[str, Any] | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class ApprovalGateConfig:
+    """Configuration for a confidence-based approval gate.
+
+    When the workflow's confidence score exceeds ``confidence_threshold``,
+    the gate auto-approves without human intervention.  Otherwise it
+    interrupts and waits for a human decision.
+    """
+
+    confidence_threshold: float = 0.8
+    timeout_seconds: int = 3600
+    required_approvers: int = 1
+    notification_channels: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ApprovalDecision:
+    """Human decision captured when an approval gate is resumed."""
+
+    approved: bool = False
+    approver: str = ""
+    corrections: str = ""
+    feedback: str = ""
