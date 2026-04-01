@@ -86,10 +86,23 @@ async def create_artifact(
     body: CreateCodeArtifactRequest,
     request: Request,
     store: CodeArtifactStore = Depends(code_artifact_store_provider),  # noqa: B008
+    content_store: ArtifactStore = Depends(artifact_content_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     existing = await store.get(body.artifact_id)
     if existing is not None:
         raise HTTPException(status_code=409, detail="Artifact already exists")
+
+    # Store content via the ArtifactStore abstraction (routes to Postgres or S3)
+    content_bytes = body.content.encode("utf-8") if body.content else b""
+    content_metadata: dict[str, object] = {
+        "content_type": "text/plain",
+        "pipeline_run_id": body.run_id,
+    }
+    if body.metadata:
+        content_metadata.update(body.metadata)
+
+    location = await content_store.store(body.artifact_id, content_bytes, content_metadata)
+
     artifact = CodeArtifact(
         artifact_id=body.artifact_id,
         work_item_id=body.work_item_id,
@@ -98,6 +111,9 @@ async def create_artifact(
         path=body.path,
         content=body.content,
         metadata=body.metadata,
+        storage_location=location,
+        size_bytes=len(content_bytes),
+        content_type=str(content_metadata.get("content_type", "text/plain")),
     )
     await store.add(artifact)
     await dispatch_event(
@@ -188,7 +204,45 @@ async def get_artifact(
     artifact = await store.get(artifact_id)
     if artifact is None:
         raise HTTPException(status_code=404, detail="Artifact not found")
-    return asdict(artifact)
+    data = asdict(artifact)
+    # Include storage ref fields in response
+    data.setdefault("storage_backend", getattr(artifact, "storage_backend", "postgres"))
+    data.setdefault("storage_location", getattr(artifact, "storage_location", None))
+    data.setdefault("size_bytes", getattr(artifact, "size_bytes", None))
+    data.setdefault("content_type", getattr(artifact, "content_type", None))
+    return data
+
+
+@router.get("/artifacts/{artifact_id}/download")
+async def download_artifact(
+    artifact_id: str,
+    store: CodeArtifactStore = Depends(code_artifact_store_provider),  # noqa: B008
+    content_store: ArtifactStore = Depends(artifact_content_store_provider),  # noqa: B008
+) -> StreamingResponse:
+    """Download artifact content via the ArtifactStore abstraction."""
+    artifact = await store.get(artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    try:
+        content = await content_store.retrieve(artifact_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Artifact content not found")  # noqa: B904
+    ct = getattr(artifact, "content_type", None) or "application/octet-stream"
+    return StreamingResponse(
+        iter([content]),
+        media_type=ct,
+        headers={"Content-Disposition": f'attachment; filename="{artifact_id}"'},
+    )
+
+
+@router.get("/artifacts/refs/{run_id}")
+async def list_artifact_refs(
+    run_id: str,
+    content_store: ArtifactStore = Depends(artifact_content_store_provider),  # noqa: B008
+) -> list[dict[str, Any]]:
+    """List artifact references with storage metadata for a pipeline run."""
+    refs = await content_store.list_refs(run_id)
+    return [ref.model_dump() for ref in refs]
 
 
 @router.delete("/artifacts/{artifact_id}", status_code=204)

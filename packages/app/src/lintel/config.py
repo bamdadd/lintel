@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -56,6 +58,19 @@ class SandboxSettings(BaseSettings):
     network_mode: str = "none"
 
 
+class ArtifactSettings(BaseSettings):
+    """Artifact storage backend configuration."""
+
+    model_config = {"env_prefix": "LINTEL_ARTIFACT_"}
+
+    storage_backend: Literal["postgres", "s3", "routing"] = "postgres"
+    size_threshold_bytes: int = 1_048_576  # 1 MB
+    s3_bucket: str = "artifacts"
+    s3_endpoint_url: str | None = None
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+
+
 class Settings(BaseSettings):
     """Root settings aggregating all subsystems."""
 
@@ -65,6 +80,7 @@ class Settings(BaseSettings):
     pii: PIISettings = Field(default_factory=PIISettings)
     model: ModelSettings = Field(default_factory=ModelSettings)
     sandbox: SandboxSettings = Field(default_factory=SandboxSettings)
+    artifact: ArtifactSettings = Field(default_factory=ArtifactSettings)
 
     log_level: str = "INFO"
     log_format: str = "json"
