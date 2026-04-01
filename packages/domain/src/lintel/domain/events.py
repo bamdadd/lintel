@@ -826,6 +826,34 @@ class PreHookAllowed(EventEnvelope):
     event_type: str = "PreHookAllowed"
 
 
+# --- Notification Dispatch Events ---
+
+
+@dataclass(frozen=True)
+class NotificationDispatched(EventEnvelope):
+    event_type: str = "NotificationDispatched"
+
+
+@dataclass(frozen=True)
+class NotificationPreferenceCreated(EventEnvelope):
+    event_type: str = "NotificationPreferenceCreated"
+
+
+@dataclass(frozen=True)
+class NotificationPreferenceUpdated(EventEnvelope):
+    event_type: str = "NotificationPreferenceUpdated"
+
+
+@dataclass(frozen=True)
+class NotificationTemplateCreated(EventEnvelope):
+    event_type: str = "NotificationTemplateCreated"
+
+
+@dataclass(frozen=True)
+class NotificationTemplateUpdated(EventEnvelope):
+    event_type: str = "NotificationTemplateUpdated"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -971,4 +999,9 @@ register_events(
     PolicyGenerationStarted,
     PolicyGenerationCompleted,
     PolicyGenerationFailed,
+    NotificationDispatched,
+    NotificationPreferenceCreated,
+    NotificationPreferenceUpdated,
+    NotificationTemplateCreated,
+    NotificationTemplateUpdated,
 )

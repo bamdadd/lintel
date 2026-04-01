@@ -33,7 +33,9 @@ from lintel.integration_patterns_api import router as integration_patterns_route
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
+from lintel.notifications_api.preference_routes import router as notification_preferences_router
 from lintel.notifications_api.routes import router as notifications_router
+from lintel.notifications_api.template_routes import router as notification_templates_router
 from lintel.pipelines_api.routes import router as pipelines_router
 from lintel.policies_api.routes import router as policies_router
 from lintel.process_mining_api import router as process_mining_router
@@ -85,6 +87,8 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(teams_router, prefix="/api/v1", tags=["teams"])
     app.include_router(policies_router, prefix="/api/v1", tags=["policies"])
     app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
+    app.include_router(notification_preferences_router, prefix="/api/v1", tags=["notifications"])
+    app.include_router(notification_templates_router, prefix="/api/v1", tags=["notifications"])
     app.include_router(audit_router, prefix="/api/v1", tags=["audit"])
     app.include_router(artifacts_router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests_router, prefix="/api/v1", tags=["approval-requests"])

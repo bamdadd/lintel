@@ -72,8 +72,12 @@ from lintel.memory_api.dependencies import memory_service_provider
 from lintel.models_api.routes import ai_provider_store_provider as models_ai_provider_store_provider
 from lintel.models_api.routes import model_assignment_store_provider, model_store_provider
 from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
+from lintel.notifications_api.preference_routes import notification_preference_store_provider
+from lintel.notifications_api.preference_store import NotificationPreferenceStore
 from lintel.notifications_api.routes import notification_rule_store_provider
 from lintel.notifications_api.store import NotificationRuleStore
+from lintel.notifications_api.template_routes import notification_template_store_provider
+from lintel.notifications_api.template_store import NotificationTemplateStore
 from lintel.pipelines_api.routes import InMemoryPipelineStore, pipeline_store_provider
 from lintel.policies_api.routes import policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
@@ -168,6 +172,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),
         "notification_rule_store": NotificationRuleStore(),
+        "notification_preference_store": NotificationPreferenceStore(),
+        "notification_template_store": NotificationTemplateStore(),
         "audit_entry_store": AuditEntryStore(),
         "code_artifact_store": CodeArtifactStore(),
         "artifact_content_store": _create_fake_artifact_content_store(),
@@ -408,6 +414,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "team_store": PostgresTeamStore(pool),
         "policy_store": PostgresPolicyStore(pool),
         "notification_rule_store": PostgresNotificationRuleStore(pool),
+        "notification_preference_store": NotificationPreferenceStore(),
+        "notification_template_store": NotificationTemplateStore(),
         "audit_entry_store": PostgresAuditEntryStore(pool),
         "code_artifact_store": PostgresCodeArtifactStore(pool),
         "artifact_content_store": _create_postgres_artifact_content_store(pool),
@@ -454,6 +462,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     team_store_provider.override(stores["team_store"])
     policy_store_provider.override(stores["policy_store"])
     notification_rule_store_provider.override(stores["notification_rule_store"])
+    notification_preference_store_provider.override(stores["notification_preference_store"])
+    notification_template_store_provider.override(stores["notification_template_store"])
     environment_store_provider.override(stores["environment_store"])
     variable_store_provider.override(stores["variable_store"])
     credential_store_provider.override(stores["credential_store"])

@@ -320,6 +320,7 @@ class NotificationChannel(StrEnum):
     SLACK = "slack"
     EMAIL = "email"
     WEBHOOK = "webhook"
+    WEB_PUSH = "web_push"
 
 
 @dataclass(frozen=True)
