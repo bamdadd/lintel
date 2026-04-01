@@ -18,6 +18,7 @@ Domain types, events, and business logic shared across packages.
 - `guardrails/default_rules.py` — 7 default rules (warn, block, require_approval)
 - `guardrails/engine.py` — `GuardrailEngine` evaluates rules against EventBus events
 - `guardrails/repository.py` — `RuleRepository` protocol for rule storage
+- `guardrails/escalation.py` — `EscalationTier`, `EscalationPolicy`, `EscalationEngine` (GRD-2 auto-escalation)
 - `guardrails/seeds.py` — `seed_default_guardrails()` idempotent seed function
 
 ## Testing
