@@ -22,6 +22,47 @@ class SandboxStatus(StrEnum):
 
 
 @dataclass(frozen=True)
+class StorageLimits:
+    """Configurable storage limits and cleanup thresholds for sandboxes.
+
+    ``max_storage_gb`` is the hard cap passed to Docker via ``--storage-opt``.
+    ``cleanup_threshold_pct`` triggers automatic workspace cleanup when usage
+    exceeds this percentage of ``max_storage_gb``.
+    """
+
+    max_storage_gb: int = 4
+    max_allowed_gb: int = 10
+    cleanup_threshold_pct: int = 80
+
+    def __post_init__(self) -> None:
+        if self.max_storage_gb > self.max_allowed_gb:
+            object.__setattr__(self, "max_storage_gb", self.max_allowed_gb)
+
+
+@dataclass(frozen=True)
+class StorageUsage:
+    """Current storage usage of a sandbox workspace."""
+
+    used_bytes: int
+    limit_bytes: int
+
+    @property
+    def used_mb(self) -> int:
+        return self.used_bytes // (1024 * 1024)
+
+    @property
+    def used_pct(self) -> float:
+        if self.limit_bytes == 0:
+            return 0.0
+        return (self.used_bytes / self.limit_bytes) * 100.0
+
+    @property
+    def exceeds_threshold(self) -> bool:
+        """True when usage >= 80% of limit (default threshold)."""
+        return self.used_pct >= 80.0
+
+
+@dataclass(frozen=True)
 class ResourceLimits:
     """Configurable resource limits for sandbox containers."""
 
@@ -65,6 +106,7 @@ class SandboxConfig:
     resource_limits: ResourceLimits = ResourceLimits()
     network_egress: NetworkEgressPolicy = NetworkEgressPolicy()
     tool_limits: ToolCallLimits = ToolCallLimits()
+    storage_limits: StorageLimits = StorageLimits()
 
 
 @dataclass(frozen=True)

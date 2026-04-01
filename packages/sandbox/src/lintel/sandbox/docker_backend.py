@@ -11,19 +11,25 @@ from lintel.sandbox.errors import (
     SandboxExecutionError,
     SandboxNotFoundError,
     SandboxTimeoutError,
+    StorageLimitExceededError,
 )
 from lintel.sandbox.resource_guard import (
     ResourceGuard,
     build_egress_iptables_script,
     build_security_opt,
-    build_storage_opt,
 )
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from lintel.contracts.types import ThreadRef
-    from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
+    from lintel.sandbox.types import (
+        SandboxConfig,
+        SandboxJob,
+        SandboxResult,
+        SandboxStatus,
+        StorageUsage,
+    )
 
 
 class DockerSandboxManager:
@@ -103,7 +109,7 @@ class DockerSandboxManager:
             "nano_cpus": config.cpu_quota * 10000,
             "cpuset_cpus": f"0-{max(0, config.cpu_quota // 100000 - 1)}",
             "pids_limit": min(config.resource_limits.max_processes, 256),
-            "storage_opt": build_storage_opt(config.resource_limits),
+            "storage_opt": {"size": f"{config.resource_limits.max_disk_mb}m"},
             "tmpfs": {
                 "/tmp": "size=200m,exec,uid=1000,gid=1000",
             },
@@ -396,6 +402,82 @@ class DockerSandboxManager:
             tail=tail,
         )
         return raw.decode("utf-8", errors="replace")
+
+    async def get_storage_usage(self, sandbox_id: str) -> StorageUsage:
+        """Return current workspace storage usage for a sandbox.
+
+        Runs ``du -sb /workspace`` inside the container and parses the result.
+        """
+        from lintel.sandbox.types import SandboxJob, StorageUsage
+
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(command="du -sb /workspace", timeout_seconds=30),
+        )
+        if result.exit_code != 0:
+            raise SandboxExecutionError(
+                f"Failed to check storage for {sandbox_id[:12]}: {result.stderr}"
+            )
+        # du -sb output: "<bytes>\t/workspace"
+        used_bytes = int(result.stdout.strip().split("\t")[0])
+        config = self._configs.get(sandbox_id)
+        limit_gb = config.storage_limits.max_storage_gb if config else 4
+        limit_bytes = limit_gb * 1024 * 1024 * 1024
+        return StorageUsage(used_bytes=used_bytes, limit_bytes=limit_bytes)
+
+    async def cleanup_workspace(
+        self,
+        sandbox_id: str,
+        *,
+        paths: tuple[str, ...] = (
+            "/workspace/.git/objects/pack/*.old",
+            "/workspace/**/__pycache__",
+            "/workspace/**/*.pyc",
+            "/workspace/**/node_modules/.cache",
+            "/workspace/**/.pytest_cache",
+            "/workspace/**/.mypy_cache",
+        ),
+    ) -> int:
+        """Remove common ephemeral files from the workspace to reclaim space.
+
+        Returns the number of bytes freed (approximate, via du before/after).
+        """
+        usage_before = await self.get_storage_usage(sandbox_id)
+
+        from lintel.sandbox.types import SandboxJob
+
+        # Build a single rm command for all cleanup paths
+        rm_parts = [f"rm -rf {p}" for p in paths]
+        cleanup_cmd = " && ".join(rm_parts)
+        await self.execute(
+            sandbox_id,
+            SandboxJob(command=cleanup_cmd, timeout_seconds=60),
+        )
+
+        usage_after = await self.get_storage_usage(sandbox_id)
+        return max(0, usage_before.used_bytes - usage_after.used_bytes)
+
+    async def check_storage_limit(self, sandbox_id: str) -> StorageUsage:
+        """Check storage and raise if the hard limit is exceeded.
+
+        If usage exceeds the cleanup threshold (default 80%), runs automatic
+        cleanup first. If still over the hard limit after cleanup, raises
+        ``StorageLimitExceededError``.
+        """
+        usage = await self.get_storage_usage(sandbox_id)
+        config = self._configs.get(sandbox_id)
+        threshold_pct = config.storage_limits.cleanup_threshold_pct if config else 80
+
+        if usage.used_pct >= threshold_pct:
+            await self.cleanup_workspace(sandbox_id)
+            usage = await self.get_storage_usage(sandbox_id)
+
+        if usage.used_pct >= 100.0:
+            raise StorageLimitExceededError(
+                used_mb=usage.used_mb,
+                limit_mb=usage.limit_bytes // (1024 * 1024),
+            )
+        return usage
 
     async def collect_artifacts(
         self, sandbox_id: str, workdir: str = "/workspace"
