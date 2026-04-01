@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from lintel.domain.guardrails.escalation import EscalationEngine, EscalationPolicy
 from lintel.domain.guardrails.evaluator import evaluate_condition
 from lintel.domain.guardrails.models import (
     CooldownState,
@@ -71,11 +72,13 @@ class GuardrailEngine:
         *,
         cooldown: CooldownState | None = None,
         clock: Callable[[], float] | None = None,
+        escalation_policy: EscalationPolicy | None = None,
     ) -> None:
         self._rule_repo = rule_repo
         self._event_bus = event_bus
         self._cooldown = cooldown or CooldownState()
         self._clock = clock or time.monotonic
+        self._escalation = EscalationEngine(escalation_policy)
 
     # -----------------------------------------------------------------
     # EventBus integration
@@ -193,9 +196,17 @@ class GuardrailEngine:
                 )
             )
 
-        return EvaluationResult(
+        result = EvaluationResult(
             evaluations=tuple(evaluations),
             passed=not has_block,
+        )
+
+        decision = self._escalation.decide(result)
+
+        return EvaluationResult(
+            evaluations=result.evaluations,
+            passed=result.passed,
+            escalation=decision,
         )
 
     # -----------------------------------------------------------------

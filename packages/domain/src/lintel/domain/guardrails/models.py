@@ -52,6 +52,7 @@ class EvaluationResult:
 
     evaluations: tuple[RuleEvaluation, ...]
     passed: bool
+    escalation: object | None = None  # EscalationDecision (avoids circular import)
 
     @property
     def triggered_rules(self) -> list[RuleEvaluation]:
