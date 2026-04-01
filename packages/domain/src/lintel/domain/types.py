@@ -292,6 +292,7 @@ class ApprovalRequest:
 class NotificationChannel(StrEnum):
     SLACK = "slack"
     EMAIL = "email"
+    WEB_PUSH = "web_push"
     WEBHOOK = "webhook"
 
 
