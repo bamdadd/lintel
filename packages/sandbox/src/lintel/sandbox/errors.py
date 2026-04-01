@@ -57,3 +57,15 @@ class FileWriteLimitExceededError(SandboxError):
     def __init__(self, limit: int) -> None:
         super().__init__(f"File write limit exceeded: max {limit} writes per session")
         self.limit = limit
+
+
+class StorageLimitExceededError(SandboxError):
+    """Raised when sandbox storage exceeds the configured limit."""
+
+    def __init__(self, used_mb: int, limit_mb: int) -> None:
+        super().__init__(
+            f"Storage limit exceeded: {used_mb}MB used of {limit_mb}MB limit. "
+            "Run cleanup or increase storage_limits.max_storage_gb."
+        )
+        self.used_mb = used_mb
+        self.limit_mb = limit_mb

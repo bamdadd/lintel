@@ -11,7 +11,13 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from lintel.contracts.types import ThreadRef
-    from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
+    from lintel.sandbox.types import (
+        SandboxConfig,
+        SandboxJob,
+        SandboxResult,
+        SandboxStatus,
+        StorageUsage,
+    )
 
 
 class SandboxManager(Protocol):
@@ -71,6 +77,30 @@ class SandboxManager(Protocol):
         sandbox_id: str,
         tail: int = 200,
     ) -> str: ...
+
+    async def get_storage_usage(
+        self,
+        sandbox_id: str,
+    ) -> StorageUsage: ...
+
+    async def cleanup_workspace(
+        self,
+        sandbox_id: str,
+        *,
+        paths: tuple[str, ...] = (
+            "/workspace/.git/objects/pack/*.old",
+            "/workspace/**/__pycache__",
+            "/workspace/**/*.pyc",
+            "/workspace/**/node_modules/.cache",
+            "/workspace/**/.pytest_cache",
+            "/workspace/**/.mypy_cache",
+        ),
+    ) -> int: ...
+
+    async def check_storage_limit(
+        self,
+        sandbox_id: str,
+    ) -> StorageUsage: ...
 
     async def collect_artifacts(
         self,
