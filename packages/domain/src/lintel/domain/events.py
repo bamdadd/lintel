@@ -391,6 +391,13 @@ class ProjectSelected(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class ChannelCreated(EventEnvelope):
+    """A new channel was created within a team."""
+
+    event_type: str = "ChannelCreated"
+
+
+@dataclass(frozen=True)
 class ChannelRegistered(EventEnvelope):
     event_type: str = "ChannelRegistered"
 
@@ -403,6 +410,13 @@ class ChannelUpdated(EventEnvelope):
 @dataclass(frozen=True)
 class ChannelDisabled(EventEnvelope):
     event_type: str = "ChannelDisabled"
+
+
+@dataclass(frozen=True)
+class ChannelMessagePosted(EventEnvelope):
+    """A message was posted to a collaboration channel."""
+
+    event_type: str = "ChannelMessagePosted"
 
 
 @dataclass(frozen=True)
@@ -447,6 +461,13 @@ class DeploymentStarted(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class DeploymentCompleted(EventEnvelope):
+    """A deployment finished (success or failure details in payload)."""
+
+    event_type: str = "DeploymentCompleted"
+
+
+@dataclass(frozen=True)
 class DeploymentSucceeded(EventEnvelope):
     event_type: str = "DeploymentSucceeded"
 
@@ -469,6 +490,13 @@ class ExperimentStarted(EventEnvelope):
 @dataclass(frozen=True)
 class VariantAssigned(EventEnvelope):
     event_type: str = "VariantAssigned"
+
+
+@dataclass(frozen=True)
+class ExperimentConcluded(EventEnvelope):
+    """An experiment was concluded with a winning variant determined."""
+
+    event_type: str = "ExperimentConcluded"
 
 
 @dataclass(frozen=True)
@@ -725,6 +753,20 @@ class LearningCaptured(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class DeliveryLoopAborted(EventEnvelope):
+    """A delivery loop iteration was aborted before completion."""
+
+    event_type: str = "DeliveryLoopAborted"
+
+
+@dataclass(frozen=True)
+class DeliveryCheckpointReached(EventEnvelope):
+    """A checkpoint was reached during a delivery loop iteration."""
+
+    event_type: str = "DeliveryCheckpointReached"
+
+
+@dataclass(frozen=True)
 class DeliveryLoopCompleted(EventEnvelope):
     event_type: str = "DeliveryLoopCompleted"
 
@@ -814,9 +856,11 @@ register_events(
     ConversationCreated,
     ConversationDeleted,
     ProjectSelected,
+    ChannelCreated,
     ChannelRegistered,
     ChannelUpdated,
     ChannelDisabled,
+    ChannelMessagePosted,
     IntegrationRegistered,
     IntegrationSynced,
     IntegrationFailed,
@@ -824,11 +868,13 @@ register_events(
     GuardrailEscalated,
     GuardrailResolved,
     DeploymentStarted,
+    DeploymentCompleted,
     DeploymentSucceeded,
     DeploymentFailed,
     DeploymentRolledBack,
     ExperimentStarted,
     VariantAssigned,
+    ExperimentConcluded,
     ExperimentCompleted,
     MCPServerRegistered,
     MCPServerUpdated,
@@ -873,6 +919,8 @@ register_events(
     DeliveryLoopStarted,
     DeliveryLoopPhaseTransitioned,
     LearningCaptured,
+    DeliveryLoopAborted,
+    DeliveryCheckpointReached,
     DeliveryLoopCompleted,
     HookTriggered,
     HookExecutionFailed,
