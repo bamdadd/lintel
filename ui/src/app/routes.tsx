@@ -130,6 +130,14 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/triggers/pages/TriggerListPage'),
       },
       {
+        path: 'hooks',
+        lazy: () => import('@/features/hooks/pages/HooksPage'),
+      },
+      {
+        path: 'hooks/:hookId',
+        lazy: () => import('@/features/hooks/pages/HookDetailPage'),
+      },
+      {
         path: 'credentials',
         lazy: () => import('@/features/credentials/pages/CredentialListPage'),
       },
