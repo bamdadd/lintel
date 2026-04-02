@@ -144,6 +144,53 @@ class ChatService:
 
         return project, None, project.get("default_branch", "main")
 
+    async def _classify_repo(
+        self,
+        message: str,
+    ) -> tuple[str | None, str | None]:
+        """Auto-classify which repository a message relates to.
+
+        Returns (repo_url, default_branch) or (None, None) if no confident match.
+        """
+        repo_store = getattr(self._request.app.state, "repository_store", None)
+        if repo_store is None:
+            return None, None
+        try:
+            from lintel.repos.classifier import RepoClassifier
+            from lintel.repos.types import RepoStatus
+
+            repos = await repo_store.list_all()
+            active = [r for r in repos if r.status == RepoStatus.ACTIVE]
+            if not active:
+                return None, None
+
+            classifier = RepoClassifier()
+            results = classifier.classify(message, active)
+            if not results or results[0].confidence < 0.4:
+                return None, None
+
+            top = results[0]
+            repo = await repo_store.get(top.repo_id)
+            if repo is None:
+                return None, None
+            url = repo.url if hasattr(repo, "url") else repo.get("url", "")
+            branch = (
+                repo.default_branch
+                if hasattr(repo, "default_branch")
+                else repo.get("default_branch", "main")
+            )
+            logger.info(
+                "repo_auto_classified",
+                repo_id=top.repo_id,
+                repo_name=top.repo_name,
+                confidence=top.confidence,
+                keywords=list(top.matched_keywords),
+            )
+            return url, branch
+        except Exception:
+            logger.warning("repo_classification_failed", exc_info=True)
+            return None, None
+
     @staticmethod
     def build_project_context(
         project: dict[str, Any] | None,
@@ -243,6 +290,13 @@ class ChatService:
 
         # Resolve project and repo context
         project, repo_url, repo_branch = await self.resolve_project_context(conversation_id)
+
+        # If no explicit repo, try auto-classifying from message
+        if repo_url is None:
+            classified_url, classified_branch = await self._classify_repo(message)
+            if classified_url:
+                repo_url = classified_url
+                repo_branch = classified_branch or "main"
 
         # Create a work item
         work_item_id = uuid4().hex

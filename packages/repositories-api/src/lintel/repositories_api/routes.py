@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
+from lintel.repos.classifier import RepoClassifier
 from lintel.repos.events import RepositoryRegistered, RepositoryRemoved, RepositoryUpdated
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repos.types import Repository, RepoStatus
@@ -17,6 +18,8 @@ router = APIRouter()
 
 repository_store_provider: StoreProvider = StoreProvider()
 repo_provider_provider: StoreProvider = StoreProvider()
+
+_repo_classifier = RepoClassifier()
 
 
 def _gen_id() -> str:
@@ -73,6 +76,37 @@ async def list_repositories(
 ) -> list[dict[str, Any]]:
     repos = await store.list_all()
     return [asdict(r) for r in repos]
+
+
+class ClassifyRequest(BaseModel):
+    message: str
+    top_k: int = Field(default=3, ge=1, le=20)
+
+
+@router.post("/repositories/classify")
+async def classify_repository(
+    body: ClassifyRequest,
+    store: InMemoryRepositoryStore = Depends(repository_store_provider),  # noqa: B008
+) -> dict[str, Any]:
+    """Classify which repository a user message relates to."""
+    repos = await store.list_all()
+    active_repos = [r for r in repos if r.status == RepoStatus.ACTIVE]
+    classifications = _repo_classifier.classify(body.message, active_repos)
+    top = classifications[: body.top_k]
+    return {
+        "message": body.message,
+        "results": [
+            {
+                "repo_id": c.repo_id,
+                "repo_name": c.repo_name,
+                "confidence": round(c.confidence, 4),
+                "matched_keywords": list(c.matched_keywords),
+                "reason": c.reason,
+            }
+            for c in top
+        ],
+        "needs_clarification": len(top) == 0 or (len(top) > 0 and top[0].confidence < 0.4),
+    }
 
 
 @router.get("/repositories/{repo_id}")

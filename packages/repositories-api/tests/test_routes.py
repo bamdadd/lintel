@@ -218,3 +218,104 @@ class TestRepositoryProviderEndpoints:
         )
         resp = client_with_provider.get("/api/v1/repositories/r1/pull-requests?state=closed")
         assert resp.status_code == 200
+
+
+class TestClassifyEndpoint:
+    def test_classify_returns_results(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r1",
+                "name": "lintel",
+                "url": "https://github.com/bamdadd/lintel",
+                "owner": "bamdadd",
+            },
+        )
+        client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r2",
+                "name": "other-project",
+                "url": "https://github.com/org/other-project",
+            },
+        )
+        resp = client.post(
+            "/api/v1/repositories/classify",
+            json={"message": "fix the auth bug in lintel"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["message"] == "fix the auth bug in lintel"
+        assert len(data["results"]) >= 1
+        assert data["results"][0]["repo_id"] == "r1"
+        assert data["results"][0]["confidence"] > 0
+        assert data["needs_clarification"] is False
+
+    def test_classify_no_match_needs_clarification(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "lintel", "url": "https://github.com/org/lintel"},
+        )
+        resp = client.post(
+            "/api/v1/repositories/classify",
+            json={"message": "what is the weather today"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["results"] == []
+        assert data["needs_clarification"] is True
+
+    def test_classify_empty_repos(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/repositories/classify",
+            json={"message": "fix everything"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["needs_clarification"] is True
+
+    def test_classify_top_k(self, client: TestClient) -> None:
+        for i in range(5):
+            client.post(
+                "/api/v1/repositories",
+                json={
+                    "repo_id": f"r{i}",
+                    "name": f"api-{i}",
+                    "url": f"https://github.com/org/api-{i}",
+                },
+            )
+        resp = client.post(
+            "/api/v1/repositories/classify",
+            json={"message": "the api is broken", "top_k": 2},
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["results"]) <= 2
+
+    def test_classify_excludes_archived_repos(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "lintel", "url": "https://github.com/org/lintel"},
+        )
+        client.patch("/api/v1/repositories/r1", json={"status": "archived"})
+        resp = client.post(
+            "/api/v1/repositories/classify",
+            json={"message": "fix lintel"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["results"] == []
+
+    def test_classify_low_confidence_needs_clarification(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r1",
+                "name": "my-very-specific-project",
+                "url": "https://github.com/org/my-very-specific-project",
+            },
+        )
+        resp = client.post(
+            "/api/v1/repositories/classify",
+            json={"message": "fix the my issue"},
+        )
+        data = resp.json()
+        if data["results"]:
+            assert data["needs_clarification"] == (data["results"][0]["confidence"] < 0.4)
