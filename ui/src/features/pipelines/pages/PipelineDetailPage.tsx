@@ -15,6 +15,7 @@ import {
 import { PipelineDAG } from '../components/PipelineDAG';
 import type { DAGNode, DAGEdge } from '../components/PipelineDAG';
 import { StepTimingBar } from '../components/StepTimingBar';
+import { StageDurationChart } from '../components/StageDurationChart';
 import type { StageItem } from '../components/StageCard';
 import { StageFullscreenModal } from '../components/StageCard';
 import { StageListView } from '../components/StageListView';
@@ -335,6 +336,7 @@ export function Component() {
               <Tabs.List>
                 <Tabs.Tab value="dag">Pipeline DAG</Tabs.Tab>
                 <Tabs.Tab value="timing">Step Timing</Tabs.Tab>
+                <Tabs.Tab value="duration">Duration</Tabs.Tab>
               </Tabs.List>
 
               <Tabs.Panel value="dag" pt="md">
@@ -364,6 +366,10 @@ export function Component() {
                     <Text c="dimmed">No timing data available</Text>
                   </Paper>
                 )}
+              </Tabs.Panel>
+
+              <Tabs.Panel value="duration" pt="md">
+                <StageDurationChart stages={stages} />
               </Tabs.Panel>
             </Tabs>
           </Box>
