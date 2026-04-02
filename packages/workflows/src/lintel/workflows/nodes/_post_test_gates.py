@@ -118,16 +118,9 @@ async def evaluate_quality_gates(
         previous_coverage=previous_coverage,
     )
 
-    # Log results
-    gate_failures: list[dict[str, Any]] = []
+    # Build result dicts and log
+    all_results: list[dict[str, Any]] = []
     for result in results:
-        status = "PASS" if result.passed else "FAIL"
-        severity = result.severity.value.upper()
-        line = f"Quality gate [{severity}] {result.rule_type}: {status}"
-        if result.message:
-            line += f" — {result.message}"
-        await tracker.append_log("test", line)
-
         result_dict = {
             "rule_id": result.rule_id,
             "rule_type": result.rule_type,
@@ -137,21 +130,28 @@ async def evaluate_quality_gates(
             "threshold_value": result.threshold_value,
             "message": result.message,
         }
-        if not result.passed:
-            gate_failures.append(result_dict)
+        all_results.append(result_dict)
 
-    if gate_failures:
-        error_gates = [g for g in gate_failures if g["severity"] == "error"]
-        warn_gates = [g for g in gate_failures if g["severity"] == "warn"]
-        if error_gates:
+        status = "PASS" if result.passed else "FAIL"
+        line = f"Quality gate [{result.severity.value.upper()}] {result.rule_type}: {status}"
+        if result.message:
+            line += f" — {result.message}"
+        await tracker.append_log("test", line)
+
+    # Summarise failures
+    failures = [r for r in all_results if not r["passed"]]
+    if failures:
+        error_count = sum(1 for r in failures if r["severity"] == "error")
+        warn_count = sum(1 for r in failures if r["severity"] == "warn")
+        if error_count:
             await tracker.append_log(
                 "test",
-                f"Quality gates: {len(error_gates)} error(s), {len(warn_gates)} warning(s)",
+                f"Quality gates: {error_count} error(s), {warn_count} warning(s)",
             )
-        elif warn_gates:
+        elif warn_count:
             await tracker.append_log(
                 "test",
-                f"Quality gates: {len(warn_gates)} warning(s) (non-blocking)",
+                f"Quality gates: {warn_count} warning(s) (non-blocking)",
             )
 
     logger.info(
@@ -159,21 +159,10 @@ async def evaluate_quality_gates(
         project_id=project_id,
         run_id=run_id,
         total_rules=len(rules),
-        failures=len(gate_failures),
+        failures=len(failures),
     )
 
-    return [
-        {
-            "rule_id": r.rule_id,
-            "rule_type": r.rule_type,
-            "passed": r.passed,
-            "severity": r.severity.value,
-            "actual_value": r.actual_value,
-            "threshold_value": r.threshold_value,
-            "message": r.message,
-        }
-        for r in results
-    ]
+    return all_results
 
 
 def has_blocking_failures(gate_results: list[dict[str, Any]]) -> bool:
