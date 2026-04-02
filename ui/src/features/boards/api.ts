@@ -5,7 +5,8 @@ interface BoardColumn {
   column_id: string;
   name: string;
   position: number;
-  work_item_status: string;
+  work_item_statuses: string[];
+  work_item_status: string; // deprecated — backward compat
   wip_limit: number;
 }
 

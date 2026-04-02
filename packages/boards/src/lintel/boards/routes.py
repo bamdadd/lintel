@@ -51,8 +51,17 @@ class BoardColumnRequest(BaseModel):
     column_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     position: int = 0
-    work_item_status: str = ""
+    work_item_statuses: list[str] = Field(default_factory=list)
+    work_item_status: str = ""  # deprecated — use work_item_statuses
     wip_limit: int = 0  # 0 = unlimited
+
+    def resolved_statuses(self) -> tuple[str, ...]:
+        """Return statuses, falling back to single work_item_status for compat."""
+        if self.work_item_statuses:
+            return tuple(s for s in self.work_item_statuses if s)
+        if self.work_item_status:
+            return (self.work_item_status,)
+        return ()
 
 
 class CreateBoardRequest(BaseModel):
@@ -152,6 +161,15 @@ async def remove_tag(
     )
 
 
+def _normalize_column(col_dict: dict[str, Any], col_req: BoardColumnRequest) -> dict[str, Any]:
+    """Resolve work_item_statuses from the request, ensuring list is canonical."""
+    statuses = list(col_req.resolved_statuses())
+    col_dict["work_item_statuses"] = statuses
+    # Keep work_item_status as first status for backward compat
+    col_dict["work_item_status"] = statuses[0] if statuses else ""
+    return col_dict
+
+
 # ---------------------------------------------------------------------------
 # Board endpoints
 # ---------------------------------------------------------------------------
@@ -167,6 +185,10 @@ async def create_board(
     if existing is not None:
         raise HTTPException(status_code=409, detail="Board already exists")
     data = body.model_dump()
+    data["columns"] = [
+        _normalize_column(c, col_req)
+        for c, col_req in zip(data["columns"], body.columns, strict=True)
+    ]
     await store.add(data)
     await dispatch_event(
         request,
@@ -207,6 +229,11 @@ async def update_board(
     if item is None:
         raise HTTPException(status_code=404, detail="Board not found")
     updates = body.model_dump(exclude_none=True)
+    if "columns" in updates and body.columns is not None:
+        updates["columns"] = [
+            _normalize_column(c, col_req)
+            for c, col_req in zip(updates["columns"], body.columns, strict=True)
+        ]
     merged = {**item, **updates}
     await store.update(board_id, merged)
     await dispatch_event(

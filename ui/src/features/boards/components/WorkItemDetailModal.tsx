@@ -53,6 +53,7 @@ interface BoardColumnDef {
   column_id: string;
   name: string;
   position: number;
+  work_item_statuses?: string[];
   work_item_status: string;
 }
 
@@ -136,13 +137,16 @@ export function WorkItemDetailModal({ item, opened, onClose, columns }: WorkItem
   if (!item) return null;
 
   const sorted = columns ? [...columns].sort((a, b) => a.position - b.position) : [];
-  const currentIdx = sorted.findIndex((c) => c.work_item_status === status);
+  const currentIdx = sorted.findIndex((c) => {
+    const statuses = c.work_item_statuses?.length ? c.work_item_statuses : c.work_item_status ? [c.work_item_status] : [];
+    return statuses.includes(status);
+  });
   const prevCol = currentIdx > 0 ? sorted[currentIdx - 1] : null;
   const nextCol = currentIdx >= 0 && currentIdx < sorted.length - 1 ? sorted[currentIdx + 1] : null;
 
   const handleMove = (col: BoardColumnDef) => {
     if (!item) return;
-    const newStatus = col.work_item_status;
+    const newStatus = col.work_item_statuses?.length ? col.work_item_statuses[0]! : col.work_item_status;
     setStatus(newStatus);
     updateMut.mutate(
       { workItemId: item.work_item_id, data: { status: newStatus, column_id: col.column_id } },

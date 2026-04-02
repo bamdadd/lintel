@@ -2,12 +2,13 @@ import { useState } from 'react';
 import {
   Modal,
   TextInput,
-  Select,
+  MultiSelect,
   Button,
   Stack,
   Group,
   ActionIcon,
   Text,
+  Select,
 } from '@mantine/core';
 import { IconPlus, IconTrash, IconGripVertical } from '@tabler/icons-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
@@ -18,7 +19,7 @@ import { useProjectsListProjects } from '@/generated/api/projects/projects';
 interface ColumnDef {
   id: string;
   name: string;
-  work_item_status: string;
+  work_item_statuses: string[];
 }
 
 interface ProjectItem {
@@ -32,7 +33,6 @@ interface CreateBoardModalProps {
 }
 
 const WORK_ITEM_STATUSES = [
-  { value: '', label: '(none)' },
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'in_review', label: 'In Review' },
@@ -40,15 +40,16 @@ const WORK_ITEM_STATUSES = [
   { value: 'merged', label: 'Merged' },
   { value: 'closed', label: 'Closed' },
   { value: 'failed', label: 'Failed' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 let nextId = 0;
 
 function defaultColumns(): ColumnDef[] {
   return [
-    { id: `c${++nextId}`, name: 'To Do', work_item_status: 'open' },
-    { id: `c${++nextId}`, name: 'In Progress', work_item_status: 'in_progress' },
-    { id: `c${++nextId}`, name: 'Done', work_item_status: 'closed' },
+    { id: `c${++nextId}`, name: 'To Do', work_item_statuses: ['open'] },
+    { id: `c${++nextId}`, name: 'In Progress', work_item_statuses: ['in_progress'] },
+    { id: `c${++nextId}`, name: 'Done', work_item_statuses: ['merged', 'closed', 'failed', 'cancelled'] },
   ];
 }
 
@@ -62,7 +63,7 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
 
   const qc = useQueryClient();
   const createBoard = useMutation({
-    mutationFn: (data: { project_id: string; name: string; columns: { name: string; position: number; work_item_status: string }[] }) =>
+    mutationFn: (data: { project_id: string; name: string; columns: { name: string; position: number; work_item_statuses: string[] }[] }) =>
       customInstance('/api/v1/boards', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -70,9 +71,9 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['/api/v1/boards'] }),
   });
 
-  const addColumn = () => setColumns([...columns, { id: `c${++nextId}`, name: '', work_item_status: '' }]);
+  const addColumn = () => setColumns([...columns, { id: `c${++nextId}`, name: '', work_item_statuses: [] }]);
   const removeColumn = (i: number) => setColumns(columns.filter((_, idx) => idx !== i));
-  const updateColumn = (i: number, field: 'name' | 'work_item_status', value: string) =>
+  const updateColumn = (i: number, field: 'name' | 'work_item_statuses', value: string | string[]) =>
     setColumns(columns.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
 
   const handleDragEnd = (result: DropResult) => {
@@ -93,7 +94,7 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
         columns: columns.map((c, i) => ({
           name: c.name,
           position: i,
-          work_item_status: c.work_item_status,
+          work_item_statuses: c.work_item_statuses,
         })),
       },
       {
@@ -170,13 +171,13 @@ export function CreateBoardModal({ opened, onClose }: CreateBoardModalProps) {
                           style={{ flex: 1 }}
                           required
                         />
-                        <Select
-                          placeholder="Status"
+                        <MultiSelect
+                          placeholder="Statuses"
                           data={WORK_ITEM_STATUSES}
-                          value={col.work_item_status}
-                          onChange={(v) => updateColumn(i, 'work_item_status', v ?? '')}
-                          w={150}
-                          clearable={false}
+                          value={col.work_item_statuses}
+                          onChange={(v) => updateColumn(i, 'work_item_statuses', v)}
+                          w={200}
+                          clearable
                         />
                         <ActionIcon color="red" variant="subtle" onClick={() => removeColumn(i)} disabled={columns.length <= 1}>
                           <IconTrash size={16} />

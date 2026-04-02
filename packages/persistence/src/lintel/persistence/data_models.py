@@ -183,7 +183,8 @@ class BoardColumnData(BaseModel):
     column_id: str
     name: str = ""
     position: int = 0
-    work_item_status: str = ""
+    work_item_statuses: list[str] = Field(default_factory=list)
+    work_item_status: str = ""  # deprecated — use work_item_statuses
     wip_limit: int = 0
 
 

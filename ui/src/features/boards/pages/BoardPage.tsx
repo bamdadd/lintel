@@ -124,8 +124,13 @@ export function Component() {
     // Build a status-to-column lookup for fallback placement
     const statusToCol: Record<string, string> = {};
     for (const col of columns) {
-      if (col.work_item_status) {
-        statusToCol[col.work_item_status] = col.column_id;
+      const statuses = col.work_item_statuses?.length
+        ? col.work_item_statuses
+        : col.work_item_status
+          ? [col.work_item_status]
+          : [];
+      for (const s of statuses) {
+        statusToCol[s] = col.column_id;
       }
     }
 
@@ -179,8 +184,13 @@ export function Component() {
         column_id: targetColumnId === '__unassigned__' ? '' : targetColumnId,
         column_position: i,
       };
-      if (item.work_item_id === draggableId && targetColumn?.work_item_status) {
-        data.status = targetColumn.work_item_status;
+      const targetStatuses = targetColumn?.work_item_statuses?.length
+        ? targetColumn.work_item_statuses
+        : targetColumn?.work_item_status
+          ? [targetColumn.work_item_status]
+          : [];
+      if (item.work_item_id === draggableId && targetStatuses.length > 0) {
+        data.status = targetStatuses[0];
       }
       if (item.column_position !== i || item.work_item_id === draggableId) {
         updates.push(
