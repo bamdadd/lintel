@@ -27,3 +27,4 @@ class AuthUser:
     name: str
     hashed_password: str
     role: AuthRole = AuthRole.MEMBER
+    slack_user_id: str = ""
