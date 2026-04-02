@@ -337,7 +337,16 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         async def add(self, data: dict[str, Any]) -> None:
             from lintel.domain.types import Board, BoardColumn
 
-            cols = tuple(BoardColumn(**c) for c in data.get("columns", []))
+            cols = tuple(
+                BoardColumn(
+                    column_id=c["column_id"],
+                    name=c.get("name", ""),
+                    position=c.get("position", 0),
+                    work_item_statuses=tuple(c.get("work_item_statuses", ())),
+                    wip_limit=c.get("wip_limit", 0),
+                )
+                for c in data.get("columns", [])
+            )
             entity = Board(
                 board_id=data["board_id"],
                 project_id=data.get("project_id", ""),
@@ -360,7 +369,16 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         async def update(self, board_id: str, data: dict[str, Any]) -> None:
             from lintel.domain.types import Board, BoardColumn
 
-            cols = tuple(BoardColumn(**c) for c in data.get("columns", []))
+            cols = tuple(
+                BoardColumn(
+                    column_id=c["column_id"],
+                    name=c.get("name", ""),
+                    position=c.get("position", 0),
+                    work_item_statuses=tuple(c.get("work_item_statuses", ())),
+                    wip_limit=c.get("wip_limit", 0),
+                )
+                for c in data.get("columns", [])
+            )
             entity = Board(
                 board_id=board_id,
                 project_id=data.get("project_id", ""),
