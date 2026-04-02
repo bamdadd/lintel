@@ -1106,6 +1106,100 @@ class FirewallLogEntry:
     project_id: str = ""
 
 
+# --- Coding Rules Types ---
+
+
+class RuleSeverity(StrEnum):
+    """Severity level for a coding rule."""
+
+    ERROR = "error"
+    WARNING = "warning"
+    INFO = "info"
+
+
+@dataclass(frozen=True)
+class RuleScope:
+    """Scoping for a coding rule — directory and file pattern matching."""
+
+    directory_pattern: str = "**"
+    file_pattern: str = "*"
+    language: str = ""
+
+
+@dataclass(frozen=True)
+class CodingRule:
+    """A directory-scoped coding rule that agents must follow."""
+
+    rule_id: str = ""
+    name: str = ""
+    description: str = ""
+    content: str = ""
+    severity: RuleSeverity = RuleSeverity.WARNING
+    scope: RuleScope = field(default_factory=RuleScope)
+    active: bool = True
+    project_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass(frozen=True)
+class RuleViolation:
+    """A detected violation of a coding rule."""
+
+    violation_id: str = ""
+    rule_id: str = ""
+    pipeline_run_id: str = ""
+    file_path: str = ""
+    line_number: int | None = None
+    message: str = ""
+    agent_id: str = ""
+    resolved: bool = False
+    created_at: str = ""
+
+
+# --- Workflow Blueprint Types ---
+
+
+class BlueprintNodeType(StrEnum):
+    """Type of node in a workflow blueprint."""
+
+    DETERMINISTIC = "deterministic"
+    AGENTIC = "agentic"
+    HUMAN_REVIEW = "human_review"
+    CONDITIONAL = "conditional"
+    PARALLEL = "parallel"
+
+
+@dataclass(frozen=True)
+class BlueprintNode:
+    """A single node in a workflow blueprint."""
+
+    node_id: str
+    name: str
+    node_type: BlueprintNodeType = BlueprintNodeType.DETERMINISTIC
+    description: str = ""
+    config: dict[str, object] | None = None
+    depends_on: tuple[str, ...] = ()
+    timeout_seconds: int = 300
+    retry_count: int = 0
+
+
+@dataclass(frozen=True)
+class WorkflowBlueprint:
+    """A team-definable workflow blueprint mixing deterministic and agentic nodes."""
+
+    blueprint_id: str
+    name: str
+    description: str = ""
+    team_id: str = ""
+    nodes: tuple[BlueprintNode, ...] = ()
+    version: str = "1.0"
+    active: bool = True
+    project_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
 # --- Slack Notification Types ---
 
 
@@ -1170,5 +1264,60 @@ class SlackInvocation:
     linked_urls: tuple[str, ...] = ()
     pipeline_run_id: str = ""
     status: SlackInvocationStatus = SlackInvocationStatus.PENDING
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+# --- Sandbox Pool Types ---
+
+
+class SandboxPoolStatus(StrEnum):
+    """Status of a pooled sandbox."""
+
+    WARMING = "warming"
+    READY = "ready"
+    IN_USE = "in_use"
+    EXPIRED = "expired"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SandboxImage:
+    """Pre-built repository image for warm sandbox creation."""
+
+    image_id: str
+    repository_url: str
+    branch: str = "main"
+    commit_sha: str = ""
+    image_tag: str = ""
+    size_mb: int = 0
+    build_duration_seconds: int = 0
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass(frozen=True)
+class PooledSandbox:
+    """A pre-warmed sandbox instance from the pool."""
+
+    sandbox_id: str
+    image_id: str
+    status: SandboxPoolStatus = SandboxPoolStatus.WARMING
+    assigned_pipeline_run_id: str = ""
+    project_id: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_heartbeat: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass(frozen=True)
+class SandboxPoolConfig:
+    """Configuration for a project's sandbox pool."""
+
+    config_id: str
+    project_id: str
+    min_warm: int = 2
+    max_warm: int = 5
+    ttl_seconds: int = 3600
+    auto_rebuild_on_push: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))

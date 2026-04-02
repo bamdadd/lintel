@@ -25,6 +25,7 @@ members = [
     "lintel-channels",
     "lintel-chat-api",
     "lintel-codebase-index-api",
+    "lintel-coding-rules-api",
     "lintel-compliance-api",
     "lintel-context-attachments-api",
     "lintel-contracts",
@@ -58,6 +59,7 @@ members = [
     "lintel-repos",
     "lintel-repositories-api",
     "lintel-sandbox",
+    "lintel-sandbox-pool-api",
     "lintel-sandboxes-api",
     "lintel-settings-api",
     "lintel-skills-api",
@@ -72,6 +74,7 @@ members = [
     "lintel-users",
     "lintel-variables-api",
     "lintel-work-items-api",
+    "lintel-workflow-blueprints-api",
     "lintel-workflow-definitions-api",
     "lintel-workflows",
     "lintel-workspace",
@@ -1835,6 +1838,7 @@ dependencies = [
     { name = "lintel-channels" },
     { name = "lintel-chat-api" },
     { name = "lintel-codebase-index-api" },
+    { name = "lintel-coding-rules-api" },
     { name = "lintel-compliance-api" },
     { name = "lintel-context-attachments-api" },
     { name = "lintel-contracts" },
@@ -1868,6 +1872,7 @@ dependencies = [
     { name = "lintel-repos" },
     { name = "lintel-repositories-api" },
     { name = "lintel-sandbox" },
+    { name = "lintel-sandbox-pool-api" },
     { name = "lintel-sandboxes-api" },
     { name = "lintel-settings-api" },
     { name = "lintel-skills-api" },
@@ -1882,6 +1887,7 @@ dependencies = [
     { name = "lintel-users" },
     { name = "lintel-variables-api" },
     { name = "lintel-work-items-api" },
+    { name = "lintel-workflow-blueprints-api" },
     { name = "lintel-workflow-definitions-api" },
     { name = "lintel-workflows" },
     { name = "nats-py" },
@@ -1914,6 +1920,7 @@ requires-dist = [
     { name = "lintel-channels", editable = "packages/channels" },
     { name = "lintel-chat-api", editable = "packages/chat-api" },
     { name = "lintel-codebase-index-api", editable = "packages/codebase-index-api" },
+    { name = "lintel-coding-rules-api", editable = "packages/coding-rules-api" },
     { name = "lintel-compliance-api", editable = "packages/compliance-api" },
     { name = "lintel-context-attachments-api", editable = "packages/context-attachments-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
@@ -1947,6 +1954,7 @@ requires-dist = [
     { name = "lintel-repos", editable = "packages/repos" },
     { name = "lintel-repositories-api", editable = "packages/repositories-api" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
+    { name = "lintel-sandbox-pool-api", editable = "packages/sandbox-pool-api" },
     { name = "lintel-sandboxes-api", editable = "packages/sandboxes-api" },
     { name = "lintel-settings-api", editable = "packages/settings-api" },
     { name = "lintel-skills-api", editable = "packages/skills-api" },
@@ -1961,6 +1969,7 @@ requires-dist = [
     { name = "lintel-users", editable = "packages/users" },
     { name = "lintel-variables-api", editable = "packages/variables-api" },
     { name = "lintel-work-items-api", editable = "packages/work-items-api" },
+    { name = "lintel-workflow-blueprints-api", editable = "packages/workflow-blueprints-api" },
     { name = "lintel-workflow-definitions-api", editable = "packages/workflow-definitions-api" },
     { name = "lintel-workflows", editable = "packages/workflows" },
     { name = "nats-py", specifier = ">=2.9" },
@@ -2322,6 +2331,27 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-compliance-api", editable = "packages/compliance-api" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
+name = "lintel-coding-rules-api"
+version = "0.1.0"
+source = { editable = "packages/coding-rules-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
@@ -3046,6 +3076,27 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-sandbox-pool-api"
+version = "0.1.0"
+source = { editable = "packages/sandbox-pool-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
 name = "lintel-sandboxes-api"
 version = "0.1.0"
 source = { editable = "packages/sandboxes-api" }
@@ -3359,6 +3410,27 @@ requires-dist = [
     { name = "lintel-workflows", editable = "packages/workflows" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-workflow-blueprints-api"
+version = "0.1.0"
+source = { editable = "packages/workflow-blueprints-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]
