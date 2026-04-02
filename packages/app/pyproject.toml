@@ -49,6 +49,7 @@ dependencies = [
     "lintel-experimentation-api",
     "lintel-feedback-api",
     "lintel-codebase-index-api",
+    "lintel-trust-scores-api",
     "lintel-integration-patterns-api",
     "lintel-process-mining-api",
     "lintel-automations-api",
@@ -59,7 +60,6 @@ dependencies = [
     "lintel-memory-api",
     "lintel-stage-catalogue-api",
     "lintel-auth-api",
-    "lintel-trust-scores-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -120,6 +120,7 @@ lintel-compliance-api = { workspace = true }
 lintel-experimentation-api = { workspace = true }
 lintel-feedback-api = { workspace = true }
 lintel-codebase-index-api = { workspace = true }
+lintel-trust-scores-api = { workspace = true }
 lintel-integration-patterns-api = { workspace = true }
 lintel-process-mining-api = { workspace = true }
 lintel-automations-api = { workspace = true }
@@ -130,7 +131,6 @@ lintel-memory = { workspace = true }
 lintel-memory-api = { workspace = true }
 lintel-stage-catalogue-api = { workspace = true }
 lintel-auth-api = { workspace = true }
-lintel-trust-scores-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

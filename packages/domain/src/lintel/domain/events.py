@@ -887,24 +887,6 @@ class FeedbackWorkItemCreated(EventEnvelope):
     event_type: str = "FeedbackWorkItemCreated"
 
 
-# --- Context Attachment Events (REQ-027) ---
-
-
-@dataclass(frozen=True)
-class AttachmentUploaded(EventEnvelope):
-    event_type: str = "AttachmentUploaded"
-
-
-@dataclass(frozen=True)
-class AttachmentLinked(EventEnvelope):
-    event_type: str = "AttachmentLinked"
-
-
-@dataclass(frozen=True)
-class AttachmentRemoved(EventEnvelope):
-    event_type: str = "AttachmentRemoved"
-
-
 # --- Agent Trust Score Events (REQ-F029) ---
 
 
@@ -939,39 +921,6 @@ class CodebaseIndexed(EventEnvelope):
 @dataclass(frozen=True)
 class CodebaseReindexed(EventEnvelope):
     event_type: str = "CodebaseReindexed"
-
-
-# --- Governance Events (REQ-030) ---
-
-
-@dataclass(frozen=True)
-class GovernancePolicyCreated(EventEnvelope):
-    event_type: str = "GovernancePolicyCreated"
-
-
-@dataclass(frozen=True)
-class GovernancePolicyUpdated(EventEnvelope):
-    event_type: str = "GovernancePolicyUpdated"
-
-
-@dataclass(frozen=True)
-class GovernancePolicyRemoved(EventEnvelope):
-    event_type: str = "GovernancePolicyRemoved"
-
-
-@dataclass(frozen=True)
-class AgentActionAllowed(EventEnvelope):
-    event_type: str = "AgentActionAllowed"
-
-
-@dataclass(frozen=True)
-class AgentActionDenied(EventEnvelope):
-    event_type: str = "AgentActionDenied"
-
-
-@dataclass(frozen=True)
-class AgentActionApprovalRequested(EventEnvelope):
-    event_type: str = "AgentActionApprovalRequested"
 
 
 register_events(
@@ -1122,9 +1071,6 @@ register_events(
     FeedbackReceived,
     FeedbackCategorized,
     FeedbackWorkItemCreated,
-    AttachmentUploaded,
-    AttachmentLinked,
-    AttachmentRemoved,
     CodebaseConnected,
     CodebaseIndexed,
     CodebaseReindexed,
@@ -1136,13 +1082,4 @@ register_events(
     DriftRuleRemoved,
     DriftScanStarted,
     DriftScanCompleted,
-    GovernancePolicyCreated,
-    GovernancePolicyUpdated,
-    GovernancePolicyRemoved,
-    AgentActionAllowed,
-    AgentActionDenied,
-    AgentActionApprovalRequested,
-    TrustScoreCreated,
-    TrustScoreAdjusted,
-    TrustScoreRemoved,
 )

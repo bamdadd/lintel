@@ -28,13 +28,11 @@ from lintel.boards.routes import router as boards_router
 from lintel.chat_api.routes import router as chat_router_routes
 from lintel.codebase_index_api.routes import router as codebase_index_router
 from lintel.compliance_api.routes import router as compliance_router
-from lintel.context_attachments_api.routes import router as attachments_router
 from lintel.credentials_api.routes import router as credentials_router
 from lintel.drift_detection_api.routes import router as drift_detection_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.feedback_api.routes import router as feedback_router
-from lintel.governance_api.routes import router as governance_router
 from lintel.integration_patterns_api import router as integration_patterns_router
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
@@ -104,8 +102,6 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(drift_detection_router, prefix="/api/v1", tags=["drift-detection"])
     app.include_router(experimentation_router, prefix="/api/v1", tags=["experimentation"])
     app.include_router(feedback_router, prefix="/api/v1", tags=["feedback"])
-    app.include_router(attachments_router, prefix="/api/v1", tags=["attachments"])
-    app.include_router(governance_router, prefix="/api/v1", tags=["governance"])
     app.include_router(memory_router, prefix="/api/v1", tags=["memory"])
     app.include_router(integration_patterns_router, prefix="/api/v1", tags=["integration-patterns"])
     app.include_router(process_mining_router, prefix="/api/v1", tags=["process-mining"])
