@@ -974,6 +974,24 @@ class AgentActionApprovalRequested(EventEnvelope):
     event_type: str = "AgentActionApprovalRequested"
 
 
+# --- Privacy Controls Events (REQ-008) ---
+
+
+@dataclass(frozen=True)
+class MetricVisibilitySet(EventEnvelope):
+    event_type: str = "MetricVisibilitySet"
+
+
+@dataclass(frozen=True)
+class MetricVisibilityRemoved(EventEnvelope):
+    event_type: str = "MetricVisibilityRemoved"
+
+
+@dataclass(frozen=True)
+class PrivacyPreferenceUpdated(EventEnvelope):
+    event_type: str = "PrivacyPreferenceUpdated"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1142,4 +1160,7 @@ register_events(
     AttachmentUploaded,
     AttachmentLinked,
     AttachmentRemoved,
+    MetricVisibilitySet,
+    MetricVisibilityRemoved,
+    PrivacyPreferenceUpdated,
 )

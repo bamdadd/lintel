@@ -42,6 +42,7 @@ from lintel.models_api.routes import router as models_router
 from lintel.notifications_api.routes import router as notifications_router
 from lintel.pipelines_api.routes import router as pipelines_router
 from lintel.policies_api.routes import router as policies_router
+from lintel.privacy_controls_api.routes import router as privacy_controls_router
 from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
 from lintel.repositories_api.routes import router as repositories_router
@@ -116,6 +117,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
     app.include_router(codebase_index_router, prefix="/api/v1", tags=["codebase-index"])
     app.include_router(trust_scores_router, prefix="/api/v1", tags=["trust-scores"])
+    app.include_router(privacy_controls_router, prefix="/api/v1", tags=["privacy-controls"])
     app.include_router(
         context_attachments_router,
         prefix="/api/v1",

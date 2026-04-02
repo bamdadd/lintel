@@ -51,6 +51,7 @@ dependencies = [
     "lintel-codebase-index-api",
     "lintel-trust-scores-api",
     "lintel-governance-api",
+    "lintel-privacy-controls-api",
     "lintel-context-attachments-api",
     "lintel-integration-patterns-api",
     "lintel-process-mining-api",
@@ -124,6 +125,7 @@ lintel-feedback-api = { workspace = true }
 lintel-codebase-index-api = { workspace = true }
 lintel-trust-scores-api = { workspace = true }
 lintel-governance-api = { workspace = true }
+lintel-privacy-controls-api = { workspace = true }
 lintel-context-attachments-api = { workspace = true }
 lintel-integration-patterns-api = { workspace = true }
 lintel-process-mining-api = { workspace = true }

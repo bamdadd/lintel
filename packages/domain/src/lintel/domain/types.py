@@ -8,12 +8,9 @@ lintel.workflows.types.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Literal
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
+from typing import Literal
 
 # --- Project & Work Items ---
 
@@ -1029,3 +1026,39 @@ class GovernanceAuditEntry:
     reason: str = ""
     project_id: str = ""
     timestamp: str = ""
+
+
+# --- Privacy Controls (REQ-008) ---
+
+
+class PrivacyLevel(StrEnum):
+    """Privacy level for individual metric visibility."""
+
+    PUBLIC = "public"
+    TEAM_ONLY = "team_only"
+    PRIVATE = "private"
+
+
+@dataclass(frozen=True)
+class MetricVisibility:
+    """Controls visibility of a specific metric type for a user."""
+
+    visibility_id: str = ""
+    user_id: str = ""
+    metric_type: str = ""
+    privacy_level: PrivacyLevel = PrivacyLevel.PRIVATE
+    allowed_viewers: tuple[str, ...] = ()
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass(frozen=True)
+class PrivacyPreference:
+    """Default privacy preferences for a user."""
+
+    preference_id: str = ""
+    user_id: str = ""
+    default_privacy_level: PrivacyLevel = PrivacyLevel.PRIVATE
+    opt_out_metrics: tuple[str, ...] = ()
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))

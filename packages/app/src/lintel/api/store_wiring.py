@@ -99,6 +99,11 @@ from lintel.notifications_api.store import NotificationRuleStore
 from lintel.pipelines_api.routes import InMemoryPipelineStore, pipeline_store_provider
 from lintel.policies_api.routes import policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
+from lintel.privacy_controls_api.routes import (
+    preference_store_provider,
+    visibility_store_provider,
+)
+from lintel.privacy_controls_api.store import InMemoryPreferenceStore, InMemoryVisibilityStore
 from lintel.process_mining_api.routes import process_mining_store_provider
 from lintel.process_mining_api.store import InMemoryProcessMiningStore
 from lintel.projects_api.routes import project_store_provider
@@ -235,6 +240,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "guardrail_rule_store": ComplianceStore("rule_id"),
         # Agent Trust Score store (REQ-F029)
         "trust_score_store": InMemoryTrustScoreStore(),
+        # Privacy Controls stores (REQ-008)
+        "visibility_store": InMemoryVisibilityStore(),
+        "preference_store": InMemoryPreferenceStore(),
         # Agent Action Governance stores (REQ-030)
         "governance_policy_store": ComplianceStore("policy_id"),
         "governance_audit_store": ComplianceStore("entry_id"),
@@ -511,6 +519,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "quality_gate_rule_store": QualityGateRuleStore(),
         # REQ-F029: in-memory until Postgres implementation exists
         "trust_score_store": InMemoryTrustScoreStore(),
+        # REQ-008: in-memory until Postgres implementation exists
+        "visibility_store": InMemoryVisibilityStore(),
+        "preference_store": InMemoryPreferenceStore(),
     }
 
 
@@ -581,6 +592,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
     trust_score_store_provider.override(stores["trust_score_store"])
     attachment_store_provider.override(stores["attachment_store"])
+    visibility_store_provider.override(stores["visibility_store"])
+    preference_store_provider.override(stores["preference_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
