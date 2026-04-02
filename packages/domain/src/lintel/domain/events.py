@@ -522,6 +522,21 @@ class MCPServerRemoved(EventEnvelope):
     event_type: str = "MCPServerRemoved"
 
 
+@dataclass(frozen=True)
+class MCPToolRegistered(EventEnvelope):
+    event_type: str = "MCPToolRegistered"
+
+
+@dataclass(frozen=True)
+class MCPToolRemoved(EventEnvelope):
+    event_type: str = "MCPToolRemoved"
+
+
+@dataclass(frozen=True)
+class MCPToolAllowlistUpdated(EventEnvelope):
+    event_type: str = "MCPToolAllowlistUpdated"
+
+
 # --- Compliance Governance Events ---
 
 
