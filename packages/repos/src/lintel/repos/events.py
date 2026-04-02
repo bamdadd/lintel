@@ -47,6 +47,11 @@ class PRCommentAdded(EventEnvelope):
     event_type: str = "PRCommentAdded"
 
 
+@dataclass(frozen=True)
+class WebhookReceived(EventEnvelope):
+    event_type: str = "WebhookReceived"
+
+
 register_events(
     RepositoryRegistered,
     RepositoryUpdated,
@@ -56,4 +61,5 @@ register_events(
     CommitPushed,
     PRCreated,
     PRCommentAdded,
+    WebhookReceived,
 )
