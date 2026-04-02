@@ -64,3 +64,14 @@ class WebhookEvent:
     commits: tuple[WebhookCommit, ...] = ()
     received_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     raw_payload: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class RepoClassification:
+    """Result of classifying a user message to a repository."""
+
+    repo_id: str
+    repo_name: str
+    confidence: float
+    matched_keywords: tuple[str, ...] = ()
+    reason: str = ""
