@@ -18,11 +18,11 @@ if TYPE_CHECKING:
 # Paths that do not require authentication.
 _PUBLIC_PREFIXES: tuple[str, ...] = (
     "/api/v1/auth/login",
+    "/api/v1/auth/register",
     "/api/v1/auth/refresh",
     "/healthz",
     "/docs",
     "/openapi.json",
-    "/mcp",
 )
 
 

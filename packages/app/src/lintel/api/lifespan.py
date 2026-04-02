@@ -88,6 +88,34 @@ async def _seed_guardrail_defaults(stores: dict[str, Any]) -> None:
         logger.info("Seeded %d default guardrail rules", inserted)
 
 
+async def _seed_admin_user(stores: dict[str, Any]) -> None:
+    """Seed a default admin user so the login page works out of the box."""
+    import logging
+
+    from lintel.auth_api.store import InMemoryAuthUserStore
+    from lintel.domain.auth.passwords import hash_password
+    from lintel.domain.auth.types import AuthRole, AuthUser
+
+    auth_store = stores.get("auth_user_store")
+    if not isinstance(auth_store, InMemoryAuthUserStore):
+        return
+
+    existing = await auth_store.get_by_email("admin@lintel.dev")
+    if existing is not None:
+        return
+
+    admin = AuthUser(
+        user_id="admin-seed-001",
+        email="admin@lintel.dev",
+        name="Admin",
+        hashed_password=hash_password("lintel"),
+        role=AuthRole.ADMIN,
+    )
+    await auth_store.add(admin)
+    logger = logging.getLogger("lintel")
+    logger.info("Seeded default admin user (admin@lintel.dev)")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan: creates stores, wires services, starts background tasks."""
@@ -227,6 +255,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     await _seed_defaults(stores)
     await _seed_guardrail_defaults(stores)
+    await _seed_admin_user(stores)
 
     event_bus = InMemoryEventBus()
     app.state.event_bus = event_bus

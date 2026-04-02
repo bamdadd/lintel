@@ -62,6 +62,41 @@ class TestJWT:
             decode_token(token)
 
 
+class TestRegisterEndpoint:
+    def test_register_success(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/auth/register",
+            json={"email": "new@example.com", "password": "secret123", "name": "New User"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["email"] == "new@example.com"
+        assert "user_id" in data
+
+    def test_register_duplicate_email(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/auth/register",
+            json={"email": "dup@example.com", "password": "secret123"},
+        )
+        resp = client.post(
+            "/api/v1/auth/register",
+            json={"email": "dup@example.com", "password": "other"},
+        )
+        assert resp.status_code == 409
+
+    def test_register_then_login(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/auth/register",
+            json={"email": "logintest@example.com", "password": "mypass"},
+        )
+        resp = client.post(
+            "/api/v1/auth/login",
+            json={"email": "logintest@example.com", "password": "mypass"},
+        )
+        assert resp.status_code == 200
+        assert "access_token" in resp.json()
+
+
 class TestLoginEndpoint:
     async def test_login_success(
         self,
