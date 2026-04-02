@@ -1,4 +1,4 @@
-"""External board sync domain models."""
+"""Integrations domain: ticketing adapters and external system connectors."""
 
 from lintel.domain.integrations.board_sync import (
     BoardSyncConfig,
