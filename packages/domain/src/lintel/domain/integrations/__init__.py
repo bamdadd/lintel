@@ -1,4 +1,4 @@
-"""Integrations domain: ticketing adapters and external system connectors."""
+"""Integrations domain: ticketing adapters, external system connectors, and observability bridge."""
 
 from lintel.domain.integrations.board_sync import (
     BoardSyncConfig,
@@ -8,12 +8,24 @@ from lintel.domain.integrations.board_sync import (
     SyncDiff,
     SyncDirection,
 )
+from lintel.domain.integrations.observability import (
+    Alert,
+    AlertSeverity,
+    MetricExport,
+    ObservabilityBridge,
+    ObservabilityProvider,
+)
 
 __all__ = [
+    "Alert",
+    "AlertSeverity",
     "BoardSyncConfig",
     "BoardSyncEngine",
     "ExternalBoardProvider",
     "ExternalWorkItem",
+    "MetricExport",
+    "ObservabilityBridge",
+    "ObservabilityProvider",
     "SyncDiff",
     "SyncDirection",
 ]
