@@ -1104,3 +1104,40 @@ class FirewallLogEntry:
     blocked: bool = False
     timestamp: str = ""
     project_id: str = ""
+
+
+# --- Slack Notification Types ---
+
+
+class SlackNotificationStatus(StrEnum):
+    SENT = "sent"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SlackNotificationTemplate:
+    """Block Kit template for a pipeline stage notification."""
+
+    template_id: str
+    name: str
+    stage_name: str
+    block_kit_template: str = ""
+    active: bool = True
+    project_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass(frozen=True)
+class SlackNotificationRecord:
+    """Record of a notification sent to a Slack thread."""
+
+    record_id: str
+    pipeline_run_id: str
+    stage_name: str
+    slack_channel_id: str = ""
+    slack_thread_ts: str = ""
+    slack_message_ts: str = ""
+    status: SlackNotificationStatus = SlackNotificationStatus.SENT
+    error_message: str = ""
+    created_at: str = ""

@@ -52,6 +52,7 @@ from lintel.sandboxes_api.routes import router as sandboxes_router
 from lintel.settings_api.channels_router import router as channels_settings_router
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
+from lintel.slack_notifications_api.routes import router as slack_notifications_router
 from lintel.stage_catalogue_api.routes import router as stage_catalogue_router
 from lintel.teams.routes import router as teams_router
 from lintel.telegram.webhook import router as telegram_router
@@ -127,3 +128,8 @@ def mount_routers(app: FastAPI) -> None:
         tags=["context-attachments"],
     )
     app.include_router(ai_firewall_router, prefix="/api/v1", tags=["ai-firewall"])
+    app.include_router(
+        slack_notifications_router,
+        prefix="/api/v1",
+        tags=["slack-notifications"],
+    )

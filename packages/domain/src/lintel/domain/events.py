@@ -1048,6 +1048,29 @@ class AgentSkillUnbound(EventEnvelope):
     event_type: str = "AgentSkillUnbound"
 
 
+# --- Slack Notification Events ---
+
+
+@dataclass(frozen=True)
+class SlackNotificationSent(EventEnvelope):
+    event_type: str = "SlackNotificationSent"
+
+
+@dataclass(frozen=True)
+class SlackNotificationFailed(EventEnvelope):
+    event_type: str = "SlackNotificationFailed"
+
+
+@dataclass(frozen=True)
+class SlackNotificationTemplateCreated(EventEnvelope):
+    event_type: str = "SlackNotificationTemplateCreated"
+
+
+@dataclass(frozen=True)
+class SlackNotificationTemplateUpdated(EventEnvelope):
+    event_type: str = "SlackNotificationTemplateUpdated"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1229,4 +1252,8 @@ register_events(
     AgentSkillRemoved,
     AgentSkillBound,
     AgentSkillUnbound,
+    SlackNotificationSent,
+    SlackNotificationFailed,
+    SlackNotificationTemplateCreated,
+    SlackNotificationTemplateUpdated,
 )
