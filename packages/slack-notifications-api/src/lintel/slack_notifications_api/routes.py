@@ -31,8 +31,8 @@ if TYPE_CHECKING:
 
 router = APIRouter()
 
-template_store_provider: StoreProvider = StoreProvider()
-record_store_provider: StoreProvider = StoreProvider()
+template_store_provider: StoreProvider[Any] = StoreProvider()
+record_store_provider: StoreProvider[Any] = StoreProvider()
 
 
 # --- Request/Response models ---

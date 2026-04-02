@@ -1141,3 +1141,34 @@ class SlackNotificationRecord:
     status: SlackNotificationStatus = SlackNotificationStatus.SENT
     error_message: str = ""
     created_at: str = ""
+
+
+# --- Slack Invocation Types ---
+
+
+class SlackInvocationStatus(StrEnum):
+    """Status of a Slack-triggered invocation."""
+
+    PENDING = "pending"
+    DISPATCHED = "dispatched"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SlackInvocation:
+    """Tracks a workflow invocation triggered via Slack @mention."""
+
+    invocation_id: str
+    slack_channel_id: str
+    slack_thread_ts: str
+    slack_user_id: str
+    prompt: str
+    project_id: str
+    lintel_user_id: str = ""
+    thread_context: tuple[dict[str, object], ...] = ()
+    linked_urls: tuple[str, ...] = ()
+    pipeline_run_id: str = ""
+    status: SlackInvocationStatus = SlackInvocationStatus.PENDING
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
