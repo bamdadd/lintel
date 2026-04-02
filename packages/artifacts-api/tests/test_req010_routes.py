@@ -269,3 +269,126 @@ class TestEndToEndArtifactFlow:
         rules_resp = client.get("/api/v1/projects/proj-1/quality-gate-rules")
         assert rules_resp.status_code == 200
         assert len(rules_resp.json()) == 1
+
+        # 6. Evaluate quality gates
+        eval_resp = client.post(
+            "/api/v1/projects/proj-1/quality-gates/evaluate?run_id=run-e2e",
+        )
+        assert eval_resp.status_code == 200
+        eval_data = eval_resp.json()
+        assert eval_data["overall"] == "fail"  # pass rate 66.7% < 90%
+        assert eval_data["project_id"] == "proj-1"
+        assert eval_data["run_id"] == "run-e2e"
+        assert len(eval_data["results"]) == 1
+        assert eval_data["results"][0]["passed"] is False
+        assert eval_data["results"][0]["rule_type"] == "min_pass_rate"
+
+
+class TestQualityGateEvaluation:
+    """Tests for the quality gate evaluation endpoint."""
+
+    def test_evaluate_no_rules(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/projects/no-rules/quality-gates/evaluate?run_id=run-1",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overall"] == "pass"
+        assert data["results"] == []
+
+    def test_evaluate_pass_rate_passes(self, client: TestClient) -> None:
+        # Create a lenient rule (50% pass rate)
+        client.post(
+            "/api/v1/projects/proj-eval/quality-gate-rules",
+            json={"rule_type": "min_pass_rate", "threshold": 50.0},
+        )
+        # Upload test result (66.7% pass rate)
+        content_b64 = base64.b64encode(SAMPLE_JUNIT_XML.encode()).decode()
+        client.post(
+            "/api/v1/artifacts/upload",
+            json={
+                "run_id": "run-pass",
+                "project_id": "proj-eval",
+                "artifact_type": "test_result",
+                "extension": ".xml",
+                "content_base64": content_b64,
+            },
+        )
+        resp = client.post(
+            "/api/v1/projects/proj-eval/quality-gates/evaluate?run_id=run-pass",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overall"] == "pass"
+        assert data["results"][0]["passed"] is True
+
+    def test_evaluate_min_coverage_fails(self, client: TestClient) -> None:
+        # Create strict coverage rule (80%)
+        client.post(
+            "/api/v1/projects/proj-cov/quality-gate-rules",
+            json={"rule_type": "min_coverage", "threshold": 80.0},
+        )
+        # Upload coverage (66.7% coverage)
+        cov_b64 = base64.b64encode(SAMPLE_LCOV.encode()).decode()
+        client.post(
+            "/api/v1/artifacts/upload",
+            json={
+                "run_id": "run-cov",
+                "project_id": "proj-cov",
+                "artifact_type": "coverage",
+                "extension": ".info",
+                "content_base64": cov_b64,
+            },
+        )
+        resp = client.post(
+            "/api/v1/projects/proj-cov/quality-gates/evaluate?run_id=run-cov",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overall"] == "fail"
+        assert data["results"][0]["passed"] is False
+        assert "below threshold" in data["results"][0]["message"]
+
+    def test_evaluate_warn_severity(self, client: TestClient) -> None:
+        # Create warning-level rule
+        client.post(
+            "/api/v1/projects/proj-warn/quality-gate-rules",
+            json={
+                "rule_type": "min_pass_rate",
+                "threshold": 99.0,
+                "severity": "warn",
+            },
+        )
+        # Upload test result (66.7% pass rate)
+        content_b64 = base64.b64encode(SAMPLE_JUNIT_XML.encode()).decode()
+        client.post(
+            "/api/v1/artifacts/upload",
+            json={
+                "run_id": "run-warn",
+                "project_id": "proj-warn",
+                "artifact_type": "test_result",
+                "extension": ".xml",
+                "content_base64": content_b64,
+            },
+        )
+        resp = client.post(
+            "/api/v1/projects/proj-warn/quality-gates/evaluate?run_id=run-warn",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overall"] == "warn"  # warning, not fail
+
+    def test_evaluate_no_artifacts(self, client: TestClient) -> None:
+        # Rule exists but no test results uploaded
+        client.post(
+            "/api/v1/projects/proj-empty/quality-gate-rules",
+            json={"rule_type": "min_pass_rate", "threshold": 80.0},
+        )
+        resp = client.post(
+            "/api/v1/projects/proj-empty/quality-gates/evaluate?run_id=no-run",
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overall"] == "fail"
+        assert data["results"][0]["passed"] is False
+        assert "No test results" in data["results"][0]["message"]

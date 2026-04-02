@@ -518,3 +518,137 @@ async def delete_quality_gate_rule(
             detail="Quality gate rule not found",
         )
     await store.remove(rule_id)
+
+
+# --- Quality gate evaluation endpoint (REQ-010) ---
+
+
+@router.post("/projects/{project_id}/quality-gates/evaluate")
+async def evaluate_quality_gates(
+    project_id: str,
+    run_id: str,
+    rule_store: QualityGateRuleStore = Depends(  # noqa: B008
+        quality_gate_rule_store_provider,
+    ),
+    parsed_store: ParsedTestResultStore = Depends(  # noqa: B008
+        parsed_result_store_provider,
+    ),
+    coverage_store: CoverageMetricStore = Depends(  # noqa: B008
+        coverage_metric_store_provider,
+    ),
+) -> dict[str, Any]:
+    """Evaluate quality gate rules for a project against a specific run.
+
+    Loads the project's rules, the run's parsed test results and coverage,
+    and returns per-rule pass/fail results with an overall verdict.
+    """
+    from dataclasses import asdict as _asdict
+
+    from lintel.domain.artifacts.gates import QualityGateEvaluator
+    from lintel.domain.artifacts.models import (
+        CoverageFile,
+        CoverageReport,
+        ParsedArtifact,
+        QualityGateRule,
+        QualityGateSeverity,
+        TestSuite,
+    )
+
+    # Load rules
+    raw_rules = await rule_store.list_by_project(project_id)
+    if not raw_rules:
+        return {"overall": "pass", "results": [], "message": "No quality gate rules configured"}
+
+    rules = [
+        QualityGateRule(
+            rule_id=r["rule_id"],
+            project_id=r["project_id"],
+            rule_type=r["rule_type"],
+            threshold=r["threshold"],
+            severity=QualityGateSeverity(r.get("severity", "error")),
+            enabled=r.get("enabled", True),
+        )
+        for r in raw_rules
+    ]
+
+    # Load parsed test results for the run
+    parsed: ParsedArtifact | None = None
+    raw_results = await parsed_store.get_by_run(run_id)
+    if raw_results:
+        latest = raw_results[-1]
+        suites_data = latest.get("suites", ())
+        suites = tuple(
+            TestSuite(
+                name=s.get("name", ""),
+                total=s.get("total", 0),
+                passed=s.get("passed", 0),
+                failed=s.get("failed", 0),
+                errors=s.get("errors", 0),
+                skipped=s.get("skipped", 0),
+            )
+            for s in suites_data
+        )
+        parsed = ParsedArtifact(
+            suites=suites,
+            total=latest.get("total", 0),
+            passed=latest.get("passed", 0),
+            failed=latest.get("failed", 0),
+            errors=latest.get("errors", 0),
+            skipped=latest.get("skipped", 0),
+        )
+
+    # Load coverage for the run
+    coverage: CoverageReport | None = None
+    raw_cov = await coverage_store.get_by_run(run_id)
+    if raw_cov:
+        cov_files = tuple(
+            CoverageFile(
+                path=f.get("path", f.get("filename", "")),
+                lines_covered=f.get("lines_covered", 0),
+                lines_total=f.get("lines_total", 0),
+                branches_covered=f.get("branches_covered", 0),
+                branches_total=f.get("branches_total", 0),
+            )
+            for f in raw_cov.get("files", ())
+        )
+        coverage = CoverageReport(
+            files=cov_files,
+            line_rate=raw_cov.get("line_rate", 0.0),
+            branch_rate=raw_cov.get("branch_rate", 0.0),
+            lines_covered=raw_cov.get("lines_covered", 0),
+            lines_total=raw_cov.get("lines_total", 0),
+            branches_covered=raw_cov.get("branches_covered", 0),
+            branches_total=raw_cov.get("branches_total", 0),
+        )
+
+    # Load previous coverage for regression detection
+    previous_coverage: CoverageReport | None = None
+    prev_raw = await coverage_store.get_latest_by_project(project_id)
+    if prev_raw and prev_raw.get("run_id") != run_id:
+        previous_coverage = CoverageReport(
+            line_rate=prev_raw.get("line_rate", 0.0),
+            branch_rate=prev_raw.get("branch_rate", 0.0),
+        )
+
+    # Evaluate
+    evaluator = QualityGateEvaluator()
+    gate_results = evaluator.evaluate(rules, parsed, coverage, previous_coverage)
+
+    has_errors = any(not r.passed and r.severity == QualityGateSeverity.ERROR for r in gate_results)
+    has_warnings = any(
+        not r.passed and r.severity == QualityGateSeverity.WARN for r in gate_results
+    )
+
+    if has_errors:
+        overall = "fail"
+    elif has_warnings:
+        overall = "warn"
+    else:
+        overall = "pass"
+
+    return {
+        "overall": overall,
+        "project_id": project_id,
+        "run_id": run_id,
+        "results": [_asdict(r) for r in gate_results],
+    }
