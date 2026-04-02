@@ -130,6 +130,8 @@ from lintel.slack_notifications_api.store import (
     InMemorySlackNotificationRecordStore,
     InMemorySlackNotificationTemplateStore,
 )
+from lintel.slack_workflows_api.routes import invocation_store_provider
+from lintel.slack_workflows_api.store import InMemorySlackInvocationStore
 from lintel.teams.routes import team_store_provider
 from lintel.teams.store import InMemoryTeamStore
 from lintel.triggers_api.routes import trigger_store_provider
@@ -273,6 +275,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "governance_policy_store": ComplianceStore("policy_id"),
         "governance_audit_store": ComplianceStore("entry_id"),
         "attachment_store": InMemoryAttachmentStore(),
+        # Slack Workflow Invocations
+        "slack_invocation_store": InMemorySlackInvocationStore(),
     }
 
 
@@ -557,6 +561,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         # REQ-F033: in-memory until Postgres implementation exists
         "agent_skill_store": InMemoryAgentSkillStore(),
         "agent_skill_binding_store": InMemoryAgentSkillBindingStore(),
+        # Slack Workflow Invocations: in-memory until Postgres implementation exists
+        "slack_invocation_store": InMemorySlackInvocationStore(),
     }
 
 
@@ -639,6 +645,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     slack_notification_record_store_provider.override(
         stores["slack_notification_record_store"],
     )
+    invocation_store_provider.override(stores["slack_invocation_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

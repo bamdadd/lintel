@@ -1071,6 +1071,24 @@ class SlackNotificationTemplateUpdated(EventEnvelope):
     event_type: str = "SlackNotificationTemplateUpdated"
 
 
+# --- Slack Invocation Events ---
+
+
+@dataclass(frozen=True)
+class SlackInvocationReceived(EventEnvelope):
+    event_type: str = "SlackInvocationReceived"
+
+
+@dataclass(frozen=True)
+class SlackWorkflowDispatched(EventEnvelope):
+    event_type: str = "SlackWorkflowDispatched"
+
+
+@dataclass(frozen=True)
+class SlackWorkflowCompleted(EventEnvelope):
+    event_type: str = "SlackWorkflowCompleted"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1256,4 +1274,7 @@ register_events(
     SlackNotificationFailed,
     SlackNotificationTemplateCreated,
     SlackNotificationTemplateUpdated,
+    SlackInvocationReceived,
+    SlackWorkflowDispatched,
+    SlackWorkflowCompleted,
 )
