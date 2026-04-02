@@ -891,3 +891,91 @@ class SearchResult:
     language: str = ""
     start_line: int = 0
     end_line: int = 0
+
+
+# --- Drift Detection Types ---
+
+
+class DriftType(StrEnum):
+    """Category of drift between layers."""
+
+    CODE_INVALIDATES_ARCHITECTURE = "code_invalidates_architecture"
+    SPEC_NOT_REFLECTED_IN_PLAN = "spec_not_reflected_in_plan"
+    ARCHITECTURE_CONFLICTS_IMPLEMENTATION = "architecture_conflicts_implementation"
+    FOUNDATION_DRIFT = "foundation_drift"
+
+
+class DriftSeverity(StrEnum):
+    """Severity level for drift alerts."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class DriftAlertStatus(StrEnum):
+    """Status of a drift alert."""
+
+    OPEN = "open"
+    ACKNOWLEDGED = "acknowledged"
+    RESOLVED = "resolved"
+    ESCALATED = "escalated"
+
+
+class DriftScanStatus(StrEnum):
+    """Status of a drift scan."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class DriftRule:
+    """Configuration for a drift detection rule."""
+
+    rule_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    drift_type: DriftType = DriftType.CODE_INVALIDATES_ARCHITECTURE
+    severity: DriftSeverity = DriftSeverity.MEDIUM
+    enabled: bool = True
+    source_layer: str = ""
+    target_layer: str = ""
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DriftAlert:
+    """A detected drift between layers."""
+
+    alert_id: str
+    project_id: str
+    rule_id: str
+    drift_type: DriftType = DriftType.CODE_INVALIDATES_ARCHITECTURE
+    severity: DriftSeverity = DriftSeverity.MEDIUM
+    status: DriftAlertStatus = DriftAlertStatus.OPEN
+    title: str = ""
+    description: str = ""
+    source_ref: str = ""
+    target_ref: str = ""
+    remediation: str = ""
+    scan_id: str = ""
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DriftScan:
+    """A drift detection scan run."""
+
+    scan_id: str
+    project_id: str
+    status: DriftScanStatus = DriftScanStatus.PENDING
+    alerts_found: int = 0
+    started_at: str = ""
+    completed_at: str = ""
+    trigger: str = ""
+    tags: tuple[str, ...] = ()

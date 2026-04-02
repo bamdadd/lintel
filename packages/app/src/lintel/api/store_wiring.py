@@ -57,6 +57,16 @@ from lintel.compliance_api.routes import (
 from lintel.compliance_api.store import ComplianceStore
 from lintel.credentials_api.routes import credential_store_provider
 from lintel.credentials_api.store import InMemoryCredentialStore
+from lintel.drift_detection_api.routes import (
+    drift_alert_store_provider,
+    drift_rule_store_provider,
+    drift_scan_store_provider,
+)
+from lintel.drift_detection_api.store import (
+    InMemoryDriftAlertStore,
+    InMemoryDriftRuleStore,
+    InMemoryDriftScanStore,
+)
 from lintel.environments_api.routes import environment_store_provider
 from lintel.environments_api.store import InMemoryEnvironmentStore
 from lintel.event_store.in_memory import InMemoryEventStore
@@ -202,6 +212,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "kpi_store": ComplianceStore("kpi_id"),
         "experiment_store": ComplianceStore("experiment_id"),
         "compliance_metric_store": ComplianceStore("metric_id"),
+        "drift_rule_store": InMemoryDriftRuleStore(),
+        "drift_alert_store": InMemoryDriftAlertStore(),
+        "drift_scan_store": InMemoryDriftScanStore(),
         "run_metric_store": ComplianceStore("run_metric_id"),
         "mutation_store": ComplianceStore("mutation_id"),
         "tournament_store": ComplianceStore("tournament_id"),
@@ -438,6 +451,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "kpi_store": PgCompliance(pool, "kpi", "kpi_id"),
         "experiment_store": PgCompliance(pool, "experiment", "experiment_id"),
         "compliance_metric_store": PgCompliance(pool, "compliance_metric", "metric_id"),
+        "drift_rule_store": InMemoryDriftRuleStore(),
+        "drift_alert_store": InMemoryDriftAlertStore(),
+        "drift_scan_store": InMemoryDriftScanStore(),
         "run_metric_store": PgCompliance(pool, "run_metric", "run_metric_id"),
         "mutation_store": PgCompliance(pool, "strategy_mutation", "mutation_id"),
         "tournament_store": PgCompliance(pool, "tournament", "tournament_id"),
@@ -508,6 +524,9 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     policy_generation_store_provider.override(stores["policy_generation_store"])
     kpi_store_provider.override(stores["kpi_store"])
     experiment_store_provider.override(stores["experiment_store"])
+    drift_rule_store_provider.override(stores["drift_rule_store"])
+    drift_alert_store_provider.override(stores["drift_alert_store"])
+    drift_scan_store_provider.override(stores["drift_scan_store"])
     compliance_metric_store_provider.override(stores["compliance_metric_store"])
     run_metric_store_provider.override(stores["run_metric_store"])
     mutation_store_provider.override(stores["mutation_store"])
