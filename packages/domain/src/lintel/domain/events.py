@@ -774,6 +774,24 @@ class DriftScanCompleted(EventEnvelope):
     event_type: str = "DriftScanCompleted"
 
 
+# --- Context Attachment Events (REQ-027) ---
+
+
+@dataclass(frozen=True)
+class AttachmentUploaded(EventEnvelope):
+    event_type: str = "AttachmentUploaded"
+
+
+@dataclass(frozen=True)
+class AttachmentLinked(EventEnvelope):
+    event_type: str = "AttachmentLinked"
+
+
+@dataclass(frozen=True)
+class AttachmentRemoved(EventEnvelope):
+    event_type: str = "AttachmentRemoved"
+
+
 # --- Human Approval Events ---
 
 
@@ -1121,4 +1139,7 @@ register_events(
     AgentActionAllowed,
     AgentActionDenied,
     AgentActionApprovalRequested,
+    AttachmentUploaded,
+    AttachmentLinked,
+    AttachmentRemoved,
 )
