@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import re
 import time
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -111,9 +111,7 @@ class RepoClassifier:
         # URL components (org/repo from URL)
         url_parts = _extract_url_parts(repo.url)
         for part in url_parts:
-            if part.lower() in msg_lower and part.lower() not in {
-                k.lower() for k in keywords
-            }:
+            if part.lower() in msg_lower and part.lower() not in {k.lower() for k in keywords}:
                 score += 0.15
                 keywords.append(part)
                 reasons.append(f"URL component '{part}' found in message")
