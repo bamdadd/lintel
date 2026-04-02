@@ -36,14 +36,44 @@ WORKFLOW_KEYWORDS: dict[str, list[str]] = {
     "documentation": ["document", "write docs", "update readme", "api docs"],
 }
 
+INTENT_KEYWORDS: dict[str, list[str]] = {
+    "show_board": ["show board", "show the board", "what's in progress", "board status", "kanban"],
+    "check_status": ["status of", "what's the status", "check status", "how is"],
+    "create_work_item": ["create a story", "create a task", "create work item", "new story"],
+    "implement_item": ["implement work", "implement item"],
+    "review_pr": ["review pr", "review pull request"],
+    "assign_item": ["assign work", "assign item", "assign to"],
+    "change_priority": ["change priority", "set priority", "make it p0", "make it p1"],
+}
+
+# Regex patterns for extracting entity references from messages
+_WORK_ITEM_RE = re.compile(r"(?:WORK|WI)[- ]?(\w{3,12})", re.IGNORECASE)
+_PR_RE = re.compile(r"(?:PR|pull request)\s*#?(\d+)", re.IGNORECASE)
+
+
+VALID_INTENTS: frozenset[str] = frozenset(INTENT_KEYWORDS.keys())
+
+
+def _extract_entity_ref(message: str, intent: str) -> str:
+    """Extract an entity reference (work item ID, PR number) from a message."""
+    if intent in ("review_pr",):
+        m = _PR_RE.search(message)
+        if m:
+            return f"PR#{m.group(1)}"
+    m = _WORK_ITEM_RE.search(message)
+    if m:
+        return m.group(1)
+    return ""
+
 
 @dataclass(frozen=True)
 class ChatRouterResult:
     """Result of classifying a chat message."""
 
-    action: str  # "chat_reply" or "start_workflow"
+    action: str  # "chat_reply", "start_workflow", or an intent name
     workflow_type: str = ""
     reply: str = ""
+    entity_ref: str = ""
 
 
 class ChatRouter:
@@ -76,9 +106,13 @@ class ChatRouter:
                     api_base=api_base,
                     enabled_workflows=enabled_workflows,
                 )
-                # If keywords say it's a workflow but LLM says chat, trust keywords —
+                # If keywords say it's actionable but LLM says chat, trust keywords —
                 # LLMs often misclassify actionable requests as chat replies
-                if keyword_result.action == "start_workflow" and llm_result.action == "chat_reply":
+                keyword_is_actionable = (
+                    keyword_result.action == "start_workflow"
+                    or keyword_result.action in VALID_INTENTS
+                )
+                if keyword_is_actionable and llm_result.action == "chat_reply":
                     logger.info(
                         "classify_override_llm_with_keywords",
                         llm_action=llm_result.action,
@@ -116,6 +150,7 @@ class ChatRouter:
             # No workflows enabled — always chat reply
             return ChatRouterResult(action="chat_reply", reply="")
         workflow_types = ", ".join(active_keys)
+        intent_types = ", ".join(VALID_INTENTS)
         result = await self._model_router.call_model(
             policy,
             messages=[
@@ -123,8 +158,11 @@ class ChatRouter:
                     "role": "system",
                     "content": (
                         "You are a message classifier for a software engineering platform. "
-                        "Classify the user message as either a simple question/chat OR "
-                        "a task that requires a development workflow.\n\n"
+                        "Classify the user message into one of three categories:\n"
+                        "1. A pure knowledge question (chat_reply)\n"
+                        "2. A task that requires a development workflow (start_workflow)\n"
+                        "3. A platform intent — a quick action like viewing the board, "
+                        "checking status, or assigning work\n\n"
                         "IMPORTANT: If the user is asking to CHANGE, MODIFY, BUILD, REMOVE, "
                         "ADD, FIX, REFACTOR, or DO anything to a codebase, that is ALWAYS "
                         "a workflow task — even if phrased casually. Only classify as "
@@ -135,13 +173,19 @@ class ChatRouter:
                         "If it requires a workflow (any code change request), respond with:\n"
                         f"ACTION: start_workflow\nWORKFLOW: <one of: {workflow_types}>\n"
                         "REPLY: <brief acknowledgment of what you'll do>\n\n"
+                        "If it's a platform intent, respond with:\n"
+                        f"ACTION: <one of: {intent_types}>\n"
+                        "ENTITY: <optional entity reference, e.g. WI-abc123 or PR#42>\n"
+                        "REPLY: <brief acknowledgment>\n\n"
                         "Examples of chat_reply: 'what is a deadlock?', "
                         "'how does git rebase work?', 'explain CQRS'\n"
                         "Examples of start_workflow: 'fix the login bug in auth.py', "
                         "'add a dark mode toggle to the settings page', "
-                        "'refactor the database module', "
-                        "'remove the need for workspaces', "
-                        "'lets simplify the auth flow'"
+                        "'refactor the database module'\n"
+                        "Examples of intents: 'show me the board', "
+                        "'what's the status of WI-abc?', "
+                        "'create a story for adding dark mode', "
+                        "'assign WI-xyz to me', 'review PR #42'"
                     ),
                 },
                 {"role": "user", "content": message},
@@ -154,12 +198,16 @@ class ChatRouter:
     def _parse_llm_response(self, content: str) -> ChatRouterResult:
         logger.info("classify_llm_raw_response", content=content[:500])
 
-        action_match = re.search(r"ACTION:\s*(chat_reply|start_workflow)", content)
+        # Match any ACTION value (chat_reply, start_workflow, or intent names)
+        all_actions = "|".join(["chat_reply", "start_workflow", *VALID_INTENTS])
+        action_match = re.search(rf"ACTION:\s*({all_actions})", content)
         workflow_match = re.search(r"WORKFLOW:\s*(\S+)", content)
+        entity_match = re.search(r"ENTITY:\s*(\S+)", content)
         reply_match = re.search(r"REPLY:\s*(.+)", content, re.DOTALL)
 
         action = action_match.group(1) if action_match else ""
         workflow_type = workflow_match.group(1).strip() if workflow_match else ""
+        entity_ref = entity_match.group(1).strip() if entity_match else ""
         reply = reply_match.group(1).strip() if reply_match else content.strip()
 
         # If LLM didn't follow the structured format, infer from content
@@ -183,6 +231,16 @@ class ChatRouter:
             else:
                 action = "chat_reply"
 
+        # Handle intent actions
+        if action in VALID_INTENTS:
+            label = action.replace("_", " ")
+            logger.info("classify_result", action=action, entity_ref=entity_ref)
+            return ChatRouterResult(
+                action=action,
+                reply=reply or f"Handling **{label}**...",
+                entity_ref=entity_ref,
+            )
+
         if action == "start_workflow" and workflow_type not in WORKFLOW_KEYWORDS:
             # Try to infer workflow type from the response content
             lower = content.lower()
@@ -200,6 +258,11 @@ class ChatRouter:
         self, message: str, enabled_workflows: set[str] | None = None
     ) -> ChatRouterResult:
         lower = message.lower()
+
+        # Check for non-workflow intents first (board, status, assign, etc.)
+        intent_result = self._match_intent(lower, message)
+        if intent_result is not None:
+            return intent_result
 
         # Short messages or questions are likely chat
         if len(lower.split()) < 4 or lower.rstrip("?").endswith(("what", "how", "why", "when")):
@@ -235,6 +298,20 @@ class ChatRouter:
             reply="I can help with that, but AI responses aren't connected yet. "
             "This will be answered by the LLM once fully wired.",
         )
+
+    @staticmethod
+    def _match_intent(lower: str, original: str) -> ChatRouterResult | None:
+        """Match non-workflow intents from message keywords."""
+        for intent, keywords in INTENT_KEYWORDS.items():
+            if any(kw in lower for kw in keywords):
+                entity_ref = _extract_entity_ref(original, intent)
+                label = intent.replace("_", " ")
+                return ChatRouterResult(
+                    action=intent,
+                    reply=f"Handling **{label}**...",
+                    entity_ref=entity_ref,
+                )
+        return None
 
     def _make_summary_callback(
         self,

@@ -10,7 +10,13 @@ if TYPE_CHECKING:
 
 import pytest
 
-from lintel.chat_api.chat_router import WORKFLOW_KEYWORDS, ChatRouter, ChatRouterResult
+from lintel.chat_api.chat_router import (
+    INTENT_KEYWORDS,
+    WORKFLOW_KEYWORDS,
+    ChatRouter,
+    ChatRouterResult,
+    _extract_entity_ref,
+)
 
 
 class TestKeywordClassification:
@@ -194,6 +200,137 @@ class TestReply:
         assert tokens == ["Hello", " world"]
 
 
+class TestIntentClassification:
+    """Tests for non-workflow intent matching."""
+
+    def setup_method(self) -> None:
+        self.router = ChatRouter(model_router=None)
+
+    async def test_show_board_intent(self) -> None:
+        result = await self.router.classify("show board")
+        assert result.action == "show_board"
+        assert "show board" in result.reply.lower()
+
+    async def test_kanban_keyword_triggers_show_board(self) -> None:
+        result = await self.router.classify("kanban view please")
+        assert result.action == "show_board"
+
+    async def test_check_status_intent(self) -> None:
+        result = await self.router.classify("what's the status of WI-abc123")
+        assert result.action == "check_status"
+        assert result.entity_ref == "abc123"
+
+    async def test_create_work_item_intent(self) -> None:
+        result = await self.router.classify("create a story for adding dark mode")
+        assert result.action == "create_work_item"
+
+    async def test_implement_item_intent(self) -> None:
+        result = await self.router.classify("implement item WI-xyz789 now")
+        assert result.action == "implement_item"
+        assert result.entity_ref == "xyz789"
+
+    async def test_review_pr_intent(self) -> None:
+        result = await self.router.classify("review PR #42 please")
+        assert result.action == "review_pr"
+        assert result.entity_ref == "PR#42"
+
+    async def test_assign_item_intent(self) -> None:
+        result = await self.router.classify("assign item WI-def456 to me")
+        assert result.action == "assign_item"
+        assert result.entity_ref == "def456"
+
+    async def test_change_priority_intent(self) -> None:
+        result = await self.router.classify("make it p0 immediately")
+        assert result.action == "change_priority"
+
+    async def test_intent_takes_precedence_over_workflow(self) -> None:
+        result = await self.router.classify("review pr #10 and check the code changes")
+        assert result.action == "review_pr"
+
+    async def test_whats_in_progress_triggers_show_board(self) -> None:
+        result = await self.router.classify("what's in progress right now")
+        assert result.action == "show_board"
+
+
+class TestExtractEntityRef:
+    """Tests for _extract_entity_ref helper."""
+
+    def test_extract_work_item_with_dash(self) -> None:
+        assert _extract_entity_ref("check WI-abc123", "check_status") == "abc123"
+
+    def test_extract_work_item_with_space(self) -> None:
+        assert _extract_entity_ref("check WORK abc123", "check_status") == "abc123"
+
+    def test_extract_pr_number(self) -> None:
+        assert _extract_entity_ref("review PR #42", "review_pr") == "PR#42"
+
+    def test_extract_pr_without_hash(self) -> None:
+        assert _extract_entity_ref("review PR 99", "review_pr") == "PR#99"
+
+    def test_extract_pull_request_phrase(self) -> None:
+        assert _extract_entity_ref("review pull request #7", "review_pr") == "PR#7"
+
+    def test_no_entity_returns_empty(self) -> None:
+        assert _extract_entity_ref("show the board", "show_board") == ""
+
+    def test_non_pr_intent_extracts_work_item(self) -> None:
+        assert _extract_entity_ref("assign WI-xyz to me", "assign_item") == "xyz"
+
+    def test_non_pr_intent_ignores_pr_ref(self) -> None:
+        assert _extract_entity_ref("assign PR #5 to me", "assign_item") == ""
+
+
+class TestLLMIntentParsing:
+    """Tests for _parse_llm_response with intent actions."""
+
+    def setup_method(self) -> None:
+        self.router = ChatRouter(model_router=None)
+
+    def test_parse_show_board_intent(self) -> None:
+        content = "ACTION: show_board\nREPLY: Here's the board."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "show_board"
+        assert result.reply == "Here's the board."
+
+    def test_parse_intent_with_entity(self) -> None:
+        content = "ACTION: check_status\nENTITY: WI-abc123\nREPLY: Checking status."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "check_status"
+        assert result.entity_ref == "WI-abc123"
+
+    def test_parse_review_pr_intent(self) -> None:
+        content = "ACTION: review_pr\nENTITY: PR#42\nREPLY: Reviewing PR."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "review_pr"
+        assert result.entity_ref == "PR#42"
+
+    def test_unknown_intent_falls_through_to_chat(self) -> None:
+        content = "ACTION: unknown_intent\nREPLY: Not sure."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "chat_reply"
+
+
+class TestLLMClassifyIntents:
+    """Tests for classify() with LLM returning intents."""
+
+    async def test_llm_returns_intent(self) -> None:
+        mock_router = AsyncMock()
+        mock_router.select_model.return_value = MagicMock()
+        mock_router.call_model.return_value = {
+            "content": "ACTION: show_board\nREPLY: Here's the board."
+        }
+        router = ChatRouter(model_router=mock_router)
+        result = await router.classify("show me the board")
+        assert result.action == "show_board"
+
+    async def test_llm_failure_falls_back_to_intent_keywords(self) -> None:
+        mock_router = AsyncMock()
+        mock_router.select_model.side_effect = RuntimeError("LLM unavailable")
+        router = ChatRouter(model_router=mock_router)
+        result = await router.classify("show board please")
+        assert result.action == "show_board"
+
+
 class TestWorkflowKeywordsIntegrity:
     """Validate the WORKFLOW_KEYWORDS constant."""
 
@@ -209,3 +346,24 @@ class TestWorkflowKeywordsIntegrity:
         result = ChatRouterResult(action="chat_reply", reply="hi")
         with pytest.raises(AttributeError):
             result.action = "other"  # type: ignore[misc]
+
+    def test_chat_router_result_entity_ref_defaults_to_empty(self) -> None:
+        result = ChatRouterResult(action="chat_reply", reply="hi")
+        assert result.entity_ref == ""
+
+
+class TestIntentKeywordsIntegrity:
+    """Validate the INTENT_KEYWORDS constant."""
+
+    def test_all_keys_are_strings(self) -> None:
+        for key in INTENT_KEYWORDS:
+            assert isinstance(key, str)
+
+    def test_all_values_are_non_empty_lists(self) -> None:
+        for key, keywords in INTENT_KEYWORDS.items():
+            assert len(keywords) > 0, f"{key} has empty keyword list"
+
+    def test_no_overlap_with_workflow_keywords(self) -> None:
+        intent_keys = set(INTENT_KEYWORDS.keys())
+        workflow_keys = set(WORKFLOW_KEYWORDS.keys())
+        assert intent_keys.isdisjoint(workflow_keys), f"Overlap: {intent_keys & workflow_keys}"
