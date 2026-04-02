@@ -47,7 +47,7 @@ INTENT_KEYWORDS: dict[str, list[str]] = {
 }
 
 # Regex patterns for extracting entity references from messages
-_WORK_ITEM_RE = re.compile(r"(?:WORK|WI|work|wi)[- ]?(\w{3,12})", re.IGNORECASE)
+_WORK_ITEM_RE = re.compile(r"(?:WORK|WI)[- ]?(\w{3,12})", re.IGNORECASE)
 _PR_RE = re.compile(r"(?:PR|pull request)\s*#?(\d+)", re.IGNORECASE)
 
 
@@ -106,9 +106,13 @@ class ChatRouter:
                     api_base=api_base,
                     enabled_workflows=enabled_workflows,
                 )
-                # If keywords say it's a workflow but LLM says chat, trust keywords —
+                # If keywords say it's actionable but LLM says chat, trust keywords —
                 # LLMs often misclassify actionable requests as chat replies
-                if keyword_result.action == "start_workflow" and llm_result.action == "chat_reply":
+                keyword_is_actionable = (
+                    keyword_result.action == "start_workflow"
+                    or keyword_result.action in VALID_INTENTS
+                )
+                if keyword_is_actionable and llm_result.action == "chat_reply":
                     logger.info(
                         "classify_override_llm_with_keywords",
                         llm_action=llm_result.action,
