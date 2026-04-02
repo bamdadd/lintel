@@ -66,6 +66,8 @@ from lintel.experimentation_api.routes import (
     run_metric_store_provider,
     tournament_store_provider,
 )
+from lintel.feedback_api.routes import feedback_store_provider
+from lintel.feedback_api.store import InMemoryFeedbackStore
 from lintel.integration_patterns_api.routes import integration_pattern_store_provider
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
 from lintel.mcp_servers_api.routes import mcp_server_store_provider
@@ -201,6 +203,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "run_metric_store": ComplianceStore("run_metric_id"),
         "mutation_store": ComplianceStore("mutation_id"),
         "tournament_store": ComplianceStore("tournament_id"),
+        "feedback_store": InMemoryFeedbackStore(),
         "knowledge_entry_store": ComplianceStore("entry_id"),
         "knowledge_extraction_store": ComplianceStore("run_id"),
         "architecture_decision_store": ComplianceStore("decision_id"),
@@ -435,6 +438,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "run_metric_store": PgCompliance(pool, "run_metric", "run_metric_id"),
         "mutation_store": PgCompliance(pool, "strategy_mutation", "mutation_id"),
         "tournament_store": PgCompliance(pool, "tournament", "tournament_id"),
+        "feedback_store": PgCompliance(pool, "feedback", "feedback_id"),
         "knowledge_entry_store": PgCompliance(pool, "knowledge_entry", "entry_id"),
         "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
         "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
@@ -503,6 +507,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     run_metric_store_provider.override(stores["run_metric_store"])
     mutation_store_provider.override(stores["mutation_store"])
     tournament_store_provider.override(stores["tournament_store"])
+    feedback_store_provider.override(stores["feedback_store"])
     integration_pattern_store_provider.override(stores["integration_patterns"])
     process_mining_store_provider.override(stores["process_mining"])
     workflow_definition_store_provider.override(stores["workflow_definition_store"])

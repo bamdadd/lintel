@@ -826,6 +826,24 @@ class PreHookAllowed(EventEnvelope):
     event_type: str = "PreHookAllowed"
 
 
+# --- Feedback Ingestion Events (REQ-025) ---
+
+
+@dataclass(frozen=True)
+class FeedbackReceived(EventEnvelope):
+    event_type: str = "FeedbackReceived"
+
+
+@dataclass(frozen=True)
+class FeedbackCategorized(EventEnvelope):
+    event_type: str = "FeedbackCategorized"
+
+
+@dataclass(frozen=True)
+class FeedbackWorkItemCreated(EventEnvelope):
+    event_type: str = "FeedbackWorkItemCreated"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -971,4 +989,7 @@ register_events(
     PolicyGenerationStarted,
     PolicyGenerationCompleted,
     PolicyGenerationFailed,
+    FeedbackReceived,
+    FeedbackCategorized,
+    FeedbackWorkItemCreated,
 )
