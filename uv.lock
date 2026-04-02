@@ -3392,9 +3392,9 @@ dependencies = [
     { name = "langgraph" },
     { name = "lintel-agents" },
     { name = "lintel-contracts" },
+    { name = "lintel-domain" },
     { name = "lintel-observability" },
     { name = "lintel-sandbox" },
-    { name = "lintel-skills-api" },
     { name = "structlog" },
 ]
 
@@ -3403,9 +3403,9 @@ requires-dist = [
     { name = "langgraph", specifier = ">=0.3" },
     { name = "lintel-agents", editable = "packages/agents" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-observability", editable = "packages/observability" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
-    { name = "lintel-skills-api", editable = "packages/skills-api" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 

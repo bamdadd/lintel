@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lintel.skills_api.integration_scanning import (
+from lintel.domain.integration_scanning import (
     build_dependency_graph,
     detect_antipatterns,
     scan_async_integrations,

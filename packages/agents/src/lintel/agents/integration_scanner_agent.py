@@ -160,7 +160,7 @@ class IntegrationScannerAgent:
         alternative behaviour.
         """
         # Import lazily to avoid circular / hard dependencies at module level.
-        from lintel.skills_api.integration_scanning import (
+        from lintel.domain.integration_scanning import (
             build_dependency_graph,
             detect_antipatterns,
             scan_async_integrations,

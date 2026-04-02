@@ -403,8 +403,8 @@ async def run_tests(
     workspace_path: str,
 ) -> tuple[str, int]:
     """Run tests in the sandbox. Returns (output, exit_code)."""
+    from lintel.domain.skills.discover_test_command import discover_test_command
     from lintel.sandbox.types import SandboxJob
-    from lintel.skills_api.domain.discover_test_command import discover_test_command
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     tracker = StageTracker(config, state)
