@@ -92,11 +92,10 @@ async def _seed_admin_user(stores: dict[str, Any]) -> None:
     """Seed a default admin user so the login page works out of the box."""
     import logging
 
+    from lintel.auth_api.routes import auth_user_store_provider
     from lintel.auth_api.store import InMemoryAuthUserStore
     from lintel.domain.auth.passwords import hash_password
     from lintel.domain.auth.types import AuthRole, AuthUser
-
-    from lintel.auth_api.routes import auth_user_store_provider
 
     try:
         auth_store = auth_user_store_provider.get()
