@@ -13,7 +13,8 @@ from lintel.domain.auth.jwt import (
     create_refresh_token,
     decode_token,
 )
-from lintel.domain.auth.passwords import verify_password
+from lintel.domain.auth.passwords import hash_password, verify_password
+from lintel.domain.auth.types import AuthRole, AuthUser
 
 if TYPE_CHECKING:
     from lintel.auth_api.store import InMemoryAuthUserStore
@@ -22,6 +23,12 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 auth_user_store_provider: StoreProvider[InMemoryAuthUserStore] = StoreProvider()
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str = ""
 
 
 class LoginRequest(BaseModel):
@@ -42,6 +49,28 @@ class RefreshRequest(BaseModel):
 class AccessTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+@router.post("/auth/register", status_code=201)
+async def register(
+    body: RegisterRequest,
+    store: InMemoryAuthUserStore = Depends(auth_user_store_provider),  # noqa: B008
+) -> dict[str, str]:
+    """Register a new user with email and password."""
+    from uuid import uuid4
+
+    existing = await store.get_by_email(body.email)
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="Email already registered")
+    user = AuthUser(
+        user_id=str(uuid4()),
+        email=body.email,
+        name=body.name or body.email.split("@")[0],
+        hashed_password=hash_password(body.password),
+        role=AuthRole.MEMBER,
+    )
+    await store.add(user)
+    return {"user_id": user.user_id, "email": user.email}
 
 
 @router.post("/auth/login")
