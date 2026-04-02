@@ -55,6 +55,8 @@ from lintel.compliance_api.routes import (
     strategy_store_provider,
 )
 from lintel.compliance_api.store import ComplianceStore
+from lintel.context_attachments_api.routes import attachment_store_provider
+from lintel.context_attachments_api.store import InMemoryAttachmentStore
 from lintel.credentials_api.routes import credential_store_provider
 from lintel.credentials_api.store import InMemoryCredentialStore
 from lintel.drift_detection_api.routes import (
@@ -236,6 +238,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         # Agent Action Governance stores (REQ-030)
         "governance_policy_store": ComplianceStore("policy_id"),
         "governance_audit_store": ComplianceStore("entry_id"),
+        "attachment_store": InMemoryAttachmentStore(),
     }
 
 
@@ -500,6 +503,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "workflow_definition_store": PostgresWorkflowDefinitionStore(pool),
         # REQ-026: in-memory until Postgres implementation exists
         "codebase_index_store": InMemoryCodebaseIndexStore(),
+        # REQ-027: in-memory until Postgres implementation exists
+        "attachment_store": InMemoryAttachmentStore(),
         # REQ-010: in-memory until Postgres implementations exist
         "parsed_result_store": ParsedTestResultStore(),
         "coverage_metric_store": CoverageMetricStore(),
@@ -575,6 +580,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     governance_audit_store_provider.override(stores["governance_audit_store"])
     auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
     trust_score_store_provider.override(stores["trust_score_store"])
+    attachment_store_provider.override(stores["attachment_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

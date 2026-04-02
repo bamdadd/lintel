@@ -24,6 +24,7 @@ members = [
     "lintel-chat-api",
     "lintel-codebase-index-api",
     "lintel-compliance-api",
+    "lintel-context-attachments-api",
     "lintel-contracts",
     "lintel-coordination",
     "lintel-credentials-api",
@@ -1828,6 +1829,7 @@ dependencies = [
     { name = "lintel-chat-api" },
     { name = "lintel-codebase-index-api" },
     { name = "lintel-compliance-api" },
+    { name = "lintel-context-attachments-api" },
     { name = "lintel-contracts" },
     { name = "lintel-coordination" },
     { name = "lintel-credentials-api" },
@@ -1901,6 +1903,7 @@ requires-dist = [
     { name = "lintel-chat-api", editable = "packages/chat-api" },
     { name = "lintel-codebase-index-api", editable = "packages/codebase-index-api" },
     { name = "lintel-compliance-api", editable = "packages/compliance-api" },
+    { name = "lintel-context-attachments-api", editable = "packages/context-attachments-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-coordination", editable = "packages/coordination" },
     { name = "lintel-credentials-api", editable = "packages/credentials-api" },
@@ -2290,6 +2293,27 @@ requires-dist = [
     { name = "google-auth", specifier = ">=2.0" },
     { name = "google-auth-httplib2", specifier = ">=0.2" },
     { name = "google-auth-oauthlib", specifier = ">=1.0" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
+name = "lintel-context-attachments-api"
+version = "0.1.0"
+source = { editable = "packages/context-attachments-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
