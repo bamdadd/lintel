@@ -447,6 +447,21 @@ async def run_tests(
             SandboxJob(command=cmd, workdir=workspace_path, timeout_seconds=180),
         )
 
+    # Selective test execution: prefer affected tests over full suite
+    from lintel.workflows.nodes._affected_tests import (
+        build_pytest_command,
+        select_affected_tests,
+    )
+
+    affected = await select_affected_tests(sandbox_manager, sandbox_id, workspace_path, base_branch)
+    targeted_cmd = build_pytest_command(affected.test_files)
+    if targeted_cmd:
+        test_command = targeted_cmd
+        await tracker.append_log(
+            "implement",
+            f"Selective: {len(affected.test_files)} affected test files",
+        )
+
     async def _log_test_line(line: str) -> None:
         await tracker.append_log("implement", line)
 
