@@ -9,6 +9,11 @@ if TYPE_CHECKING:
 
 from lintel.agent_definitions_api.routes import agent_definition_store_provider
 from lintel.agent_definitions_api.store import AgentDefinitionStore
+from lintel.agent_skills_api.routes import (
+    agent_skill_binding_store_provider,
+    agent_skill_store_provider,
+)
+from lintel.agent_skills_api.store import InMemoryAgentSkillBindingStore, InMemoryAgentSkillStore
 from lintel.ai_firewall_api.routes import firewall_log_store_provider, firewall_rule_store_provider
 from lintel.ai_firewall_api.store import InMemoryFirewallLogStore, InMemoryFirewallRuleStore
 from lintel.ai_providers_api.routes import ai_provider_store_provider
@@ -240,6 +245,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "architecture_decision_store": ComplianceStore("decision_id"),
         "policy_generation_store": ComplianceStore("run_id"),
         "guardrail_rule_store": ComplianceStore("rule_id"),
+        # Composable Agent Skills stores (REQ-F033)
+        "agent_skill_store": InMemoryAgentSkillStore(),
+        "agent_skill_binding_store": InMemoryAgentSkillBindingStore(),
         # Agent Trust Score store (REQ-F029)
         "trust_score_store": InMemoryTrustScoreStore(),
         # Privacy Controls stores (REQ-008)
@@ -530,6 +538,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         # REQ-025: in-memory until Postgres implementation exists
         "firewall_rule_store": InMemoryFirewallRuleStore(),
         "firewall_log_store": InMemoryFirewallLogStore(),
+        # REQ-F033: in-memory until Postgres implementation exists
+        "agent_skill_store": InMemoryAgentSkillStore(),
+        "agent_skill_binding_store": InMemoryAgentSkillBindingStore(),
     }
 
 
@@ -604,6 +615,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     preference_store_provider.override(stores["preference_store"])
     firewall_rule_store_provider.override(stores["firewall_rule_store"])
     firewall_log_store_provider.override(stores["firewall_log_store"])
+    agent_skill_store_provider.override(stores["agent_skill_store"])
+    agent_skill_binding_store_provider.override(stores["agent_skill_binding_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

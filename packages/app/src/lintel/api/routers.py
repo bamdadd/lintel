@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lintel.agent_definitions_api.routes import router as agent_definitions_router
+from lintel.agent_skills_api.routes import router as agent_skills_router
 from lintel.ai_firewall_api.routes import router as ai_firewall_router
 from lintel.ai_providers_api.routes import router as ai_providers_router
 from lintel.api.routes import (
@@ -119,6 +120,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(codebase_index_router, prefix="/api/v1", tags=["codebase-index"])
     app.include_router(trust_scores_router, prefix="/api/v1", tags=["trust-scores"])
     app.include_router(privacy_controls_router, prefix="/api/v1", tags=["privacy-controls"])
+    app.include_router(agent_skills_router, prefix="/api/v1", tags=["agent-skills"])
     app.include_router(
         context_attachments_router,
         prefix="/api/v1",
