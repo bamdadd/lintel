@@ -31,6 +31,11 @@ class UpdateUserRequest(BaseModel):
     name: str | None = None
     email: str | None = None
     role: UserRole | None = None
+    slack_user_id: str | None = None
+
+
+class LinkSlackRequest(BaseModel):
+    slack_user_id: str
 
 
 def _user_to_dict(user: User) -> dict[str, Any]:
@@ -73,6 +78,17 @@ async def list_users(
     return [_user_to_dict(u) for u in users]
 
 
+@router.get("/users/by-slack-id/{slack_user_id}")
+async def get_user_by_slack_id(
+    slack_user_id: str,
+    store: InMemoryUserStore = Depends(user_store_provider),  # noqa: B008
+) -> dict[str, Any]:
+    user = await store.get_by_slack_id(slack_user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="No user linked to this Slack ID")
+    return _user_to_dict(user)
+
+
 @router.get("/users/{user_id}")
 async def get_user(
     user_id: str,
@@ -100,6 +116,34 @@ async def update_user(
     await dispatch_event(
         request,
         UserUpdated(payload={"resource_id": user_id, "fields": list(updates.keys())}),
+        stream_id=f"user:{user_id}",
+    )
+    return _user_to_dict(updated)
+
+
+@router.post("/users/{user_id}/link-slack")
+async def link_slack(
+    user_id: str,
+    body: LinkSlackRequest,
+    request: Request,
+    store: InMemoryUserStore = Depends(user_store_provider),  # noqa: B008
+) -> dict[str, Any]:
+    user = await store.get(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing = await store.get_by_slack_id(body.slack_user_id)
+    if existing is not None and existing.user_id != user_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Slack ID already linked to another user",
+        )
+    updated = User(**{**asdict(user), "slack_user_id": body.slack_user_id})
+    await store.update(updated)
+    await dispatch_event(
+        request,
+        UserUpdated(
+            payload={"resource_id": user_id, "fields": ["slack_user_id"]},
+        ),
         stream_id=f"user:{user_id}",
     )
     return _user_to_dict(updated)
