@@ -76,6 +76,7 @@ testpaths = [
     "packages/memory-api/tests",
     "packages/auth-api/tests",
     "packages/privacy-controls-api/tests",
+    "packages/agent-skills-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -140,6 +141,7 @@ mypy_path = [
     "packages/memory/src",
     "packages/memory-api/src",
     "packages/privacy-controls-api/src",
+    "packages/agent-skills-api/src",
 ]
 
 [[tool.mypy.overrides]]

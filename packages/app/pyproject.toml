@@ -50,6 +50,7 @@ dependencies = [
     "lintel-feedback-api",
     "lintel-codebase-index-api",
     "lintel-trust-scores-api",
+    "lintel-agent-skills-api",
     "lintel-governance-api",
     "lintel-privacy-controls-api",
     "lintel-ai-firewall-api",
@@ -125,6 +126,7 @@ lintel-experimentation-api = { workspace = true }
 lintel-feedback-api = { workspace = true }
 lintel-codebase-index-api = { workspace = true }
 lintel-trust-scores-api = { workspace = true }
+lintel-agent-skills-api = { workspace = true }
 lintel-governance-api = { workspace = true }
 lintel-privacy-controls-api = { workspace = true }
 lintel-ai-firewall-api = { workspace = true }

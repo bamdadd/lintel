@@ -1020,6 +1020,34 @@ class PrivacyPreferenceUpdated(EventEnvelope):
     event_type: str = "PrivacyPreferenceUpdated"
 
 
+# --- Composable Agent Skills Events (REQ-F033) ---
+
+
+@dataclass(frozen=True)
+class AgentSkillCreated(EventEnvelope):
+    event_type: str = "AgentSkillCreated"
+
+
+@dataclass(frozen=True)
+class AgentSkillUpdated(EventEnvelope):
+    event_type: str = "AgentSkillUpdated"
+
+
+@dataclass(frozen=True)
+class AgentSkillRemoved(EventEnvelope):
+    event_type: str = "AgentSkillRemoved"
+
+
+@dataclass(frozen=True)
+class AgentSkillBound(EventEnvelope):
+    event_type: str = "AgentSkillBound"
+
+
+@dataclass(frozen=True)
+class AgentSkillUnbound(EventEnvelope):
+    event_type: str = "AgentSkillUnbound"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1196,4 +1224,9 @@ register_events(
     FirewallRuleRemoved,
     AgentRequestBlocked,
     AgentRequestAllowed,
+    AgentSkillCreated,
+    AgentSkillUpdated,
+    AgentSkillRemoved,
+    AgentSkillBound,
+    AgentSkillUnbound,
 )
