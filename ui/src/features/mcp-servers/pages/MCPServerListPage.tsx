@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Title, Stack, Table, Button, Group, Modal, TextInput, Switch,
   Loader, Center, ActionIcon, Badge, Textarea, Text, Paper, Code,
@@ -6,8 +6,9 @@ import {
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconPlug, IconPlugOff, IconTool } from '@tabler/icons-react';
+import { IconTrash, IconTool } from '@tabler/icons-react';
 import { EmptyState } from '@/shared/components/EmptyState';
+import { HealthStatusBadge, type HealthStatus } from '../components/HealthStatusBadge';
 
 interface MCPServerItem {
   server_id: string;
@@ -24,6 +25,12 @@ interface MCPTool {
   input_schema: Record<string, unknown>;
 }
 
+interface ServerHealth {
+  status: HealthStatus;
+  toolCount: number | null;
+  lastChecked: Date | null;
+}
+
 const API = '/api/v1/mcp-servers';
 
 export function Component() {
@@ -34,14 +41,56 @@ export function Component() {
   const [toolsModal, setToolsModal] = useState<string | null>(null);
   const [tools, setTools] = useState<MCPTool[]>([]);
   const [toolsLoading, setToolsLoading] = useState(false);
+  const [healthMap, setHealthMap] = useState<Record<string, ServerHealth>>({});
+  const hasLoaded = useRef(false);
 
-  const loadServers = () => {
-    fetch(API).then(r => r.json()).then(d => { setServers(d); setIsLoading(false); })
-      .catch(() => setIsLoading(false));
-  };
+  const checkServerHealth = useCallback((serverId: string) => {
+    setHealthMap((prev) => ({
+      ...prev,
+      [serverId]: { ...prev[serverId], status: 'checking', toolCount: prev[serverId]?.toolCount ?? null, lastChecked: prev[serverId]?.lastChecked ?? null },
+    }));
+    fetch(`${API}/${serverId}/tools`)
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((toolList: MCPTool[]) => {
+        setHealthMap((prev) => ({
+          ...prev,
+          [serverId]: { status: 'connected', toolCount: toolList.length, lastChecked: new Date() },
+        }));
+      })
+      .catch(() => {
+        setHealthMap((prev) => ({
+          ...prev,
+          [serverId]: { status: 'disconnected', toolCount: null, lastChecked: new Date() },
+        }));
+      });
+  }, []);
 
-  // Load on mount
-  useState(() => { loadServers(); });
+  const loadServers = useCallback(() => {
+    fetch(API).then(r => r.json()).then((d: MCPServerItem[]) => {
+      setServers(d);
+      setIsLoading(false);
+      for (const s of d) {
+        if (s.enabled) {
+          checkServerHealth(s.server_id);
+        } else {
+          setHealthMap((prev) => ({
+            ...prev,
+            [s.server_id]: { status: 'disconnected', toolCount: null, lastChecked: null },
+          }));
+        }
+      }
+    }).catch(() => setIsLoading(false));
+  }, [checkServerHealth]);
+
+  useEffect(() => {
+    if (!hasLoaded.current) {
+      hasLoaded.current = true;
+      loadServers();
+    }
+  }, [loadServers]);
 
   const form = useForm({
     initialValues: { name: '', url: '', enabled: true, description: '', config: '' },
@@ -155,48 +204,58 @@ export function Component() {
             <Table.Tr>
               <Table.Th>Name</Table.Th>
               <Table.Th>URL</Table.Th>
+              <Table.Th>Health</Table.Th>
               <Table.Th>Status</Table.Th>
               <Table.Th>Description</Table.Th>
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {servers.map((s) => (
-              <Table.Tr key={s.server_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(s)}>
-                <Table.Td>{s.name}</Table.Td>
-                <Table.Td><Code>{s.url}</Code></Table.Td>
-                <Table.Td>
-                  <Badge
-                    color={s.enabled ? 'green' : 'gray'}
-                    variant="light"
-                    leftSection={s.enabled ? <IconPlug size={12} /> : <IconPlugOff size={12} />}
-                  >
-                    {s.enabled ? 'Enabled' : 'Disabled'}
-                  </Badge>
-                </Table.Td>
-                <Table.Td><Text size="sm" truncate maw={200}>{s.description}</Text></Table.Td>
-                <Table.Td>
-                  <Group gap={4}>
-                    <ActionIcon
-                      size="sm"
-                      variant="subtle"
-                      color="blue"
-                      onClick={(e) => { e.stopPropagation(); handleShowTools(s.server_id); }}
-                      title="View tools"
+            {servers.map((s) => {
+              const health = healthMap[s.server_id];
+              return (
+                <Table.Tr key={s.server_id} style={{ cursor: 'pointer' }} onClick={() => openEdit(s)}>
+                  <Table.Td>{s.name}</Table.Td>
+                  <Table.Td><Code>{s.url}</Code></Table.Td>
+                  <Table.Td>
+                    <HealthStatusBadge
+                      status={health?.status ?? 'checking'}
+                      toolCount={health?.toolCount ?? null}
+                      lastChecked={health?.lastChecked ?? null}
+                    />
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge
+                      color={s.enabled ? 'green' : 'gray'}
+                      variant="light"
                     >
-                      <IconTool size={14} />
-                    </ActionIcon>
-                    <ActionIcon
-                      color="red"
-                      variant="subtle"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(s.server_id); }}
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
+                      {s.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td><Text size="sm" truncate maw={200}>{s.description}</Text></Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
+                      <ActionIcon
+                        size="sm"
+                        variant="subtle"
+                        color="blue"
+                        onClick={(e) => { e.stopPropagation(); handleShowTools(s.server_id); }}
+                        title="View tools"
+                      >
+                        <IconTool size={14} />
+                      </ActionIcon>
+                      <ActionIcon
+                        color="red"
+                        variant="subtle"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(s.server_id); }}
+                      >
+                        <IconTrash size={16} />
+                      </ActionIcon>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
           </Table.Tbody>
         </Table>
       )}
