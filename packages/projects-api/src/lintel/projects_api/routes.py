@@ -42,6 +42,14 @@ class UpdateProjectRequest(BaseModel):
     compliance_config: dict[str, object] | None = None
 
 
+class PrincipleRequest(BaseModel):
+    """Request body for creating/updating an engineering principle."""
+
+    name: str
+    description: str = ""
+    category: str = "general"
+
+
 @router.post("/projects", status_code=201)
 async def create_project(
     request: Request,
@@ -123,5 +131,120 @@ async def remove_project(
     await dispatch_event(
         request,
         ProjectRemoved(payload={"resource_id": project_id, "name": item.get("name", "")}),
+        stream_id=f"project:{project_id}",
+    )
+
+
+# --- Principles sub-resource ---
+
+
+async def _get_project_or_404(
+    project_id: str,
+    store: ProjectStore,
+) -> dict[str, Any]:
+    item = await store.get(project_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return item
+
+
+@router.get("/projects/{project_id}/principles")
+async def list_principles(
+    project_id: str,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> list[dict[str, Any]]:
+    project = await _get_project_or_404(project_id, store)
+    return project.get("principles", [])  # type: ignore[no-any-return]
+
+
+@router.post("/projects/{project_id}/principles", status_code=201)
+async def create_principle(
+    request: Request,
+    project_id: str,
+    body: PrincipleRequest,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> dict[str, Any]:
+    project = await _get_project_or_404(project_id, store)
+    principle: dict[str, Any] = {
+        "principle_id": str(uuid4()),
+        "name": body.name,
+        "description": body.description,
+        "category": body.category,
+    }
+    principles: list[dict[str, Any]] = project.get("principles", [])  # type: ignore[assignment]
+    principles.append(principle)
+    project["principles"] = principles
+    await store.update(project_id, project)
+    await dispatch_event(
+        request,
+        ProjectUpdated(
+            payload={"resource_id": project_id, "fields": ["principles"]},
+        ),
+        stream_id=f"project:{project_id}",
+    )
+    return principle
+
+
+@router.get("/projects/{project_id}/principles/{principle_id}")
+async def get_principle(
+    project_id: str,
+    principle_id: str,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> dict[str, Any]:
+    project = await _get_project_or_404(project_id, store)
+    principles: list[dict[str, Any]] = project.get("principles", [])  # type: ignore[assignment]
+    for p in principles:
+        if p["principle_id"] == principle_id:
+            return p
+    raise HTTPException(status_code=404, detail="Principle not found")
+
+
+@router.patch("/projects/{project_id}/principles/{principle_id}")
+async def update_principle(
+    request: Request,
+    project_id: str,
+    principle_id: str,
+    body: PrincipleRequest,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> dict[str, Any]:
+    project = await _get_project_or_404(project_id, store)
+    principles: list[dict[str, Any]] = project.get("principles", [])  # type: ignore[assignment]
+    for p in principles:
+        if p["principle_id"] == principle_id:
+            p["name"] = body.name
+            p["description"] = body.description
+            p["category"] = body.category
+            project["principles"] = principles
+            await store.update(project_id, project)
+            await dispatch_event(
+                request,
+                ProjectUpdated(
+                    payload={"resource_id": project_id, "fields": ["principles"]},
+                ),
+                stream_id=f"project:{project_id}",
+            )
+            return p
+    raise HTTPException(status_code=404, detail="Principle not found")
+
+
+@router.delete("/projects/{project_id}/principles/{principle_id}", status_code=204)
+async def delete_principle(
+    request: Request,
+    project_id: str,
+    principle_id: str,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> None:
+    project = await _get_project_or_404(project_id, store)
+    principles: list[dict[str, Any]] = project.get("principles", [])  # type: ignore[assignment]
+    new_principles = [p for p in principles if p["principle_id"] != principle_id]
+    if len(new_principles) == len(principles):
+        raise HTTPException(status_code=404, detail="Principle not found")
+    project["principles"] = new_principles
+    await store.update(project_id, project)
+    await dispatch_event(
+        request,
+        ProjectUpdated(
+            payload={"resource_id": project_id, "fields": ["principles"]},
+        ),
         stream_id=f"project:{project_id}",
     )
