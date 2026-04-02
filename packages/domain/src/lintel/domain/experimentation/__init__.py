@@ -1,5 +1,13 @@
-"""Experimentation sub-package: strategy search and variant discovery."""
+"""Experimentation sub-package: strategy search, feature flags, and A/B testing."""
 
+from lintel.domain.experimentation.feature_flags import (
+    ABTest,
+    FeatureFlag,
+    FeatureFlagEngine,
+    RuleOperator,
+    TargetingRule,
+    Variant,
+)
 from lintel.domain.experimentation.strategy_search import (
     OptimizationDirection,
     SearchGoal,
@@ -9,9 +17,15 @@ from lintel.domain.experimentation.strategy_search import (
 )
 
 __all__ = [
+    "ABTest",
+    "FeatureFlag",
+    "FeatureFlagEngine",
     "OptimizationDirection",
+    "RuleOperator",
     "SearchGoal",
     "StrategySearchEngine",
     "StrategyVariant",
+    "TargetingRule",
+    "Variant",
     "VariantResult",
 ]
