@@ -31,11 +31,14 @@ from lintel.credentials_api.routes import router as credentials_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.integration_patterns_api import router as integration_patterns_router
+from lintel.knowledge_api.routes import router as knowledge_router
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
 from lintel.notifications_api.routes import router as notifications_router
+from lintel.observations_api.routes import router as observations_router
 from lintel.pipelines_api.routes import router as pipelines_router
+from lintel.playbooks_api.routes import router as playbooks_router
 from lintel.policies_api.routes import router as policies_router
 from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
@@ -45,6 +48,7 @@ from lintel.settings_api.channels_router import router as channels_settings_rout
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
 from lintel.stage_catalogue_api.routes import router as stage_catalogue_router
+from lintel.syntheses_api.routes import router as syntheses_router
 from lintel.teams.routes import router as teams_router
 from lintel.telegram.webhook import router as telegram_router
 from lintel.triggers_api.routes import router as triggers_router
@@ -100,6 +104,10 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(integration_patterns_router, prefix="/api/v1", tags=["integration-patterns"])
     app.include_router(process_mining_router, prefix="/api/v1", tags=["process-mining"])
     app.include_router(stage_catalogue_router, prefix="/api/v1", tags=["stage-catalogue"])
+    app.include_router(observations_router, prefix="/api/v1", tags=["observations"])
+    app.include_router(knowledge_router, prefix="/api/v1", tags=["knowledge"])
+    app.include_router(syntheses_router, prefix="/api/v1", tags=["syntheses"])
+    app.include_router(playbooks_router, prefix="/api/v1", tags=["playbooks"])
     app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
     app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])

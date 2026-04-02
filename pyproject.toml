@@ -74,6 +74,10 @@ testpaths = [
     "packages/memory/tests",
     "packages/memory-api/tests",
     "packages/auth-api/tests",
+    "packages/observations-api/tests",
+    "packages/knowledge-api/tests",
+    "packages/syntheses-api/tests",
+    "packages/playbooks-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -136,6 +140,10 @@ mypy_path = [
     "packages/chat-api/src",
     "packages/memory/src",
     "packages/memory-api/src",
+    "packages/observations-api/src",
+    "packages/knowledge-api/src",
+    "packages/syntheses-api/src",
+    "packages/playbooks-api/src",
 ]
 
 [[tool.mypy.overrides]]

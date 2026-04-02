@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -14,9 +14,9 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from lintel.chat_api.models import SendMessageRequest
+    from lintel.chat_api.store import ChatStore
 
 from lintel.chat_api.service import ChatService
-from lintel.chat_api.store import ChatStore
 
 logger = structlog.get_logger()
 
@@ -27,15 +27,12 @@ def _get_chat_store(request: Request) -> ChatStore:
     return request.app.state.chat_store  # type: ignore[no-any-return]
 
 
-_ChatStoreDep = Annotated[ChatStore, Depends(_get_chat_store)]
-
-
 @streaming_router.post("/chat/conversations/{conversation_id}/messages/stream")
 async def send_message_stream(
     conversation_id: str,
     body: SendMessageRequest,
-    store: _ChatStoreDep,
     request: Request,
+    store: ChatStore = Depends(_get_chat_store),  # noqa: B008
 ) -> StreamingResponse:
     """Send a message and stream the AI response as SSE."""
     if body.role != "user":
@@ -138,7 +135,7 @@ async def send_message_stream(
 @streaming_router.get("/chat/conversations/{conversation_id}/events")
 async def stream_conversation_events(
     conversation_id: str,
-    store: _ChatStoreDep,
+    store: ChatStore = Depends(_get_chat_store),  # noqa: B008
 ) -> StreamingResponse:
     """Stream new chat messages via SSE for real-time updates."""
     conv = await store.get(conversation_id)

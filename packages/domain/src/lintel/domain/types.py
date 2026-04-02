@@ -691,6 +691,63 @@ class KnowledgeExtractionRun:
     error: str = ""
 
 
+# --- Observation & Knowledge Graph (REQ-034.3) ---
+
+
+class EdgeType(StrEnum):
+    INSPIRED_BY = "inspired_by"
+    CONTRADICTS = "contradicts"
+    EXTENDS = "extends"
+    SUPERSEDES = "supersedes"
+
+
+@dataclass(frozen=True)
+class Observation:
+    """A captured observation from a workflow run."""
+
+    observation_id: str
+    run_id: str
+    project_id: str
+    content: str
+    extracted_at: str = ""
+    synthesized_at: str = ""  # empty string means not yet synthesized
+    metadata: dict[str, object] | None = None
+
+
+@dataclass(frozen=True)
+class KnowledgeEdge:
+    """A directed edge in the knowledge graph between observations."""
+
+    edge_id: str
+    from_id: str
+    to_id: str
+    edge_type: EdgeType = EdgeType.INSPIRED_BY
+    created_at: str = ""
+
+
+@dataclass(frozen=True)
+class Synthesis:
+    """A cross-project hypothesis generated from observations."""
+
+    synthesis_id: str
+    hypothesis: str
+    source_observation_ids: tuple[str, ...] = ()
+    project_ids: tuple[str, ...] = ()
+    confidence_score: float = 0.0
+    created_at: str = ""
+
+
+@dataclass(frozen=True)
+class Playbook:
+    """A reusable strategy distilled from high-confidence syntheses."""
+
+    playbook_id: str
+    title: str
+    strategy: str = ""
+    source_synthesis_ids: tuple[str, ...] = ()
+    created_at: str = ""
+
+
 # --- Users & Teams ---
 
 

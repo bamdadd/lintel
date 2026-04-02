@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -51,8 +51,6 @@ def get_chat_store(request: Request) -> ChatStore:
 
 chat_store_provider: StoreProvider[ChatStore] = StoreProvider()
 
-ChatStoreDep = Annotated[ChatStore, Depends(get_chat_store)]
-
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -62,8 +60,8 @@ ChatStoreDep = Annotated[ChatStore, Depends(get_chat_store)]
 @router.post("/chat/conversations", status_code=201)
 async def create_conversation(
     body: StartConversationRequest,
-    store: ChatStoreDep,
     request: Request,
+    store: ChatStore = Depends(get_chat_store),  # noqa: B008
 ) -> dict[str, Any]:
     """Start a new conversation, optionally with an initial message."""
     conversation_id = uuid4().hex
@@ -131,9 +129,9 @@ async def create_conversation(
 
 @router.get("/chat/conversations")
 async def list_conversations(
-    store: ChatStoreDep,
     user_id: str | None = None,
     project_id: str | None = None,
+    store: ChatStore = Depends(get_chat_store),  # noqa: B008
 ) -> list[dict[str, Any]]:
     """List conversations with optional filters."""
     return await store.list_all(user_id=user_id, project_id=project_id)
@@ -142,7 +140,7 @@ async def list_conversations(
 @router.get("/chat/conversations/{conversation_id}")
 async def get_conversation(
     conversation_id: str,
-    store: ChatStoreDep,
+    store: ChatStore = Depends(get_chat_store),  # noqa: B008
 ) -> dict[str, Any]:
     """Get a conversation with its message history."""
     conv = await store.get(conversation_id)
@@ -161,8 +159,8 @@ async def get_conversation(
 async def send_message(
     conversation_id: str,
     body: SendMessageRequest,
-    store: ChatStoreDep,
     request: Request,
+    store: ChatStore = Depends(get_chat_store),  # noqa: B008
 ) -> dict[str, Any]:
     """Send a message to an existing conversation. Routes user messages through the chat router."""
     if body.role not in ("user", "agent", "system"):
@@ -258,7 +256,7 @@ async def send_message(
 @router.get("/chat/conversations/{conversation_id}/status")
 async def get_conversation_status(
     conversation_id: str,
-    store: ChatStoreDep,
+    store: ChatStore = Depends(get_chat_store),  # noqa: B008
 ) -> dict[str, Any]:
     """Return workflow status for a conversation (project, work item, run)."""
     conv = await store.get(conversation_id)
@@ -278,8 +276,8 @@ async def get_conversation_status(
 @router.post("/chat/conversations/{conversation_id}/retry", status_code=200)
 async def retry_workflow(
     conversation_id: str,
-    store: ChatStoreDep,
     request: Request,
+    store: ChatStore = Depends(get_chat_store),  # noqa: B008
 ) -> dict[str, Any]:
     """Retry a failed workflow from the last checkpoint."""
     conv = await store.get(conversation_id)
@@ -354,8 +352,8 @@ async def retry_workflow(
 )
 async def delete_conversation(
     conversation_id: str,
-    store: ChatStoreDep,
     request: Request,
+    store: ChatStore = Depends(get_chat_store),  # noqa: B008
 ) -> None:
     """Delete a conversation."""
     deleted = await store.delete(conversation_id)

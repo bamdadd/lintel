@@ -68,6 +68,8 @@ from lintel.experimentation_api.routes import (
 )
 from lintel.integration_patterns_api.routes import integration_pattern_store_provider
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
+from lintel.knowledge_api.routes import knowledge_edge_store_provider
+from lintel.knowledge_api.store import KnowledgeEdgeStore
 from lintel.mcp_servers_api.routes import mcp_server_store_provider
 from lintel.mcp_servers_api.store import InMemoryMCPServerStore
 from lintel.memory_api.dependencies import memory_service_provider
@@ -76,7 +78,11 @@ from lintel.models_api.routes import model_assignment_store_provider, model_stor
 from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.notifications_api.routes import notification_rule_store_provider
 from lintel.notifications_api.store import NotificationRuleStore
+from lintel.observations_api.routes import observation_store_provider
+from lintel.observations_api.store import ObservationStore
 from lintel.pipelines_api.routes import InMemoryPipelineStore, pipeline_store_provider
+from lintel.playbooks_api.routes import playbook_store_provider
+from lintel.playbooks_api.store import PlaybookStore
 from lintel.policies_api.routes import policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
 from lintel.process_mining_api.routes import process_mining_store_provider
@@ -88,6 +94,8 @@ from lintel.repositories_api.routes import repo_provider_provider, repository_st
 from lintel.sandboxes_api.routes import SandboxStore
 from lintel.skills_api.routes import skill_store_provider
 from lintel.skills_api.store import InMemorySkillStore
+from lintel.syntheses_api.routes import synthesis_store_provider
+from lintel.syntheses_api.store import SynthesisStore
 from lintel.teams.routes import team_store_provider
 from lintel.teams.store import InMemoryTeamStore
 from lintel.triggers_api.routes import trigger_store_provider
@@ -206,6 +214,11 @@ def create_in_memory_stores() -> dict[str, Any]:
         "architecture_decision_store": ComplianceStore("decision_id"),
         "policy_generation_store": ComplianceStore("run_id"),
         "guardrail_rule_store": ComplianceStore("rule_id"),
+        # Knowledge graph stores (REQ-034.3)
+        "observation_store": ObservationStore(),
+        "knowledge_edge_store": KnowledgeEdgeStore(),
+        "synthesis_store": SynthesisStore(),
+        "playbook_store": PlaybookStore(),
     }
 
 
@@ -507,6 +520,10 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     process_mining_store_provider.override(stores["process_mining"])
     workflow_definition_store_provider.override(stores["workflow_definition_store"])
     guardrail_rule_store_provider.override(stores["guardrail_rule_store"])
+    observation_store_provider.override(stores["observation_store"])
+    knowledge_edge_store_provider.override(stores["knowledge_edge_store"])
+    synthesis_store_provider.override(stores["synthesis_store"])
+    playbook_store_provider.override(stores["playbook_store"])
     auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
 
 

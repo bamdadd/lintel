@@ -11,11 +11,14 @@ dependencies = [
     "lintel-event-store",
     "lintel-event-bus",
     "lintel-persistence",
+    "lintel-playbooks-api",
     "lintel-sandbox",
     "lintel-pii",
     "lintel-observability",
+    "lintel-observations-api",
     "lintel-models",
     "lintel-slack",
+    "lintel-syntheses-api",
     "lintel-channels",
     "lintel-telegram",
     "lintel-repos",
@@ -47,6 +50,7 @@ dependencies = [
     "lintel-compliance-api",
     "lintel-experimentation-api",
     "lintel-integration-patterns-api",
+    "lintel-knowledge-api",
     "lintel-process-mining-api",
     "lintel-automations-api",
     "lintel-sandboxes-api",
@@ -123,6 +127,10 @@ lintel-memory = { workspace = true }
 lintel-memory-api = { workspace = true }
 lintel-stage-catalogue-api = { workspace = true }
 lintel-auth-api = { workspace = true }
+lintel-knowledge-api = { workspace = true }
+lintel-observations-api = { workspace = true }
+lintel-playbooks-api = { workspace = true }
+lintel-syntheses-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

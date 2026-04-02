@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Any
+from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -46,7 +46,7 @@ class UpdateGuardrailRuleRequest(BaseModel):
 
 @router.get("/guardrail-rules")
 async def list_guardrail_rules(
-    store: Annotated[ComplianceStore, Depends(guardrail_rule_store_provider)],
+    store: ComplianceStore = Depends(guardrail_rule_store_provider),  # noqa: B008
     enabled: bool | None = None,
     is_default: bool | None = None,
 ) -> list[dict[str, Any]]:
@@ -62,7 +62,7 @@ async def list_guardrail_rules(
 @router.get("/guardrail-rules/{rule_id}")
 async def get_guardrail_rule(
     rule_id: str,
-    store: Annotated[ComplianceStore, Depends(guardrail_rule_store_provider)],
+    store: ComplianceStore = Depends(guardrail_rule_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Get a single guardrail rule by ID."""
     rule = await store.get(rule_id)
@@ -75,7 +75,7 @@ async def get_guardrail_rule(
 async def create_guardrail_rule(
     request: Request,
     body: CreateGuardrailRuleRequest,
-    store: Annotated[ComplianceStore, Depends(guardrail_rule_store_provider)],
+    store: ComplianceStore = Depends(guardrail_rule_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Create a custom guardrail rule."""
     from lintel.domain.events import GuardrailTriggered
@@ -115,7 +115,7 @@ async def create_guardrail_rule(
 async def update_guardrail_rule(
     rule_id: str,
     body: UpdateGuardrailRuleRequest,
-    store: Annotated[ComplianceStore, Depends(guardrail_rule_store_provider)],
+    store: ComplianceStore = Depends(guardrail_rule_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     """Update a guardrail rule's mutable fields."""
     existing = await store.get(rule_id)
@@ -144,7 +144,7 @@ async def update_guardrail_rule(
 @router.delete("/guardrail-rules/{rule_id}", status_code=204)
 async def delete_guardrail_rule(
     rule_id: str,
-    store: Annotated[ComplianceStore, Depends(guardrail_rule_store_provider)],
+    store: ComplianceStore = Depends(guardrail_rule_store_provider),  # noqa: B008
 ) -> None:
     """Delete a guardrail rule. Default rules cannot be deleted."""
     existing = await store.get(rule_id)

@@ -11,3 +11,7 @@ from __future__ import annotations
 AGENT_QUEUED = "agent.queued"
 AGENT_SLOT_ACQUIRED = "agent.slot.acquired"
 AGENT_SLOT_RELEASED = "agent.slot.released"
+
+# Knowledge graph lifecycle topics (REQ-034.3)
+OBSERVATION_RECORDED = "observation.recorded"
+SYNTHESIS_GENERATED = "synthesis.generated"

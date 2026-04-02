@@ -826,6 +826,34 @@ class PreHookAllowed(EventEnvelope):
     event_type: str = "PreHookAllowed"
 
 
+# --- Observation & Knowledge Graph Events (REQ-034.3) ---
+
+
+@dataclass(frozen=True)
+class ObservationRecorded(EventEnvelope):
+    event_type: str = "ObservationRecorded"
+
+
+@dataclass(frozen=True)
+class KnowledgeEdgeCreated(EventEnvelope):
+    event_type: str = "KnowledgeEdgeCreated"
+
+
+@dataclass(frozen=True)
+class SynthesisGenerated(EventEnvelope):
+    event_type: str = "SynthesisGenerated"
+
+
+@dataclass(frozen=True)
+class PlaybookCreated(EventEnvelope):
+    event_type: str = "PlaybookCreated"
+
+
+@dataclass(frozen=True)
+class PlaybookCurated(EventEnvelope):
+    event_type: str = "PlaybookCurated"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -971,4 +999,9 @@ register_events(
     PolicyGenerationStarted,
     PolicyGenerationCompleted,
     PolicyGenerationFailed,
+    ObservationRecorded,
+    KnowledgeEdgeCreated,
+    SynthesisGenerated,
+    PlaybookCreated,
+    PlaybookCurated,
 )
