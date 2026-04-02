@@ -184,6 +184,7 @@ class BoardColumnData(BaseModel):
     name: str = ""
     position: int = 0
     work_item_status: str = ""
+    wip_limit: int = 0
 
 
 class BoardData(BaseModel):

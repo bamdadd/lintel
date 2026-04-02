@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
@@ -21,11 +21,13 @@ from lintel.domain.events import (
 
 if TYPE_CHECKING:
     from lintel.boards.store import BoardStore, TagStore
+    from lintel.work_items_api.store import WorkItemStore
 
 router = APIRouter()
 
-tag_store_provider = StoreProvider()
-board_store_provider = StoreProvider()
+tag_store_provider: StoreProvider[TagStore] = StoreProvider()
+board_store_provider: StoreProvider[BoardStore] = StoreProvider()
+work_item_store_provider: StoreProvider[WorkItemStore] = StoreProvider()
 
 
 # ---------------------------------------------------------------------------
@@ -230,4 +232,74 @@ async def remove_board(
         request,
         BoardRemoved(payload={"resource_id": board_id, "name": item.get("name", "")}),
         stream_id=f"board:{board_id}",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Kanban view
+# ---------------------------------------------------------------------------
+
+
+class KanbanColumn(BaseModel):
+    """A single column in the kanban view with its work items."""
+
+    column_id: str
+    name: str
+    position: int
+    wip_limit: int = 0
+    work_items: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class KanbanView(BaseModel):
+    """Board kanban view grouping work items by column."""
+
+    board_id: str
+    board_name: str
+    columns: list[KanbanColumn] = Field(default_factory=list)
+
+
+@router.get("/boards/{board_id}/kanban")
+async def get_kanban_view(
+    board_id: str,
+    tags: str | None = Query(default=None, description="Comma-separated tag filter"),
+    board_store: BoardStore = Depends(board_store_provider),  # noqa: B008
+    wi_store: WorkItemStore = Depends(work_item_store_provider),  # noqa: B008
+) -> KanbanView:
+    board = await board_store.get(board_id)
+    if board is None:
+        raise HTTPException(status_code=404, detail="Board not found")
+
+    project_id: str = board["project_id"]
+    all_items = await wi_store.list_all(project_id=project_id)
+
+    # Filter by tags if requested
+    if tags:
+        tag_set = {t.strip() for t in tags.split(",") if t.strip()}
+        all_items = [item for item in all_items if tag_set.intersection(item.get("tags", ()) or ())]
+
+    # Build column lookup
+    columns_data: list[dict[str, Any]] = board.get("columns", [])
+    columns_by_id: dict[str, KanbanColumn] = {}
+    ordered_columns: list[KanbanColumn] = []
+
+    for col in sorted(columns_data, key=lambda c: c.get("position", 0)):
+        kc = KanbanColumn(
+            column_id=col["column_id"],
+            name=col["name"],
+            position=col.get("position", 0),
+            wip_limit=col.get("wip_limit", 0),
+        )
+        columns_by_id[col["column_id"]] = kc
+        ordered_columns.append(kc)
+
+    # Place work items into columns by column_id, sorted by column_position
+    for item in sorted(all_items, key=lambda i: i.get("column_position", 0)):
+        col_id = item.get("column_id", "")
+        if col_id in columns_by_id:
+            columns_by_id[col_id].work_items.append(item)
+
+    return KanbanView(
+        board_id=board_id,
+        board_name=board.get("name", ""),
+        columns=ordered_columns,
     )
