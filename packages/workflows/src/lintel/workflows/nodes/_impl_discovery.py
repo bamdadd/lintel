@@ -448,19 +448,41 @@ async def run_tests(
         )
 
     # Selective test execution: prefer affected tests over full suite
+    # Strategy: file-level matching first, package-level fallback second
     from lintel.workflows.nodes._affected_tests import (
+        affected_package_test_dirs,
+        build_package_pytest_command,
         build_pytest_command,
         select_affected_tests,
     )
 
+    scope_label = "full"
     affected = await select_affected_tests(sandbox_manager, sandbox_id, workspace_path, base_branch)
     targeted_cmd = build_pytest_command(affected.test_files)
     if targeted_cmd:
         test_command = targeted_cmd
+        scope_label = "affected-files"
         await tracker.append_log(
             "implement",
-            f"Selective: {len(affected.test_files)} affected test files",
+            f"Selective (file): {len(affected.test_files)} affected test file(s)",
         )
+    else:
+        # Fallback: package-level affected detection with dependency graph
+        pkg_dirs = affected_package_test_dirs(list(affected.changed_files))
+        if pkg_dirs is None:
+            # Root config changed — full rebuild needed
+            await tracker.append_log(
+                "implement", "Selective: root config changed, running full suite"
+            )
+        elif pkg_dirs:
+            pkg_cmd = build_package_pytest_command(pkg_dirs)
+            if pkg_cmd:
+                test_command = pkg_cmd
+                scope_label = "affected-pkgs"
+                await tracker.append_log(
+                    "implement",
+                    f"Selective (pkg): {len(pkg_dirs)} affected package(s)",
+                )
 
     async def _log_test_line(line: str) -> None:
         await tracker.append_log("implement", line)
@@ -493,7 +515,7 @@ async def run_tests(
             exit_code = 0
 
     verdict = "PASSED" if exit_code == 0 else "FAILED"
-    await tracker.append_log("implement", f"Tests: {verdict}")
+    await tracker.append_log("implement", f"Tests ({scope_label}): {verdict}")
 
     if len(output) > 5000:
         output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
