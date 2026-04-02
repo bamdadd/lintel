@@ -3,7 +3,7 @@ import {
   Modal,
   TextInput,
   NumberInput,
-  Select,
+  MultiSelect,
   Button,
   Stack,
   Group,
@@ -21,7 +21,7 @@ import type { Board } from '../api';
 interface ColumnDef {
   id: string;
   name: string;
-  work_item_status: string;
+  work_item_statuses: string[];
   wip_limit: number;
 }
 
@@ -32,7 +32,6 @@ interface EditBoardModalProps {
 }
 
 const WORK_ITEM_STATUSES = [
-  { value: '', label: '(none)' },
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'in_review', label: 'In Review' },
@@ -40,6 +39,7 @@ const WORK_ITEM_STATUSES = [
   { value: 'merged', label: 'Merged' },
   { value: 'closed', label: 'Closed' },
   { value: 'failed', label: 'Failed' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 let nextTempId = 0;
@@ -63,7 +63,11 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
           .map((c) => ({
             id: c.column_id,
             name: c.name,
-            work_item_status: c.work_item_status,
+            work_item_statuses: c.work_item_statuses?.length
+              ? c.work_item_statuses
+              : c.work_item_status
+                ? [c.work_item_status]
+                : [],
             wip_limit: c.wip_limit ?? 0,
           })),
       );
@@ -71,9 +75,9 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
   }, [board]);
 
   const addColumn = () =>
-    setColumns([...columns, { id: tempId(), name: '', work_item_status: '', wip_limit: 0 }]);
+    setColumns([...columns, { id: tempId(), name: '', work_item_statuses: [], wip_limit: 0 }]);
   const removeColumn = (i: number) => setColumns(columns.filter((_, idx) => idx !== i));
-  const updateColumn = (i: number, field: keyof ColumnDef, value: string | number) =>
+  const updateColumn = (i: number, field: keyof ColumnDef, value: string | number | string[]) =>
     setColumns(columns.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
 
   const handleDragEnd = (result: DropResult) => {
@@ -96,7 +100,7 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
             column_id: c.id.startsWith('__new_') ? undefined : c.id,
             name: c.name,
             position: i,
-            work_item_status: c.work_item_status,
+            work_item_statuses: c.work_item_statuses,
             wip_limit: c.wip_limit,
           })),
         },
@@ -168,13 +172,13 @@ export function EditBoardModal({ board, opened, onClose }: EditBoardModalProps) 
                           style={{ flex: 1 }}
                           required
                         />
-                        <Select
-                          placeholder="Status"
+                        <MultiSelect
+                          placeholder="Statuses"
                           data={WORK_ITEM_STATUSES}
-                          value={col.work_item_status}
-                          onChange={(v) => updateColumn(i, 'work_item_status', v ?? '')}
-                          w={140}
-                          clearable={false}
+                          value={col.work_item_statuses}
+                          onChange={(v) => updateColumn(i, 'work_item_statuses', v)}
+                          w={200}
+                          clearable
                         />
                         <Tooltip label="WIP limit (0 = unlimited)">
                           <NumberInput

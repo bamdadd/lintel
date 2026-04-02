@@ -93,8 +93,13 @@ class BoardColumn:
     column_id: str
     name: str
     position: int = 0
-    work_item_status: str = ""
+    work_item_statuses: tuple[str, ...] = ()
     wip_limit: int = 0  # 0 = unlimited
+
+    @property
+    def work_item_status(self) -> str:
+        """Backward compat — returns first status or empty string."""
+        return self.work_item_statuses[0] if self.work_item_statuses else ""
 
 
 @dataclass(frozen=True)
