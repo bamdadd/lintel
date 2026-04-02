@@ -29,6 +29,7 @@ from lintel.automations_api.routes import router as automations_router
 from lintel.boards.routes import router as boards_router
 from lintel.chat_api.routes import router as chat_router_routes
 from lintel.codebase_index_api.routes import router as codebase_index_router
+from lintel.coding_rules_api.routes import router as coding_rules_router
 from lintel.compliance_api.routes import router as compliance_router
 from lintel.context_attachments_api.routes import router as context_attachments_router
 from lintel.credentials_api.routes import router as credentials_router
@@ -48,6 +49,7 @@ from lintel.privacy_controls_api.routes import router as privacy_controls_router
 from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
 from lintel.repositories_api.routes import router as repositories_router
+from lintel.sandbox_pool_api.routes import router as sandbox_pool_router
 from lintel.sandboxes_api.routes import router as sandboxes_router
 from lintel.settings_api.channels_router import router as channels_settings_router
 from lintel.settings_api.routes import router as settings_router
@@ -62,6 +64,7 @@ from lintel.trust_scores_api.routes import router as trust_scores_router
 from lintel.users.routes import router as users_router
 from lintel.variables_api.routes import router as variables_router
 from lintel.work_items_api.routes import router as work_items_router
+from lintel.workflow_blueprints_api.routes import router as workflow_blueprints_router
 from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
 
 if TYPE_CHECKING:
@@ -135,3 +138,10 @@ def mount_routers(app: FastAPI) -> None:
         tags=["slack-notifications"],
     )
     app.include_router(slack_workflows_router, prefix="/api/v1", tags=["slack-workflows"])
+    app.include_router(coding_rules_router, prefix="/api/v1", tags=["coding-rules"])
+    app.include_router(sandbox_pool_router, prefix="/api/v1", tags=["sandbox-pool"])
+    app.include_router(
+        workflow_blueprints_router,
+        prefix="/api/v1",
+        tags=["workflow-blueprints"],
+    )

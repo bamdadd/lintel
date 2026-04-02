@@ -49,6 +49,8 @@ from lintel.boards.store import BoardStore, TagStore
 from lintel.chat_api.routes import ChatStore, chat_store_provider
 from lintel.codebase_index_api.routes import index_store_provider as codebase_index_store_provider
 from lintel.codebase_index_api.store import InMemoryCodebaseIndexStore
+from lintel.coding_rules_api.routes import coding_rule_store_provider, violation_store_provider
+from lintel.coding_rules_api.store import InMemoryCodingRuleStore, InMemoryRuleViolationStore
 from lintel.compliance_api.routes import (
     architecture_decision_store_provider,
     compliance_policy_store_provider,
@@ -117,6 +119,16 @@ from lintel.projects_api.routes import project_store_provider
 from lintel.projects_api.store import ProjectStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import repo_provider_provider, repository_store_provider
+from lintel.sandbox_pool_api.routes import (
+    pooled_sandbox_store_provider,
+    sandbox_image_store_provider,
+    sandbox_pool_config_store_provider,
+)
+from lintel.sandbox_pool_api.store import (
+    InMemoryPooledSandboxStore,
+    InMemorySandboxImageStore,
+    InMemorySandboxPoolConfigStore,
+)
 from lintel.sandboxes_api.routes import SandboxStore
 from lintel.skills_api.routes import skill_store_provider
 from lintel.skills_api.store import InMemorySkillStore
@@ -144,6 +156,8 @@ from lintel.variables_api.routes import variable_store_provider
 from lintel.variables_api.store import InMemoryVariableStore
 from lintel.work_items_api.routes import work_item_store_provider
 from lintel.work_items_api.store import WorkItemStore
+from lintel.workflow_blueprints_api.routes import blueprint_store_provider
+from lintel.workflow_blueprints_api.store import InMemoryWorkflowBlueprintStore
 from lintel.workflow_definitions_api.routes import workflow_definition_store_provider
 from lintel.workflow_definitions_api.store import InMemoryWorkflowDefinitionStore
 
@@ -277,6 +291,15 @@ def create_in_memory_stores() -> dict[str, Any]:
         "attachment_store": InMemoryAttachmentStore(),
         # Slack Workflow Invocations
         "slack_invocation_store": InMemorySlackInvocationStore(),
+        # Coding Rules stores
+        "coding_rule_store": InMemoryCodingRuleStore(),
+        "violation_store": InMemoryRuleViolationStore(),
+        # Workflow Blueprints
+        "workflow_blueprint_store": InMemoryWorkflowBlueprintStore(),
+        # Sandbox Pool stores
+        "sandbox_image_store": InMemorySandboxImageStore(),
+        "pooled_sandbox_store": InMemoryPooledSandboxStore(),
+        "sandbox_pool_config_store": InMemorySandboxPoolConfigStore(),
     }
 
 
@@ -563,6 +586,15 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "agent_skill_binding_store": InMemoryAgentSkillBindingStore(),
         # Slack Workflow Invocations: in-memory until Postgres implementation exists
         "slack_invocation_store": InMemorySlackInvocationStore(),
+        # Coding Rules: in-memory until Postgres implementation exists
+        "coding_rule_store": InMemoryCodingRuleStore(),
+        "violation_store": InMemoryRuleViolationStore(),
+        # Workflow Blueprints: in-memory until Postgres implementation exists
+        "workflow_blueprint_store": InMemoryWorkflowBlueprintStore(),
+        # Sandbox Pool: in-memory until Postgres implementation exists
+        "sandbox_image_store": InMemorySandboxImageStore(),
+        "pooled_sandbox_store": InMemoryPooledSandboxStore(),
+        "sandbox_pool_config_store": InMemorySandboxPoolConfigStore(),
     }
 
 
@@ -646,6 +678,12 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
         stores["slack_notification_record_store"],
     )
     invocation_store_provider.override(stores["slack_invocation_store"])
+    coding_rule_store_provider.override(stores["coding_rule_store"])
+    violation_store_provider.override(stores["violation_store"])
+    blueprint_store_provider.override(stores["workflow_blueprint_store"])
+    sandbox_image_store_provider.override(stores["sandbox_image_store"])
+    pooled_sandbox_store_provider.override(stores["pooled_sandbox_store"])
+    sandbox_pool_config_store_provider.override(stores["sandbox_pool_config_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

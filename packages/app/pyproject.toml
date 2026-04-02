@@ -63,10 +63,13 @@ dependencies = [
     "lintel-chat-api",
     "lintel-slack-notifications-api",
     "lintel-slack-workflows-api",
+    "lintel-workflow-blueprints-api",
     "lintel-memory",
     "lintel-memory-api",
     "lintel-stage-catalogue-api",
     "lintel-auth-api",
+    "lintel-sandbox-pool-api",
+    "lintel-coding-rules-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -141,10 +144,13 @@ lintel-pipelines-api = { workspace = true }
 lintel-chat-api = { workspace = true }
 lintel-slack-notifications-api = { workspace = true }
 lintel-slack-workflows-api = { workspace = true }
+lintel-workflow-blueprints-api = { workspace = true }
 lintel-memory = { workspace = true }
 lintel-memory-api = { workspace = true }
 lintel-stage-catalogue-api = { workspace = true }
 lintel-auth-api = { workspace = true }
+lintel-sandbox-pool-api = { workspace = true }
+lintel-coding-rules-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

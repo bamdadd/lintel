@@ -79,6 +79,8 @@ testpaths = [
     "packages/agent-skills-api/tests",
     "packages/slack-notifications-api/tests",
     "packages/slack-workflows-api/tests",
+    "packages/workflow-blueprints-api/tests",
+    "packages/coding-rules-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -147,6 +149,8 @@ mypy_path = [
     "packages/ai-firewall-api/src",
     "packages/slack-notifications-api/src",
     "packages/slack-workflows-api/src",
+    "packages/workflow-blueprints-api/src",
+    "packages/coding-rules-api/src",
 ]
 
 [[tool.mypy.overrides]]

@@ -905,6 +905,34 @@ class FeedbackWorkItemCreated(EventEnvelope):
     event_type: str = "FeedbackWorkItemCreated"
 
 
+# --- Coding Rules Events ---
+
+
+@dataclass(frozen=True)
+class CodingRuleCreated(EventEnvelope):
+    event_type: str = "CodingRuleCreated"
+
+
+@dataclass(frozen=True)
+class CodingRuleUpdated(EventEnvelope):
+    event_type: str = "CodingRuleUpdated"
+
+
+@dataclass(frozen=True)
+class CodingRuleRemoved(EventEnvelope):
+    event_type: str = "CodingRuleRemoved"
+
+
+@dataclass(frozen=True)
+class RuleViolationDetected(EventEnvelope):
+    event_type: str = "RuleViolationDetected"
+
+
+@dataclass(frozen=True)
+class RuleViolationResolved(EventEnvelope):
+    event_type: str = "RuleViolationResolved"
+
+
 # --- AI Firewall Events (REQ-025) ---
 
 
@@ -1071,6 +1099,34 @@ class SlackNotificationTemplateUpdated(EventEnvelope):
     event_type: str = "SlackNotificationTemplateUpdated"
 
 
+# --- Workflow Blueprint Events ---
+
+
+@dataclass(frozen=True)
+class WorkflowBlueprintCreated(EventEnvelope):
+    event_type: str = "WorkflowBlueprintCreated"
+
+
+@dataclass(frozen=True)
+class WorkflowBlueprintUpdated(EventEnvelope):
+    event_type: str = "WorkflowBlueprintUpdated"
+
+
+@dataclass(frozen=True)
+class WorkflowBlueprintRemoved(EventEnvelope):
+    event_type: str = "WorkflowBlueprintRemoved"
+
+
+@dataclass(frozen=True)
+class WorkflowBlueprintActivated(EventEnvelope):
+    event_type: str = "WorkflowBlueprintActivated"
+
+
+@dataclass(frozen=True)
+class WorkflowBlueprintDeactivated(EventEnvelope):
+    event_type: str = "WorkflowBlueprintDeactivated"
+
+
 # --- Slack Invocation Events ---
 
 
@@ -1087,6 +1143,34 @@ class SlackWorkflowDispatched(EventEnvelope):
 @dataclass(frozen=True)
 class SlackWorkflowCompleted(EventEnvelope):
     event_type: str = "SlackWorkflowCompleted"
+
+
+# --- Sandbox Pool Events ---
+
+
+@dataclass(frozen=True)
+class SandboxImageBuilt(EventEnvelope):
+    event_type: str = "SandboxImageBuilt"
+
+
+@dataclass(frozen=True)
+class SandboxImageExpired(EventEnvelope):
+    event_type: str = "SandboxImageExpired"
+
+
+@dataclass(frozen=True)
+class PooledSandboxWarmed(EventEnvelope):
+    event_type: str = "PooledSandboxWarmed"
+
+
+@dataclass(frozen=True)
+class PooledSandboxAssigned(EventEnvelope):
+    event_type: str = "PooledSandboxAssigned"
+
+
+@dataclass(frozen=True)
+class PooledSandboxReleased(EventEnvelope):
+    event_type: str = "PooledSandboxReleased"
 
 
 register_events(
@@ -1277,4 +1361,19 @@ register_events(
     SlackInvocationReceived,
     SlackWorkflowDispatched,
     SlackWorkflowCompleted,
+    WorkflowBlueprintCreated,
+    WorkflowBlueprintUpdated,
+    WorkflowBlueprintRemoved,
+    WorkflowBlueprintActivated,
+    WorkflowBlueprintDeactivated,
+    SandboxImageBuilt,
+    SandboxImageExpired,
+    PooledSandboxWarmed,
+    PooledSandboxAssigned,
+    PooledSandboxReleased,
+    CodingRuleCreated,
+    CodingRuleUpdated,
+    CodingRuleRemoved,
+    RuleViolationDetected,
+    RuleViolationResolved,
 )
