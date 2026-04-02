@@ -31,6 +31,7 @@ members = [
     "lintel-event-bus",
     "lintel-event-store",
     "lintel-experimentation-api",
+    "lintel-feedback-api",
     "lintel-infrastructure",
     "lintel-integration-patterns-api",
     "lintel-mcp-servers-api",
@@ -1830,6 +1831,7 @@ dependencies = [
     { name = "lintel-event-bus" },
     { name = "lintel-event-store" },
     { name = "lintel-experimentation-api" },
+    { name = "lintel-feedback-api" },
     { name = "lintel-infrastructure" },
     { name = "lintel-integration-patterns-api" },
     { name = "lintel-mcp-servers-api" },
@@ -1898,6 +1900,7 @@ requires-dist = [
     { name = "lintel-event-bus", editable = "packages/event-bus" },
     { name = "lintel-event-store", editable = "packages/event-store" },
     { name = "lintel-experimentation-api", editable = "packages/experimentation-api" },
+    { name = "lintel-feedback-api", editable = "packages/feedback-api" },
     { name = "lintel-infrastructure", editable = "packages/infrastructure" },
     { name = "lintel-integration-patterns-api", editable = "packages/integration-patterns-api" },
     { name = "lintel-mcp-servers-api", editable = "packages/mcp-servers-api" },
@@ -2411,6 +2414,27 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-compliance-api", editable = "packages/compliance-api" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
+name = "lintel-feedback-api"
+version = "0.1.0"
+source = { editable = "packages/feedback-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
