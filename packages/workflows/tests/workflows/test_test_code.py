@@ -78,6 +78,7 @@ class TestRunTests:
         mgr = _mock_sandbox(
             (0, "", ""),  # git diff (no changed test files)
             (0, "3 passed", ""),  # test execution
+            (0, "NOCOV", ""),  # coverage collection
         )
         state = _make_state()
         config = _make_config(mgr)
@@ -92,15 +93,16 @@ class TestRunTests:
 
         assert result["agent_outputs"][0]["verdict"] == "passed"
         assert result["current_phase"] == "reviewing"
-        # The test command should be what the skill returned
-        last_exec = mgr.execute.call_args_list[-1]
-        assert "make test" in last_exec[0][1].command
+        # The test command should be what the skill returned (second-to-last exec; last is coverage)
+        test_exec = mgr.execute.call_args_list[-2]
+        assert "make test" in test_exec[0][1].command
 
     async def test_runs_setup_commands_before_test(self) -> None:
         mgr = _mock_sandbox(
             (0, "deps installed", ""),  # setup command
             (0, "", ""),  # git diff
             (0, "3 passed", ""),  # test execution
+            (0, "NOCOV", ""),  # coverage collection
         )
         state = _make_state()
         config = _make_config(mgr)
@@ -114,14 +116,15 @@ class TestRunTests:
             result = await run_tests(state, config)
 
         assert result["agent_outputs"][0]["verdict"] == "passed"
-        # First execute = setup, second = git diff, third = test
-        assert mgr.execute.call_count == 3
+        # First execute = setup, second = git diff, third = test, fourth = coverage
+        assert mgr.execute.call_count == 4
         assert "uv sync" in mgr.execute.call_args_list[0][0][1].command
 
     async def test_runs_changed_tests_when_available(self) -> None:
         mgr = _mock_sandbox(
             (0, "tests/unit/api/test_health.py\n", ""),  # git diff
             (0, "1 passed", ""),  # test execution
+            (0, "NOCOV", ""),  # coverage collection
         )
         state = _make_state()
         config = _make_config(mgr)
@@ -135,14 +138,15 @@ class TestRunTests:
             result = await run_tests(state, config)
 
         assert result["agent_outputs"][0]["verdict"] == "passed"
-        last_exec = mgr.execute.call_args_list[-1]
-        assert "test_health.py" in last_exec[0][1].command
-        assert "pytest" in last_exec[0][1].command
+        test_exec = mgr.execute.call_args_list[-2]  # last is coverage
+        assert "test_health.py" in test_exec[0][1].command
+        assert "pytest" in test_exec[0][1].command
 
     async def test_failed_tests_report_failure(self) -> None:
         mgr = _mock_sandbox(
             (0, "", ""),  # git diff
             (1, "", "FAIL src/app.test.js"),
+            (0, "NOCOV", ""),  # coverage collection
         )
         state = _make_state()
         config = _make_config(mgr)
@@ -162,6 +166,7 @@ class TestRunTests:
         mgr = _mock_sandbox(
             (0, "", ""),  # git diff
             (0, "ok", ""),
+            (0, "NOCOV", ""),  # coverage collection
         )
         state = _make_state()
         config = _make_config(mgr)
@@ -182,6 +187,7 @@ class TestRunTests:
         mgr = _mock_sandbox(
             (0, "", ""),  # git diff
             (1, long_output, ""),
+            (0, "NOCOV", ""),  # coverage collection
         )
         state = _make_state()
         config = _make_config(mgr)
@@ -202,6 +208,7 @@ class TestRunTests:
         mgr = _mock_sandbox(
             (0, "", ""),  # git diff
             (0, "5 passed", ""),
+            (0, "NOCOV", ""),  # coverage collection
         )
         state = _make_state()
         result_store = AsyncMock()
