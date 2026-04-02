@@ -103,8 +103,14 @@ async def refresh(body: RefreshRequest) -> AccessTokenResponse:
 
 
 @router.get("/auth/me")
-async def me(request: Request) -> dict[str, Any]:
+async def me(
+    request: Request,
+    store: InMemoryAuthUserStore = Depends(auth_user_store_provider),  # noqa: B008
+) -> dict[str, Any]:
     auth_user: TokenPayload | None = getattr(request.state, "auth_user", None)
     if auth_user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user = await store.get_by_id(auth_user.sub)
+    if user is not None:
+        return {"user_id": user.user_id, "name": user.name, "email": user.email, "role": user.role}
     return {"user_id": auth_user.sub, "role": auth_user.role}

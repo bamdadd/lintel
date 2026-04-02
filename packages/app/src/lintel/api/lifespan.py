@@ -96,24 +96,33 @@ async def _seed_admin_user(stores: dict[str, Any]) -> None:
     from lintel.domain.auth.passwords import hash_password
     from lintel.domain.auth.types import AuthRole, AuthUser
 
-    auth_store = stores.get("auth_user_store")
+    from lintel.auth_api.routes import auth_user_store_provider
+
+    try:
+        auth_store = auth_user_store_provider.get()
+    except RuntimeError:
+        return
     if not isinstance(auth_store, InMemoryAuthUserStore):
         return
 
-    existing = await auth_store.get_by_email("admin@lintel.dev")
-    if existing is not None:
-        return
-
-    admin = AuthUser(
-        user_id="admin-seed-001",
-        email="admin@lintel.dev",
-        name="Admin",
-        hashed_password=hash_password("lintel"),
-        role=AuthRole.ADMIN,
-    )
-    await auth_store.add(admin)
     logger = logging.getLogger("lintel")
-    logger.info("Seeded default admin user (admin@lintel.dev)")
+    seed_users = [
+        ("admin-seed-001", "admin@lintel.dev", "Admin", AuthRole.ADMIN),
+        ("admin-seed-002", "lintel@lintel.ai", "Bamdad", AuthRole.ADMIN),
+    ]
+    for uid, email, name, role in seed_users:
+        existing = await auth_store.get_by_email(email)
+        if existing is not None:
+            continue
+        user = AuthUser(
+            user_id=uid,
+            email=email,
+            name=name,
+            hashed_password=hash_password("lintel"),
+            role=role,
+        )
+        await auth_store.add(user)
+        logger.info("Seeded admin user (%s)", email)
 
 
 @asynccontextmanager
@@ -255,7 +264,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     await _seed_defaults(stores)
     await _seed_guardrail_defaults(stores)
-    await _seed_admin_user(stores)
 
     event_bus = InMemoryEventBus()
     app.state.event_bus = event_bus
@@ -347,6 +355,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
 
     wire_stores(stores, repo_provider)
+    await _seed_admin_user(stores)
 
     app.state.code_artifact_store = stores["code_artifact_store"]
     app.state.test_result_store = stores["test_result_store"]

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from lintel.api.lifespan import lifespan
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routers import mount_routers
+from lintel.auth_api.middleware import JWTAuthMiddleware
 
 
 def create_app() -> FastAPI:
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
         generate_unique_id_function=_generate_unique_id,
     )
     app.add_middleware(CorrelationMiddleware)
+    app.add_middleware(JWTAuthMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
