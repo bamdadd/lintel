@@ -6,6 +6,7 @@ from dataclasses import asdict
 from typing import Any
 
 from lintel.domain.types import (
+    ImageBuildSchedule,
     PooledSandbox,
     SandboxImage,
     SandboxPoolConfig,
@@ -112,3 +113,51 @@ class InMemorySandboxPoolConfigStore:
     async def upsert(self, config: SandboxPoolConfig) -> dict[str, Any]:
         self._items[config.project_id] = config
         return _config_to_dict(config)
+
+
+def _schedule_to_dict(sched: ImageBuildSchedule) -> dict[str, Any]:
+    d = asdict(sched)
+    d["created_at"] = sched.created_at.isoformat()
+    d["last_built_at"] = sched.last_built_at.isoformat() if sched.last_built_at else None
+    return d
+
+
+class InMemoryImageBuildScheduleStore:
+    """In-memory store for image build schedules."""
+
+    def __init__(self) -> None:
+        self._items: dict[str, ImageBuildSchedule] = {}
+
+    async def get(self, schedule_id: str) -> dict[str, Any] | None:
+        item = self._items.get(schedule_id)
+        return _schedule_to_dict(item) if item else None
+
+    async def list_all(self) -> list[dict[str, Any]]:
+        return [_schedule_to_dict(s) for s in self._items.values()]
+
+    async def list_enabled(self) -> list[ImageBuildSchedule]:
+        return [s for s in self._items.values() if s.enabled]
+
+    async def add(self, schedule: ImageBuildSchedule) -> dict[str, Any]:
+        self._items[schedule.schedule_id] = schedule
+        return _schedule_to_dict(schedule)
+
+    async def update(
+        self,
+        schedule_id: str,
+        updates: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        item = self._items.get(schedule_id)
+        if item is None:
+            return None
+        data = asdict(item)
+        data.update(updates)
+        updated = ImageBuildSchedule(**data)
+        self._items[schedule_id] = updated
+        return _schedule_to_dict(updated)
+
+    async def remove(self, schedule_id: str) -> bool:
+        if schedule_id not in self._items:
+            return False
+        del self._items[schedule_id]
+        return True

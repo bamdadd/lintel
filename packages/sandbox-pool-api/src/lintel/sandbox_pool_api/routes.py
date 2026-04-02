@@ -12,18 +12,21 @@ from pydantic import BaseModel, Field
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import (
+    ImageBuildScheduleTriggered,
     PooledSandboxAssigned,
     PooledSandboxReleased,
     SandboxImageBuilt,
     SandboxImageExpired,
 )
 from lintel.domain.types import (
+    ImageBuildSchedule,
     PooledSandbox,
     SandboxImage,
     SandboxPoolConfig,
     SandboxPoolStatus,
 )
 from lintel.sandbox_pool_api.store import (  # noqa: TC001
+    InMemoryImageBuildScheduleStore,
     InMemoryPooledSandboxStore,
     InMemorySandboxImageStore,
     InMemorySandboxPoolConfigStore,
@@ -34,6 +37,9 @@ router = APIRouter()
 sandbox_image_store_provider: StoreProvider[InMemorySandboxImageStore] = StoreProvider()
 pooled_sandbox_store_provider: StoreProvider[InMemoryPooledSandboxStore] = StoreProvider()
 sandbox_pool_config_store_provider: StoreProvider[InMemorySandboxPoolConfigStore] = StoreProvider()
+image_build_schedule_store_provider: StoreProvider[InMemoryImageBuildScheduleStore] = (
+    StoreProvider()
+)
 
 
 # --- Request models ---
@@ -244,3 +250,113 @@ async def _seed_warm_sandbox(
     )
     await store.add(sb)
     return sb
+
+
+# --- Image build schedule routes ---
+
+
+class CreateBuildScheduleRequest(BaseModel):
+    schedule_id: str = Field(default_factory=lambda: str(uuid4()))
+    repository_url: str
+    cron_expression: str = "*/30 * * * *"
+    branch: str = "main"
+    enabled: bool = True
+
+
+@router.post("/sandbox-pool/schedules", status_code=201)
+async def create_build_schedule(
+    body: CreateBuildScheduleRequest,
+    store: Annotated[InMemoryImageBuildScheduleStore, Depends(image_build_schedule_store_provider)],
+) -> dict[str, Any]:
+    """Create an image build schedule."""
+    existing = await store.get(body.schedule_id)
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="Schedule already exists")
+    schedule = ImageBuildSchedule(
+        schedule_id=body.schedule_id,
+        repository_url=body.repository_url,
+        cron_expression=body.cron_expression,
+        branch=body.branch,
+        enabled=body.enabled,
+    )
+    return await store.add(schedule)
+
+
+@router.get("/sandbox-pool/schedules")
+async def list_build_schedules(
+    store: Annotated[InMemoryImageBuildScheduleStore, Depends(image_build_schedule_store_provider)],
+) -> list[dict[str, Any]]:
+    """List all image build schedules."""
+    return await store.list_all()
+
+
+@router.get("/sandbox-pool/schedules/{schedule_id}")
+async def get_build_schedule(
+    schedule_id: str,
+    store: Annotated[InMemoryImageBuildScheduleStore, Depends(image_build_schedule_store_provider)],
+) -> dict[str, Any]:
+    """Get a specific build schedule."""
+    item = await store.get(schedule_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Build schedule not found")
+    return item
+
+
+@router.patch("/sandbox-pool/schedules/{schedule_id}")
+async def update_build_schedule(
+    schedule_id: str,
+    body: dict[str, Any],
+    store: Annotated[InMemoryImageBuildScheduleStore, Depends(image_build_schedule_store_provider)],
+) -> dict[str, Any]:
+    """Update a build schedule."""
+    updated = await store.update(schedule_id, body)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Build schedule not found")
+    return updated
+
+
+@router.delete("/sandbox-pool/schedules/{schedule_id}", status_code=204)
+async def delete_build_schedule(
+    schedule_id: str,
+    store: Annotated[InMemoryImageBuildScheduleStore, Depends(image_build_schedule_store_provider)],
+) -> None:
+    """Delete a build schedule."""
+    if not await store.remove(schedule_id):
+        raise HTTPException(status_code=404, detail="Build schedule not found")
+
+
+@router.post("/sandbox-pool/schedules/{schedule_id}/trigger")
+async def trigger_build(
+    schedule_id: str,
+    request: Request,
+    sched_store: Annotated[
+        InMemoryImageBuildScheduleStore, Depends(image_build_schedule_store_provider)
+    ],
+    image_store: Annotated[InMemorySandboxImageStore, Depends(sandbox_image_store_provider)],
+) -> dict[str, Any]:
+    """Manually trigger an image build for a schedule."""
+    item = await sched_store.get(schedule_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Build schedule not found")
+
+    now = datetime.now(UTC)
+    image_id = str(uuid4())
+    image = SandboxImage(
+        image_id=image_id,
+        repository_url=item["repository_url"],
+        branch=item["branch"],
+        commit_sha="",
+        image_tag=image_id[:12],
+        created_at=now,
+    )
+    result = await image_store.add(image)
+
+    await sched_store.update(schedule_id, {"last_built_at": now})
+    await dispatch_event(
+        request,
+        ImageBuildScheduleTriggered(
+            payload={"resource_id": schedule_id, "image_id": image_id},
+        ),
+        stream_id=f"build-schedule:{schedule_id}",
+    )
+    return {"schedule_id": schedule_id, "image": result}

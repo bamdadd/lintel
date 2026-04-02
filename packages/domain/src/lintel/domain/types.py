@@ -1343,3 +1343,17 @@ class SandboxPoolConfig:
     auto_rebuild_on_push: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass(frozen=True)
+class ImageBuildSchedule:
+    """Scheduled rebuild configuration for sandbox base images."""
+
+    schedule_id: str
+    repository_url: str
+    cron_expression: str = "*/30 * * * *"
+    branch: str = "main"
+    enabled: bool = True
+    last_built_at: datetime | None = None
+    last_commit_sha: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))

@@ -1174,6 +1174,11 @@ class SandboxImageExpired(EventEnvelope):
 
 
 @dataclass(frozen=True)
+class ImageBuildScheduleTriggered(EventEnvelope):
+    event_type: str = "ImageBuildScheduleTriggered"
+
+
+@dataclass(frozen=True)
 class PooledSandboxWarmed(EventEnvelope):
     event_type: str = "PooledSandboxWarmed"
 
