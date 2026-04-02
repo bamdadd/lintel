@@ -277,6 +277,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/settings/pages/SettingsPage'),
       },
       {
+        path: 'onboarding',
+        lazy: () => import('@/features/onboarding/OnboardingPage'),
+      },
+      {
         path: 'settings/channels',
         lazy: () => import('@/features/channels/ChannelsPage'),
       },

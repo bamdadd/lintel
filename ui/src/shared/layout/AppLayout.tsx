@@ -65,6 +65,7 @@ import {
   IconArrowsShuffle,
   IconChevronRight,
   IconSearch,
+  IconRocket,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
 } from '@tabler/icons-react';
@@ -101,6 +102,7 @@ const navSections: NavSection[] = [
       { label: 'Work Items', path: '/work-items', icon: IconListCheck },
       { label: 'Boards', path: '/boards', icon: IconLayoutKanban },
       { label: 'Metrics', path: '/metrics', icon: IconChartLine },
+      { label: 'Onboarding', path: '/onboarding', icon: IconRocket },
     ],
   },
   {
