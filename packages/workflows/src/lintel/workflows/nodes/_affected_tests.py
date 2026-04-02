@@ -3,6 +3,15 @@
 Provides a shared ``select_affected_tests`` function used by both
 the standalone test node (``test_code.py``) and the TDD implement loop
 (``_impl_discovery.py``) to run only tests covering agent-changed code.
+
+Two complementary strategies:
+
+1. **File-level** (``select_affected_tests``): basename heuristic maps
+   ``src/foo/bar.py`` → ``test_bar.py``. Precise but can miss transitive deps.
+2. **Package-level** (``affected_package_test_dirs``): maps changed files to
+   workspace packages, computes transitive dependents via a dependency graph,
+   and returns ``packages/<pkg>/tests/`` directories. Used as a fallback when
+   no individual test files match.
 """
 
 from __future__ import annotations
@@ -10,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import os
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -176,3 +186,178 @@ def parse_test_results_per_module(
                 break
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# Package-level affected detection (transitive dependency graph)
+# ---------------------------------------------------------------------------
+
+# Directory prefix → package name (mirrors scripts/affected-packages.sh)
+_PKG_MAP: dict[str, str] = {
+    "packages/contracts": "lintel-contracts",
+    "packages/domain": "lintel-domain",
+    "packages/agents": "lintel-agents",
+    "packages/infrastructure": "lintel-infrastructure",
+    "packages/workflows": "lintel-workflows",
+    "packages/app": "lintel",
+    "packages/event-store": "lintel-event-store",
+    "packages/event-bus": "lintel-event-bus",
+    "packages/persistence": "lintel-persistence",
+    "packages/sandbox": "lintel-sandbox",
+    "packages/pii": "lintel-pii",
+    "packages/observability": "lintel-observability",
+    "packages/models": "lintel-models",
+    "packages/slack": "lintel-slack",
+    "packages/repos": "lintel-repos",
+    "packages/coordination": "lintel-coordination",
+    "packages/projections": "lintel-projections",
+    "packages/api-support": "lintel-api-support",
+    "packages/users": "lintel-users",
+    "packages/teams": "lintel-teams",
+    "packages/policies-api": "lintel-policies-api",
+    "packages/notifications-api": "lintel-notifications-api",
+    "packages/environments-api": "lintel-environments-api",
+    "packages/variables-api": "lintel-variables-api",
+    "packages/credentials-api": "lintel-credentials-api",
+    "packages/audit-api": "lintel-audit-api",
+    "packages/approval-requests-api": "lintel-approval-requests-api",
+    "packages/boards": "lintel-boards",
+    "packages/triggers-api": "lintel-triggers-api",
+    "packages/artifacts-api": "lintel-artifacts-api",
+    "packages/projects-api": "lintel-projects-api",
+    "packages/work-items-api": "lintel-work-items-api",
+    "packages/skills-api": "lintel-skills-api",
+    "packages/agent-definitions-api": "lintel-agent-definitions-api",
+    "packages/mcp-servers-api": "lintel-mcp-servers-api",
+    "packages/models-api": "lintel-models-api",
+    "packages/ai-providers-api": "lintel-ai-providers-api",
+    "packages/repositories-api": "lintel-repositories-api",
+    "packages/workflow-definitions-api": "lintel-workflow-definitions-api",
+    "packages/settings-api": "lintel-settings-api",
+    "packages/compliance-api": "lintel-compliance-api",
+    "packages/experimentation-api": "lintel-experimentation-api",
+    "packages/automations-api": "lintel-automations-api",
+    "packages/sandboxes-api": "lintel-sandboxes-api",
+    "packages/pipelines-api": "lintel-pipelines-api",
+    "packages/chat-api": "lintel-chat-api",
+    "packages/auth-api": "lintel-auth-api",
+}
+
+# Reverse map: package name → directory name (without "packages/" prefix)
+_PKG_DIR: dict[str, str] = {
+    pkg: prefix.removeprefix("packages/") for prefix, pkg in _PKG_MAP.items()
+}
+
+# Transitive dependents: if X changes, these packages also need testing
+_DEPENDENTS: dict[str, set[str]] = {
+    "lintel-contracts": {
+        "lintel-domain",
+        "lintel-agents",
+        "lintel-infrastructure",
+        "lintel-workflows",
+        "lintel",
+        "lintel-event-store",
+        "lintel-event-bus",
+        "lintel-persistence",
+        "lintel-sandbox",
+        "lintel-pii",
+        "lintel-observability",
+        "lintel-models",
+        "lintel-slack",
+        "lintel-repos",
+        "lintel-projections",
+    },
+    "lintel-domain": {"lintel-agents", "lintel-infrastructure", "lintel-workflows", "lintel"},
+    "lintel-agents": {"lintel-workflows", "lintel"},
+    "lintel-infrastructure": {"lintel"},
+    "lintel-workflows": {"lintel"},
+    "lintel-event-store": {"lintel-projections", "lintel"},
+    "lintel-event-bus": {"lintel-projections", "lintel"},
+    "lintel-persistence": {"lintel"},
+    "lintel-sandbox": {"lintel"},
+    "lintel-pii": {"lintel"},
+    "lintel-observability": {"lintel"},
+    "lintel-models": {"lintel"},
+    "lintel-slack": {"lintel"},
+    "lintel-repos": {"lintel"},
+    "lintel-coordination": {"lintel"},
+    "lintel-projections": {"lintel"},
+    "lintel-api-support": {"lintel"},
+}
+
+# Root files that force a full rebuild (all packages)
+_ROOT_ALL_RE = re.compile(r"^(pyproject\.toml|uv\.lock|conftest\.py)$|^\.github/")
+# Root test dirs that only affect the app package
+_ROOT_APP_RE = re.compile(r"^tests/")
+
+
+def _map_files_to_packages(changed_files: list[str]) -> set[str] | None:
+    """Map changed file paths to directly-changed package names.
+
+    Returns ``None`` if a root config file changed (full rebuild needed).
+    Returns the set of directly-changed packages otherwise.
+    """
+    packages: set[str] = set()
+
+    for path in changed_files:
+        if not path:
+            continue
+
+        matched = False
+        for prefix, pkg in _PKG_MAP.items():
+            if path.startswith(prefix + "/"):
+                packages.add(pkg)
+                matched = True
+                break
+
+        if matched:
+            continue
+
+        # Root-level file handling
+        if _ROOT_ALL_RE.search(path):
+            return None  # Full rebuild needed
+        if _ROOT_APP_RE.search(path):
+            packages.add("lintel")
+
+    return packages
+
+
+def _compute_affected_packages(direct: set[str]) -> set[str]:
+    """Expand directly-changed packages to include transitive dependents."""
+    affected = set(direct)
+    for pkg in direct:
+        affected.update(_DEPENDENTS.get(pkg, set()))
+    return affected
+
+
+def affected_package_test_dirs(changed_files: list[str]) -> list[str] | None:
+    """Compute affected package test directories from changed files.
+
+    Returns a sorted list of ``packages/<dir>/tests/`` paths, or ``None``
+    if a full rebuild is needed (root config changed).
+    """
+    direct = _map_files_to_packages(changed_files)
+    if direct is None:
+        return None  # Full rebuild
+    if not direct:
+        return []
+
+    affected = _compute_affected_packages(direct)
+    dirs: list[str] = []
+    for pkg in sorted(affected):
+        dir_name = _PKG_DIR.get(pkg)
+        if dir_name:
+            dirs.append(f"packages/{dir_name}/tests/")
+    return dirs
+
+
+def build_package_pytest_command(test_dirs: list[str]) -> str | None:
+    """Build a pytest command targeting affected package test directories.
+
+    Returns ``None`` if no directories are provided.
+    """
+    if not test_dirs:
+        return None
+    path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
+    dirs_arg = " ".join(test_dirs)
+    return f"{path_prefix} && uv run python -m pytest {dirs_arg} -v 2>&1"

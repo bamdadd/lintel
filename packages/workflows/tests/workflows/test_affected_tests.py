@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock
 from lintel.sandbox.types import SandboxResult
 from lintel.workflows.nodes._affected_tests import (
     AffectedTestResult,
+    affected_package_test_dirs,
+    build_package_pytest_command,
     build_pytest_command,
     detect_changed_files,
     parse_test_results_per_module,
@@ -147,3 +149,68 @@ FAILED tests/test_a.py::test_one - AssertionError
 """
     results = parse_test_results_per_module(output)
     assert results.get("tests/test_a.py") == "failed"
+
+
+# ---------------------------------------------------------------------------
+# Package-level affected detection
+# ---------------------------------------------------------------------------
+
+
+def test_affected_package_test_dirs_single_package() -> None:
+    dirs = affected_package_test_dirs(["packages/contracts/src/lintel/contracts/types.py"])
+    assert dirs is not None
+    assert "packages/contracts/tests/" in dirs
+    # contracts affects many dependents
+    assert "packages/domain/tests/" in dirs
+    assert "packages/agents/tests/" in dirs
+
+
+def test_affected_package_test_dirs_leaf_package() -> None:
+    dirs = affected_package_test_dirs(["packages/users/src/lintel/users/routes.py"])
+    assert dirs is not None
+    assert "packages/users/tests/" in dirs
+    # users is a leaf — no transitive dependents
+    assert len(dirs) == 1
+
+
+def test_affected_package_test_dirs_root_config_returns_none() -> None:
+    dirs = affected_package_test_dirs(["pyproject.toml"])
+    assert dirs is None  # Full rebuild needed
+
+
+def test_affected_package_test_dirs_ignorable_files() -> None:
+    dirs = affected_package_test_dirs(["docs/architecture.md", "scripts/dev-tmux.sh"])
+    assert dirs == []
+
+
+def test_affected_package_test_dirs_root_tests_map_to_app() -> None:
+    dirs = affected_package_test_dirs(["tests/integration/test_foo.py"])
+    assert dirs is not None
+    assert "packages/app/tests/" in dirs
+
+
+def test_affected_package_test_dirs_empty() -> None:
+    dirs = affected_package_test_dirs([])
+    assert dirs == []
+
+
+def test_affected_package_test_dirs_domain_transitive() -> None:
+    dirs = affected_package_test_dirs(["packages/domain/src/lintel/domain/types.py"])
+    assert dirs is not None
+    assert "packages/domain/tests/" in dirs
+    assert "packages/agents/tests/" in dirs
+    assert "packages/workflows/tests/" in dirs
+    assert "packages/app/tests/" in dirs
+    # Should NOT include unrelated packages
+    assert "packages/event-store/tests/" not in dirs
+
+
+def test_build_package_pytest_command() -> None:
+    cmd = build_package_pytest_command(["packages/contracts/tests/", "packages/agents/tests/"])
+    assert cmd is not None
+    assert "pytest" in cmd
+    assert "packages/contracts/tests/ packages/agents/tests/" in cmd
+
+
+def test_build_package_pytest_command_empty() -> None:
+    assert build_package_pytest_command([]) is None
