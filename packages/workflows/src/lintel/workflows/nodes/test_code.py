@@ -3,6 +3,10 @@
 Uses the ``skill_discover_test_command`` skill to determine *how* to run
 tests for the project.  Projects can register a custom version of the
 skill to override discovery logic.
+
+Selective execution: when changed files are detected, only the affected
+test files are run (much faster than the full suite).  Per-module verdicts
+are included in the output.
 """
 
 from __future__ import annotations
@@ -26,6 +30,11 @@ async def run_tests(
     """Run the project test suite in the sandbox and report results."""
     from lintel.domain.skills.discover_test_command import discover_test_command
     from lintel.sandbox.types import SandboxJob
+    from lintel.workflows.nodes._affected_tests import (
+        build_pytest_command,
+        parse_test_results_per_module,
+        select_affected_tests,
+    )
     from lintel.workflows.nodes._stage_tracking import StageTracker
 
     _config = config or {}
@@ -83,20 +92,20 @@ async def run_tests(
             SandboxJob(command=cmd, workdir=workdir, timeout_seconds=180),
         )
 
-    # Try to run only changed test files first (much faster than full suite)
-    changed_test_cmd = await _build_changed_tests_command(
-        sandbox_manager,
-        sandbox_id,
-        workdir,
-    )
-    if changed_test_cmd:
-        test_command = changed_test_cmd
+    # --- Selective test execution: run only affected tests when possible ---
+    base_branch = state.get("repo_branch", "main")
+    affected = await select_affected_tests(sandbox_manager, sandbox_id, workdir, base_branch)
+    targeted_cmd = build_pytest_command(affected.test_files)
+    used_selective = False
+    if targeted_cmd:
+        test_command = targeted_cmd
+        used_selective = True
         await tracker.append_log(
             "test",
-            f"Running changed tests: {test_command[:80]}",
+            f"Selective: running {len(affected.test_files)} affected test files",
         )
     else:
-        await tracker.append_log("test", f"Running: {test_command}")
+        await tracker.append_log("test", f"Running full suite: {test_command}")
 
     async def _log_test_line(line: str) -> None:
         await tracker.append_log("test", line)
@@ -131,14 +140,19 @@ async def run_tests(
 
     await tracker.append_log("test", f"Exit code: {exit_code}")
 
+    # Parse per-module verdicts for structured reporting
+    module_verdicts = parse_test_results_per_module(output)
+
     # Truncate long output
     if len(output) > 5000:
         output = output[:2500] + "\n...(truncated)...\n" + output[-2500:]
 
     logger.info(
-        "test_run_complete verdict=%s exit_code=%d",
+        "test_run_complete verdict=%s exit_code=%d selective=%s affected=%d",
         verdict,
         exit_code,
+        used_selective,
+        len(affected.test_files),
     )
 
     # Persist test result
@@ -154,7 +168,9 @@ async def run_tests(
             stage_id="test",
             verdict=TestVerdict.PASSED if passed else TestVerdict.FAILED,
             output=output[:5000],
-            failures=tuple(output.split("\n")[:10]) if not passed else (),
+            failures=tuple(f for f, v in module_verdicts.items() if v == "failed")
+            if module_verdicts
+            else (tuple(output.split("\n")[:10]) if not passed else ()),
         )
         try:
             await test_result_store.add(test_result_record)
@@ -178,89 +194,15 @@ async def run_tests(
                 "node": "test",
                 "verdict": verdict,
                 "exit_code": exit_code,
-                "summary": (f"Tests {verdict}" + (f" (exit {exit_code})" if not passed else "")),
+                "selective": used_selective,
+                "affected_test_files": len(affected.test_files),
+                "module_verdicts": module_verdicts,
+                "summary": (
+                    f"Tests {verdict}"
+                    + (f" (exit {exit_code})" if not passed else "")
+                    + (f" [{len(affected.test_files)} affected files]" if used_selective else "")
+                ),
                 "output": output,
             }
         ],
     }
-
-
-async def _build_changed_tests_command(
-    sandbox_manager: SandboxManager,
-    sandbox_id: str,
-    workdir: str,
-) -> str | None:
-    """Find test files for changed code and build a targeted pytest command.
-
-    Looks at both changed test files AND changed source files (mapping
-    src/foo/bar.py → tests/**/test_bar.py) so that the test run covers
-    code the LLM actually touched rather than the entire suite.
-
-    Returns a pytest command or None (falls back to full suite).
-    """
-    from lintel.sandbox.types import SandboxJob
-
-    # 1. Find ALL changed files vs main (committed + uncommitted + untracked)
-    result = await sandbox_manager.execute(
-        sandbox_id,
-        SandboxJob(
-            command=(
-                "{ git diff --name-only origin/main 2>/dev/null;"
-                " git diff --name-only main 2>/dev/null;"
-                " git diff --name-only HEAD~1 2>/dev/null;"
-                " git status --porcelain 2>/dev/null | awk '{print $NF}';"
-                " } | sort -u || true"
-            ),
-            workdir=workdir,
-            timeout_seconds=10,
-        ),
-    )
-    all_changed = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
-    if not all_changed:
-        return None
-
-    # 2. Collect changed test files directly
-    test_files: set[str] = set()
-    source_basenames: set[str] = set()
-    for f in all_changed:
-        if "/test_" in f and f.endswith(".py"):
-            test_files.add(f)
-        elif f.endswith(".py") and "/tests/" not in f:
-            # Extract basename: src/lintel/domain/foo.py → foo
-            import os
-
-            basename = os.path.splitext(os.path.basename(f))[0]
-            if basename != "__init__":
-                source_basenames.add(basename)
-
-    # 3. Find corresponding test files for changed source files
-    if source_basenames:
-        # Build a find command to locate test files matching changed sources
-        # Search both tests/ (single-package) and packages/*/tests/ (workspace)
-        patterns = " -o ".join(f'-name "test_{b}.py"' for b in source_basenames)
-        find_result = await sandbox_manager.execute(
-            sandbox_id,
-            SandboxJob(
-                command=(
-                    f"{{ find tests/ -type f \\( {patterns} \\) 2>/dev/null;"
-                    f" find packages/*/tests/ -type f \\( {patterns} \\) 2>/dev/null; }}"
-                    " | sort -u || true"
-                ),
-                workdir=workdir,
-                timeout_seconds=10,
-            ),
-        )
-        for f in find_result.stdout.strip().split("\n"):
-            if f.strip():
-                test_files.add(f.strip())
-
-    if not test_files:
-        return None
-
-    path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
-    files_arg = " ".join(sorted(test_files))
-    logger.info(
-        "test_discovery: running %d targeted test files instead of full suite",
-        len(test_files),
-    )
-    return f"{path_prefix} && uv run python -m pytest {files_arg} -v 2>&1"
