@@ -38,18 +38,16 @@ class TestGovernancePoliciesAPI:
                 "policy_id": "gov-1",
                 "project_id": "proj-1",
                 "name": "No sandbox exec for reviewer",
-                "scope": "sandbox_exec",
-                "agent_roles": ["reviewer"],
+                "agent_role": "reviewer",
+                "scopes": [{"action": "sandbox_exec", "resource": "*"}],
                 "default_decision": "deny",
-                "rate_limit": 10,
             },
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "No sandbox exec for reviewer"
-        assert data["scope"] == "sandbox_exec"
         assert data["default_decision"] == "deny"
-        assert data["agent_roles"] == ["reviewer"]
+        assert data["agent_role"] == "reviewer"
 
     def test_create_duplicate_policy_returns_409(self, client: TestClient) -> None:
         _create_project(client)
@@ -99,11 +97,10 @@ class TestGovernancePoliciesAPI:
         )
         resp = client.patch(
             "/api/v1/governance/policies/gov-u1",
-            json={"default_decision": "require_approval", "rate_limit": 5},
+            json={"default_decision": "require_approval"},
         )
         assert resp.status_code == 200
         assert resp.json()["default_decision"] == "require_approval"
-        assert resp.json()["rate_limit"] == 5
 
     def test_update_nonexistent_policy_returns_404(self, client: TestClient) -> None:
         resp = client.patch("/api/v1/governance/policies/nonexistent", json={"name": "X"})
@@ -134,16 +131,15 @@ class TestGovernanceAuditAPI:
                 "project_id": "proj-1",
                 "policy_id": "gov-1",
                 "agent_id": "agent-coder",
-                "agent_role": "coder",
                 "action": "sandbox_write_file",
                 "decision": "allow",
-                "trust_score": 0.85,
+                "resource": "/src/main.py",
             },
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["decision"] == "allow"
-        assert data["trust_score"] == 0.85
+        assert data["resource"] == "/src/main.py"
 
     def test_record_deny_audit(self, client: TestClient) -> None:
         _create_project(client)

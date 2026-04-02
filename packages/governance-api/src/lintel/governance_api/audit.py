@@ -17,7 +17,6 @@ from lintel.domain.events import (
     AgentActionDenied,
 )
 from lintel.domain.types import (
-    ActionScope,
     GovernanceAuditEntry,
     GovernanceDecision,
 )
@@ -32,15 +31,11 @@ class CreateGovernanceAuditRequest(BaseModel):
     project_id: str
     policy_id: str = ""
     agent_id: str = ""
-    agent_role: str = ""
     action: str = ""
-    action_args: str = ""
-    scope: ActionScope = ActionScope.TOOL_CALL
+    resource: str = ""
     decision: GovernanceDecision = GovernanceDecision.ALLOW
-    trust_score: float = 0.0
     reason: str = ""
     timestamp: str = ""
-    tags: list[str] = []
 
 
 _DECISION_EVENTS: dict[GovernanceDecision, Callable[[str], EventEnvelope]] = {
@@ -65,15 +60,11 @@ async def record_governance_audit(
         project_id=body.project_id,
         policy_id=body.policy_id,
         agent_id=body.agent_id,
-        agent_role=body.agent_role,
         action=body.action,
-        action_args=body.action_args,
-        scope=body.scope,
+        resource=body.resource,
         decision=body.decision,
-        trust_score=body.trust_score,
         reason=body.reason,
         timestamp=body.timestamp,
-        tags=tuple(body.tags),
     )
     result = await store.add(entry)
     event_factory = _DECISION_EVENTS.get(body.decision)

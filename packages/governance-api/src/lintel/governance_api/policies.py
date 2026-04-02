@@ -25,34 +25,29 @@ router = APIRouter()
 governance_policy_store_provider: StoreProvider[ComplianceStore] = StoreProvider()
 
 
+class ActionScopeRequest(BaseModel):
+    action: str = ""
+    resource: str = ""
+
+
 class CreateGovernancePolicyRequest(BaseModel):
     policy_id: str = Field(default_factory=lambda: str(uuid4()))
     project_id: str
     name: str
     description: str = ""
-    scope: ActionScope = ActionScope.TOOL_CALL
-    agent_roles: list[str] = []
-    default_decision: GovernanceDecision = GovernanceDecision.ALLOW
-    rate_limit: int = 0
-    rate_window_seconds: int = 3600
-    resource_pattern: str = ""
-    trust_score_threshold: float = 0.0
-    enabled: bool = True
-    tags: list[str] = []
+    agent_role: str = ""
+    scopes: list[ActionScopeRequest] = []
+    default_decision: GovernanceDecision = GovernanceDecision.DENY
+    active: bool = True
 
 
 class UpdateGovernancePolicyRequest(BaseModel):
     name: str | None = None
     description: str | None = None
-    scope: ActionScope | None = None
-    agent_roles: list[str] | None = None
+    agent_role: str | None = None
+    scopes: list[ActionScopeRequest] | None = None
     default_decision: GovernanceDecision | None = None
-    rate_limit: int | None = None
-    rate_window_seconds: int | None = None
-    resource_pattern: str | None = None
-    trust_score_threshold: float | None = None
-    enabled: bool | None = None
-    tags: list[str] | None = None
+    active: bool | None = None
 
 
 @router.post("/governance/policies", status_code=201)
@@ -69,15 +64,10 @@ async def create_governance_policy(
         project_id=body.project_id,
         name=body.name,
         description=body.description,
-        scope=body.scope,
-        agent_roles=tuple(body.agent_roles),
+        agent_role=body.agent_role,
+        scopes=tuple(ActionScope(action=s.action, resource=s.resource) for s in body.scopes),
         default_decision=body.default_decision,
-        rate_limit=body.rate_limit,
-        rate_window_seconds=body.rate_window_seconds,
-        resource_pattern=body.resource_pattern,
-        trust_score_threshold=body.trust_score_threshold,
-        enabled=body.enabled,
-        tags=tuple(body.tags),
+        active=body.active,
     )
     result = await store.add(policy)
     await dispatch_event(

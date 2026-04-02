@@ -979,3 +979,53 @@ class DriftScan:
     completed_at: str = ""
     trigger: str = ""
     tags: tuple[str, ...] = ()
+
+
+# --- Agent Action Governance (REQ-030) ---
+
+
+class GovernanceDecision(StrEnum):
+    """Three-state decision for governance policy evaluation."""
+
+    ALLOW = "allow"
+    DENY = "deny"
+    REQUIRE_APPROVAL = "require_approval"
+
+
+@dataclass(frozen=True)
+class ActionScope:
+    """Scope for a governance policy rule."""
+
+    action: str = ""
+    resource: str = ""
+
+
+@dataclass(frozen=True)
+class GovernancePolicy:
+    """A governance policy defining per-agent/per-scope action rules."""
+
+    policy_id: str = ""
+    name: str = ""
+    description: str = ""
+    agent_role: str = ""
+    scopes: tuple[ActionScope, ...] = ()
+    default_decision: GovernanceDecision = GovernanceDecision.DENY
+    active: bool = True
+    project_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass(frozen=True)
+class GovernanceAuditEntry:
+    """An audit entry recording a governance decision."""
+
+    entry_id: str = ""
+    policy_id: str = ""
+    agent_id: str = ""
+    action: str = ""
+    resource: str = ""
+    decision: GovernanceDecision = GovernanceDecision.DENY
+    reason: str = ""
+    project_id: str = ""
+    timestamp: str = ""
