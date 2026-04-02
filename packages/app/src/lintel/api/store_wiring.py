@@ -120,6 +120,16 @@ from lintel.repositories_api.routes import repo_provider_provider, repository_st
 from lintel.sandboxes_api.routes import SandboxStore
 from lintel.skills_api.routes import skill_store_provider
 from lintel.skills_api.store import InMemorySkillStore
+from lintel.slack_notifications_api.routes import (
+    record_store_provider as slack_notification_record_store_provider,
+)
+from lintel.slack_notifications_api.routes import (
+    template_store_provider as slack_notification_template_store_provider,
+)
+from lintel.slack_notifications_api.store import (
+    InMemorySlackNotificationRecordStore,
+    InMemorySlackNotificationTemplateStore,
+)
 from lintel.teams.routes import team_store_provider
 from lintel.teams.store import InMemoryTeamStore
 from lintel.triggers_api.routes import trigger_store_provider
@@ -256,6 +266,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         # AI Firewall stores (REQ-025)
         "firewall_rule_store": InMemoryFirewallRuleStore(),
         "firewall_log_store": InMemoryFirewallLogStore(),
+        # Slack Notification stores
+        "slack_notification_template_store": InMemorySlackNotificationTemplateStore(),
+        "slack_notification_record_store": InMemorySlackNotificationRecordStore(),
         # Agent Action Governance stores (REQ-030)
         "governance_policy_store": ComplianceStore("policy_id"),
         "governance_audit_store": ComplianceStore("entry_id"),
@@ -538,6 +551,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         # REQ-025: in-memory until Postgres implementation exists
         "firewall_rule_store": InMemoryFirewallRuleStore(),
         "firewall_log_store": InMemoryFirewallLogStore(),
+        # Slack Notification stores — in-memory until Postgres implementation exists
+        "slack_notification_template_store": InMemorySlackNotificationTemplateStore(),
+        "slack_notification_record_store": InMemorySlackNotificationRecordStore(),
         # REQ-F033: in-memory until Postgres implementation exists
         "agent_skill_store": InMemoryAgentSkillStore(),
         "agent_skill_binding_store": InMemoryAgentSkillBindingStore(),
@@ -617,6 +633,12 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     firewall_log_store_provider.override(stores["firewall_log_store"])
     agent_skill_store_provider.override(stores["agent_skill_store"])
     agent_skill_binding_store_provider.override(stores["agent_skill_binding_store"])
+    slack_notification_template_store_provider.override(
+        stores["slack_notification_template_store"],
+    )
+    slack_notification_record_store_provider.override(
+        stores["slack_notification_record_store"],
+    )
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

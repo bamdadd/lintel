@@ -62,6 +62,7 @@ members = [
     "lintel-settings-api",
     "lintel-skills-api",
     "lintel-slack",
+    "lintel-slack-notifications-api",
     "lintel-stage-catalogue-api",
     "lintel-teams",
     "lintel-telegram",
@@ -1870,6 +1871,7 @@ dependencies = [
     { name = "lintel-settings-api" },
     { name = "lintel-skills-api" },
     { name = "lintel-slack" },
+    { name = "lintel-slack-notifications-api" },
     { name = "lintel-stage-catalogue-api" },
     { name = "lintel-teams" },
     { name = "lintel-telegram" },
@@ -1947,6 +1949,7 @@ requires-dist = [
     { name = "lintel-settings-api", editable = "packages/settings-api" },
     { name = "lintel-skills-api", editable = "packages/skills-api" },
     { name = "lintel-slack", editable = "packages/slack" },
+    { name = "lintel-slack-notifications-api", editable = "packages/slack-notifications-api" },
     { name = "lintel-stage-catalogue-api", editable = "packages/stage-catalogue-api" },
     { name = "lintel-teams", editable = "packages/teams" },
     { name = "lintel-telegram", editable = "packages/telegram" },
@@ -3130,6 +3133,29 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "slack-bolt", specifier = ">=1.21" },
     { name = "slack-sdk", specifier = ">=3.33" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-slack-notifications-api"
+version = "0.1.0"
+source = { editable = "packages/slack-notifications-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
