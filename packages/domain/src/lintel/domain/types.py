@@ -754,6 +754,28 @@ class MCPServer:
 
 
 @dataclass(frozen=True)
+class MCPTool:
+    """A tool exposed by an MCP server, catalogued for agent use."""
+
+    tool_id: str
+    server_id: str
+    name: str
+    description: str = ""
+    security_classification: str = "standard"
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
+class MCPToolAllowlist:
+    """Per-project allowlist restricting which MCP tools agents may use."""
+
+    allowlist_id: str
+    project_id: str
+    tool_ids: tuple[str, ...] = ()
+    description: str = ""
+
+
+@dataclass(frozen=True)
 class ChatSession:
     """A chat session that can trigger workflows and access MCP servers."""
 

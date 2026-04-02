@@ -97,8 +97,16 @@ from lintel.governance_api.routes import (
 )
 from lintel.integration_patterns_api.routes import integration_pattern_store_provider
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
-from lintel.mcp_servers_api.routes import mcp_server_store_provider
-from lintel.mcp_servers_api.store import InMemoryMCPServerStore
+from lintel.mcp_servers_api.routes import (
+    mcp_server_store_provider,
+    mcp_tool_allowlist_store_provider,
+    mcp_tool_store_provider,
+)
+from lintel.mcp_servers_api.store import (
+    InMemoryMCPServerStore,
+    MCPToolAllowlistStore,
+    MCPToolStore,
+)
 from lintel.memory_api.dependencies import memory_service_provider
 from lintel.models_api.routes import ai_provider_store_provider as models_ai_provider_store_provider
 from lintel.models_api.routes import model_assignment_store_provider, model_store_provider
@@ -243,6 +251,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "model_store": InMemoryModelStore(),
         "model_assignment_store": InMemoryModelAssignmentStore(),
         "mcp_server_store": InMemoryMCPServerStore(),
+        "mcp_tool_store": MCPToolStore(),
+        "mcp_tool_allowlist_store": MCPToolAllowlistStore(),
         "sandbox_store": SandboxStore(),
         "tag_store": TagStore(),
         "board_store": BoardStore(),
@@ -532,6 +542,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "model_store": PostgresModelStore(pool),
         "model_assignment_store": PostgresModelAssignmentStore(pool),
         "mcp_server_store": PostgresMCPServerStore(pool),
+        "mcp_tool_store": MCPToolStore(),
+        "mcp_tool_allowlist_store": MCPToolAllowlistStore(),
         "sandbox_store": PostgresSandboxStore(pool),
         "tag_store": _TagStoreAdapter(_PgTagStore(pool)),
         "board_store": _BoardStoreAdapter(_PgBoardStore(pool)),
@@ -626,6 +638,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     skill_store_provider.override(stores["skill_store"])
     agent_definition_store_provider.override(stores["agent_definition_store"])
     mcp_server_store_provider.override(stores["mcp_server_store"])
+    mcp_tool_store_provider.override(stores["mcp_tool_store"])
+    mcp_tool_allowlist_store_provider.override(stores["mcp_tool_allowlist_store"])
     ai_provider_store_provider.override(stores["ai_provider_store"])
     ai_providers_model_store_provider.override(stores["model_store"])
     model_store_provider.override(stores["model_store"])
