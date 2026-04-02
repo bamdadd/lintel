@@ -80,6 +80,10 @@ from lintel.experimentation_api.routes import (
 )
 from lintel.feedback_api.routes import feedback_store_provider
 from lintel.feedback_api.store import InMemoryFeedbackStore
+from lintel.governance_api.routes import (
+    governance_audit_store_provider,
+    governance_policy_store_provider,
+)
 from lintel.integration_patterns_api.routes import integration_pattern_store_provider
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
 from lintel.mcp_servers_api.routes import mcp_server_store_provider
@@ -229,6 +233,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "guardrail_rule_store": ComplianceStore("rule_id"),
         # Agent Trust Score store (REQ-F029)
         "trust_score_store": InMemoryTrustScoreStore(),
+        # Agent Action Governance stores (REQ-030)
+        "governance_policy_store": ComplianceStore("policy_id"),
+        "governance_audit_store": ComplianceStore("entry_id"),
     }
 
 
@@ -485,6 +492,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
         "policy_generation_store": PgCompliance(pool, "policy_generation", "run_id"),
         "guardrail_rule_store": PgCompliance(pool, "guardrail_rules", "id"),
+        # Agent Action Governance stores (REQ-030)
+        "governance_policy_store": PgCompliance(pool, "governance_policy", "policy_id"),
+        "governance_audit_store": PgCompliance(pool, "governance_audit", "entry_id"),
         "integration_patterns": _PgIntegrationPatternStore(pool),
         "process_mining": _PgProcessMiningStore(pool),
         "workflow_definition_store": PostgresWorkflowDefinitionStore(pool),
@@ -561,6 +571,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     process_mining_store_provider.override(stores["process_mining"])
     workflow_definition_store_provider.override(stores["workflow_definition_store"])
     guardrail_rule_store_provider.override(stores["guardrail_rule_store"])
+    governance_policy_store_provider.override(stores["governance_policy_store"])
+    governance_audit_store_provider.override(stores["governance_audit_store"])
     auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
     trust_score_store_provider.override(stores["trust_score_store"])
 
