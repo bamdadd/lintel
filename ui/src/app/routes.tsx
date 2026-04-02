@@ -240,6 +240,10 @@ export const router = createBrowserRouter([
         path: 'metrics',
         lazy: () => import('@/features/metrics/pages/MetricsPage'),
       },
+      {
+        path: 'metrics/pipelines',
+        lazy: () => import('@/features/pipelines/pages/MetricsDashboardPage'),
+      },
       // --- Experimentation ---
       {
         path: 'experimentation/strategies',

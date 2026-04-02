@@ -112,6 +112,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Workflows', path: '/workflows', icon: IconGitBranch },
       { label: 'Pipelines', path: '/pipelines', icon: IconPlayerPlay },
+      { label: 'Pipeline Metrics', path: '/metrics/pipelines', icon: IconChartLine },
       { label: 'Repositories', path: '/repositories', icon: IconFolder },
       { label: 'Sandboxes', path: '/sandboxes', icon: IconBox },
       { label: 'Artifacts', path: '/artifacts', icon: IconPackage },

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Iterable
+import datetime as dt_mod
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Query, Request
@@ -252,3 +256,136 @@ async def cost_metrics(
         ]
 
     return result
+
+
+@router.get("/metrics/pipelines")
+async def pipeline_metrics(
+    request: Request,
+    project_id: str = Query("", description="Filter by project ID (empty = all)"),
+    bucket: str = Query("daily", description="Time bucket: daily or weekly"),
+) -> dict[str, Any]:
+    """Pipeline success/failure metrics: totals, success rate, duration, runs over time."""
+    pipeline_store = getattr(request.app.state, "pipeline_store", None)
+    if pipeline_store is None:
+        return _empty_pipeline_metrics()
+
+    runs_dict: dict[str, Any] = getattr(pipeline_store, "_runs", {})
+    runs = list(runs_dict.values())
+
+    if project_id:
+        runs = [r for r in runs if _run_attr(r, "project_id", "") == project_id]
+
+    total = len(runs)
+    succeeded = 0
+    failed = 0
+    cancelled = 0
+    running = 0
+    total_duration_ms = 0
+    duration_count = 0
+    failure_reasons: dict[str, int] = defaultdict(int)
+    time_buckets: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"succeeded": 0, "failed": 0, "cancelled": 0, "total": 0},
+    )
+
+    for run in runs:
+        status = _run_attr(run, "status", "pending")
+        status_str = status.value if hasattr(status, "value") else str(status)
+
+        if status_str == "succeeded":
+            succeeded += 1
+        elif status_str == "failed":
+            failed += 1
+        elif status_str == "cancelled":
+            cancelled += 1
+        elif status_str == "running":
+            running += 1
+
+        # Aggregate durations from stages
+        stages_raw = _run_attr(run, "stages", ())
+        stages: tuple[object, ...] = tuple(stages_raw) if isinstance(stages_raw, Iterable) else ()
+        run_duration = 0
+        for stage in stages:
+            d = _run_attr(stage, "duration_ms", 0)
+            if isinstance(d, int) and d > 0:
+                run_duration += d
+        if run_duration > 0:
+            total_duration_ms += run_duration
+            duration_count += 1
+
+        # Failure reasons from failed stages
+        if status_str == "failed":
+            for stage in stages:
+                s_status = _run_attr(stage, "status", "pending")
+                s_str = s_status.value if hasattr(s_status, "value") else str(s_status)
+                if s_str == "failed":
+                    error = _run_attr(stage, "error", "")
+                    reason = str(error)[:80] if error else "unknown"
+                    failure_reasons[reason] += 1
+
+        # Time bucketing
+        created_at = _run_attr(run, "created_at", "")
+        bucket_key = _to_bucket_key(str(created_at), bucket)
+        if bucket_key and status_str in time_buckets[bucket_key]:
+            time_buckets[bucket_key][status_str] += 1
+            time_buckets[bucket_key]["total"] += 1
+
+    success_rate = (succeeded / total * 100) if total > 0 else 0.0
+    avg_duration_ms = (total_duration_ms // duration_count) if duration_count > 0 else 0
+
+    # Sort time series
+    sorted_buckets = sorted(time_buckets.items())
+    runs_over_time = [{"date": k, **v} for k, v in sorted_buckets]
+
+    # Sort failure reasons by count descending
+    failure_breakdown = [
+        {"reason": r, "count": c} for r, c in sorted(failure_reasons.items(), key=lambda x: -x[1])
+    ]
+
+    return {
+        "total_runs": total,
+        "succeeded": succeeded,
+        "failed": failed,
+        "cancelled": cancelled,
+        "running": running,
+        "success_rate": round(success_rate, 1),
+        "avg_duration_ms": avg_duration_ms,
+        "runs_over_time": runs_over_time,
+        "failure_reasons": failure_breakdown,
+    }
+
+
+def _run_attr(obj: object, attr: str, default: object = None) -> object:
+    """Get attribute from dataclass or dict."""
+    if isinstance(obj, dict):
+        return obj.get(attr, default)
+    return getattr(obj, attr, default)
+
+
+def _to_bucket_key(created_at: str, bucket: str) -> str:
+    """Convert ISO timestamp to a date bucket key."""
+    if not created_at:
+        return ""
+    try:
+        dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return ""
+    if bucket == "weekly":
+        # ISO week start (Monday)
+        monday = dt.date() - dt_mod.timedelta(days=dt.weekday())
+        return monday.isoformat()
+    return dt.date().isoformat()
+
+
+def _empty_pipeline_metrics() -> dict[str, Any]:
+    """Return empty pipeline metrics response."""
+    return {
+        "total_runs": 0,
+        "succeeded": 0,
+        "failed": 0,
+        "cancelled": 0,
+        "running": 0,
+        "success_rate": 0.0,
+        "avg_duration_ms": 0,
+        "runs_over_time": [],
+        "failure_reasons": [],
+    }
