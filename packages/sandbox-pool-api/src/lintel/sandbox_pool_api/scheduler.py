@@ -12,6 +12,7 @@ from uuid import uuid4
 from lintel.domain.types import (
     ImageRebuildRecord,
     ImageRebuildStatus,
+    ImageRebuildTrigger,
     SandboxImage,
 )
 from lintel.sandbox_pool_api.store import (  # noqa: TC001
@@ -69,10 +70,10 @@ class ImageRebuildScheduler:
 
     async def _check_and_rebuild(self) -> None:
         """Check all project configs and trigger rebuilds where due."""
-        configs = self._config_store._items.values()
+        configs = await self._config_store.list_configs()
         now = datetime.now(UTC)
 
-        for config in list(configs):
+        for config in configs:
             interval = config.rebuild_interval_seconds
             if interval <= 0:
                 continue
@@ -84,13 +85,13 @@ class ImageRebuildScheduler:
                 if elapsed < interval:
                     continue
 
-            await self.trigger_rebuild(config.project_id, trigger="scheduled")
+            await self.trigger_rebuild(config.project_id, trigger=ImageRebuildTrigger.SCHEDULED)
 
     async def trigger_rebuild(
         self,
         project_id: str,
         *,
-        trigger: str = "manual",
+        trigger: ImageRebuildTrigger = ImageRebuildTrigger.MANUAL,
         commit_sha: str = "",
         branch: str = "main",
     ) -> dict[str, Any]:
@@ -139,5 +140,7 @@ class ImageRebuildScheduler:
         )
 
         result = await self._rebuild_store.get(rebuild_id)
-        assert result is not None
+        if result is None:
+            msg = f"Rebuild record not found after creation: {rebuild_id}"
+            raise RuntimeError(msg)
         return result

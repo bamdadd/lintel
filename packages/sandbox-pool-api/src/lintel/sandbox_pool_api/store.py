@@ -111,6 +111,13 @@ class InMemorySandboxPoolConfigStore:
         item = self._items.get(project_id)
         return _config_to_dict(item) if item else None
 
+    async def list_all(self) -> list[dict[str, Any]]:
+        return [_config_to_dict(c) for c in self._items.values()]
+
+    async def list_configs(self) -> list[SandboxPoolConfig]:
+        """Return raw config objects (used by scheduler)."""
+        return list(self._items.values())
+
     async def upsert(self, config: SandboxPoolConfig) -> dict[str, Any]:
         self._items[config.project_id] = config
         return _config_to_dict(config)
@@ -139,11 +146,12 @@ class InMemoryImageRebuildStore:
         project_id: str | None = None,
         status: ImageRebuildStatus | None = None,
     ) -> list[dict[str, Any]]:
-        items: list[ImageRebuildRecord] = list(self._items.values())
-        if project_id is not None:
-            items = [r for r in items if r.project_id == project_id]
-        if status is not None:
-            items = [r for r in items if r.status == status]
+        items = (
+            r
+            for r in self._items.values()
+            if (project_id is None or r.project_id == project_id)
+            and (status is None or r.status == status)
+        )
         return [
             _rebuild_to_dict(r) for r in sorted(items, key=lambda r: r.started_at, reverse=True)
         ]

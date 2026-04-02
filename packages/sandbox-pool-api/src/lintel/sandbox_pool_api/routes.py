@@ -22,6 +22,7 @@ from lintel.domain.events import (
 )
 from lintel.domain.types import (
     ImageRebuildStatus,
+    ImageRebuildTrigger,
     PooledSandbox,
     SandboxImage,
     SandboxPoolConfig,
@@ -117,6 +118,9 @@ async def list_images(
 async def trigger_rebuild(
     request: Request,
     body: TriggerRebuildRequest,
+    config_store: Annotated[
+        InMemorySandboxPoolConfigStore, Depends(sandbox_pool_config_store_provider)
+    ],
     rebuild_store: Annotated[InMemoryImageRebuildStore, Depends(image_rebuild_store_provider)],
     image_store: Annotated[InMemorySandboxImageStore, Depends(sandbox_image_store_provider)],
 ) -> dict[str, Any]:
@@ -124,7 +128,7 @@ async def trigger_rebuild(
     from lintel.sandbox_pool_api.scheduler import ImageRebuildScheduler
 
     scheduler = ImageRebuildScheduler(
-        config_store=sandbox_pool_config_store_provider.get(),
+        config_store=config_store,
         image_store=image_store,
         rebuild_store=rebuild_store,
     )
@@ -140,11 +144,11 @@ async def trigger_rebuild(
     try:
         result = await scheduler.trigger_rebuild(
             body.project_id,
-            trigger="manual",
+            trigger=ImageRebuildTrigger.MANUAL,
             commit_sha=body.commit_sha,
             branch=body.branch,
         )
-    except Exception as exc:
+    except (ValueError, RuntimeError) as exc:
         await dispatch_event(
             request,
             SandboxImageRebuildFailed(
@@ -152,7 +156,7 @@ async def trigger_rebuild(
             ),
             stream_id=f"image-rebuild:{body.project_id}",
         )
-        raise HTTPException(status_code=500, detail=f"Rebuild failed: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Rebuild failed") from exc
 
     await dispatch_event(
         request,

@@ -1355,6 +1355,13 @@ class ImageRebuildStatus(StrEnum):
     FAILED = "failed"
 
 
+class ImageRebuildTrigger(StrEnum):
+    """What triggered a sandbox image rebuild."""
+
+    SCHEDULED = "scheduled"
+    MANUAL = "manual"
+
+
 @dataclass(frozen=True)
 class ImageRebuildRecord:
     """Tracks a single sandbox image rebuild attempt."""
@@ -1362,7 +1369,7 @@ class ImageRebuildRecord:
     rebuild_id: str
     image_id: str
     project_id: str
-    trigger: str = "scheduled"
+    trigger: ImageRebuildTrigger = ImageRebuildTrigger.SCHEDULED
     status: ImageRebuildStatus = ImageRebuildStatus.PENDING
     commit_sha: str = ""
     branch: str = "main"

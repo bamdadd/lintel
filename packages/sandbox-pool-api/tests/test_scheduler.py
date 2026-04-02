@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from lintel.domain.types import SandboxPoolConfig
+from lintel.domain.types import ImageRebuildTrigger, SandboxPoolConfig
 from lintel.sandbox_pool_api.scheduler import ImageRebuildScheduler
 from lintel.sandbox_pool_api.store import (
     InMemoryImageRebuildStore,
@@ -50,7 +50,7 @@ class TestTriggerRebuild:
         image_store: InMemorySandboxImageStore,
     ) -> None:
         result = await scheduler.trigger_rebuild(
-            "proj-1", trigger="manual", commit_sha="abc123", branch="main"
+            "proj-1", trigger=ImageRebuildTrigger.MANUAL, commit_sha="abc123", branch="main"
         )
         assert result["project_id"] == "proj-1"
         assert result["trigger"] == "manual"
@@ -107,7 +107,7 @@ class TestCheckAndRebuild:
             )
         )
         # Trigger a rebuild first
-        await scheduler.trigger_rebuild("proj-recent", trigger="scheduled")
+        await scheduler.trigger_rebuild("proj-recent", trigger=ImageRebuildTrigger.SCHEDULED)
 
         # Check again — should not trigger another rebuild
         await scheduler._check_and_rebuild()
@@ -135,7 +135,7 @@ class TestCheckAndRebuild:
             rebuild_id=str(uuid4()),
             image_id="old-img",
             project_id="proj-stale",
-            trigger="scheduled",
+            trigger=ImageRebuildTrigger.SCHEDULED,
             status=ImageRebuildStatus.COMPLETED,
             started_at=datetime.now(UTC) - timedelta(seconds=120),
         )
