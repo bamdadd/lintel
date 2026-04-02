@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 from lintel.agent_definitions_api.routes import agent_definition_store_provider
 from lintel.agent_definitions_api.store import AgentDefinitionStore
+from lintel.ai_firewall_api.routes import firewall_log_store_provider, firewall_rule_store_provider
+from lintel.ai_firewall_api.store import InMemoryFirewallLogStore, InMemoryFirewallRuleStore
 from lintel.ai_providers_api.routes import ai_provider_store_provider
 from lintel.ai_providers_api.routes import model_store_provider as ai_providers_model_store_provider
 from lintel.ai_providers_api.store import InMemoryAIProviderStore
@@ -243,6 +245,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         # Privacy Controls stores (REQ-008)
         "visibility_store": InMemoryVisibilityStore(),
         "preference_store": InMemoryPreferenceStore(),
+        # AI Firewall stores (REQ-025)
+        "firewall_rule_store": InMemoryFirewallRuleStore(),
+        "firewall_log_store": InMemoryFirewallLogStore(),
         # Agent Action Governance stores (REQ-030)
         "governance_policy_store": ComplianceStore("policy_id"),
         "governance_audit_store": ComplianceStore("entry_id"),
@@ -522,6 +527,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         # REQ-008: in-memory until Postgres implementation exists
         "visibility_store": InMemoryVisibilityStore(),
         "preference_store": InMemoryPreferenceStore(),
+        # REQ-025: in-memory until Postgres implementation exists
+        "firewall_rule_store": InMemoryFirewallRuleStore(),
+        "firewall_log_store": InMemoryFirewallLogStore(),
     }
 
 
@@ -594,6 +602,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     attachment_store_provider.override(stores["attachment_store"])
     visibility_store_provider.override(stores["visibility_store"])
     preference_store_provider.override(stores["preference_store"])
+    firewall_rule_store_provider.override(stores["firewall_rule_store"])
+    firewall_log_store_provider.override(stores["firewall_log_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

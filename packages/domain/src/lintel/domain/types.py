@@ -1062,3 +1062,45 @@ class PrivacyPreference:
     opt_out_metrics: tuple[str, ...] = ()
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+# --- AI Firewall Types (REQ-025) ---
+
+
+class FirewallAction(StrEnum):
+    """Action to take when a firewall rule matches."""
+
+    ALLOW = "allow"
+    DENY = "deny"
+    LOG_ONLY = "log_only"
+
+
+@dataclass(frozen=True)
+class FirewallRule:
+    """A network-boundary firewall rule for agent traffic."""
+
+    rule_id: str = ""
+    name: str = ""
+    description: str = ""
+    pattern: str = ""
+    action: FirewallAction = FirewallAction.DENY
+    agent_roles: tuple[str, ...] = ()
+    priority: int = 100
+    active: bool = True
+    project_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass(frozen=True)
+class FirewallLogEntry:
+    """A log entry recording a firewall decision."""
+
+    log_id: str = ""
+    rule_id: str = ""
+    agent_id: str = ""
+    url: str = ""
+    action_taken: FirewallAction = FirewallAction.ALLOW
+    blocked: bool = False
+    timestamp: str = ""
+    project_id: str = ""

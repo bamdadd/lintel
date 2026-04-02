@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lintel.agent_definitions_api.routes import router as agent_definitions_router
+from lintel.ai_firewall_api.routes import router as ai_firewall_router
 from lintel.ai_providers_api.routes import router as ai_providers_router
 from lintel.api.routes import (
     admin,
@@ -123,3 +124,4 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["context-attachments"],
     )
+    app.include_router(ai_firewall_router, prefix="/api/v1", tags=["ai-firewall"])
