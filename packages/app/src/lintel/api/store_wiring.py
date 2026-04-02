@@ -128,11 +128,13 @@ from lintel.projects_api.store import ProjectStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import repo_provider_provider, repository_store_provider
 from lintel.sandbox_pool_api.routes import (
+    image_rebuild_store_provider,
     pooled_sandbox_store_provider,
     sandbox_image_store_provider,
     sandbox_pool_config_store_provider,
 )
 from lintel.sandbox_pool_api.store import (
+    InMemoryImageRebuildStore,
     InMemoryPooledSandboxStore,
     InMemorySandboxImageStore,
     InMemorySandboxPoolConfigStore,
@@ -310,6 +312,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "sandbox_image_store": InMemorySandboxImageStore(),
         "pooled_sandbox_store": InMemoryPooledSandboxStore(),
         "sandbox_pool_config_store": InMemorySandboxPoolConfigStore(),
+        "image_rebuild_store": InMemoryImageRebuildStore(),
     }
 
 
@@ -607,6 +610,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "sandbox_image_store": InMemorySandboxImageStore(),
         "pooled_sandbox_store": InMemoryPooledSandboxStore(),
         "sandbox_pool_config_store": InMemorySandboxPoolConfigStore(),
+        "image_rebuild_store": InMemoryImageRebuildStore(),
     }
 
 
@@ -698,6 +702,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     sandbox_image_store_provider.override(stores["sandbox_image_store"])
     pooled_sandbox_store_provider.override(stores["pooled_sandbox_store"])
     sandbox_pool_config_store_provider.override(stores["sandbox_pool_config_store"])
+    image_rebuild_store_provider.override(stores["image_rebuild_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

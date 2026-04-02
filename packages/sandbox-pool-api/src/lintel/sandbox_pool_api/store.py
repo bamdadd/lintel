@@ -6,6 +6,8 @@ from dataclasses import asdict
 from typing import Any
 
 from lintel.domain.types import (
+    ImageRebuildRecord,
+    ImageRebuildStatus,
     PooledSandbox,
     SandboxImage,
     SandboxPoolConfig,
@@ -112,3 +114,58 @@ class InMemorySandboxPoolConfigStore:
     async def upsert(self, config: SandboxPoolConfig) -> dict[str, Any]:
         self._items[config.project_id] = config
         return _config_to_dict(config)
+
+
+def _rebuild_to_dict(rec: ImageRebuildRecord) -> dict[str, Any]:
+    d = asdict(rec)
+    d["started_at"] = rec.started_at.isoformat()
+    d["completed_at"] = rec.completed_at.isoformat() if rec.completed_at else None
+    return d
+
+
+class InMemoryImageRebuildStore:
+    """In-memory store for image rebuild records."""
+
+    def __init__(self) -> None:
+        self._items: dict[str, ImageRebuildRecord] = {}
+
+    async def get(self, rebuild_id: str) -> dict[str, Any] | None:
+        item = self._items.get(rebuild_id)
+        return _rebuild_to_dict(item) if item else None
+
+    async def list_all(
+        self,
+        *,
+        project_id: str | None = None,
+        status: ImageRebuildStatus | None = None,
+    ) -> list[dict[str, Any]]:
+        items: list[ImageRebuildRecord] = list(self._items.values())
+        if project_id is not None:
+            items = [r for r in items if r.project_id == project_id]
+        if status is not None:
+            items = [r for r in items if r.status == status]
+        return [
+            _rebuild_to_dict(r) for r in sorted(items, key=lambda r: r.started_at, reverse=True)
+        ]
+
+    async def add(self, record: ImageRebuildRecord) -> dict[str, Any]:
+        self._items[record.rebuild_id] = record
+        return _rebuild_to_dict(record)
+
+    async def update(self, rebuild_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+        item = self._items.get(rebuild_id)
+        if item is None:
+            return None
+        data = asdict(item)
+        data.update(updates)
+        updated = ImageRebuildRecord(**data)
+        self._items[rebuild_id] = updated
+        return _rebuild_to_dict(updated)
+
+    async def latest_for_project(self, project_id: str) -> dict[str, Any] | None:
+        """Return the most recent rebuild record for a project."""
+        records = [r for r in self._items.values() if r.project_id == project_id]
+        if not records:
+            return None
+        latest = max(records, key=lambda r: r.started_at)
+        return _rebuild_to_dict(latest)
