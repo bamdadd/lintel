@@ -24,15 +24,18 @@ members = [
     "lintel-chat-api",
     "lintel-codebase-index-api",
     "lintel-compliance-api",
+    "lintel-context-attachments-api",
     "lintel-contracts",
     "lintel-coordination",
     "lintel-credentials-api",
     "lintel-domain",
+    "lintel-drift-detection-api",
     "lintel-environments-api",
     "lintel-event-bus",
     "lintel-event-store",
     "lintel-experimentation-api",
     "lintel-feedback-api",
+    "lintel-governance-api",
     "lintel-infrastructure",
     "lintel-integration-patterns-api",
     "lintel-mcp-servers-api",
@@ -60,6 +63,7 @@ members = [
     "lintel-teams",
     "lintel-telegram",
     "lintel-triggers-api",
+    "lintel-trust-scores-api",
     "lintel-users",
     "lintel-variables-api",
     "lintel-work-items-api",
@@ -1829,6 +1833,7 @@ dependencies = [
     { name = "lintel-coordination" },
     { name = "lintel-credentials-api" },
     { name = "lintel-domain" },
+    { name = "lintel-drift-detection-api" },
     { name = "lintel-environments-api" },
     { name = "lintel-event-bus" },
     { name = "lintel-event-store" },
@@ -1861,6 +1866,7 @@ dependencies = [
     { name = "lintel-teams" },
     { name = "lintel-telegram" },
     { name = "lintel-triggers-api" },
+    { name = "lintel-trust-scores-api" },
     { name = "lintel-users" },
     { name = "lintel-variables-api" },
     { name = "lintel-work-items-api" },
@@ -1899,6 +1905,7 @@ requires-dist = [
     { name = "lintel-coordination", editable = "packages/coordination" },
     { name = "lintel-credentials-api", editable = "packages/credentials-api" },
     { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-drift-detection-api", editable = "packages/drift-detection-api" },
     { name = "lintel-environments-api", editable = "packages/environments-api" },
     { name = "lintel-event-bus", editable = "packages/event-bus" },
     { name = "lintel-event-store", editable = "packages/event-store" },
@@ -1931,6 +1938,7 @@ requires-dist = [
     { name = "lintel-teams", editable = "packages/teams" },
     { name = "lintel-telegram", editable = "packages/telegram" },
     { name = "lintel-triggers-api", editable = "packages/triggers-api" },
+    { name = "lintel-trust-scores-api", editable = "packages/trust-scores-api" },
     { name = "lintel-users", editable = "packages/users" },
     { name = "lintel-variables-api", editable = "packages/variables-api" },
     { name = "lintel-work-items-api", editable = "packages/work-items-api" },
@@ -2288,6 +2296,27 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-context-attachments-api"
+version = "0.1.0"
+source = { editable = "packages/context-attachments-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
 name = "lintel-contracts"
 version = "0.1.0"
 source = { editable = "packages/contracts" }
@@ -2365,6 +2394,27 @@ requires-dist = [
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "pyjwt", specifier = ">=2.9" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-drift-detection-api"
+version = "0.1.0"
+source = { editable = "packages/drift-detection-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]
@@ -2461,6 +2511,29 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
+name = "lintel-governance-api"
+version = "0.1.0"
+source = { editable = "packages/governance-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-compliance-api" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-compliance-api", editable = "packages/compliance-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
@@ -3066,6 +3139,27 @@ requires-dist = [
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-trust-scores-api"
+version = "0.1.0"
+source = { editable = "packages/trust-scores-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]

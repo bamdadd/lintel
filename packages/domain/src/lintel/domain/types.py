@@ -696,6 +696,66 @@ class KnowledgeExtractionRun:
     error: str = ""
 
 
+# --- Agent Action Governance (REQ-030) ---
+
+
+class GovernanceDecision(StrEnum):
+    """Three-state decision for agent action governance."""
+
+    ALLOW = "allow"
+    DENY = "deny"
+    REQUIRE_APPROVAL = "require_approval"
+
+
+class ActionScope(StrEnum):
+    """Scope of a governed agent action."""
+
+    TOOL_CALL = "tool_call"
+    FILE_WRITE = "file_write"
+    API_CALL = "api_call"
+    REPO_ACCESS = "repo_access"
+    LLM_INVOCATION = "llm_invocation"
+    SANDBOX_EXEC = "sandbox_exec"
+
+
+@dataclass(frozen=True)
+class GovernancePolicy:
+    """Declarative policy controlling agent action permissions."""
+
+    policy_id: str
+    project_id: str
+    name: str
+    description: str = ""
+    scope: ActionScope = ActionScope.TOOL_CALL
+    agent_roles: tuple[str, ...] = ()
+    default_decision: GovernanceDecision = GovernanceDecision.ALLOW
+    rate_limit: int = 0
+    rate_window_seconds: int = 3600
+    resource_pattern: str = ""
+    trust_score_threshold: float = 0.0
+    enabled: bool = True
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class GovernanceAuditEntry:
+    """Record of a governance decision on an agent action."""
+
+    entry_id: str
+    project_id: str
+    policy_id: str = ""
+    agent_id: str = ""
+    agent_role: str = ""
+    action: str = ""
+    action_args: str = ""
+    scope: ActionScope = ActionScope.TOOL_CALL
+    decision: GovernanceDecision = GovernanceDecision.ALLOW
+    trust_score: float = 0.0
+    reason: str = ""
+    timestamp: str = ""
+    tags: tuple[str, ...] = ()
+
+
 # --- Users & Teams ---
 
 
