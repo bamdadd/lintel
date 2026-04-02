@@ -155,6 +155,62 @@ async def run_tests(
         len(affected.test_files),
     )
 
+    # --- Collect coverage metrics if available ---
+    coverage_line_rate: float | None = None
+    try:
+        cov_result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "uv run python -m coverage json -o /tmp/cov.json 2>/dev/null"
+                    " && python3 -c \"import json; d=json.load(open('/tmp/cov.json'));"
+                    " print(d.get('totals',{}).get('percent_covered',0))\""
+                    " 2>/dev/null || echo NOCOV"
+                ),
+                workdir=workdir,
+                timeout_seconds=30,
+            ),
+        )
+        cov_out = cov_result.stdout.strip()
+        if cov_out and cov_out != "NOCOV":
+            coverage_line_rate = float(cov_out) / 100.0
+            await tracker.append_log("test", f"Coverage: {coverage_line_rate * 100:.1f}%")
+    except Exception:
+        logger.debug("test_coverage_collection_skipped")
+
+    # --- Evaluate quality gates ---
+    _configurable = _config.get("configurable", {})
+    gate_results: list[dict[str, Any]] = []
+    project_id = state.get("project_id", "")
+    if project_id:
+        from lintel.workflows.nodes._post_test_gates import evaluate_quality_gates
+
+        # Count test stats from module verdicts
+        total_tests = len(module_verdicts) if module_verdicts else 1
+        failed_tests = sum(1 for v in module_verdicts.values() if v == "failed")
+
+        app_state = _configurable.get("app_state")
+        if app_state is None and run_id:
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            app_state = get_app_state(run_id)
+
+        qg_store = getattr(app_state, "quality_gate_rule_store", None) if app_state else None
+        cov_store = getattr(app_state, "coverage_metric_store", None) if app_state else None
+
+        if qg_store is not None:
+            gate_results = await evaluate_quality_gates(
+                project_id=project_id,
+                run_id=run_id,
+                test_passed=passed,
+                test_total=total_tests,
+                test_failures=failed_tests,
+                coverage_line_rate=coverage_line_rate,
+                tracker=tracker,
+                quality_gate_rule_store=qg_store,
+                coverage_metric_store=cov_store,
+            )
+
     # Persist test result
     test_result_store = _config.get("configurable", {}).get("test_result_store")
     if test_result_store is not None:
@@ -203,6 +259,8 @@ async def run_tests(
                     + (f" [{len(affected.test_files)} affected files]" if used_selective else "")
                 ),
                 "output": output,
+                "coverage_line_rate": coverage_line_rate,
+                "quality_gates": gate_results,
             }
         ],
     }
