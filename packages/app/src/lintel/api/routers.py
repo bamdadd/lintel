@@ -26,6 +26,7 @@ from lintel.auth_api.routes import router as auth_router
 from lintel.automations_api.routes import router as automations_router
 from lintel.boards.routes import router as boards_router
 from lintel.chat_api.routes import router as chat_router_routes
+from lintel.codebase_index_api.routes import router as codebase_index_router
 from lintel.compliance_api.routes import router as compliance_router
 from lintel.credentials_api.routes import router as credentials_router
 from lintel.environments_api.routes import router as environments_router
@@ -107,3 +108,4 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])
     app.include_router(channels_settings_router, prefix="/api/v1", tags=["channels"])
     app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
+    app.include_router(codebase_index_router, prefix="/api/v1", tags=["codebase-index"])

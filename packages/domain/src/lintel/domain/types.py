@@ -825,3 +825,64 @@ class JobInput:
     resource_name: str
     trigger: bool = True
     passed_constraints: tuple[PassedConstraint, ...] = ()
+
+
+# --- Codebase Index Types (REQ-026) ---
+
+
+class IndexStatus(StrEnum):
+    """Status of a codebase index."""
+
+    PENDING = "pending"
+    INDEXING = "indexing"
+    READY = "ready"
+    FAILED = "failed"
+    STALE = "stale"
+
+
+@dataclass(frozen=True)
+class CodebaseIndex:
+    """A codebase index representing an ingested and embedded repository."""
+
+    index_id: str
+    project_id: str
+    repository_url: str
+    branch: str = "main"
+    name: str = ""
+    description: str = ""
+    status: IndexStatus = IndexStatus.PENDING
+    file_count: int = 0
+    chunk_count: int = 0
+    last_indexed_at: str = ""
+    last_commit_sha: str = ""
+    created_at: str = ""
+    tags: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class IndexEntry:
+    """A single indexed chunk from a codebase."""
+
+    entry_id: str
+    index_id: str
+    file_path: str
+    chunk_index: int = 0
+    content: str = ""
+    language: str = ""
+    start_line: int = 0
+    end_line: int = 0
+    embedding: tuple[float, ...] = ()
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    """A semantic search result from a codebase index."""
+
+    entry_id: str
+    index_id: str
+    file_path: str
+    content: str = ""
+    score: float = 0.0
+    language: str = ""
+    start_line: int = 0
+    end_line: int = 0
