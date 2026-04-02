@@ -5,13 +5,13 @@ import {
   Textarea, Text, Tabs, Alert, Divider, Paper, ThemeIcon, Tooltip, Box,
   SimpleGrid,
 } from '@mantine/core';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import {
   IconTrash, IconAlertCircle, IconPencil, IconCheck, IconPlus,
-  IconCpu, IconBrain,
+  IconCpu, IconBrain, IconGrid3x3, IconList,
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -96,6 +96,7 @@ export function Component() {
   const deleteAssignMut = useModelsDeleteModelAssignment();
   const qc = useQueryClient();
 
+  const navigate = useNavigate();
   const [opened, { open, close }] = useDisclosure(false);
   const [editItem, setEditItem] = useState<ModelItem | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -356,6 +357,18 @@ export function Component() {
           Add Model
         </Button>
       </Group>
+
+      <Tabs
+        value="models"
+        onChange={(val) => {
+          if (val === 'assignments') void navigate('../models/assignments');
+        }}
+      >
+        <Tabs.List>
+          <Tabs.Tab value="models" leftSection={<IconGrid3x3 size={16} />}>Models</Tabs.Tab>
+          <Tabs.Tab value="assignments" leftSection={<IconList size={16} />}>Assignments</Tabs.Tab>
+        </Tabs.List>
+      </Tabs>
 
       {!hasProviders && (
         <Alert icon={<IconAlertCircle size={16} />} title="No AI providers configured" color="yellow">
