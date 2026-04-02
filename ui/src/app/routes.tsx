@@ -179,6 +179,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/mcp-servers/pages/MCPServerListPage'),
       },
       {
+        path: 'mcp-servers/tools',
+        lazy: () => import('@/features/mcp-servers/pages/MCPToolBrowserPage'),
+      },
+      {
         path: 'artifacts',
         lazy: () => import('@/features/artifacts/pages/ArtifactListPage'),
       },

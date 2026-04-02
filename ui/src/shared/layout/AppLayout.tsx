@@ -137,6 +137,7 @@ const navSections: NavSection[] = [
       { label: 'AI Providers', path: '/ai-providers', icon: IconBrain },
       { label: 'Models', path: '/models', icon: IconCpu },
       { label: 'MCP Servers', path: '/mcp-servers', icon: IconPlug },
+      { label: 'Tool Browser', path: '/mcp-servers/tools', icon: IconTool },
     ],
   },
   {
