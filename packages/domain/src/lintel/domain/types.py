@@ -1341,5 +1341,38 @@ class SandboxPoolConfig:
     max_warm: int = 5
     ttl_seconds: int = 3600
     auto_rebuild_on_push: bool = True
+    rebuild_interval_seconds: int = 1800
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+class ImageRebuildStatus(StrEnum):
+    """Status of a sandbox image rebuild."""
+
+    PENDING = "pending"
+    BUILDING = "building"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ImageRebuildTrigger(StrEnum):
+    """What triggered a sandbox image rebuild."""
+
+    SCHEDULED = "scheduled"
+    MANUAL = "manual"
+
+
+@dataclass(frozen=True)
+class ImageRebuildRecord:
+    """Tracks a single sandbox image rebuild attempt."""
+
+    rebuild_id: str
+    image_id: str
+    project_id: str
+    trigger: ImageRebuildTrigger = ImageRebuildTrigger.SCHEDULED
+    status: ImageRebuildStatus = ImageRebuildStatus.PENDING
+    commit_sha: str = ""
+    branch: str = "main"
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    error_message: str = ""

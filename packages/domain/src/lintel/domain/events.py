@@ -1188,6 +1188,21 @@ class PooledSandboxReleased(EventEnvelope):
     event_type: str = "PooledSandboxReleased"
 
 
+@dataclass(frozen=True)
+class SandboxImageRebuildStarted(EventEnvelope):
+    event_type: str = "SandboxImageRebuildStarted"
+
+
+@dataclass(frozen=True)
+class SandboxImageRebuildCompleted(EventEnvelope):
+    event_type: str = "SandboxImageRebuildCompleted"
+
+
+@dataclass(frozen=True)
+class SandboxImageRebuildFailed(EventEnvelope):
+    event_type: str = "SandboxImageRebuildFailed"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1386,6 +1401,9 @@ register_events(
     PooledSandboxWarmed,
     PooledSandboxAssigned,
     PooledSandboxReleased,
+    SandboxImageRebuildStarted,
+    SandboxImageRebuildCompleted,
+    SandboxImageRebuildFailed,
     CodingRuleCreated,
     CodingRuleUpdated,
     CodingRuleRemoved,

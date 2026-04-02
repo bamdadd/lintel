@@ -16,14 +16,20 @@ from lintel.domain.events import (
     PooledSandboxReleased,
     SandboxImageBuilt,
     SandboxImageExpired,
+    SandboxImageRebuildCompleted,
+    SandboxImageRebuildFailed,
+    SandboxImageRebuildStarted,
 )
 from lintel.domain.types import (
+    ImageRebuildStatus,
+    ImageRebuildTrigger,
     PooledSandbox,
     SandboxImage,
     SandboxPoolConfig,
     SandboxPoolStatus,
 )
 from lintel.sandbox_pool_api.store import (  # noqa: TC001
+    InMemoryImageRebuildStore,
     InMemoryPooledSandboxStore,
     InMemorySandboxImageStore,
     InMemorySandboxPoolConfigStore,
@@ -34,6 +40,7 @@ router = APIRouter()
 sandbox_image_store_provider: StoreProvider[InMemorySandboxImageStore] = StoreProvider()
 pooled_sandbox_store_provider: StoreProvider[InMemoryPooledSandboxStore] = StoreProvider()
 sandbox_pool_config_store_provider: StoreProvider[InMemorySandboxPoolConfigStore] = StoreProvider()
+image_rebuild_store_provider: StoreProvider[InMemoryImageRebuildStore] = StoreProvider()
 
 
 # --- Request models ---
@@ -58,6 +65,13 @@ class UpdatePoolConfigRequest(BaseModel):
     max_warm: int = Field(default=5, ge=1)
     ttl_seconds: int = Field(default=3600, ge=60)
     auto_rebuild_on_push: bool = True
+    rebuild_interval_seconds: int = Field(default=1800, ge=0)
+
+
+class TriggerRebuildRequest(BaseModel):
+    project_id: str
+    commit_sha: str = ""
+    branch: str = "main"
 
 
 # --- Image routes ---
@@ -95,6 +109,89 @@ async def list_images(
     store: Annotated[InMemorySandboxImageStore, Depends(sandbox_image_store_provider)],
 ) -> list[dict[str, Any]]:
     return await store.list_all()
+
+
+# --- Image rebuild routes (must be before {image_id} param route) ---
+
+
+@router.post("/sandbox-pool/images/rebuild", status_code=201)
+async def trigger_rebuild(
+    request: Request,
+    body: TriggerRebuildRequest,
+    config_store: Annotated[
+        InMemorySandboxPoolConfigStore, Depends(sandbox_pool_config_store_provider)
+    ],
+    rebuild_store: Annotated[InMemoryImageRebuildStore, Depends(image_rebuild_store_provider)],
+    image_store: Annotated[InMemorySandboxImageStore, Depends(sandbox_image_store_provider)],
+) -> dict[str, Any]:
+    """Trigger a manual image rebuild for a project."""
+    from lintel.sandbox_pool_api.scheduler import ImageRebuildScheduler
+
+    scheduler = ImageRebuildScheduler(
+        config_store=config_store,
+        image_store=image_store,
+        rebuild_store=rebuild_store,
+    )
+
+    await dispatch_event(
+        request,
+        SandboxImageRebuildStarted(
+            payload={"project_id": body.project_id, "trigger": "manual"},
+        ),
+        stream_id=f"image-rebuild:{body.project_id}",
+    )
+
+    try:
+        result = await scheduler.trigger_rebuild(
+            body.project_id,
+            trigger=ImageRebuildTrigger.MANUAL,
+            commit_sha=body.commit_sha,
+            branch=body.branch,
+        )
+    except (ValueError, RuntimeError) as exc:
+        await dispatch_event(
+            request,
+            SandboxImageRebuildFailed(
+                payload={"project_id": body.project_id, "error": str(exc)},
+            ),
+            stream_id=f"image-rebuild:{body.project_id}",
+        )
+        raise HTTPException(status_code=500, detail="Rebuild failed") from exc
+
+    await dispatch_event(
+        request,
+        SandboxImageRebuildCompleted(
+            payload={
+                "project_id": body.project_id,
+                "rebuild_id": result["rebuild_id"],
+                "image_id": result["image_id"],
+            },
+        ),
+        stream_id=f"image-rebuild:{body.project_id}",
+    )
+    return result
+
+
+@router.get("/sandbox-pool/images/rebuild-status")
+async def list_rebuild_records(
+    rebuild_store: Annotated[InMemoryImageRebuildStore, Depends(image_rebuild_store_provider)],
+    project_id: str | None = None,
+    status: ImageRebuildStatus | None = None,
+) -> list[dict[str, Any]]:
+    """List image rebuild records, optionally filtered by project or status."""
+    return await rebuild_store.list_all(project_id=project_id, status=status)
+
+
+@router.get("/sandbox-pool/images/rebuild-status/{rebuild_id}")
+async def get_rebuild_record(
+    rebuild_id: str,
+    rebuild_store: Annotated[InMemoryImageRebuildStore, Depends(image_rebuild_store_provider)],
+) -> dict[str, Any]:
+    """Get a specific rebuild record."""
+    item = await rebuild_store.get(rebuild_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Rebuild record not found")
+    return item
 
 
 @router.get("/sandbox-pool/images/{image_id}")
@@ -217,6 +314,7 @@ async def update_pool_config(
         max_warm=body.max_warm,
         ttl_seconds=body.ttl_seconds,
         auto_rebuild_on_push=body.auto_rebuild_on_push,
+        rebuild_interval_seconds=body.rebuild_interval_seconds,
         created_at=created_at,
         updated_at=now,
     )

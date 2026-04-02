@@ -189,3 +189,95 @@ class TestPoolConfig:
         data = resp.json()
         assert data["min_warm"] == 4
         assert data["max_warm"] == 8
+
+    def test_put_config_with_rebuild_interval(self, client: TestClient) -> None:
+        resp = client.put(
+            "/api/v1/sandbox-pool/config/proj-rebuild",
+            json={
+                "min_warm": 2,
+                "max_warm": 5,
+                "ttl_seconds": 3600,
+                "rebuild_interval_seconds": 900,
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["rebuild_interval_seconds"] == 900
+
+
+# --- Image rebuild tests ---
+
+
+class TestImageRebuilds:
+    def test_trigger_manual_rebuild(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/sandbox-pool/images/rebuild",
+            json={"project_id": "proj-rb", "commit_sha": "abc123", "branch": "main"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["project_id"] == "proj-rb"
+        assert data["trigger"] == "manual"
+        assert data["status"] == "completed"
+        assert data["commit_sha"] == "abc123"
+        assert data["image_id"]
+        assert data["rebuild_id"]
+        assert data["completed_at"] is not None
+
+    def test_trigger_rebuild_creates_image(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/sandbox-pool/images/rebuild",
+            json={"project_id": "proj-rb2"},
+        )
+        assert resp.status_code == 201
+        image_id = resp.json()["image_id"]
+
+        img_resp = client.get(f"/api/v1/sandbox-pool/images/{image_id}")
+        assert img_resp.status_code == 200
+        assert img_resp.json()["image_id"] == image_id
+
+    def test_list_rebuild_records_empty(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/sandbox-pool/images/rebuild-status")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_list_rebuild_records_after_rebuild(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/sandbox-pool/images/rebuild",
+            json={"project_id": "proj-list"},
+        )
+        resp = client.get(
+            "/api/v1/sandbox-pool/images/rebuild-status",
+            params={"project_id": "proj-list"},
+        )
+        assert resp.status_code == 200
+        records = resp.json()
+        assert len(records) == 1
+        assert records[0]["project_id"] == "proj-list"
+
+    def test_list_rebuild_records_filter_status(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/sandbox-pool/images/rebuild",
+            json={"project_id": "proj-filt"},
+        )
+        resp = client.get(
+            "/api/v1/sandbox-pool/images/rebuild-status",
+            params={"status": "completed"},
+        )
+        assert resp.status_code == 200
+        for rec in resp.json():
+            assert rec["status"] == "completed"
+
+    def test_get_rebuild_record(self, client: TestClient) -> None:
+        created = client.post(
+            "/api/v1/sandbox-pool/images/rebuild",
+            json={"project_id": "proj-get"},
+        ).json()
+        resp = client.get(
+            f"/api/v1/sandbox-pool/images/rebuild-status/{created['rebuild_id']}",
+        )
+        assert resp.status_code == 200
+        assert resp.json()["rebuild_id"] == created["rebuild_id"]
+
+    def test_get_rebuild_record_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/sandbox-pool/images/rebuild-status/missing")
+        assert resp.status_code == 404
