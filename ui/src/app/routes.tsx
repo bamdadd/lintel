@@ -171,6 +171,10 @@ export const router = createBrowserRouter([
         lazy: () => import('@/features/models/pages/ModelListPage'),
       },
       {
+        path: 'models/assignments',
+        lazy: () => import('@/features/models/pages/ModelAssignmentsPage'),
+      },
+      {
         path: 'mcp-servers',
         lazy: () => import('@/features/mcp-servers/pages/MCPServerListPage'),
       },
