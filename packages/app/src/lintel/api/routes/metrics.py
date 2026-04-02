@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 import datetime as dt_mod
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -300,7 +301,8 @@ async def pipeline_metrics(
             running += 1
 
         # Aggregate durations from stages
-        stages = _run_attr(run, "stages", ())
+        stages_raw = _run_attr(run, "stages", ())
+        stages: tuple[object, ...] = tuple(stages_raw) if isinstance(stages_raw, Iterable) else ()
         run_duration = 0
         for stage in stages:
             d = _run_attr(stage, "duration_ms", 0)
