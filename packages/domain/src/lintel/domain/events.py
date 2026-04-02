@@ -731,6 +731,49 @@ class PolicyGenerationFailed(EventEnvelope):
     event_type: str = "PolicyGenerationFailed"
 
 
+# --- Drift Detection Events ---
+
+
+@dataclass(frozen=True)
+class DriftDetected(EventEnvelope):
+    event_type: str = "DriftDetected"
+
+
+@dataclass(frozen=True)
+class DriftResolved(EventEnvelope):
+    event_type: str = "DriftResolved"
+
+
+@dataclass(frozen=True)
+class DriftEscalated(EventEnvelope):
+    event_type: str = "DriftEscalated"
+
+
+@dataclass(frozen=True)
+class DriftRuleCreated(EventEnvelope):
+    event_type: str = "DriftRuleCreated"
+
+
+@dataclass(frozen=True)
+class DriftRuleUpdated(EventEnvelope):
+    event_type: str = "DriftRuleUpdated"
+
+
+@dataclass(frozen=True)
+class DriftRuleRemoved(EventEnvelope):
+    event_type: str = "DriftRuleRemoved"
+
+
+@dataclass(frozen=True)
+class DriftScanStarted(EventEnvelope):
+    event_type: str = "DriftScanStarted"
+
+
+@dataclass(frozen=True)
+class DriftScanCompleted(EventEnvelope):
+    event_type: str = "DriftScanCompleted"
+
+
 # --- Human Approval Events ---
 
 
@@ -1013,4 +1056,12 @@ register_events(
     CodebaseConnected,
     CodebaseIndexed,
     CodebaseReindexed,
+    DriftDetected,
+    DriftResolved,
+    DriftEscalated,
+    DriftRuleCreated,
+    DriftRuleUpdated,
+    DriftRuleRemoved,
+    DriftScanStarted,
+    DriftScanCompleted,
 )

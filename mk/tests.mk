@@ -127,6 +127,9 @@ test-compliance-api: ## Run compliance-api package tests
 test-experimentation-api: ## Run experimentation-api package tests
 	uv run pytest packages/experimentation-api/tests/ -v
 
+test-drift-detection-api: ## Run drift-detection-api package tests
+	uv run pytest packages/drift-detection-api/tests/ -v
+
 test-automations-api: ## Run automations-api package tests
 	uv run pytest packages/automations-api/tests/ -v
 

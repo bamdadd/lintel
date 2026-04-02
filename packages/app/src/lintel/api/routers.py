@@ -29,6 +29,7 @@ from lintel.chat_api.routes import router as chat_router_routes
 from lintel.codebase_index_api.routes import router as codebase_index_router
 from lintel.compliance_api.routes import router as compliance_router
 from lintel.credentials_api.routes import router as credentials_router
+from lintel.drift_detection_api.routes import router as drift_detection_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.feedback_api.routes import router as feedback_router
@@ -97,6 +98,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(boards_router, prefix="/api/v1", tags=["boards"])
     app.include_router(compliance_router, prefix="/api/v1", tags=["compliance"])
+    app.include_router(drift_detection_router, prefix="/api/v1", tags=["drift-detection"])
     app.include_router(experimentation_router, prefix="/api/v1", tags=["experimentation"])
     app.include_router(feedback_router, prefix="/api/v1", tags=["feedback"])
     app.include_router(memory_router, prefix="/api/v1", tags=["memory"])
