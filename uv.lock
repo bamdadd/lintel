@@ -12,6 +12,7 @@ members = [
     "lintel",
     "lintel-agent-definitions-api",
     "lintel-agents",
+    "lintel-ai-firewall-api",
     "lintel-ai-providers-api",
     "lintel-api-support",
     "lintel-approval-requests-api",
@@ -1818,6 +1819,7 @@ dependencies = [
     { name = "langgraph-checkpoint-postgres" },
     { name = "lintel-agent-definitions-api" },
     { name = "lintel-agents" },
+    { name = "lintel-ai-firewall-api" },
     { name = "lintel-ai-providers-api" },
     { name = "lintel-api-support" },
     { name = "lintel-approval-requests-api" },
@@ -1893,6 +1895,7 @@ requires-dist = [
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0" },
     { name = "lintel-agent-definitions-api", editable = "packages/agent-definitions-api" },
     { name = "lintel-agents", editable = "packages/agents" },
+    { name = "lintel-ai-firewall-api", editable = "packages/ai-firewall-api" },
     { name = "lintel-ai-providers-api", editable = "packages/ai-providers-api" },
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-approval-requests-api", editable = "packages/approval-requests-api" },
@@ -2004,6 +2007,27 @@ requires-dist = [
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "litellm", specifier = ">=1.55" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-ai-firewall-api"
+version = "0.1.0"
+source = { editable = "packages/ai-firewall-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]

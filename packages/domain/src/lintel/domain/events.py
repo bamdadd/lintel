@@ -905,6 +905,34 @@ class FeedbackWorkItemCreated(EventEnvelope):
     event_type: str = "FeedbackWorkItemCreated"
 
 
+# --- AI Firewall Events (REQ-025) ---
+
+
+@dataclass(frozen=True)
+class FirewallRuleCreated(EventEnvelope):
+    event_type: str = "FirewallRuleCreated"
+
+
+@dataclass(frozen=True)
+class FirewallRuleUpdated(EventEnvelope):
+    event_type: str = "FirewallRuleUpdated"
+
+
+@dataclass(frozen=True)
+class FirewallRuleRemoved(EventEnvelope):
+    event_type: str = "FirewallRuleRemoved"
+
+
+@dataclass(frozen=True)
+class AgentRequestBlocked(EventEnvelope):
+    event_type: str = "AgentRequestBlocked"
+
+
+@dataclass(frozen=True)
+class AgentRequestAllowed(EventEnvelope):
+    event_type: str = "AgentRequestAllowed"
+
+
 # --- Agent Trust Score Events (REQ-F029) ---
 
 
@@ -1163,4 +1191,9 @@ register_events(
     MetricVisibilitySet,
     MetricVisibilityRemoved,
     PrivacyPreferenceUpdated,
+    FirewallRuleCreated,
+    FirewallRuleUpdated,
+    FirewallRuleRemoved,
+    AgentRequestBlocked,
+    AgentRequestAllowed,
 )
