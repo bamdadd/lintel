@@ -17,7 +17,7 @@ import structlog
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
 
-from lintel.skills_api.integration_scanning import (
+from lintel.domain.integration_scanning import (
     build_dependency_graph,
     build_file_resilience_index,
     classify_architectural_patterns,
@@ -266,7 +266,7 @@ async def classify_integrations_node(
     seen: set[tuple[str, str, str, int]] = set()
     classified: list[dict[str, Any]] = []
 
-    from lintel.skills_api.integration_scanning.build_dependency_graph import (
+    from lintel.domain.integration_scanning.build_dependency_graph import (
         _SCANNER_TYPE_MAP,
         _extract_target,
         _infer_service_name,

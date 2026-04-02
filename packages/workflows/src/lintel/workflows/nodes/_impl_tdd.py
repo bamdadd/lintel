@@ -121,7 +121,7 @@ async def implement_tdd(
     await tracker.append_log("implement", f"Lint: {lint_command[:60]}")
 
     # Install deps first
-    from lintel.skills_api.domain.discover_test_command import discover_test_command
+    from lintel.domain.skills.discover_test_command import discover_test_command
 
     try:
         discovery = await discover_test_command(sandbox_manager, sandbox_id, workspace_path)
