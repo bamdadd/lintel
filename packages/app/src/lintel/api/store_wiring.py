@@ -106,6 +106,8 @@ from lintel.teams.routes import team_store_provider
 from lintel.teams.store import InMemoryTeamStore
 from lintel.triggers_api.routes import trigger_store_provider
 from lintel.triggers_api.store import InMemoryTriggerStore
+from lintel.trust_scores_api.routes import trust_score_store_provider
+from lintel.trust_scores_api.store import InMemoryTrustScoreStore
 from lintel.users.routes import user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.variables_api.routes import variable_store_provider
@@ -225,6 +227,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "architecture_decision_store": ComplianceStore("decision_id"),
         "policy_generation_store": ComplianceStore("run_id"),
         "guardrail_rule_store": ComplianceStore("rule_id"),
+        # Agent Trust Score store (REQ-F029)
+        "trust_score_store": InMemoryTrustScoreStore(),
     }
 
 
@@ -490,6 +494,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "parsed_result_store": ParsedTestResultStore(),
         "coverage_metric_store": CoverageMetricStore(),
         "quality_gate_rule_store": QualityGateRuleStore(),
+        # REQ-F029: in-memory until Postgres implementation exists
+        "trust_score_store": InMemoryTrustScoreStore(),
     }
 
 
@@ -556,6 +562,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     workflow_definition_store_provider.override(stores["workflow_definition_store"])
     guardrail_rule_store_provider.override(stores["guardrail_rule_store"])
     auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
+    trust_score_store_provider.override(stores["trust_score_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

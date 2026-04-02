@@ -887,6 +887,24 @@ class FeedbackWorkItemCreated(EventEnvelope):
     event_type: str = "FeedbackWorkItemCreated"
 
 
+# --- Agent Trust Score Events (REQ-F029) ---
+
+
+@dataclass(frozen=True)
+class TrustScoreCreated(EventEnvelope):
+    event_type: str = "TrustScoreCreated"
+
+
+@dataclass(frozen=True)
+class TrustScoreAdjusted(EventEnvelope):
+    event_type: str = "TrustScoreAdjusted"
+
+
+@dataclass(frozen=True)
+class TrustScoreRemoved(EventEnvelope):
+    event_type: str = "TrustScoreRemoved"
+
+
 # --- Codebase Index Events (REQ-026) ---
 
 

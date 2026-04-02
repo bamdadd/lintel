@@ -51,6 +51,7 @@ from lintel.stage_catalogue_api.routes import router as stage_catalogue_router
 from lintel.teams.routes import router as teams_router
 from lintel.telegram.webhook import router as telegram_router
 from lintel.triggers_api.routes import router as triggers_router
+from lintel.trust_scores_api.routes import router as trust_scores_router
 from lintel.users.routes import router as users_router
 from lintel.variables_api.routes import router as variables_router
 from lintel.work_items_api.routes import router as work_items_router
@@ -111,3 +112,4 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(channels_settings_router, prefix="/api/v1", tags=["channels"])
     app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
     app.include_router(codebase_index_router, prefix="/api/v1", tags=["codebase-index"])
+    app.include_router(trust_scores_router, prefix="/api/v1", tags=["trust-scores"])
