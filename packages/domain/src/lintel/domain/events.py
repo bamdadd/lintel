@@ -844,6 +844,24 @@ class FeedbackWorkItemCreated(EventEnvelope):
     event_type: str = "FeedbackWorkItemCreated"
 
 
+# --- Codebase Index Events (REQ-026) ---
+
+
+@dataclass(frozen=True)
+class CodebaseConnected(EventEnvelope):
+    event_type: str = "CodebaseConnected"
+
+
+@dataclass(frozen=True)
+class CodebaseIndexed(EventEnvelope):
+    event_type: str = "CodebaseIndexed"
+
+
+@dataclass(frozen=True)
+class CodebaseReindexed(EventEnvelope):
+    event_type: str = "CodebaseReindexed"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -992,4 +1010,7 @@ register_events(
     FeedbackReceived,
     FeedbackCategorized,
     FeedbackWorkItemCreated,
+    CodebaseConnected,
+    CodebaseIndexed,
+    CodebaseReindexed,
 )
