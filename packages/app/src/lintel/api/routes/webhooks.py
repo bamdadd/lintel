@@ -1,13 +1,16 @@
-"""Git webhook endpoints — GitHub and GitLab payload ingestion."""
+"""Git and CI/CD webhook endpoints — GitHub, GitLab, and generic payload ingestion."""
 
 from __future__ import annotations
 
+from dataclasses import asdict
 import hashlib
 import hmac
 import os
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 import structlog
 
 from lintel.api_support.provider import StoreProvider
@@ -20,6 +23,7 @@ from lintel.domain.git_events import (
     PRReviewState,
     PullRequestEvent,
 )
+from lintel.domain.types import DeploymentEvent, DeploymentStatus
 
 router = APIRouter()
 _logger = structlog.get_logger("lintel.webhooks")
@@ -27,6 +31,27 @@ _logger = structlog.get_logger("lintel.webhooks")
 _git_event_listener_provider: StoreProvider[GitEventListener] = StoreProvider()
 
 _WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "test-secret")
+
+
+# ---------------------------------------------------------------------------
+# In-memory deployment store (tracks received CI/CD events)
+# ---------------------------------------------------------------------------
+
+
+class DeploymentStore:
+    """In-memory store for received deployment events."""
+
+    def __init__(self) -> None:
+        self._events: list[DeploymentEvent] = []
+
+    def add(self, event: DeploymentEvent) -> None:
+        self._events.append(event)
+
+    def list_all(self) -> list[DeploymentEvent]:
+        return list(self._events)
+
+
+_deployment_store_provider: StoreProvider[DeploymentStore] = StoreProvider()
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +145,31 @@ def _parse_github_review(body: dict[str, Any]) -> PRReviewEvent:
     )
 
 
+def _parse_github_workflow_run(body: dict[str, Any]) -> DeploymentEvent:
+    repo = body.get("repository", {})
+    run = body.get("workflow_run", {})
+    action = body.get("action", "")
+    conclusion = run.get("conclusion") or ""
+    if action == "completed":
+        status = DeploymentStatus.SUCCEEDED if conclusion == "success" else DeploymentStatus.FAILED
+    else:
+        status = DeploymentStatus.STARTED
+    return DeploymentEvent(
+        deployment_id=str(run.get("id", uuid4().hex)),
+        repo_name=repo.get("full_name", ""),
+        repo_url=repo.get("html_url", ""),
+        status=status,
+        workflow_name=run.get("name", ""),
+        branch=run.get("head_branch", ""),
+        commit_sha=run.get("head_sha", ""),
+        sender=body.get("sender", {}).get("login", ""),
+        provider="github",
+        started_at=run.get("run_started_at", ""),
+        finished_at=run.get("updated_at", ""),
+        url=run.get("html_url", ""),
+    )
+
+
 @router.post("/webhooks/github")
 async def github_webhook(request: Request) -> dict[str, Any]:
     payload = await request.body()
@@ -128,6 +178,17 @@ async def github_webhook(request: Request) -> dict[str, Any]:
 
     event_type = request.headers.get("X-GitHub-Event", "")
     body: dict[str, Any] = await request.json()
+
+    if event_type == "workflow_run":
+        deployment = _parse_github_workflow_run(body)
+        store = _deployment_store_provider.get()
+        store.add(deployment)
+        _logger.info("webhook.github.deployment", deployment_id=deployment.deployment_id)
+        return {
+            "status": "ok",
+            "event_type": event_type,
+            "deployment": asdict(deployment),
+        }
 
     listener: GitEventListener = _git_event_listener_provider.get()
 
@@ -213,11 +274,48 @@ def _parse_gitlab_mr(body: dict[str, Any]) -> PullRequestEvent:
     )
 
 
+def _parse_gitlab_pipeline(body: dict[str, Any]) -> DeploymentEvent:
+    project = body.get("project", {})
+    attrs = body.get("object_attributes", {})
+    status_str = attrs.get("status", "")
+    if status_str == "success":
+        status = DeploymentStatus.SUCCEEDED
+    elif status_str in ("failed", "canceled"):
+        status = DeploymentStatus.FAILED
+    else:
+        status = DeploymentStatus.STARTED
+    return DeploymentEvent(
+        deployment_id=str(attrs.get("id", uuid4().hex)),
+        repo_name=project.get("path_with_namespace", ""),
+        repo_url=project.get("web_url", ""),
+        status=status,
+        workflow_name="pipeline",
+        branch=attrs.get("ref", ""),
+        commit_sha=attrs.get("sha", ""),
+        sender=body.get("user", {}).get("username", ""),
+        provider="gitlab",
+        started_at=attrs.get("created_at", ""),
+        finished_at=attrs.get("finished_at", ""),
+        url=f"{project.get('web_url', '')}/-/pipelines/{attrs.get('id', '')}",
+    )
+
+
 @router.post("/webhooks/gitlab")
 async def gitlab_webhook(request: Request) -> dict[str, Any]:
     _verify_gitlab_token(request)
     body: dict[str, Any] = await request.json()
     event_type = body.get("object_kind", "")
+
+    if event_type == "pipeline":
+        deployment = _parse_gitlab_pipeline(body)
+        store = _deployment_store_provider.get()
+        store.add(deployment)
+        _logger.info("webhook.gitlab.deployment", deployment_id=deployment.deployment_id)
+        return {
+            "status": "ok",
+            "event_type": event_type,
+            "deployment": asdict(deployment),
+        }
 
     listener: GitEventListener = _git_event_listener_provider.get()
 
@@ -233,3 +331,80 @@ async def gitlab_webhook(request: Request) -> dict[str, Any]:
 
     _logger.info("webhook.gitlab.processed", event_type=event_type)
     return {"status": "ok", "event_type": event_type}
+
+
+# ---------------------------------------------------------------------------
+# Generic CI/CD
+# ---------------------------------------------------------------------------
+
+
+class GenericCICDPayload(BaseModel):
+    deployment_id: str
+    repo_name: str
+    repo_url: str = ""
+    status: str = "started"
+    workflow_name: str = ""
+    branch: str = ""
+    commit_sha: str = ""
+    sender: str = ""
+    provider: str = "generic"
+    started_at: str = ""
+    finished_at: str = ""
+    url: str = ""
+
+
+_STATUS_MAP: dict[str, DeploymentStatus] = {
+    "started": DeploymentStatus.STARTED,
+    "succeeded": DeploymentStatus.SUCCEEDED,
+    "success": DeploymentStatus.SUCCEEDED,
+    "failed": DeploymentStatus.FAILED,
+    "failure": DeploymentStatus.FAILED,
+}
+
+
+def _verify_generic_secret(request: Request) -> None:
+    token = request.headers.get("X-Webhook-Secret")
+    if not token:
+        raise HTTPException(status_code=403, detail="Missing X-Webhook-Secret")
+    if not hmac.compare_digest(token, _WEBHOOK_SECRET):
+        raise HTTPException(status_code=403, detail="Invalid secret")
+
+
+@router.post("/webhooks/ci-cd")
+async def generic_cicd_webhook(request: Request) -> dict[str, Any]:
+    _verify_generic_secret(request)
+    body = await request.json()
+    payload = GenericCICDPayload(**body)
+    deployment = DeploymentEvent(
+        deployment_id=payload.deployment_id,
+        repo_name=payload.repo_name,
+        repo_url=payload.repo_url,
+        status=_STATUS_MAP.get(payload.status, DeploymentStatus.STARTED),
+        workflow_name=payload.workflow_name,
+        branch=payload.branch,
+        commit_sha=payload.commit_sha,
+        sender=payload.sender,
+        provider=payload.provider,
+        started_at=payload.started_at,
+        finished_at=payload.finished_at,
+        url=payload.url,
+    )
+    store = _deployment_store_provider.get()
+    store.add(deployment)
+    _logger.info("webhook.generic.deployment", deployment_id=deployment.deployment_id)
+    return {
+        "status": "ok",
+        "event_type": "ci-cd",
+        "deployment": asdict(deployment),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Deployments list
+# ---------------------------------------------------------------------------
+
+
+@router.get("/deployments")
+async def list_deployments() -> list[dict[str, Any]]:
+    store = _deployment_store_provider.get()
+    return [asdict(e) for e in store.list_all()]

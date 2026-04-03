@@ -948,6 +948,16 @@ class RuleViolationResolved(EventEnvelope):
     event_type: str = "RuleViolationResolved"
 
 
+# --- CI/CD Deployment Events ---
+
+
+@dataclass(frozen=True)
+class DeploymentReceived(EventEnvelope):
+    """Recorded when a CI/CD deployment webhook is received."""
+
+    event_type: str = "DeploymentReceived"
+
+
 # --- AI Firewall Events (REQ-025) ---
 
 
@@ -1427,4 +1437,5 @@ register_events(
     CodingRuleRemoved,
     RuleViolationDetected,
     RuleViolationResolved,
+    DeploymentReceived,
 )
