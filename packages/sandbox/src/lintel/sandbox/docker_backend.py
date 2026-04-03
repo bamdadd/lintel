@@ -16,6 +16,7 @@ from lintel.sandbox.errors import (
 from lintel.sandbox.resource_guard import (
     ResourceGuard,
     build_egress_iptables_script,
+    build_network_policy_script,
     build_security_opt,
 )
 
@@ -43,6 +44,7 @@ class DockerSandboxManager:
         self._lock = asyncio.Lock()
         self._guards: dict[str, ResourceGuard] = {}
         self._configs: dict[str, SandboxConfig] = {}
+        self._networks: dict[str, str] = {}  # sandbox_id → Docker network name
 
     def _get_client(self) -> Any:  # noqa: ANN401
         if self._client is None:
@@ -97,6 +99,24 @@ class DockerSandboxManager:
         except Exception:
             await asyncio.to_thread(client.images.pull, config.image)
 
+        # Determine network mode: per-sandbox isolated network, bridge, or none
+        net_policy = config.network_policy
+        sandbox_network_name: str | None = None
+        if config.network_enabled and net_policy is not None and net_policy.isolate:
+            sandbox_network_name = f"lintel-sandbox-{sandbox_id[:12]}"
+            await asyncio.to_thread(
+                client.networks.create,
+                sandbox_network_name,
+                driver="bridge",
+                internal=False,
+                labels={"lintel.sandbox_id": sandbox_id},
+            )
+            network_mode = sandbox_network_name
+        elif config.network_enabled:
+            network_mode = "bridge"
+        else:
+            network_mode = "none"
+
         create_kwargs: dict[str, Any] = {
             "image": config.image,
             "command": "sleep infinity",
@@ -104,7 +124,7 @@ class DockerSandboxManager:
             "cap_drop": ["ALL"],
             "security_opt": build_security_opt(config.resource_limits),
             "read_only": False,
-            "network_mode": "bridge" if config.network_enabled else "none",
+            "network_mode": network_mode,
             "mem_limit": config.memory_limit,
             "nano_cpus": config.cpu_quota * 10000,
             "cpuset_cpus": f"0-{max(0, config.cpu_quota // 100000 - 1)}",
@@ -178,16 +198,28 @@ class DockerSandboxManager:
         self._containers[sandbox_id] = container
         self._configs[sandbox_id] = config
         self._guards[sandbox_id] = ResourceGuard(config.tool_limits)
+        if sandbox_network_name is not None:
+            self._networks[sandbox_id] = sandbox_network_name
 
-        # Apply network egress restrictions if configured
-        if config.network_enabled and config.network_egress.allowed_domains:
-            egress_script = build_egress_iptables_script(config.network_egress)
-            if egress_script:
-                await asyncio.to_thread(
-                    container.exec_run,
-                    ["/bin/sh", "-c", egress_script],
-                    user="root",
-                )
+        # Apply network restrictions if configured
+        if config.network_enabled:
+            # New NetworkPolicy takes precedence over legacy NetworkEgressPolicy
+            if net_policy is not None and net_policy.allowed_endpoints:
+                policy_script = build_network_policy_script(net_policy)
+                if policy_script:
+                    await asyncio.to_thread(
+                        container.exec_run,
+                        ["/bin/sh", "-c", policy_script],
+                        user="root",
+                    )
+            elif config.network_egress.allowed_domains:
+                egress_script = build_egress_iptables_script(config.network_egress)
+                if egress_script:
+                    await asyncio.to_thread(
+                        container.exec_run,
+                        ["/bin/sh", "-c", egress_script],
+                        user="root",
+                    )
 
         return sandbox_id
 
@@ -550,6 +582,7 @@ class DockerSandboxManager:
     async def destroy(self, sandbox_id: str) -> None:
         self._guards.pop(sandbox_id, None)
         self._configs.pop(sandbox_id, None)
+        network_name = self._networks.pop(sandbox_id, None)
         container = self._containers.pop(sandbox_id, None)
         if container is None:
             # Try to find by label (e.g. after server restart)
@@ -574,6 +607,14 @@ class DockerSandboxManager:
             await asyncio.to_thread(vol.remove, force=True)
         except Exception:
             pass  # Volume may not exist or Docker unavailable
+        # Clean up the per-sandbox Docker network
+        if network_name is not None:
+            try:
+                client = self._get_client()
+                net = await asyncio.to_thread(client.networks.get, network_name)
+                await asyncio.to_thread(net.remove)
+            except Exception:
+                pass  # Network may already be removed
 
     async def recover_containers(self) -> list[dict[str, Any]]:
         """Re-attach to containers from previous runs using Docker labels.

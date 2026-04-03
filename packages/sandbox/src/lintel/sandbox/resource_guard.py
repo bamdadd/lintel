@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING
 from lintel.sandbox.errors import FileWriteLimitExceededError, ToolCallLimitExceededError
 
 if TYPE_CHECKING:
-    from lintel.sandbox.types import NetworkEgressPolicy, ResourceLimits, ToolCallLimits
+    from lintel.sandbox.types import (
+        NetworkEgressPolicy,
+        NetworkPolicy,
+        ResourceLimits,
+        ToolCallLimits,
+    )
 
 
 class ResourceGuard:
@@ -100,5 +105,36 @@ def build_egress_iptables_script(policy: NetworkEgressPolicy) -> str:
         lines.append("done")
 
     # Drop everything else
+    lines.append("iptables -A OUTPUT -j DROP")
+    return "\n".join(lines)
+
+
+def build_network_policy_script(policy: NetworkPolicy) -> str:
+    """Return a shell script that restricts egress per ``NetworkPolicy``.
+
+    Each ``NetworkEndpoint`` is resolved (via ``getent hosts``) and allowed
+    at the specified port/protocol.  When no endpoints are configured the
+    function returns an empty string (no restrictions applied).
+    """
+    if not policy.allowed_endpoints:
+        return ""
+
+    lines = [
+        "#!/bin/sh",
+        "set -e",
+        "iptables -F OUTPUT 2>/dev/null || true",
+        "iptables -A OUTPUT -o lo -j ACCEPT",
+        # Allow DNS
+        "iptables -A OUTPUT -p udp --dport 53 -j ACCEPT",
+        "iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT",
+        "iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT",
+    ]
+
+    for ep in policy.allowed_endpoints:
+        port_flag = f" --dport {ep.port}" if ep.port is not None else ""
+        lines.append(f"for ip in $(getent hosts {ep.host} | awk '{{print $1}}'); do")
+        lines.append(f"  iptables -A OUTPUT -p {ep.protocol} -d $ip{port_flag} -j ACCEPT")
+        lines.append("done")
+
     lines.append("iptables -A OUTPUT -j DROP")
     return "\n".join(lines)
