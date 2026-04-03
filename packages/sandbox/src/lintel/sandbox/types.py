@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 
 
@@ -19,6 +20,15 @@ class SandboxStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     DESTROYED = "destroyed"
+
+
+class SessionState(StrEnum):
+    """Lifecycle state of a sandbox session."""
+
+    RUNNING = "running"
+    HIBERNATED = "hibernated"
+    RESUMED = "resumed"
+    TERMINATED = "terminated"
 
 
 @dataclass(frozen=True)
@@ -125,3 +135,49 @@ class SandboxResult:
     exit_code: int
     stdout: str = ""
     stderr: str = ""
+
+
+@dataclass(frozen=True)
+class TimeoutConfig:
+    """Idle-timeout configuration for sandbox sessions.
+
+    ``idle_timeout_seconds`` triggers auto-hibernate after inactivity.
+    ``max_lifetime_seconds`` is the hard cap before forced termination.
+    """
+
+    idle_timeout_seconds: int = 1800
+    max_lifetime_seconds: int = 14400
+
+
+@dataclass(frozen=True)
+class SessionCost:
+    """Accumulated cost tracking for a sandbox session lifecycle."""
+
+    cpu_seconds: float = 0.0
+    memory_mb_seconds: float = 0.0
+    storage_mb_seconds: float = 0.0
+
+    @property
+    def total_cost_units(self) -> float:
+        """Weighted cost in abstract units."""
+        return (
+            self.cpu_seconds
+            + (self.memory_mb_seconds / 1024) * 0.5
+            + (self.storage_mb_seconds / 1024) * 0.1
+        )
+
+
+@dataclass(frozen=True)
+class SessionLifecycle:
+    """Tracks the full lifecycle of a sandbox session including state transitions and cost."""
+
+    sandbox_id: str
+    state: SessionState = SessionState.RUNNING
+    snapshot_id: str = ""
+    timeout_config: TimeoutConfig = field(default_factory=TimeoutConfig)
+    cost: SessionCost = field(default_factory=SessionCost)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_activity_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    hibernated_at: datetime | None = None
+    resumed_at: datetime | None = None
+    terminated_at: datetime | None = None

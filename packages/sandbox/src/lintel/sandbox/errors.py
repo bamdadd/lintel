@@ -69,3 +69,26 @@ class StorageLimitExceededError(SandboxError):
         )
         self.used_mb = used_mb
         self.limit_mb = limit_mb
+
+
+class SandboxHibernatedError(SandboxError):
+    """Raised when an operation is attempted on a hibernated sandbox."""
+
+    def __init__(self, sandbox_id: str) -> None:
+        super().__init__(
+            f"Sandbox {sandbox_id} is hibernated. Resume it before performing operations."
+        )
+        self.sandbox_id = sandbox_id
+
+
+class SessionAlreadyInStateError(SandboxError):
+    """Raised when a session transition is invalid."""
+
+    def __init__(self, sandbox_id: str, current_state: str, requested_state: str) -> None:
+        super().__init__(
+            f"Sandbox {sandbox_id} is already {current_state}, "
+            f"cannot transition to {requested_state}."
+        )
+        self.sandbox_id = sandbox_id
+        self.current_state = current_state
+        self.requested_state = requested_state
