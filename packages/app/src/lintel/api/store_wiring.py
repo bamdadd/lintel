@@ -172,6 +172,8 @@ from lintel.users.routes import user_store_provider
 from lintel.users.store import InMemoryUserStore
 from lintel.variables_api.routes import variable_store_provider
 from lintel.variables_api.store import InMemoryVariableStore
+from lintel.visual_verification_api.routes import verification_store_provider
+from lintel.visual_verification_api.store import InMemoryVisualVerificationStore
 from lintel.work_items_api.routes import work_item_store_provider
 from lintel.work_items_api.store import WorkItemStore
 from lintel.workflow_blueprints_api.routes import blueprint_store_provider
@@ -328,6 +330,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "snapshot_store": InMemorySnapshotStore(),
         # Channel Connections
         "channel_connection_store": InMemoryChannelConnectionStore(),
+        # Visual Verification
+        "visual_verification_store": InMemoryVisualVerificationStore(),
     }
 
 
@@ -726,6 +730,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     image_rebuild_store_provider.override(stores["image_rebuild_store"])
     snapshot_store_provider.override(stores["snapshot_store"])
     connection_store_provider.override(stores["channel_connection_store"])
+    verification_store_provider.override(stores["visual_verification_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
