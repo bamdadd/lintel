@@ -152,7 +152,12 @@ from lintel.sandbox_pool_api.store import (
     InMemorySandboxImageStore,
     InMemorySandboxPoolConfigStore,
 )
-from lintel.sandboxes_api.routes import SandboxStore, snapshot_store_provider
+from lintel.sandboxes_api.replica_store import InMemoryReplicaConfigStore
+from lintel.sandboxes_api.routes import (
+    SandboxStore,
+    replica_config_store_provider,
+    snapshot_store_provider,
+)
 from lintel.sandboxes_api.snapshot_store import InMemorySnapshotStore
 from lintel.scheduled_tasks_api.routes import scheduled_task_store_provider
 from lintel.scheduled_tasks_api.store import InMemoryScheduledTaskStore
@@ -337,6 +342,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "image_rebuild_store": InMemoryImageRebuildStore(),
         # Sandbox Snapshots
         "snapshot_store": InMemorySnapshotStore(),
+        # Sandbox Replica Configs
+        "replica_config_store": InMemoryReplicaConfigStore(),
         # Channel Connections
         "channel_connection_store": InMemoryChannelConnectionStore(),
         # Visual Verification
@@ -645,6 +652,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "image_rebuild_store": InMemoryImageRebuildStore(),
         # Sandbox Snapshots: in-memory until Postgres implementation exists
         "snapshot_store": InMemorySnapshotStore(),
+        # Sandbox Replica Configs: in-memory until Postgres implementation exists
+        "replica_config_store": InMemoryReplicaConfigStore(),
         # Sandbox Credentials: in-memory until Postgres implementation exists
         "sandbox_credential_store": InMemorySandboxCredentialStore(),
     }
@@ -748,6 +757,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     connection_store_provider.override(stores["channel_connection_store"])
     verification_store_provider.override(stores["visual_verification_store"])
     sandbox_credential_store_provider.override(stores["sandbox_credential_store"])
+    replica_config_store_provider.override(stores["replica_config_store"])
     scheduled_task_store_provider.override(stores["scheduled_task_store"])
 
 

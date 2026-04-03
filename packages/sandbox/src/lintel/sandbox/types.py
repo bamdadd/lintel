@@ -127,6 +127,22 @@ class ToolCallLimits:
 
 
 @dataclass(frozen=True)
+class DatabaseReplica:
+    """Configuration for a read-only database replica accessible from a sandbox.
+
+    ``credential_ref`` is an opaque key that resolves to actual credentials
+    at sandbox creation time (e.g. a sandbox-credentials-api credential id).
+    """
+
+    name: str
+    host: str
+    port: int = 5432
+    database: str = "postgres"
+    read_only: bool = True
+    credential_ref: str = ""
+
+
+@dataclass(frozen=True)
 class SandboxConfig:
     """Configuration for creating a sandbox container."""
 
@@ -143,6 +159,7 @@ class SandboxConfig:
     tool_limits: ToolCallLimits = ToolCallLimits()
     storage_limits: StorageLimits = StorageLimits()
     network_policy: NetworkPolicy | None = None
+    replica_connections: tuple[DatabaseReplica, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -6,6 +6,9 @@ from fastapi import APIRouter
 
 from lintel.sandboxes_api.execution import router as execution_router
 from lintel.sandboxes_api.files import router as files_router
+from lintel.sandboxes_api.replica_store import DatabaseReplicaConfig, InMemoryReplicaConfigStore
+from lintel.sandboxes_api.replicas import replica_config_store_provider
+from lintel.sandboxes_api.replicas import router as replicas_router
 from lintel.sandboxes_api.sandboxes import (
     SANDBOX_PRESETS,
     CreateSandboxRequest,
@@ -27,12 +30,15 @@ from lintel.sandboxes_api.snapshots import snapshot_store_provider
 __all__ = [
     "SANDBOX_PRESETS",
     "CreateSandboxRequest",
+    "DatabaseReplicaConfig",
     "DevcontainerConfig",
     "DevcontainerFeature",
+    "InMemoryReplicaConfigStore",
     "InMemorySnapshotStore",
     "MountConfig",
     "SandboxStore",
     "lifecycle_manager_provider",
+    "replica_config_store_provider",
     "router",
     "snapshot_store_provider",
 ]
@@ -43,3 +49,4 @@ router.include_router(snapshots_router)
 router.include_router(sandboxes_router)
 router.include_router(execution_router)
 router.include_router(files_router)
+router.include_router(replicas_router)
