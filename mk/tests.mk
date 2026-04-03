@@ -172,6 +172,9 @@ test-sandbox-pool-api: ## Run sandbox-pool-api package tests
 test-visual-verification-api: ## Run visual-verification-api package tests
 	uv run pytest packages/visual-verification-api/tests/ -v
 
+test-scheduled-tasks-api: ## Run scheduled-tasks-api package tests
+	uv run pytest packages/scheduled-tasks-api/tests/ -v
+
 test-coding-rules-api: ## Run coding-rules-api package tests
 	uv run pytest packages/coding-rules-api/tests/ -v
 

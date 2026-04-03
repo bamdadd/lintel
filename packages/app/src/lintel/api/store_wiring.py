@@ -152,6 +152,8 @@ from lintel.sandbox_pool_api.store import (
 )
 from lintel.sandboxes_api.routes import SandboxStore, snapshot_store_provider
 from lintel.sandboxes_api.snapshot_store import InMemorySnapshotStore
+from lintel.scheduled_tasks_api.routes import scheduled_task_store_provider
+from lintel.scheduled_tasks_api.store import InMemoryScheduledTaskStore
 from lintel.skills_api.routes import skill_store_provider
 from lintel.skills_api.store import InMemorySkillStore
 from lintel.slack_notifications_api.routes import (
@@ -338,6 +340,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "visual_verification_store": InMemoryVisualVerificationStore(),
         # Sandbox Credentials
         "sandbox_credential_store": InMemorySandboxCredentialStore(),
+        # Scheduled Tasks
+        "scheduled_task_store": InMemoryScheduledTaskStore(),
     }
 
 
@@ -740,6 +744,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     connection_store_provider.override(stores["channel_connection_store"])
     verification_store_provider.override(stores["visual_verification_store"])
     sandbox_credential_store_provider.override(stores["sandbox_credential_store"])
+    scheduled_task_store_provider.override(stores["scheduled_task_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

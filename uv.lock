@@ -66,6 +66,7 @@ members = [
     "lintel-sandbox-credentials-api",
     "lintel-sandbox-pool-api",
     "lintel-sandboxes-api",
+    "lintel-scheduled-tasks-api",
     "lintel-settings-api",
     "lintel-skills-api",
     "lintel-slack",
@@ -1886,6 +1887,7 @@ dependencies = [
     { name = "lintel-sandbox-credentials-api" },
     { name = "lintel-sandbox-pool-api" },
     { name = "lintel-sandboxes-api" },
+    { name = "lintel-scheduled-tasks-api" },
     { name = "lintel-settings-api" },
     { name = "lintel-skills-api" },
     { name = "lintel-slack" },
@@ -1973,6 +1975,7 @@ requires-dist = [
     { name = "lintel-sandbox-credentials-api", editable = "packages/sandbox-credentials-api" },
     { name = "lintel-sandbox-pool-api", editable = "packages/sandbox-pool-api" },
     { name = "lintel-sandboxes-api", editable = "packages/sandboxes-api" },
+    { name = "lintel-scheduled-tasks-api", editable = "packages/scheduled-tasks-api" },
     { name = "lintel-settings-api", editable = "packages/settings-api" },
     { name = "lintel-skills-api", editable = "packages/skills-api" },
     { name = "lintel-slack", editable = "packages/slack" },
@@ -3250,6 +3253,29 @@ requires-dist = [
     { name = "lintel-persistence", editable = "packages/persistence" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "pydantic", specifier = ">=2.10" },
+]
+
+[[package]]
+name = "lintel-scheduled-tasks-api"
+version = "0.1.0"
+source = { editable = "packages/scheduled-tasks-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
 ]
 
 [[package]]

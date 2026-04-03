@@ -70,6 +70,7 @@ dependencies = [
     "lintel-stage-catalogue-api",
     "lintel-auth-api",
     "lintel-sandbox-pool-api",
+    "lintel-scheduled-tasks-api",
     "lintel-coding-rules-api",
     "lintel-channel-connections-api",
     "lintel-release-notes-api",
@@ -156,6 +157,7 @@ lintel-memory-api = { workspace = true }
 lintel-stage-catalogue-api = { workspace = true }
 lintel-auth-api = { workspace = true }
 lintel-sandbox-pool-api = { workspace = true }
+lintel-scheduled-tasks-api = { workspace = true }
 lintel-coding-rules-api = { workspace = true }
 lintel-channel-connections-api = { workspace = true }
 lintel-release-notes-api = { workspace = true }
