@@ -188,31 +188,27 @@ class WorkflowExecutor:
         finally:
             self._semaphore.release()
 
-    async def _pre_flight_check(self, command: StartWorkflow) -> list[str]:
+    async def _pre_flight_check(self, command: StartWorkflow) -> tuple[list[str], list[str]]:
         """Validate preconditions before starting workflow execution.
 
-        Returns list of blocking errors (empty = good to go).
+        Returns (errors, warnings) — errors block dispatch, warnings are logged.
         """
-        errors: list[str] = []
-        workflow_type = command.workflow_type or ""
-        repo_url = command.repo_url or ""
+        from lintel.workflows.preflight import run_preflight_checks
 
-        code_workflows = {
-            "feature",
-            "bug_fix",
-            "code_review",
-            "refactor",
-            "security_audit",
-            "incident_response",
-            "release",
-        }
-        if workflow_type in code_workflows and not repo_url:
-            errors.append(
-                f"No repository URL configured for workflow '{workflow_type}'. "
-                "Link a repository to the project before dispatching."
-            )
-
-        return errors
+        result = await run_preflight_checks(
+            workflow_type=command.workflow_type or "",
+            repo_url=command.repo_url or "",
+            repo_urls=command.repo_urls,
+            project_id=command.project_id or "",
+            credential_ids=command.credential_ids,
+            credential_store=(
+                getattr(self._app_state, "credential_store", None) if self._app_state else None
+            ),
+            sandbox_manager=(
+                getattr(self._app_state, "sandbox_manager", None) if self._app_state else None
+            ),
+        )
+        return result.errors, result.warnings
 
     async def _execute_inner(self, command: StartWorkflow, run_id: str) -> str:
         """Inner execution logic, called while holding the semaphore."""
@@ -221,7 +217,9 @@ class WorkflowExecutor:
         stream_id = f"run:{run_id}"
 
         # Pre-flight validation — catch misconfigurations before starting stages
-        preflight_errors = await self._pre_flight_check(command)
+        preflight_errors, preflight_warnings = await self._pre_flight_check(command)
+        for w in preflight_warnings:
+            logger.warning("pre_flight_warning", run_id=run_id, warning=w)
         if preflight_errors:
             error_msg = "; ".join(preflight_errors)
             logger.warning("pre_flight_check_failed", run_id=run_id, errors=preflight_errors)

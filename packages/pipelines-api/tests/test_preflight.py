@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 from lintel.pipelines_api.preflight import run_preflight_checks
 
 # Workflows that require a repository URL
@@ -55,6 +57,7 @@ class TestProjectIdCheck:
             workflow_type="feature_to_pr",
             repo_url="https://github.com/org/repo",
             project_id="proj-1",
+            sandbox_manager=AsyncMock(),
         )
         assert not result.warnings
 
@@ -77,6 +80,7 @@ class TestPreflightResult:
             workflow_type="feature_to_pr",
             repo_url="https://github.com/org/repo",
             project_id="proj-1",
+            sandbox_manager=AsyncMock(),
         )
         assert result.passed
         assert not result.errors
@@ -88,3 +92,96 @@ class TestPreflightResult:
             repo_url="",
         )
         assert not result.passed
+
+
+class TestCredentialCheck:
+    async def test_missing_credential_fails(self) -> None:
+        cred_store = AsyncMock()
+        cred_store.get = AsyncMock(return_value=None)
+        result = await run_preflight_checks(
+            workflow_type="feature_to_pr",
+            repo_url="https://github.com/org/repo",
+            project_id="proj-1",
+            credential_ids=("cred-missing",),
+            credential_store=cred_store,
+        )
+        assert not result.passed
+        assert any("cred-missing" in e for e in result.errors)
+
+    async def test_existing_credential_passes(self) -> None:
+        cred_store = AsyncMock()
+        cred_store.get = AsyncMock(return_value={"credential_id": "c1"})
+        result = await run_preflight_checks(
+            workflow_type="feature_to_pr",
+            repo_url="https://github.com/org/repo",
+            project_id="proj-1",
+            credential_ids=("c1",),
+            credential_store=cred_store,
+        )
+        assert result.passed
+
+    async def test_no_credential_ids_skips_check(self) -> None:
+        cred_store = AsyncMock()
+        result = await run_preflight_checks(
+            workflow_type="feature_to_pr",
+            repo_url="https://github.com/org/repo",
+            project_id="proj-1",
+            credential_ids=(),
+            credential_store=cred_store,
+        )
+        assert result.passed
+        cred_store.get.assert_not_called()
+
+    async def test_no_credential_store_skips_check(self) -> None:
+        result = await run_preflight_checks(
+            workflow_type="feature_to_pr",
+            repo_url="https://github.com/org/repo",
+            project_id="proj-1",
+            credential_ids=("c1",),
+            credential_store=None,
+        )
+        assert result.passed
+
+    async def test_credential_store_error_treated_as_failure(self) -> None:
+        cred_store = AsyncMock()
+        cred_store.get = AsyncMock(side_effect=RuntimeError("db down"))
+        result = await run_preflight_checks(
+            workflow_type="feature_to_pr",
+            repo_url="https://github.com/org/repo",
+            project_id="proj-1",
+            credential_ids=("c1",),
+            credential_store=cred_store,
+        )
+        assert not result.passed
+        assert any("unavailable" in e.lower() for e in result.errors)
+
+
+class TestSandboxCheck:
+    async def test_code_workflow_without_sandbox_warns(self) -> None:
+        result = await run_preflight_checks(
+            workflow_type="feature_to_pr",
+            repo_url="https://github.com/org/repo",
+            project_id="proj-1",
+            sandbox_manager=None,
+        )
+        assert result.passed
+        assert any("sandbox" in w.lower() for w in result.warnings)
+
+    async def test_code_workflow_with_sandbox_no_warning(self) -> None:
+        result = await run_preflight_checks(
+            workflow_type="feature_to_pr",
+            repo_url="https://github.com/org/repo",
+            project_id="proj-1",
+            sandbox_manager=AsyncMock(),
+        )
+        sandbox_warnings = [w for w in result.warnings if "sandbox" in w.lower()]
+        assert not sandbox_warnings
+
+    async def test_non_code_workflow_without_sandbox_no_warning(self) -> None:
+        result = await run_preflight_checks(
+            workflow_type="review_only",
+            project_id="proj-1",
+            sandbox_manager=None,
+        )
+        sandbox_warnings = [w for w in result.warnings if "sandbox" in w.lower()]
+        assert not sandbox_warnings

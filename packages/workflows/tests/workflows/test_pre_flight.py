@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -44,30 +45,35 @@ class _FakeEventStore:
 
 
 class TestPreFlightCheck:
-    """Verify _pre_flight_check catches missing repo URL for code workflows."""
+    """Verify _pre_flight_check returns (errors, warnings) tuple."""
 
     async def test_code_workflow_without_repo_url_returns_error(self) -> None:
         executor = WorkflowExecutor(event_store=_FakeEventStore())
         command = _FakeCommand(workflow_type="feature", repo_url="")
-        errors = await executor._pre_flight_check(command)  # type: ignore[arg-type]
+        errors, warnings = await executor._pre_flight_check(command)  # type: ignore[arg-type]
         assert len(errors) == 1
-        assert "No repository URL configured" in errors[0]
-        assert "feature" in errors[0]
+        assert "repository" in errors[0].lower()
+        assert isinstance(warnings, list)
 
     async def test_code_workflow_with_repo_url_passes(self) -> None:
-        executor = WorkflowExecutor(event_store=_FakeEventStore())
+        app_state = AsyncMock()
+        app_state.sandbox_manager = AsyncMock()
+        app_state.credential_store = None
+
+        executor = WorkflowExecutor(event_store=_FakeEventStore(), app_state=app_state)
         command = _FakeCommand(
             workflow_type="feature",
             repo_url="https://github.com/org/repo",
         )
-        errors = await executor._pre_flight_check(command)  # type: ignore[arg-type]
+        errors, _warnings = await executor._pre_flight_check(command)  # type: ignore[arg-type]
         assert errors == []
 
     async def test_non_code_workflow_without_repo_url_passes(self) -> None:
         executor = WorkflowExecutor(event_store=_FakeEventStore())
         command = _FakeCommand(workflow_type="summarize", repo_url="")
-        errors = await executor._pre_flight_check(command)  # type: ignore[arg-type]
+        errors, warnings = await executor._pre_flight_check(command)  # type: ignore[arg-type]
         assert errors == []
+        assert warnings == []
 
     @pytest.mark.parametrize(
         "workflow_type",
@@ -84,9 +90,8 @@ class TestPreFlightCheck:
     async def test_all_code_workflows_require_repo_url(self, workflow_type: str) -> None:
         executor = WorkflowExecutor(event_store=_FakeEventStore())
         command = _FakeCommand(workflow_type=workflow_type, repo_url="")
-        errors = await executor._pre_flight_check(command)  # type: ignore[arg-type]
-        assert len(errors) == 1
-        assert workflow_type in errors[0]
+        errors, _warnings = await executor._pre_flight_check(command)  # type: ignore[arg-type]
+        assert len(errors) >= 1
 
     async def test_pre_flight_failure_marks_pipeline_failed(self) -> None:
         """When pre-flight fails, execute() should emit PipelineRunFailed and return."""
@@ -100,12 +105,40 @@ class TestPreFlightCheck:
         run_id = await executor.execute(command)  # type: ignore[arg-type]
         assert run_id == "run-preflight"
 
-        # Should have WorkflowQueued + PipelineRunFailed events
         event_types = [e.event_type for e in event_store.events]
         assert "WorkflowQueued" in event_types
         assert "PipelineRunFailed" in event_types
 
-        # The failed event should contain the pre-flight error message
         failed_events = [e for e in event_store.events if e.event_type == "PipelineRunFailed"]
         assert len(failed_events) == 1
-        assert "No repository URL configured" in failed_events[0].payload["error"]
+        assert "repository" in failed_events[0].payload["error"].lower()
+
+    async def test_sandbox_warning_does_not_block(self) -> None:
+        """Sandbox warning should not prevent pipeline dispatch."""
+        executor = WorkflowExecutor(event_store=_FakeEventStore(), app_state=None)
+        command = _FakeCommand(
+            workflow_type="feature",
+            repo_url="https://github.com/org/repo",
+        )
+        errors, warnings = await executor._pre_flight_check(command)  # type: ignore[arg-type]
+        assert errors == []
+        assert any("sandbox" in w.lower() for w in warnings)
+
+    async def test_credential_check_via_executor(self) -> None:
+        """Executor delegates credential validation to preflight module."""
+        credential_store = AsyncMock()
+        credential_store.get = AsyncMock(return_value=None)
+
+        app_state = AsyncMock()
+        app_state.credential_store = credential_store
+        app_state.sandbox_manager = AsyncMock()
+
+        executor = WorkflowExecutor(event_store=_FakeEventStore(), app_state=app_state)
+        command = _FakeCommand(
+            workflow_type="feature",
+            repo_url="https://github.com/org/repo",
+            credential_ids=("bad-cred",),
+        )
+        errors, _warnings = await executor._pre_flight_check(command)  # type: ignore[arg-type]
+        assert len(errors) == 1
+        assert "bad-cred" in errors[0]

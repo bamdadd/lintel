@@ -115,11 +115,16 @@ async def create_pipeline(
             logger.warning("pipeline_create_repo_resolution_failed", exc_info=True)
 
     # Pre-flight checks before dispatch
+    credential_store = getattr(request.app.state, "credential_store", None)
+    sandbox_manager = getattr(request.app.state, "sandbox_manager", None)
     preflight = await run_preflight_checks(
         workflow_type=body.workflow_definition_id,
         repo_url=repo_url,
         repo_urls=repo_urls,
         project_id=body.project_id,
+        credential_ids=credential_ids,
+        credential_store=credential_store,
+        sandbox_manager=sandbox_manager,
     )
     if preflight.warnings:
         for w in preflight.warnings:

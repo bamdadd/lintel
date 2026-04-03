@@ -17,6 +17,7 @@ def _make_command() -> StartWorkflow:
     return StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
     )
 
 
@@ -116,6 +117,7 @@ async def test_execute_marks_work_item_failed_on_error() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         work_item_id="wi-1",
     )
 
@@ -177,6 +179,7 @@ async def test_execute_marks_running_stages_failed_on_error() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         run_id="test-run",
     )
 
@@ -266,6 +269,7 @@ async def test_execute_creates_approval_request_on_interrupt() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         run_id="test-run",
     )
 
@@ -353,6 +357,7 @@ async def test_execute_notifies_chat_on_interrupt() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         run_id="test-run",
     )
 
@@ -431,6 +436,7 @@ async def test_execute_pauses_at_interrupt() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         run_id="test-run",
     )
 
@@ -501,6 +507,7 @@ async def test_auto_move_sets_status_open_on_failure() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         work_item_id="wi-1",
     )
 
@@ -539,6 +546,7 @@ async def test_auto_move_disabled_sets_status_failed() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         work_item_id="wi-1",
     )
 
@@ -612,6 +620,7 @@ async def test_auto_promote_moves_open_item_to_in_progress() -> None:
     command = StartWorkflow(
         thread_ref=ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="ts1"),
         workflow_type="feature_to_pr",
+        repo_url="https://github.com/org/repo",
         work_item_id="wi-1",
     )
 
