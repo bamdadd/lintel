@@ -19,10 +19,33 @@ def client() -> "Generator[TestClient]":
         yield c
 
 
+def _ensure_project_with_repo(client: TestClient) -> None:
+    """Create a project with a repository so pipelines pass pre-flight checks."""
+    # Create repo (ignore 409 if already exists)
+    client.post(
+        "/api/v1/repositories",
+        json={
+            "repo_id": "repo-1",
+            "name": "test-repo",
+            "url": "https://github.com/org/test-repo",
+        },
+    )
+    # Create project with repo attached (ignore 409 if already exists)
+    client.post(
+        "/api/v1/projects",
+        json={
+            "project_id": "proj-1",
+            "name": "Test Project",
+            "repo_ids": ["repo-1"],
+        },
+    )
+
+
 def _create_pipeline(
     client: TestClient,
     run_id: str = "run1",
 ) -> dict:
+    _ensure_project_with_repo(client)
     return client.post(
         "/api/v1/pipelines",
         json={
@@ -35,6 +58,7 @@ def _create_pipeline(
 
 class TestPipelinesAPI:
     def test_create_pipeline(self, client: TestClient) -> None:
+        _ensure_project_with_repo(client)
         resp = client.post(
             "/api/v1/pipelines",
             json={
@@ -49,6 +73,18 @@ class TestPipelinesAPI:
         assert data["project_id"] == "proj-1"
         assert data["status"] == "pending"
         assert len(data["stages"]) == 11  # feature_to_pr has 11 stages
+
+    def test_create_pipeline_rejected_without_repo(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/pipelines",
+            json={
+                "run_id": "no-repo",
+                "project_id": "no-such-project",
+                "work_item_id": "wi-1",
+            },
+        )
+        assert resp.status_code == 422
+        assert "repository" in resp.json()["detail"].lower()
 
     def test_create_pipeline_duplicate_returns_409(
         self,
