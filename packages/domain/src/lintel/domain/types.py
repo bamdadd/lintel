@@ -1405,3 +1405,32 @@ class SandboxSnapshot:
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime | None = None
     restored_sandbox_id: str = ""
+
+
+# --- CI/CD Deployment ---
+
+
+class DeploymentStatus(StrEnum):
+    """Status of a CI/CD deployment."""
+
+    STARTED = "started"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class DeploymentEvent:
+    """Normalized CI/CD deployment event from GitHub Actions, GitLab CI, or generic webhook."""
+
+    deployment_id: str
+    repo_name: str
+    repo_url: str = ""
+    status: DeploymentStatus = DeploymentStatus.STARTED
+    workflow_name: str = ""
+    branch: str = ""
+    commit_sha: str = ""
+    sender: str = ""
+    provider: str = ""  # github, gitlab, generic
+    started_at: str = ""
+    finished_at: str = ""
+    url: str = ""
