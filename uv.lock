@@ -71,6 +71,7 @@ members = [
     "lintel-stage-catalogue-api",
     "lintel-teams",
     "lintel-telegram",
+    "lintel-test-plan-api",
     "lintel-triggers-api",
     "lintel-trust-scores-api",
     "lintel-users",
@@ -3342,6 +3343,25 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "lintel-channels", editable = "packages/channels" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-test-plan-api"
+version = "0.1.0"
+source = { editable = "packages/test-plan-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
