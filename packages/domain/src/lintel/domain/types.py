@@ -1343,3 +1343,28 @@ class SandboxPoolConfig:
     auto_rebuild_on_push: bool = True
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+class SubSessionStatus(StrEnum):
+    """Status of an agent sub-session."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SubSession:
+    """A child session spawned by an agent for parallel research."""
+
+    session_id: str
+    parent_pipeline_run_id: str
+    sandbox_id: str = ""
+    repo_url: str = ""
+    prompt: str = ""
+    status: SubSessionStatus = SubSessionStatus.PENDING
+    result: str = ""
+    error: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None

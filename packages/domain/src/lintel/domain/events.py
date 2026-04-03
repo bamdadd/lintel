@@ -1188,6 +1188,24 @@ class PooledSandboxReleased(EventEnvelope):
     event_type: str = "PooledSandboxReleased"
 
 
+# --- Sub-Session Events ---
+
+
+@dataclass(frozen=True)
+class SubSessionSpawned(EventEnvelope):
+    event_type: str = "SubSessionSpawned"
+
+
+@dataclass(frozen=True)
+class SubSessionCompleted(EventEnvelope):
+    event_type: str = "SubSessionCompleted"
+
+
+@dataclass(frozen=True)
+class SubSessionFailed(EventEnvelope):
+    event_type: str = "SubSessionFailed"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1391,4 +1409,7 @@ register_events(
     CodingRuleRemoved,
     RuleViolationDetected,
     RuleViolationResolved,
+    SubSessionSpawned,
+    SubSessionCompleted,
+    SubSessionFailed,
 )
