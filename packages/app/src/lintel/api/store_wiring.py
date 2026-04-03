@@ -46,6 +46,8 @@ from lintel.auth_api.store import InMemoryAuthUserStore
 from lintel.automations_api.routes import InMemoryAutomationStore, automation_store_provider
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
+from lintel.channel_connections_api.routes import connection_store_provider
+from lintel.channel_connections_api.store import InMemoryChannelConnectionStore
 from lintel.chat_api.routes import ChatStore, chat_store_provider
 from lintel.chat_api.streaming import chat_stream_store_provider
 from lintel.codebase_index_api.routes import index_store_provider as codebase_index_store_provider
@@ -317,6 +319,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "image_rebuild_store": InMemoryImageRebuildStore(),
         # Sandbox Snapshots
         "snapshot_store": InMemorySnapshotStore(),
+        # Channel Connections
+        "channel_connection_store": InMemoryChannelConnectionStore(),
     }
 
 
@@ -711,6 +715,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     sandbox_pool_config_store_provider.override(stores["sandbox_pool_config_store"])
     image_rebuild_store_provider.override(stores["image_rebuild_store"])
     snapshot_store_provider.override(stores["snapshot_store"])
+    connection_store_provider.override(stores["channel_connection_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
