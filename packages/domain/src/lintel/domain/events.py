@@ -1261,6 +1261,19 @@ class DigestConfigUpdated(EventEnvelope):
     event_type: str = "DigestConfigUpdated"
 
 
+# --- Visual Verification Events ---
+
+
+@dataclass(frozen=True)
+class VisualVerificationCreated(EventEnvelope):
+    event_type: str = "VisualVerificationCreated"
+
+
+@dataclass(frozen=True)
+class VisualVerificationStatusChanged(EventEnvelope):
+    event_type: str = "VisualVerificationStatusChanged"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1477,4 +1490,6 @@ register_events(
     TechSpecCreated,
     TechSpecUpdated,
     TechSpecRemoved,
+    VisualVerificationCreated,
+    VisualVerificationStatusChanged,
 )

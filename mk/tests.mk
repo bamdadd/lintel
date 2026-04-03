@@ -169,6 +169,9 @@ test-workflow-blueprints-api: ## Run workflow-blueprints-api package tests
 test-sandbox-pool-api: ## Run sandbox-pool-api package tests
 	uv run pytest packages/sandbox-pool-api/tests/ -v
 
+test-visual-verification-api: ## Run visual-verification-api package tests
+	uv run pytest packages/visual-verification-api/tests/ -v
+
 test-coding-rules-api: ## Run coding-rules-api package tests
 	uv run pytest packages/coding-rules-api/tests/ -v
 

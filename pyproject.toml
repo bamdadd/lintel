@@ -81,6 +81,7 @@ testpaths = [
     "packages/slack-workflows-api/tests",
     "packages/workflow-blueprints-api/tests",
     "packages/coding-rules-api/tests",
+    "packages/visual-verification-api/tests",
     "packages/knowledge-api/tests",
     "packages/tech-spec-api/tests",
     "tests",
@@ -153,6 +154,7 @@ mypy_path = [
     "packages/slack-workflows-api/src",
     "packages/workflow-blueprints-api/src",
     "packages/coding-rules-api/src",
+    "packages/visual-verification-api/src",
     "packages/knowledge-api/src",
     "packages/tech-spec-api/src",
 ]
