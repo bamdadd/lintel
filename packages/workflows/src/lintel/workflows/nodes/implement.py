@@ -39,6 +39,8 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
+MAX_NODE_FIX_ATTEMPTS = 2
+
 
 async def spawn_implementation(
     state: ThreadWorkflowState,
@@ -222,6 +224,70 @@ async def spawn_implementation(
                 config=_config,
                 state=state,
             )
+
+        # ---- Node-level fix loop on test failure ----
+        # If the strategy exhausted its own retries and tests still fail,
+        # run a focused fix cycle: capture test output → agent fix → re-test.
+        if not test_passed:
+            from lintel.workflows.nodes._impl_discovery import (
+                fix_failures,
+                log_test_output,
+                run_tests,
+            )
+
+            for fix_attempt in range(1, MAX_NODE_FIX_ATTEMPTS + 1):
+                await tracker.append_log(
+                    "implement",
+                    f"Node fix attempt {fix_attempt}/{MAX_NODE_FIX_ATTEMPTS}"
+                    " — capturing test output for agent",
+                )
+                test_output, test_exit = await run_tests(
+                    _config, state, sandbox_manager, sandbox_id, workspace_path
+                )
+                if test_exit == 0:
+                    test_passed = True
+                    await tracker.append_log("implement", "Tests passed after re-run")
+                    break
+
+                await log_test_output(test_output, _config, state)
+
+                try:
+                    fix_result = await fix_failures(
+                        agent_runtime,
+                        thread_ref,
+                        workspace_path,
+                        test_output,
+                        sandbox_manager,
+                        sandbox_id,
+                        _config,
+                        state,
+                    )
+                    fix_usage = tracker.extract_token_usage(fix_result)
+                    total_usage.append(fix_usage)
+                except Exception:
+                    logger.exception("implement_node_fix_failed", attempt=fix_attempt)
+                    await tracker.append_log(
+                        "implement", f"Fix attempt {fix_attempt} failed (exception)"
+                    )
+                    break
+
+                # Re-test after fix
+                retest_output, retest_exit = await run_tests(
+                    _config, state, sandbox_manager, sandbox_id, workspace_path
+                )
+                if retest_exit == 0:
+                    test_passed = True
+                    await tracker.append_log(
+                        "implement",
+                        f"Tests passed after node fix attempt {fix_attempt}",
+                    )
+                    break
+
+                await tracker.append_log(
+                    "implement",
+                    f"Tests still failing after node fix attempt {fix_attempt}",
+                )
+                await log_test_output(retest_output, _config, state)
 
     # Disconnect network
     import contextlib
