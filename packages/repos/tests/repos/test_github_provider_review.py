@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from lintel.repos.github_provider import GitHubRepoProvider
 from lintel.repos.types import CheckRunConclusion, InlineComment, ReviewVerdict
 
-
 REPO_URL = "https://github.com/org/repo"
 
 
@@ -121,9 +120,7 @@ class TestCreateReview:
             mock_resp.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_resp
 
-            await provider.create_review(
-                REPO_URL, 42, "LGTM", ReviewVerdict.APPROVE
-            )
+            await provider.create_review(REPO_URL, 42, "LGTM", ReviewVerdict.APPROVE)
             call_args = mock_client.post.call_args
             assert "/pulls/42/reviews" in call_args.args[0]
 
@@ -140,9 +137,7 @@ class TestCreateCheckRun:
             mock_resp.raise_for_status = MagicMock()
             mock_client.post.return_value = mock_resp
 
-            check_id = await provider.create_check_run(
-                REPO_URL, "abc123sha", "lintel-review"
-            )
+            check_id = await provider.create_check_run(REPO_URL, "abc123sha", "lintel-review")
             assert check_id == "5555"
             payload = mock_client.post.call_args.kwargs["json"]
             assert payload["name"] == "lintel-review"
@@ -204,8 +199,7 @@ class TestGetPrDiff:
     async def test_get_pr_diff_returns_text(self) -> None:
         provider = GitHubRepoProvider("tok")
         diff_text = (
-            "diff --git a/file.py b/file.py\n"
-            "--- a/file.py\n+++ b/file.py\n@@ -1 +1 @@\n-old\n+new"
+            "diff --git a/file.py b/file.py\n--- a/file.py\n+++ b/file.py\n@@ -1 +1 @@\n-old\n+new"
         )
         with patch("httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()

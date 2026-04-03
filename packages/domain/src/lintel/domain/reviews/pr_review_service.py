@@ -19,16 +19,30 @@ from lintel.domain.reviews.models import (
 
 if TYPE_CHECKING:
     from lintel.repos.protocols import RepoProvider
-    from lintel.repos.types import InlineComment, PRFile, ReviewVerdict
+    from lintel.repos.types import InlineComment, PRFile
 
 logger = structlog.get_logger()
 
 # File extensions to skip during review
-_SKIP_EXTENSIONS = frozenset({
-    ".lock", ".sum", ".min.js", ".min.css", ".map",
-    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
-    ".woff", ".woff2", ".ttf", ".eot",
-})
+_SKIP_EXTENSIONS = frozenset(
+    {
+        ".lock",
+        ".sum",
+        ".min.js",
+        ".min.css",
+        ".map",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+    }
+)
 
 _MAX_PATCH_LINES = 500
 
@@ -97,14 +111,10 @@ class PRReviewService:
         passes = self._engine.passes_policy(review)
 
         critical_count = sum(
-            1 for fr in file_reviews
-            for f in fr.findings
-            if f.severity == FindingSeverity.CRITICAL
+            1 for fr in file_reviews for f in fr.findings if f.severity == FindingSeverity.CRITICAL
         )
         high_count = sum(
-            1 for fr in file_reviews
-            for f in fr.findings
-            if f.severity == FindingSeverity.HIGH
+            1 for fr in file_reviews for f in fr.findings if f.severity == FindingSeverity.HIGH
         )
 
         # No reviewable files → clean pass
@@ -139,8 +149,10 @@ class PRReviewService:
             from lintel.repos.types import CheckRunConclusion
 
             conclusion = (
-                CheckRunConclusion.SUCCESS if verdict == PRReviewVerdict.PASS
-                else CheckRunConclusion.FAILURE if verdict == PRReviewVerdict.FAIL
+                CheckRunConclusion.SUCCESS
+                if verdict == PRReviewVerdict.PASS
+                else CheckRunConclusion.FAILURE
+                if verdict == PRReviewVerdict.FAIL
                 else CheckRunConclusion.NEUTRAL
             )
             await self._provider.update_check_run(
@@ -172,9 +184,7 @@ class PRReviewService:
             return False
         if pr_file.status == "removed":
             return False
-        if not pr_file.patch:
-            return False
-        return True
+        return bool(pr_file.patch)
 
     def _analyse_patch(self, pr_file: PRFile) -> list[Finding]:
         """Run heuristic checks on a file's patch to find common issues."""
@@ -182,11 +192,13 @@ class PRReviewService:
         lines = pr_file.patch.split("\n")
 
         if len(lines) > _MAX_PATCH_LINES:
-            findings.append(Finding(
-                dimension=ReviewDimension.MAINTAINABILITY,
-                severity=FindingSeverity.MEDIUM,
-                message=f"Large change ({len(lines)} patch lines) — consider splitting.",
-            ))
+            findings.append(
+                Finding(
+                    dimension=ReviewDimension.MAINTAINABILITY,
+                    severity=FindingSeverity.MEDIUM,
+                    message=f"Large change ({len(lines)} patch lines) — consider splitting.",
+                )
+            )
 
         added_lines = [ln for ln in lines if ln.startswith("+") and not ln.startswith("+++")]
         for i, line in enumerate(added_lines):
@@ -195,9 +207,7 @@ class PRReviewService:
 
         return findings
 
-    def _check_line(
-        self, line: str, filename: str, line_num: int | None
-    ) -> list[Finding]:
+    def _check_line(self, line: str, filename: str, line_num: int | None) -> list[Finding]:
         """Check a single added line for common issues."""
         findings: list[Finding] = []
         content = line[1:]  # strip the leading '+'
@@ -208,45 +218,53 @@ class PRReviewService:
             content,
             re.IGNORECASE,
         ):
-            findings.append(Finding(
-                dimension=ReviewDimension.SECURITY,
-                severity=FindingSeverity.CRITICAL,
-                message="Possible hardcoded secret detected.",
-                line=line_num,
-                suggestion="Use environment variables or a secrets manager.",
-            ))
+            findings.append(
+                Finding(
+                    dimension=ReviewDimension.SECURITY,
+                    severity=FindingSeverity.CRITICAL,
+                    message="Possible hardcoded secret detected.",
+                    line=line_num,
+                    suggestion="Use environment variables or a secrets manager.",
+                )
+            )
 
         # Security: SQL injection risk
         if re.search(r'f["\'].*(?:SELECT|INSERT|UPDATE|DELETE)\b.*\{', content, re.IGNORECASE):
-            findings.append(Finding(
-                dimension=ReviewDimension.SECURITY,
-                severity=FindingSeverity.HIGH,
-                message="Potential SQL injection via f-string interpolation.",
-                line=line_num,
-                suggestion="Use parameterised queries instead.",
-            ))
+            findings.append(
+                Finding(
+                    dimension=ReviewDimension.SECURITY,
+                    severity=FindingSeverity.HIGH,
+                    message="Potential SQL injection via f-string interpolation.",
+                    line=line_num,
+                    suggestion="Use parameterised queries instead.",
+                )
+            )
 
         # Correctness: bare except
-        if re.search(r'\bexcept\s*:', content):
-            findings.append(Finding(
-                dimension=ReviewDimension.CORRECTNESS,
-                severity=FindingSeverity.MEDIUM,
-                message="Bare `except:` catches all exceptions including KeyboardInterrupt.",
-                line=line_num,
-                suggestion="Catch a specific exception type.",
-            ))
+        if re.search(r"\bexcept\s*:", content):
+            findings.append(
+                Finding(
+                    dimension=ReviewDimension.CORRECTNESS,
+                    severity=FindingSeverity.MEDIUM,
+                    message="Bare `except:` catches all exceptions including KeyboardInterrupt.",
+                    line=line_num,
+                    suggestion="Catch a specific exception type.",
+                )
+            )
 
         # Maintainability: TODO/FIXME/HACK
-        if re.search(r'\b(TODO|FIXME|HACK|XXX)\b', content):
-            findings.append(Finding(
-                dimension=ReviewDimension.MAINTAINABILITY,
-                severity=FindingSeverity.LOW,
-                message="TODO/FIXME marker found — track or resolve before merge.",
-                line=line_num,
-            ))
+        if re.search(r"\b(TODO|FIXME|HACK|XXX)\b", content):
+            findings.append(
+                Finding(
+                    dimension=ReviewDimension.MAINTAINABILITY,
+                    severity=FindingSeverity.LOW,
+                    message="TODO/FIXME marker found — track or resolve before merge.",
+                    line=line_num,
+                )
+            )
 
         # Performance: nested loops (simple heuristic)
-        if filename.endswith(".py") and re.search(r'for\s+\w+\s+in\s+.*:\s*$', content):
+        if filename.endswith(".py") and re.search(r"for\s+\w+\s+in\s+.*:\s*$", content):
             # Only flag if the file has multiple 'for' in added lines
             pass  # left as a placeholder for deeper analysis
 
@@ -257,7 +275,7 @@ class PRReviewService:
         current_line = 0
         added_count = 0
         for raw in patch_lines:
-            hunk_match = re.match(r'^@@ -\d+(?:,\d+)? \+(\d+)', raw)
+            hunk_match = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)", raw)
             if hunk_match:
                 current_line = int(hunk_match.group(1))
                 continue
@@ -270,9 +288,7 @@ class PRReviewService:
             current_line += 1
         return None
 
-    def _estimate_scores(
-        self, findings: list[Finding]
-    ) -> dict[ReviewDimension, float]:
+    def _estimate_scores(self, findings: list[Finding]) -> dict[ReviewDimension, float]:
         """Estimate dimension scores based on findings (10 = perfect, 0 = worst)."""
         scores: dict[ReviewDimension, float] = {d: 10.0 for d in ReviewDimension}
         severity_penalty = {
@@ -348,11 +364,13 @@ class PRReviewService:
                     body = f"**[{finding.severity.value.upper()}]** {finding.message}"
                     if finding.suggestion:
                         body += f"\n\n> {finding.suggestion}"
-                    inline_comments.append(InlineComment(
-                        path=fr.file_path,
-                        line=finding.line,
-                        body=body,
-                    ))
+                    inline_comments.append(
+                        InlineComment(
+                            path=fr.file_path,
+                            line=finding.line,
+                            body=body,
+                        )
+                    )
 
         if result.verdict == PRReviewVerdict.FAIL:
             gh_verdict = ReviewVerdict.REQUEST_CHANGES

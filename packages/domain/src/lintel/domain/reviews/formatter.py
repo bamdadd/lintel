@@ -11,13 +11,12 @@ from lintel.domain.reviews.models import (
     ReviewPolicy,
 )
 
-
 _SEVERITY_EMOJI: dict[FindingSeverity, str] = {
-    FindingSeverity.INFO: "ℹ️",
-    FindingSeverity.LOW: "📝",
-    FindingSeverity.MEDIUM: "⚠️",
-    FindingSeverity.HIGH: "🔴",
-    FindingSeverity.CRITICAL: "🚨",
+    FindingSeverity.INFO: "[info]",
+    FindingSeverity.LOW: "[low]",
+    FindingSeverity.MEDIUM: "[warn]",
+    FindingSeverity.HIGH: "[high]",
+    FindingSeverity.CRITICAL: "[critical]",
 }
 
 
@@ -100,11 +99,13 @@ class PRReviewFormatter:
                 if finding.line is None:
                     continue
                 body = self._format_finding(finding)
-                comments.append({
-                    "path": fr.file_path,
-                    "line": finding.line,
-                    "body": body,
-                })
+                comments.append(
+                    {
+                        "path": fr.file_path,
+                        "line": finding.line,
+                        "body": body,
+                    }
+                )
         return comments
 
     def _format_finding(self, finding: Finding) -> str:

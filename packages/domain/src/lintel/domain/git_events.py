@@ -11,9 +11,9 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from lintel.contracts.events import EventEnvelope, register_events
-
 import structlog
+
+from lintel.contracts.events import EventEnvelope, register_events
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import CommandDispatcher

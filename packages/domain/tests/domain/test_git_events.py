@@ -208,9 +208,7 @@ class TestGitEventListenerAutoReview:
                 repo_url="https://github.com/org/repo",
             )
         )
-        auto_review.review_pr.assert_awaited_once_with(
-            "https://github.com/org/repo", 42
-        )
+        auto_review.review_pr.assert_awaited_once_with("https://github.com/org/repo", 42)
 
     async def test_pr_synchronize_triggers_auto_review(self) -> None:
         dispatcher = _FakeDispatcher()
@@ -237,9 +235,7 @@ class TestGitEventListenerAutoReview:
             rules={},
             auto_review=auto_review,
         )
-        await listener.on_pull_request(
-            PullRequestEvent(action=GitEventAction.CLOSED, pr_number=5)
-        )
+        await listener.on_pull_request(PullRequestEvent(action=GitEventAction.CLOSED, pr_number=5))
         auto_review.review_pr.assert_not_awaited()
 
     async def test_auto_review_failure_does_not_block_workflow(self) -> None:
@@ -269,6 +265,4 @@ class TestGitEventListenerAutoReview:
             rules={},
         )
         # Should not raise — auto_review is None
-        await listener.on_pull_request(
-            PullRequestEvent(action=GitEventAction.OPENED, pr_number=1)
-        )
+        await listener.on_pull_request(PullRequestEvent(action=GitEventAction.OPENED, pr_number=1))

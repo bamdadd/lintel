@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from lintel.domain.reviews.models import (
     FindingSeverity,
     PRReviewVerdict,
-    ReviewPolicy,
 )
 from lintel.domain.reviews.pr_review_service import PRReviewService
-from lintel.repos.types import CheckRunConclusion, InlineComment, PRFile, ReviewVerdict
+from lintel.repos.types import CheckRunConclusion, PRFile, ReviewVerdict
 
 
 def _make_provider() -> MagicMock:
@@ -93,9 +90,7 @@ class TestPRReviewServiceFindings:
         assert result.critical_count >= 1
         # Check the finding message
         findings = [f for fr in result.file_reviews for f in fr.findings]
-        secret_findings = [
-            f for f in findings if f.severity == FindingSeverity.CRITICAL
-        ]
+        secret_findings = [f for f in findings if f.severity == FindingSeverity.CRITICAL]
         assert len(secret_findings) >= 1
         assert "secret" in secret_findings[0].message.lower()
 
@@ -150,7 +145,7 @@ class TestPRReviewServiceGitHubIntegration:
             ),
         ]
         svc = PRReviewService(provider)
-        result = await svc.review_pr(REPO_URL, 8, post_review=True, create_check=False)
+        await svc.review_pr(REPO_URL, 8, post_review=True, create_check=False)
 
         provider.create_review.assert_awaited_once()
         call_args = provider.create_review.call_args
@@ -163,9 +158,7 @@ class TestPRReviewServiceGitHubIntegration:
         provider = _make_provider()
         provider.get_pr_files.return_value = []
         svc = PRReviewService(provider)
-        result = await svc.review_pr(
-            REPO_URL, 9, head_sha="abc123", post_review=False, create_check=True
-        )
+        await svc.review_pr(REPO_URL, 9, head_sha="abc123", post_review=False, create_check=True)
 
         provider.create_check_run.assert_awaited_once()
         provider.update_check_run.assert_awaited_once()
@@ -181,9 +174,7 @@ class TestPRReviewServiceGitHubIntegration:
             ),
         ]
         svc = PRReviewService(provider)
-        result = await svc.review_pr(
-            REPO_URL, 10, head_sha="def456", post_review=False, create_check=True
-        )
+        await svc.review_pr(REPO_URL, 10, head_sha="def456", post_review=False, create_check=True)
 
         update_args = provider.update_check_run.call_args
         assert update_args.kwargs.get("conclusion") == CheckRunConclusion.FAILURE

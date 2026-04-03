@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 
-from lintel.domain.reviews.diff_parser import parse_diff
-from lintel.domain.reviews.formatter import PRReviewFormatter
+from lintel.domain.reviews.diff_parser import DiffFile, parse_diff
 from lintel.domain.reviews.models import (
     CodebaseReview,
+    Finding,
     ReviewDimension,
     ReviewPolicy,
 )
 
 if TYPE_CHECKING:
     from lintel.domain.reviews.engine import ReviewEngine
+    from lintel.domain.reviews.formatter import PRReviewFormatter
     from lintel.repos.protocols import RepoProvider
-    from lintel.repos.types import ReviewVerdict
 
 logger = structlog.get_logger()
 
@@ -76,7 +76,7 @@ class AutoReviewService:
             # Provide neutral placeholder scores — a real integration would
             # call an LLM here. For now, score based on diff heuristics.
             scores = _placeholder_scores(df)
-            findings: list[Any] = []
+            findings: list[Finding] = []
             fr = self._engine.review_file(df.path, scores, findings)
             file_reviews.append(fr)
 
@@ -91,10 +91,11 @@ class AutoReviewService:
 
         verdict = ReviewVerdict(formatted["event"])
         raw_comments = formatted.get("comments", [])
-        inline_comments: list[InlineComment] = [
-            InlineComment(path=c["path"], line=c["line"], body=c["body"])
-            for c in raw_comments
-        ] if raw_comments else []
+        inline_comments: list[InlineComment] = (
+            [InlineComment(path=c["path"], line=c["line"], body=c["body"]) for c in raw_comments]
+            if raw_comments
+            else []
+        )
 
         await self._repo.create_review(
             repo_url,
@@ -115,7 +116,7 @@ class AutoReviewService:
 
 
 def _placeholder_scores(
-    df: Any,
+    df: DiffFile,
 ) -> dict[ReviewDimension, float]:
     """Generate neutral placeholder scores for a diff file.
 
