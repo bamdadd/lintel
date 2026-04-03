@@ -47,7 +47,7 @@ class TestSpawnSubSession:
         assert data["session_id"]
 
     def test_max_sub_sessions(self, sub_session_client: TestClient) -> None:
-        for i in range(10):
+        for _i in range(10):
             resp = sub_session_client.post(
                 "/api/v1/sandboxes/sub-sessions",
                 json={"parent_pipeline_run_id": "run-1"},

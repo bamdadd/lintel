@@ -2033,6 +2033,7 @@ version = "0.1.0"
 source = { editable = "packages/agents" }
 dependencies = [
     { name = "lintel-contracts" },
+    { name = "lintel-domain" },
     { name = "lintel-models" },
     { name = "lintel-sandbox" },
     { name = "litellm" },
@@ -2042,6 +2043,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-models", editable = "packages/models" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "litellm", specifier = ">=1.55" },
@@ -3104,6 +3106,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },
     { name = "lintel-contracts" },
+    { name = "lintel-domain" },
     { name = "lintel-persistence" },
     { name = "lintel-sandbox" },
     { name = "pydantic" },
@@ -3114,6 +3117,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-persistence", editable = "packages/persistence" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "pydantic", specifier = ">=2.10" },

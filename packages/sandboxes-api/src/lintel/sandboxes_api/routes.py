@@ -18,10 +18,10 @@ from lintel.sandboxes_api.sandboxes import (
     router as sandboxes_router,
 )
 from lintel.sandboxes_api.sub_sessions import (
-    sub_session_store_provider,
+    router as sub_sessions_router,
 )
 from lintel.sandboxes_api.sub_sessions import (
-    router as sub_sessions_router,
+    sub_session_store_provider,
 )
 
 # Re-export sub-module symbols for backward compatibility

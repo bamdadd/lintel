@@ -7,8 +7,8 @@ routes sub-session tool calls to the sub-session store.
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Any
+import uuid
 
 import structlog
 
@@ -68,8 +68,7 @@ def _all_sub_session_tool_schemas() -> list[dict[str, Any]]:
             "function": {
                 "name": "sub_session_get_result",
                 "description": (
-                    "Get the result of a completed sub-session. "
-                    "Returns the findings text or error."
+                    "Get the result of a completed sub-session. Returns the findings text or error."
                 ),
                 "parameters": {
                     "type": "object",
@@ -91,7 +90,7 @@ class SubSessionToolDispatcher:
 
     def __init__(
         self,
-        store: Any,
+        store: Any,  # noqa: ANN401
         parent_pipeline_run_id: str,
         max_sub_sessions: int = 10,
     ) -> None:
@@ -125,9 +124,11 @@ class SubSessionToolDispatcher:
     async def _spawn(self, arguments: dict[str, Any]) -> str:
         existing = await self._store.list_by_pipeline(self._parent_pipeline_run_id)
         if len(existing) >= self._max_sub_sessions:
-            return json.dumps({
-                "error": f"Maximum {self._max_sub_sessions} sub-sessions reached",
-            })
+            return json.dumps(
+                {
+                    "error": f"Maximum {self._max_sub_sessions} sub-sessions reached",
+                }
+            )
 
         session_id = str(uuid.uuid4())
         sub_session = SubSession(
@@ -157,12 +158,14 @@ class SubSessionToolDispatcher:
         result = await self._store.get(session_id)
         if result is None:
             return json.dumps({"error": f"Sub-session {session_id} not found"})
-        return json.dumps({
-            "session_id": session_id,
-            "status": result["status"],
-            "result": result["result"],
-            "error": result["error"],
-        })
+        return json.dumps(
+            {
+                "session_id": session_id,
+                "status": result["status"],
+                "result": result["result"],
+                "error": result["error"],
+            }
+        )
 
 
 def sub_session_tool_schemas() -> list[dict[str, Any]]:

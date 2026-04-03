@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING, Any
+import uuid
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel

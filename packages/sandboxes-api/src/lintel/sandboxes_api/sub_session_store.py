@@ -38,8 +38,7 @@ class InMemorySubSessionStore:
             and (status is None or s.status == status)
         )
         return [
-            _sub_session_to_dict(s)
-            for s in sorted(items, key=lambda s: s.created_at, reverse=True)
+            _sub_session_to_dict(s) for s in sorted(items, key=lambda s: s.created_at, reverse=True)
         ]
 
     async def add(self, sub_session: SubSession) -> dict[str, Any]:
