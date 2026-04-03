@@ -137,7 +137,8 @@ from lintel.sandbox_pool_api.store import (
     InMemorySandboxImageStore,
     InMemorySandboxPoolConfigStore,
 )
-from lintel.sandboxes_api.routes import SandboxStore
+from lintel.sandboxes_api.routes import SandboxStore, sub_session_store_provider
+from lintel.sandboxes_api.sub_session_store import InMemorySubSessionStore
 from lintel.skills_api.routes import skill_store_provider
 from lintel.skills_api.store import InMemorySkillStore
 from lintel.slack_notifications_api.routes import (
@@ -310,6 +311,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "sandbox_image_store": InMemorySandboxImageStore(),
         "pooled_sandbox_store": InMemoryPooledSandboxStore(),
         "sandbox_pool_config_store": InMemorySandboxPoolConfigStore(),
+        # Agent sub-sessions
+        "sub_session_store": InMemorySubSessionStore(),
     }
 
 
@@ -607,6 +610,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "sandbox_image_store": InMemorySandboxImageStore(),
         "pooled_sandbox_store": InMemoryPooledSandboxStore(),
         "sandbox_pool_config_store": InMemorySandboxPoolConfigStore(),
+        # Agent sub-sessions: in-memory until Postgres implementation exists
+        "sub_session_store": InMemorySubSessionStore(),
     }
 
 
@@ -698,6 +703,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     sandbox_image_store_provider.override(stores["sandbox_image_store"])
     pooled_sandbox_store_provider.override(stores["pooled_sandbox_store"])
     sandbox_pool_config_store_provider.override(stores["sandbox_pool_config_store"])
+    sub_session_store_provider.override(stores["sub_session_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
