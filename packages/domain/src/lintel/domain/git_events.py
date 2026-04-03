@@ -13,8 +13,13 @@ from uuid import uuid4
 
 from lintel.contracts.events import EventEnvelope, register_events
 
+import structlog
+
 if TYPE_CHECKING:
     from lintel.contracts.protocols import CommandDispatcher
+    from lintel.domain.reviews.pr_review_service import PRReviewService
+
+logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
@@ -139,11 +144,27 @@ class GitEventWorkflowTriggered(EventEnvelope):
     event_type: str = "GitEventWorkflowTriggered"
 
 
+@dataclass(frozen=True)
+class PRAutoReviewStarted(EventEnvelope):
+    """Recorded when an automated PR review begins."""
+
+    event_type: str = "PRAutoReviewStarted"
+
+
+@dataclass(frozen=True)
+class PRAutoReviewCompleted(EventEnvelope):
+    """Recorded when an automated PR review finishes."""
+
+    event_type: str = "PRAutoReviewCompleted"
+
+
 register_events(
     GitCommitPushReceived,
     GitPullRequestReceived,
     GitPRReviewReceived,
     GitEventWorkflowTriggered,
+    PRAutoReviewStarted,
+    PRAutoReviewCompleted,
 )
 
 
@@ -165,10 +186,12 @@ class GitEventListener:
         dispatcher: CommandDispatcher,
         *,
         rules: dict[str, str] | None = None,
+        auto_review: PRReviewService | None = None,
     ) -> None:
         self._dispatcher = dispatcher
         # rule_key -> workflow_type, e.g. {"pr_opened": "code-review"}
         self._rules: dict[str, str] = rules or {}
+        self._auto_review = auto_review
 
     # -- public API --
 
