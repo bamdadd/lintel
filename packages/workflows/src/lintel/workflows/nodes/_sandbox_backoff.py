@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-DEFAULT_DELAYS: tuple[float, ...] = (5.0, 15.0, 30.0)
+DEFAULT_DELAYS: tuple[float, ...] = (30.0, 60.0, 120.0)
 
 
 class SandboxStoreProtocol(Protocol):
@@ -66,7 +66,13 @@ async def acquire_pool_sandbox(
                         "sandbox_pool_acquired",
                         sandbox=candidate_id[:12],
                         attempt=attempt + 1,
+                        total_attempts=max_attempts,
                     )
+                    if log_fn is not None:
+                        await log_fn(
+                            f"Sandbox acquired ({candidate_id[:12]}) "
+                            f"on attempt {attempt + 1}/{max_attempts}"
+                        )
                     return candidate_id
                 except Exception:
                     logger.warning(
@@ -79,13 +85,31 @@ async def acquire_pool_sandbox(
             delay = delays[attempt]
             msg = (
                 f"No sandbox available (attempt {attempt + 1}/{max_attempts}), "
-                f"retrying in {delay:.0f}s…"
+                f"retrying in {delay:.0f}s..."
             )
-            logger.info("sandbox_pool_backoff", attempt=attempt + 1, delay=delay)
+            logger.info(
+                "sandbox_pool_backoff",
+                attempt=attempt + 1,
+                total_attempts=max_attempts,
+                delay_seconds=delay,
+                pool_size=len(existing),
+                free_count=len(free),
+            )
             if log_fn is not None:
                 await log_fn(msg)
             await asyncio.sleep(delay)
         else:
             break
 
+    logger.error(
+        "sandbox_pool_exhausted",
+        total_attempts=max_attempts,
+        delays=delays,
+    )
+    if log_fn is not None:
+        await log_fn(
+            f"No sandbox available after {max_attempts} attempts "
+            f"(backoff: {', '.join(f'{d:.0f}s' for d in delays)}). "
+            "Pre-provision sandboxes or wait for one to be released."
+        )
     raise NoSandboxAvailableError
