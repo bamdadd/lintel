@@ -274,12 +274,83 @@ class ChatService:
 
         return False
 
+    async def handle_implement_item(
+        self,
+        conversation_id: str,
+        entity_ref: str,
+    ) -> str:
+        """Handle the implement_item intent: look up work item, validate, dispatch.
+
+        Returns a reply message describing the outcome.
+        """
+        if not entity_ref:
+            return "Please specify a work item ID, e.g. `implement WI-abc123`."
+
+        work_item_store = getattr(self._request.app.state, "work_item_store", None)
+        if work_item_store is None:
+            return "Work item store is not available."
+
+        # Search for the work item — try exact match first, then prefix match
+        item = await work_item_store.get(entity_ref)
+        if item is None:
+            all_items = await work_item_store.list_all()
+            matches = [wi for wi in all_items if wi["work_item_id"].startswith(entity_ref)]
+            if len(matches) == 1:
+                item = matches[0]
+            elif len(matches) > 1:
+                return (
+                    f"Multiple work items match `{entity_ref}`. Please provide a more specific ID."
+                )
+
+        if item is None:
+            return f"Work item `{entity_ref}` not found."
+
+        work_item_id = item["work_item_id"]
+        status = item.get("status", "")
+        valid_statuses = {"open", "in_progress"}
+        if status not in valid_statuses:
+            return (
+                f"Work item `{work_item_id[:12]}` is `{status}` — "
+                f"only {', '.join(sorted(valid_statuses))} items can be implemented."
+            )
+
+        # Move to in_progress if not already
+        if status != "in_progress":
+            item["status"] = "in_progress"
+            await work_item_store.update(work_item_id, item)
+
+        # Dispatch the workflow using the work item's description as the message
+        title = item.get("title", "")
+        description = item.get("description", title)
+        workflow_type = self._work_type_to_workflow(item.get("work_type", "feature"))
+
+        await self.dispatch_workflow(
+            conversation_id,
+            workflow_type,
+            description,
+            f"Implementing work item **{title}**...",
+            existing_work_item_id=work_item_id,
+        )
+        return None  # type: ignore[return-value]
+
+    @staticmethod
+    def _work_type_to_workflow(work_type: str) -> str:
+        """Map work item type to workflow type."""
+        mapping = {
+            "bug": "bug_fix",
+            "refactor": "refactor",
+            "feature": "feature_to_pr",
+            "task": "feature_to_pr",
+        }
+        return mapping.get(work_type, "feature_to_pr")
+
     async def dispatch_workflow(
         self,
         conversation_id: str,
         workflow_type: str,
         message: str,
         reply_text: str,
+        existing_work_item_id: str = "",
     ) -> None:
         """Create a work item, resolve project context, and dispatch the workflow."""
         request = self._request
@@ -298,24 +369,25 @@ class ChatService:
                 repo_url = classified_url
                 repo_branch = classified_branch or "main"
 
-        # Create a work item
-        work_item_id = uuid4().hex
-        work_item_store = getattr(request.app.state, "work_item_store", None)
-        if work_item_store is not None and project is not None:
-            work_item = WorkItem(
-                work_item_id=work_item_id,
-                project_id=project.get("project_id", ""),
-                title=message[:100],
-                description=message,
-                work_type=self.infer_work_type(workflow_type),
-                status=WorkItemStatus.IN_PROGRESS,
-                thread_ref_str=str(thread_ref),
-                branch_name=f"lintel/feat/{work_item_id[:8]}",
-            )
-            try:
-                await work_item_store.add(work_item)
-            except Exception:
-                logger.warning("work_item_creation_failed", work_item_id=work_item_id)
+        # Use existing work item or create a new one
+        work_item_id = existing_work_item_id or uuid4().hex
+        if not existing_work_item_id:
+            work_item_store = getattr(request.app.state, "work_item_store", None)
+            if work_item_store is not None and project is not None:
+                work_item = WorkItem(
+                    work_item_id=work_item_id,
+                    project_id=project.get("project_id", ""),
+                    title=message[:100],
+                    description=message,
+                    work_type=self.infer_work_type(workflow_type),
+                    status=WorkItemStatus.IN_PROGRESS,
+                    thread_ref_str=str(thread_ref),
+                    branch_name=f"lintel/feat/{work_item_id[:8]}",
+                )
+                try:
+                    await work_item_store.add(work_item)
+                except Exception:
+                    logger.warning("work_item_creation_failed", work_item_id=work_item_id)
 
         # Create Trigger and PipelineRun records
         project_id = project.get("project_id", "") if project else ""
@@ -543,6 +615,18 @@ class ChatService:
         (in which case dispatch_workflow already added the message).
         """
         result: ChatRouterResult = classify_result  # type: ignore[assignment]
+
+        if result.action == "implement_item":
+            reply = await self.handle_implement_item(conversation_id, result.entity_ref)
+            if reply is not None:
+                await self._store.add_message(
+                    conversation_id,
+                    user_id="system",
+                    display_name="Lintel",
+                    role="agent",
+                    content=reply,
+                )
+            return None
 
         if result.action == "start_workflow":
             # Check if the workflow is enabled

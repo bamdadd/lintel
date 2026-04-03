@@ -47,7 +47,7 @@ INTENT_KEYWORDS: dict[str, list[str]] = {
 }
 
 # Regex patterns for extracting entity references from messages
-_WORK_ITEM_RE = re.compile(r"(?:WORK|WI)[- ]?(\w{3,12})", re.IGNORECASE)
+_WORK_ITEM_RE = re.compile(r"(WI[- ]\w{3,12}|WORK-\w{3,12})", re.IGNORECASE)
 _PR_RE = re.compile(r"(?:PR|pull request)\s*#?(\d+)", re.IGNORECASE)
 
 
@@ -62,7 +62,7 @@ def _extract_entity_ref(message: str, intent: str) -> str:
             return f"PR#{m.group(1)}"
     m = _WORK_ITEM_RE.search(message)
     if m:
-        return m.group(1)
+        return m.group(1).lower()
     return ""
 
 

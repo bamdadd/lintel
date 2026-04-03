@@ -218,7 +218,7 @@ class TestIntentClassification:
     async def test_check_status_intent(self) -> None:
         result = await self.router.classify("what's the status of WI-abc123")
         assert result.action == "check_status"
-        assert result.entity_ref == "abc123"
+        assert result.entity_ref == "wi-abc123"
 
     async def test_create_work_item_intent(self) -> None:
         result = await self.router.classify("create a story for adding dark mode")
@@ -227,7 +227,7 @@ class TestIntentClassification:
     async def test_implement_item_intent(self) -> None:
         result = await self.router.classify("implement item WI-xyz789 now")
         assert result.action == "implement_item"
-        assert result.entity_ref == "xyz789"
+        assert result.entity_ref == "wi-xyz789"
 
     async def test_review_pr_intent(self) -> None:
         result = await self.router.classify("review PR #42 please")
@@ -237,7 +237,7 @@ class TestIntentClassification:
     async def test_assign_item_intent(self) -> None:
         result = await self.router.classify("assign item WI-def456 to me")
         assert result.action == "assign_item"
-        assert result.entity_ref == "def456"
+        assert result.entity_ref == "wi-def456"
 
     async def test_change_priority_intent(self) -> None:
         result = await self.router.classify("make it p0 immediately")
@@ -255,11 +255,11 @@ class TestIntentClassification:
 class TestExtractEntityRef:
     """Tests for _extract_entity_ref helper."""
 
-    def test_extract_work_item_with_dash(self) -> None:
-        assert _extract_entity_ref("check WI-abc123", "check_status") == "abc123"
+    def test_extract_wi_prefix_with_dash(self) -> None:
+        assert _extract_entity_ref("check WI-abc123", "check_status") == "wi-abc123"
 
-    def test_extract_work_item_with_space(self) -> None:
-        assert _extract_entity_ref("check WORK abc123", "check_status") == "abc123"
+    def test_extract_work_prefix_with_dash(self) -> None:
+        assert _extract_entity_ref("check WORK-abc123", "check_status") == "work-abc123"
 
     def test_extract_pr_number(self) -> None:
         assert _extract_entity_ref("review PR #42", "review_pr") == "PR#42"
@@ -274,7 +274,7 @@ class TestExtractEntityRef:
         assert _extract_entity_ref("show the board", "show_board") == ""
 
     def test_non_pr_intent_extracts_work_item(self) -> None:
-        assert _extract_entity_ref("assign WI-xyz to me", "assign_item") == "xyz"
+        assert _extract_entity_ref("assign WI-xyz to me", "assign_item") == "wi-xyz"
 
     def test_non_pr_intent_ignores_pr_ref(self) -> None:
         assert _extract_entity_ref("assign PR #5 to me", "assign_item") == ""
