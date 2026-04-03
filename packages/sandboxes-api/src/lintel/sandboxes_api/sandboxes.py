@@ -15,7 +15,13 @@ from lintel.sandbox.events import (
     SandboxCreated,
     SandboxDestroyed,
 )
-from lintel.sandbox.types import NetworkEndpoint, NetworkPolicy, SandboxBackend, SandboxConfig
+from lintel.sandbox.types import (
+    DatabaseReplica,
+    NetworkEndpoint,
+    NetworkPolicy,
+    SandboxBackend,
+    SandboxConfig,
+)
 
 if TYPE_CHECKING:
     from lintel.sandbox.protocols import SandboxManager
@@ -203,6 +209,17 @@ class NetworkPolicyConfig(BaseModel):
     isolate: bool = True
 
 
+class ReplicaConnectionConfig(BaseModel):
+    """Inline database replica connection for a sandbox."""
+
+    name: str
+    host: str
+    port: int = 5432
+    database: str = "postgres"
+    read_only: bool = True
+    credential_ref: str = ""
+
+
 class CreateSandboxRequest(BaseModel):
     workspace_id: str
     channel_id: str
@@ -214,6 +231,34 @@ class CreateSandboxRequest(BaseModel):
     devcontainer: DevcontainerConfig | None = None
     mounts: list[MountConfig] = []
     backend: str = "docker"  # "docker" or "openshell"
+    project_id: str | None = None
+    replica_connections: list[ReplicaConnectionConfig] = []
+
+
+def _replicas_to_env(
+    replicas: list[ReplicaConnectionConfig],
+) -> list[tuple[str, str]]:
+    """Convert replica configs to environment variable pairs for sandbox injection.
+
+    For each replica named ``foo``, injects:
+      DB_REPLICA_FOO_HOST, DB_REPLICA_FOO_PORT, DB_REPLICA_FOO_DATABASE,
+      DB_REPLICA_FOO_READ_ONLY, DB_REPLICA_FOO_CREDENTIAL_REF
+    Plus DB_REPLICA_NAMES as a comma-separated list of all replica names.
+    """
+    env: list[tuple[str, str]] = []
+    names: list[str] = []
+    for r in replicas:
+        key = r.name.upper().replace("-", "_")
+        names.append(r.name)
+        env.append((f"DB_REPLICA_{key}_HOST", r.host))
+        env.append((f"DB_REPLICA_{key}_PORT", str(r.port)))
+        env.append((f"DB_REPLICA_{key}_DATABASE", r.database))
+        env.append((f"DB_REPLICA_{key}_READ_ONLY", str(r.read_only).lower()))
+        if r.credential_ref:
+            env.append((f"DB_REPLICA_{key}_CREDENTIAL_REF", r.credential_ref))
+    if names:
+        env.append(("DB_REPLICA_NAMES", ",".join(names)))
+    return env
 
 
 @router.get("/sandboxes/presets")
@@ -312,12 +357,46 @@ async def create_sandbox(
             isolate=body.network_policy.isolate,
         )
 
+    # Collect replica connections: inline from request + project-level from store
+    all_replicas: list[ReplicaConnectionConfig] = list(body.replica_connections)
+    if body.project_id:
+        replica_store = getattr(request.app.state, "replica_config_store", None)
+        if replica_store is not None:
+            project_replicas = await replica_store.list_for_project(body.project_id)
+            for pr in project_replicas:
+                all_replicas.append(
+                    ReplicaConnectionConfig(
+                        name=pr.name,
+                        host=pr.host,
+                        port=pr.port,
+                        database=pr.database,
+                        read_only=pr.read_only,
+                        credential_ref=pr.credential_ref,
+                    )
+                )
+
+    # Build replica domain objects and inject env vars
+    replica_domain = tuple(
+        DatabaseReplica(
+            name=r.name,
+            host=r.host,
+            port=r.port,
+            database=r.database,
+            read_only=r.read_only,
+            credential_ref=r.credential_ref,
+        )
+        for r in all_replicas
+    )
+    replica_env = frozenset(_replicas_to_env(all_replicas))
+
     config = SandboxConfig(
         image=image,
         network_enabled=body.network_enabled,
         mounts=resolved_mounts,
         backend=backend,
         network_policy=net_policy,
+        replica_connections=replica_domain,
+        environment=replica_env,
     )
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
