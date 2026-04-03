@@ -359,14 +359,8 @@ async def setup_workspace(
         )
 
         sandbox_store = getattr(app_state, "sandbox_store", None)
-        pool_sandbox_id = ""
-        if sandbox_store is not None:
-            existing = await sandbox_store.list_all()
-            free = [s for s in existing if not s.get("pipeline_id")]
-            if free:
-                pool_sandbox_id = free[0].get("sandbox_id", "")
 
-        if not pool_sandbox_id:
+        if sandbox_store is None:
             from lintel.sandbox.errors import NoSandboxAvailableError
 
             error_msg = (
@@ -377,22 +371,23 @@ async def setup_workspace(
             await tracker.mark_completed("setup_workspace", error=error_msg)
             raise NoSandboxAvailableError from None
 
-        # Verify the container still exists
+        from lintel.workflows.nodes._sandbox_backoff import acquire_pool_sandbox
+
+        async def _log(msg: str) -> None:
+            await tracker.append_log("setup_workspace", msg)
+
         try:
-            await sandbox_manager.get_status(pool_sandbox_id)
+            sandbox_id = await acquire_pool_sandbox(
+                sandbox_store, sandbox_manager, log_fn=_log,
+            )
         except Exception:
-            from lintel.sandbox.errors import NoSandboxAvailableError
-
-            logger.warning("pool_sandbox_stale id=%s", pool_sandbox_id[:12])
             error_msg = (
-                "No sandbox available in pool. "
+                "No sandbox available in pool after retries. "
                 "Pre-provision sandboxes via the API or wait for one to be released."
             )
             await tracker.append_log("setup_workspace", error_msg)
             await tracker.mark_completed("setup_workspace", error=error_msg)
-            raise NoSandboxAvailableError from None
-
-        sandbox_id = pool_sandbox_id
+            raise
 
         # Allocate to this pipeline
         run_id_val = state.get("run_id", "")
@@ -485,21 +480,9 @@ async def setup_workspace(
                 plain.append((var.key, var.value))
         _env_vars = frozenset(plain)
 
-    # Pick an available sandbox from the pool — fail if none available
+    # Pick an available sandbox from the pool — retry with backoff if exhausted
     sandbox_store = getattr(app_state, "sandbox_store", None)
     sandbox_id = ""
-
-    if sandbox_store is not None:
-        existing = await sandbox_store.list_all()
-        # Filter to sandboxes not already allocated to a pipeline
-        free = [s for s in existing if not s.get("pipeline_id")]
-        total = len(existing)
-        await tracker.append_log(
-            "setup_workspace",
-            f"Found {total} sandbox(es) in pool ({len(free)} free)",
-        )
-        if free:
-            sandbox_id = free[0].get("sandbox_id", "")
 
     # Check for Claude Code OAuth token (determines network policy)
     oauth_token = _get_claude_code_oauth_token()
@@ -510,13 +493,24 @@ async def setup_workspace(
         oauth_len=len(oauth_token),
     )
 
-    if sandbox_id:
-        # Verify the sandbox container still exists before using it
+    if sandbox_store is not None:
+        from lintel.workflows.nodes._sandbox_backoff import acquire_pool_sandbox
+
+        async def _log_code(msg: str) -> None:
+            await tracker.append_log("setup_workspace", msg)
+
         try:
-            await sandbox_manager.get_status(sandbox_id)
+            sandbox_id = await acquire_pool_sandbox(
+                sandbox_store, sandbox_manager, log_fn=_log_code,
+            )
         except Exception:
-            logger.warning("pool_sandbox_stale id=%s", sandbox_id[:12])
-            sandbox_id = ""
+            error_msg = (
+                "No sandbox available in pool after retries. "
+                "Pre-provision sandboxes via the API or wait for one to be released."
+            )
+            await tracker.append_log("setup_workspace", error_msg)
+            await tracker.mark_completed("setup_workspace", error=error_msg)
+            raise
 
     if sandbox_id:
         # Mark sandbox as allocated to this pipeline
@@ -547,7 +541,7 @@ async def setup_workspace(
         from lintel.sandbox.errors import NoSandboxAvailableError
 
         error_msg = (
-            "No sandbox available in pool. "
+            "No sandbox available in pool after retries. "
             "Pre-provision sandboxes via the API or wait for one to be released."
         )
         await tracker.append_log("setup_workspace", error_msg)
