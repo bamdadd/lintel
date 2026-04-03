@@ -91,3 +91,15 @@ class TestDefaultWorkflowDefinitions:
         ids = {d.definition_id for d in DEFAULT_WORKFLOW_DEFINITIONS}
         expected = {"feature_to_pr", "bug_fix", "code_review", "refactor", "security_audit"}
         assert expected.issubset(ids)
+
+    def test_key_workflows_have_retry_step_configs(self) -> None:
+        """feature_to_pr, bug_fix, and refactor should have RetryPolicy on key nodes."""
+        from lintel.workflows.types import ErrorCategory
+
+        by_id = {d.definition_id: d for d in DEFAULT_WORKFLOW_DEFINITIONS}
+        for wf_id in ("feature_to_pr", "bug_fix", "refactor"):
+            defn = by_id[wf_id]
+            assert len(defn.step_configs) > 0, f"{wf_id} has no step_configs"
+            for sc in defn.step_configs:
+                assert sc.retry_policy is not None, f"{wf_id}/{sc.node_name} has no retry_policy"
+                assert ErrorCategory.TRANSIENT in sc.retry_policy.retryable_categories

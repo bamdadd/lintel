@@ -83,6 +83,12 @@ class TestClassifyError:
         msg = "Token has expired and refresh failed"
         assert classify_error(msg) != ErrorCategory.DETERMINISTIC
 
+    def test_sso_keyword_is_transient(self) -> None:
+        assert classify_error("Error retrieving token from sso") == ErrorCategory.TRANSIENT
+
+    def test_sso_uppercase_is_transient(self) -> None:
+        assert classify_error("SSO authentication unavailable") == ErrorCategory.TRANSIENT
+
     def test_deterministic_takes_precedence_over_transient(self) -> None:
         # "not found" + "timeout" => deterministic wins (checked first)
         assert classify_error("not found after timeout") == ErrorCategory.DETERMINISTIC

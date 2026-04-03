@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lintel.workflows.types import WorkflowDefinitionRecord
+from lintel.workflows.types import RetryPolicy, WorkflowDefinitionRecord, WorkflowStepConfig
 
 DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
     WorkflowDefinitionRecord(
@@ -175,6 +175,11 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                 ),
             },
         ),
+        step_configs=(
+            WorkflowStepConfig(node_name="research", retry_policy=RetryPolicy()),
+            WorkflowStepConfig(node_name="implement", retry_policy=RetryPolicy()),
+            WorkflowStepConfig(node_name="review", retry_policy=RetryPolicy()),
+        ),
         tags=("feature", "full-pipeline"),
         is_builtin=True,
     ),
@@ -271,6 +276,10 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                 "agent": "system",
                 "description": "Commits the fix, pushes to GitHub, and raises a pull request.",
             },
+        ),
+        step_configs=(
+            WorkflowStepConfig(node_name="fix", retry_policy=RetryPolicy()),
+            WorkflowStepConfig(node_name="review", retry_policy=RetryPolicy()),
         ),
         tags=("bugfix", "hotfix"),
         is_builtin=True,
@@ -437,6 +446,11 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
                     "Commits the refactoring, pushes to GitHub, and raises a pull request."
                 ),
             },
+        ),
+        step_configs=(
+            WorkflowStepConfig(node_name="research", retry_policy=RetryPolicy()),
+            WorkflowStepConfig(node_name="refactor", retry_policy=RetryPolicy()),
+            WorkflowStepConfig(node_name="review", retry_policy=RetryPolicy()),
         ),
         tags=("refactor", "tech-debt"),
         is_builtin=True,

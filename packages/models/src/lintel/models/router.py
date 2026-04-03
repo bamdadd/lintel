@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from pathlib import Path
+import re
 import sqlite3
 from typing import TYPE_CHECKING, Any
 
@@ -20,6 +22,27 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 FALLBACK_POLICY = ModelPolicy("ollama", "llama3.1:8b", 4096, 0.0)
+
+# Patterns indicating transient auth/SSO errors that are worth retrying at the call level.
+_TRANSIENT_AUTH_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"token.*expired", re.IGNORECASE),
+    re.compile(r"refresh.*failed", re.IGNORECASE),
+    re.compile(r"sso", re.IGNORECASE),
+    re.compile(r"APIConnectionError", re.IGNORECASE),
+    re.compile(r"rate.?limit", re.IGNORECASE),
+    re.compile(r"429"),
+    re.compile(r"503"),
+    re.compile(r"502"),
+)
+
+_LLM_CALL_MAX_RETRIES = 2
+_LLM_CALL_BACKOFF_SECONDS = 5.0
+
+
+def _is_transient_llm_error(error: Exception) -> bool:
+    """Check if a litellm error is transient and worth retrying."""
+    msg = str(error)
+    return any(p.search(msg) for p in _TRANSIENT_AUTH_PATTERNS)
 
 
 class DefaultModelRouter:
@@ -101,6 +124,31 @@ class DefaultModelRouter:
             self._sqlite_cache.commit()
         except Exception:
             logger.debug("sqlite_cache_write_error", key=key[:12])
+
+    async def _litellm_with_retry(self, call_kwargs: dict[str, Any]) -> Any:  # noqa: ANN401
+        """Call litellm.acompletion with retry on transient auth/SSO errors."""
+        import litellm
+
+        last_error: Exception | None = None
+        for attempt in range(_LLM_CALL_MAX_RETRIES + 1):
+            try:
+                return await litellm.acompletion(**call_kwargs)
+            except Exception as exc:
+                last_error = exc
+                if attempt < _LLM_CALL_MAX_RETRIES and _is_transient_llm_error(exc):
+                    delay = _LLM_CALL_BACKOFF_SECONDS * (2**attempt)
+                    logger.warning(
+                        "litellm_transient_error_retry",
+                        attempt=attempt + 1,
+                        max_retries=_LLM_CALL_MAX_RETRIES,
+                        delay=delay,
+                        error=str(exc)[:200],
+                        model=call_kwargs.get("model", ""),
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+        raise last_error  # type: ignore[misc]
 
     async def _model_to_policy(self, model: Any) -> ModelPolicy | None:  # noqa: ANN401
         """Convert a Model dataclass to a ModelPolicy via its provider."""
@@ -259,7 +307,6 @@ class DefaultModelRouter:
             policy = _replace(policy, provider="anthropic")
 
         api_base: str | None = kwargs.get("api_base")
-        import litellm
 
         model_string = f"{policy.provider}/{policy.model_name}"
 
@@ -295,7 +342,7 @@ class DefaultModelRouter:
         if effective_base:
             call_kwargs["api_base"] = effective_base.rstrip("/")
 
-        response = await litellm.acompletion(**call_kwargs)
+        response = await self._litellm_with_retry(call_kwargs)
         result: dict[str, Any] = {
             "content": response.choices[0].message.content,
             "usage": {
