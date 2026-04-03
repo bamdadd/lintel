@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from lintel.slack.block_kit import (
     build_approval_blocks,
+    build_board_blocks,
     build_stage_blocks,
     build_status_blocks,
 )
@@ -108,3 +111,86 @@ class TestBuildStageBlocks:
     def test_emoji_for_failed(self) -> None:
         blocks = build_stage_blocks("test", "failed", "run-1")
         assert ":x:" in blocks[0]["text"]["text"]
+
+
+def _wi(
+    title: str = "Add dark mode",
+    status: str = "open",
+    work_type: str = "feature",
+    work_item_id: str = "wi-1",
+) -> dict[str, Any]:
+    return {
+        "work_item_id": work_item_id,
+        "title": title,
+        "status": status,
+        "work_type": work_type,
+    }
+
+
+def _all_text(blocks: list[dict[str, Any]]) -> str:
+    """Extract all text content from blocks (sections, context elements, headers)."""
+    parts: list[str] = []
+    for b in blocks:
+        t = b.get("text", {})
+        if isinstance(t, dict):
+            parts.append(t.get("text", ""))
+        for el in b.get("elements", []):
+            if isinstance(el, dict):
+                parts.append(el.get("text", ""))
+    return " ".join(parts)
+
+
+class TestBuildBoardBlocks:
+    def test_empty_board(self) -> None:
+        blocks = build_board_blocks([])
+        texts = _all_text(blocks)
+        assert "empty" in texts.lower()
+
+    def test_groups_by_status(self) -> None:
+        items = [
+            _wi(title="Alpha", status="open", work_item_id="wi-1"),
+            _wi(title="Beta", status="in_progress", work_item_id="wi-2"),
+            _wi(title="Gamma", status="in_review", work_item_id="wi-3"),
+            _wi(title="Delta", status="merged", work_item_id="wi-4"),
+        ]
+        blocks = build_board_blocks(items)
+        texts = _all_text(blocks)
+        assert "Open" in texts
+        assert "In Progress" in texts
+        assert "In Review" in texts
+        assert "Done" in texts
+
+    def test_max_items_per_column(self) -> None:
+        items = [_wi(title=f"Item {i}", status="open", work_item_id=f"wi-{i}") for i in range(8)]
+        blocks = build_board_blocks(items, max_per_column=5)
+        texts = _all_text(blocks)
+        assert "+3 more" in texts
+
+    def test_includes_work_type_tag(self) -> None:
+        items = [_wi(title="Fix login", work_type="bug")]
+        blocks = build_board_blocks(items)
+        texts = _all_text(blocks)
+        assert ":bug:" in texts
+
+    def test_skips_empty_columns(self) -> None:
+        items = [_wi(title="Alpha", status="in_progress")]
+        blocks = build_board_blocks(items)
+        texts = _all_text(blocks)
+        assert "Open" not in texts
+        assert "In Progress" in texts
+
+    def test_has_header(self) -> None:
+        items = [_wi()]
+        blocks = build_board_blocks(items)
+        assert blocks[0]["type"] == "header"
+
+    def test_merged_and_closed_grouped_as_done(self) -> None:
+        items = [
+            _wi(title="Alpha", status="merged", work_item_id="wi-1"),
+            _wi(title="Zeta", status="closed", work_item_id="wi-2"),
+        ]
+        blocks = build_board_blocks(items)
+        texts = _all_text(blocks)
+        assert "Done" in texts
+        assert "Alpha" in texts
+        assert "Zeta" in texts

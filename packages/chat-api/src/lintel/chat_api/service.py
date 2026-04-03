@@ -274,6 +274,37 @@ class ChatService:
 
         return False
 
+    async def handle_show_board(self, conversation_id: str) -> str:
+        """Handle the show_board intent: render kanban board from work items."""
+        work_item_store = getattr(self._request.app.state, "work_item_store", None)
+        if work_item_store is None:
+            return "Work item store is not available."
+
+        # Get project_id from conversation if available
+        conv = await self._store.get(conversation_id)
+        project_id = conv.get("project_id") if conv else None
+
+        items = await work_item_store.list_all(project_id=project_id)
+
+        from lintel.slack.block_kit import build_board_blocks
+
+        blocks = build_board_blocks(items)
+
+        # Convert Block Kit blocks to markdown for chat display
+        lines: list[str] = []
+        for block in blocks:
+            if block["type"] == "header":
+                lines.append(f"## {block['text']['text']}")
+            elif block["type"] == "divider":
+                lines.append("---")
+            elif block["type"] == "section":
+                lines.append(block["text"]["text"])
+            elif block["type"] == "context":
+                for el in block.get("elements", []):
+                    lines.append(el.get("text", ""))
+
+        return "\n".join(lines)
+
     async def handle_implement_item(
         self,
         conversation_id: str,
@@ -615,6 +646,17 @@ class ChatService:
         (in which case dispatch_workflow already added the message).
         """
         result: ChatRouterResult = classify_result  # type: ignore[assignment]
+
+        if result.action == "show_board":
+            reply = await self.handle_show_board(conversation_id)
+            await self._store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=reply,
+            )
+            return None
 
         if result.action == "implement_item":
             reply = await self.handle_implement_item(conversation_id, result.entity_ref)
