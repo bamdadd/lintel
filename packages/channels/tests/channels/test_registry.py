@@ -29,9 +29,7 @@ def mock_adapter() -> AsyncMock:
 class TestConnectionIdAPI:
     """Tests for the connection_id-keyed primary API."""
 
-    def test_register_and_get(
-        self, registry: ChannelRegistry, mock_adapter: AsyncMock
-    ) -> None:
+    def test_register_and_get(self, registry: ChannelRegistry, mock_adapter: AsyncMock) -> None:
         registry.register("conn-1", ChannelType.SLACK, mock_adapter)
         assert registry.get("conn-1") is mock_adapter
 
@@ -77,9 +75,7 @@ class TestConnectionIdAPI:
         registry.register("conn-1", ChannelType.SLACK, mock_adapter)
         assert registry.is_connection_registered("conn-1")
 
-    def test_overwrite_connection(
-        self, registry: ChannelRegistry, mock_adapter: AsyncMock
-    ) -> None:
+    def test_overwrite_connection(self, registry: ChannelRegistry, mock_adapter: AsyncMock) -> None:
         adapter2 = AsyncMock()
         registry.register("conn-1", ChannelType.SLACK, mock_adapter)
         registry.register("conn-1", ChannelType.SLACK, adapter2)
