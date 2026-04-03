@@ -172,9 +172,7 @@ class FailureClassifier:
             error = str(stage.get("error", ""))
             raw_logs = stage.get("logs", ())
             logs: tuple[str, ...] | list[str] = (
-                raw_logs
-                if isinstance(raw_logs, (tuple, list))
-                else (str(raw_logs),)
+                raw_logs if isinstance(raw_logs, (tuple, list)) else (str(raw_logs),)
             )
             failures.append(self.classify_stage(name, error=error, logs=logs))
 
