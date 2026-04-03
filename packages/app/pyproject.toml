@@ -73,6 +73,7 @@ dependencies = [
     "lintel-coding-rules-api",
     "lintel-channel-connections-api",
     "lintel-release-notes-api",
+    "lintel-code-review-feedback-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -157,6 +158,7 @@ lintel-sandbox-pool-api = { workspace = true }
 lintel-coding-rules-api = { workspace = true }
 lintel-channel-connections-api = { workspace = true }
 lintel-release-notes-api = { workspace = true }
+lintel-code-review-feedback-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

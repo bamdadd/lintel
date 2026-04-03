@@ -32,6 +32,7 @@ from lintel.boards.routes import router as boards_router
 from lintel.channel_connections_api.routes import router as channel_connections_router
 from lintel.chat_api.routes import router as chat_router_routes
 from lintel.chat_api.streaming import streaming_router as chat_streaming_router
+from lintel.code_review_feedback_api.routes import router as code_review_feedback_router
 from lintel.codebase_index_api.routes import router as codebase_index_router
 from lintel.coding_rules_api.routes import router as coding_rules_router
 from lintel.compliance_api.routes import router as compliance_router
@@ -152,6 +153,11 @@ def mount_routers(app: FastAPI) -> None:
     )
     app.include_router(slack_workflows_router, prefix="/api/v1", tags=["slack-workflows"])
     app.include_router(coding_rules_router, prefix="/api/v1", tags=["coding-rules"])
+    app.include_router(
+        code_review_feedback_router,
+        prefix="/api/v1",
+        tags=["code-review-feedback"],
+    )
     app.include_router(sandbox_pool_router, prefix="/api/v1", tags=["sandbox-pool"])
     app.include_router(
         workflow_blueprints_router,

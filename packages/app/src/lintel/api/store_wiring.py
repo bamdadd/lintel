@@ -50,6 +50,8 @@ from lintel.channel_connections_api.routes import connection_store_provider
 from lintel.channel_connections_api.store import InMemoryChannelConnectionStore
 from lintel.chat_api.routes import ChatStore, chat_store_provider
 from lintel.chat_api.streaming import chat_stream_store_provider
+from lintel.code_review_feedback_api.routes import review_comment_store_provider
+from lintel.code_review_feedback_api.store import ReviewCommentStore
 from lintel.codebase_index_api.routes import index_store_provider as codebase_index_store_provider
 from lintel.codebase_index_api.store import InMemoryCodebaseIndexStore
 from lintel.coding_rules_api.routes import coding_rule_store_provider, violation_store_provider
@@ -328,6 +330,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "snapshot_store": InMemorySnapshotStore(),
         # Channel Connections
         "channel_connection_store": InMemoryChannelConnectionStore(),
+        # Code Review Feedback
+        "review_comment_store": ReviewCommentStore(),
     }
 
 
@@ -628,6 +632,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "image_rebuild_store": InMemoryImageRebuildStore(),
         # Sandbox Snapshots: in-memory until Postgres implementation exists
         "snapshot_store": InMemorySnapshotStore(),
+        # Code Review Feedback: in-memory until Postgres implementation exists
+        "review_comment_store": ReviewCommentStore(),
     }
 
 
@@ -726,6 +732,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     image_rebuild_store_provider.override(stores["image_rebuild_store"])
     snapshot_store_provider.override(stores["snapshot_store"])
     connection_store_provider.override(stores["channel_connection_store"])
+    review_comment_store_provider.override(stores["review_comment_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
