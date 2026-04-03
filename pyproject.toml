@@ -88,6 +88,7 @@ testpaths = [
     "packages/sandbox-credentials-api/tests",
     "packages/improvement-api/tests",
     "packages/context-injection/tests",
+    "packages/cve-remediation-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -165,6 +166,7 @@ mypy_path = [
     "packages/sandbox-credentials-api/src",
     "packages/improvement-api/src",
     "packages/context-injection/src",
+    "packages/cve-remediation-api/src",
 ]
 
 [[tool.mypy.overrides]]

@@ -71,6 +71,16 @@ from lintel.context_attachments_api.routes import attachment_store_provider
 from lintel.context_attachments_api.store import InMemoryAttachmentStore
 from lintel.credentials_api.routes import credential_store_provider
 from lintel.credentials_api.store import InMemoryCredentialStore
+from lintel.cve_remediation_api.routes import (
+    advisory_store_provider,
+    plan_store_provider,
+    result_store_provider,
+)
+from lintel.cve_remediation_api.store import (
+    InMemoryCveAdvisoryStore,
+    InMemoryRemediationPlanStore,
+    InMemoryRemediationResultStore,
+)
 from lintel.digest_api.routes import digest_config_store_provider, digest_store_provider
 from lintel.digest_api.store import InMemoryDigestConfigStore, InMemoryDigestStore
 from lintel.drift_detection_api.routes import (
@@ -352,6 +362,10 @@ def create_in_memory_stores() -> dict[str, Any]:
         "sandbox_credential_store": InMemorySandboxCredentialStore(),
         # Scheduled Tasks
         "scheduled_task_store": InMemoryScheduledTaskStore(),
+        # CVE Remediation
+        "cve_advisory_store": InMemoryCveAdvisoryStore(),
+        "remediation_plan_store": InMemoryRemediationPlanStore(),
+        "remediation_result_store": InMemoryRemediationResultStore(),
     }
 
 
@@ -759,6 +773,9 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     sandbox_credential_store_provider.override(stores["sandbox_credential_store"])
     replica_config_store_provider.override(stores["replica_config_store"])
     scheduled_task_store_provider.override(stores["scheduled_task_store"])
+    advisory_store_provider.override(stores["cve_advisory_store"])
+    plan_store_provider.override(stores["remediation_plan_store"])
+    result_store_provider.override(stores["remediation_result_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

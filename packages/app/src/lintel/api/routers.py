@@ -37,6 +37,7 @@ from lintel.coding_rules_api.routes import router as coding_rules_router
 from lintel.compliance_api.routes import router as compliance_router
 from lintel.context_attachments_api.routes import router as context_attachments_router
 from lintel.credentials_api.routes import router as credentials_router
+from lintel.cve_remediation_api.routes import router as cve_remediation_router
 from lintel.digest_api.routes import router as digest_router
 from lintel.drift_detection_api.routes import router as drift_detection_router
 from lintel.environments_api.routes import router as environments_router
@@ -175,5 +176,6 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["visual-verification"],
     )
+    app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
