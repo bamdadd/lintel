@@ -958,6 +958,24 @@ class DeploymentReceived(EventEnvelope):
     event_type: str = "DeploymentReceived"
 
 
+# --- Tech Spec Events ---
+
+
+@dataclass(frozen=True)
+class TechSpecCreated(EventEnvelope):
+    event_type: str = "TechSpecCreated"
+
+
+@dataclass(frozen=True)
+class TechSpecUpdated(EventEnvelope):
+    event_type: str = "TechSpecUpdated"
+
+
+@dataclass(frozen=True)
+class TechSpecRemoved(EventEnvelope):
+    event_type: str = "TechSpecRemoved"
+
+
 # --- AI Firewall Events (REQ-025) ---
 
 
@@ -1456,4 +1474,7 @@ register_events(
     DigestCreated,
     DigestConfigCreated,
     DigestConfigUpdated,
+    TechSpecCreated,
+    TechSpecUpdated,
+    TechSpecRemoved,
 )
