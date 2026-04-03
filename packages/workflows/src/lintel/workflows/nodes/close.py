@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -11,10 +12,15 @@ if TYPE_CHECKING:
 
     from langchain_core.runnables import RunnableConfig
 
+    from lintel.repos.protocols import RepoProvider
     from lintel.sandbox.protocols import SandboxManager
+    from lintel.workflows.nodes._stage_tracking import StageTracker
     from lintel.workflows.state import ThreadWorkflowState
 
 logger = structlog.get_logger()
+
+_PR_MAX_RETRIES = 3
+_PR_BACKOFF_BASE = 2.0
 
 
 async def close_workflow(
@@ -353,31 +359,12 @@ async def _create_pull_request(
     # Prefer injected repo_provider (used by tests)
     repo_provider = _configurable.get("repo_provider")
     if repo_provider is not None:
-        try:
-            await tracker.append_log("close", f"Creating {label}...")
-            pr_url = await repo_provider.create_pr(
-                repo_url=repo_url,
-                head=feature_branch,
-                base=base_branch,
-                title=pr_title,
-                body=pr_body,
-                draft=draft,
-            )
-            await tracker.append_log("close", f"PR created: {pr_url}")
-
-            # Add review comment if available
-            review_outputs = [
-                o
-                for o in state.get("agent_outputs", [])
-                if isinstance(o, dict) and o.get("node") == "review"
-            ]
-            if review_outputs:
-                review_text = review_outputs[0].get("output", "")
-                if review_text:
-                    pr_number = int(pr_url.rstrip("/").split("/")[-1])
-                    await repo_provider.add_comment(repo_url, pr_number, review_text)
-        except Exception as exc:
-            logger.warning("close_pr_creation_failed", error=str(exc)[:200])
+        pr_url = await _create_pr_with_retry(
+            repo_provider, tracker, label, repo_url, feature_branch,
+            base_branch, pr_title, pr_body, draft,
+        )
+        if pr_url:
+            await _add_review_comment(repo_provider, repo_url, pr_url, state)
         return pr_url
 
     # Fall back to credential-based GitHubRepoProvider
@@ -402,33 +389,90 @@ async def _create_pull_request(
     from lintel.repos.github_provider import GitHubRepoProvider
 
     provider = GitHubRepoProvider(token=github_token)
-    try:
-        await tracker.append_log("close", f"Creating {label}...")
-        pr_url = await provider.create_pr(
-            repo_url=repo_url,
-            head=feature_branch,
-            base=base_branch,
-            title=pr_title,
-            body=pr_body,
-            draft=draft,
-        )
-        await tracker.append_log("close", f"PR created: {pr_url}")
-
-        # Add review comment if available
-        review_outputs = [
-            o
-            for o in state.get("agent_outputs", [])
-            if isinstance(o, dict) and o.get("node") == "review"
-        ]
-        if review_outputs:
-            review_text = review_outputs[0].get("output", "")
-            if review_text:
-                pr_number = int(pr_url.rstrip("/").split("/")[-1])
-                await provider.add_comment(repo_url, pr_number, review_text)
-    except Exception as exc:
-        logger.warning("close_pr_creation_failed", error=str(exc)[:200])
+    pr_url = await _create_pr_with_retry(
+        provider, tracker, label, repo_url, feature_branch,
+        base_branch, pr_title, pr_body, draft,
+    )
+    if pr_url:
+        await _add_review_comment(provider, repo_url, pr_url, state)
 
     return pr_url
+
+
+async def _create_pr_with_retry(
+    provider: RepoProvider,
+    tracker: StageTracker,
+    label: str,
+    repo_url: str,
+    feature_branch: str,
+    base_branch: str,
+    pr_title: str,
+    pr_body: str,
+    draft: bool,
+) -> str:
+    """Call provider.create_pr with up to ``_PR_MAX_RETRIES`` attempts."""
+    last_exc: Exception | None = None
+    for attempt in range(_PR_MAX_RETRIES):
+        try:
+            if attempt == 0:
+                await tracker.append_log("close", f"Creating {label}...")
+            else:
+                await tracker.append_log(
+                    "close",
+                    f"Retrying {label} creation (attempt {attempt + 1}/{_PR_MAX_RETRIES})...",
+                )
+            pr_url: str = await provider.create_pr(
+                repo_url=repo_url,
+                head=feature_branch,
+                base=base_branch,
+                title=pr_title,
+                body=pr_body,
+                draft=draft,
+            )
+            await tracker.append_log("close", f"PR created: {pr_url}")
+            return pr_url
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "close_pr_creation_failed",
+                attempt=attempt + 1,
+                max_retries=_PR_MAX_RETRIES,
+                error=str(exc)[:200],
+            )
+            if attempt < _PR_MAX_RETRIES - 1:
+                delay = _PR_BACKOFF_BASE ** attempt
+                await asyncio.sleep(delay)
+
+    if last_exc is not None:
+        await tracker.append_log(
+            "close",
+            f"PR creation failed after {_PR_MAX_RETRIES} attempts: {last_exc!s:.200}",
+        )
+    return ""
+
+
+async def _add_review_comment(
+    provider: RepoProvider,
+    repo_url: str,
+    pr_url: str,
+    state: ThreadWorkflowState,
+) -> None:
+    """Post the review output as a PR comment if available."""
+    review_outputs = [
+        o
+        for o in state.get("agent_outputs", [])
+        if isinstance(o, dict) and o.get("node") == "review"
+    ]
+    if not review_outputs:
+        return
+    review_text = review_outputs[0].get("output", "")
+    if not review_text:
+        return
+    try:
+        pr_number = int(pr_url.rstrip("/").split("/")[-1])
+        await provider.add_comment(repo_url, pr_number, review_text)
+    except Exception:
+        logger.warning("close_add_review_comment_failed", pr_url=pr_url[:100])
 
 
 async def _skip_remaining_stages(

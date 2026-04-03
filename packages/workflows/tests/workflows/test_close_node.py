@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from lintel.sandbox.types import SandboxResult
-from lintel.workflows.nodes.close import close_workflow
+from lintel.workflows.nodes.close import (
+    _create_pr_with_retry,
+    close_workflow,
+)
 
 
 def _make_state(**overrides: object) -> dict[str, Any]:
@@ -298,3 +301,166 @@ async def test_close_emits_audit_entry() -> None:
     assert entry.action in ("pr_created", "pipeline_closed")
     assert entry.resource_type == "pipeline_run"
     assert entry.resource_id == "run-1"
+
+
+# --- PR creation retry tests ---
+
+
+async def test_create_pr_with_retry_succeeds_first_attempt() -> None:
+    """PR creation succeeds on the first attempt — no retries."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/1")
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider, tracker, "pull request",
+        "https://github.com/test/repo", "feat/x", "main",
+        "add feature", "body", False,
+    )
+
+    assert result == "https://github.com/test/repo/pull/1"
+    assert provider.create_pr.call_count == 1
+
+
+@patch("lintel.workflows.nodes.close.asyncio.sleep", new_callable=AsyncMock)
+async def test_create_pr_with_retry_succeeds_on_second_attempt(
+    mock_sleep: AsyncMock,
+) -> None:
+    """PR creation fails once then succeeds — verifies retry + backoff."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(
+        side_effect=[
+            RuntimeError("rate limit exceeded"),
+            "https://github.com/test/repo/pull/2",
+        ]
+    )
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider, tracker, "pull request",
+        "https://github.com/test/repo", "feat/x", "main",
+        "add feature", "body", False,
+    )
+
+    assert result == "https://github.com/test/repo/pull/2"
+    assert provider.create_pr.call_count == 2
+    mock_sleep.assert_called_once_with(1.0)  # 2^0 = 1
+
+
+@patch("lintel.workflows.nodes.close.asyncio.sleep", new_callable=AsyncMock)
+async def test_create_pr_with_retry_succeeds_on_third_attempt(
+    mock_sleep: AsyncMock,
+) -> None:
+    """PR creation fails twice then succeeds on the third attempt."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(
+        side_effect=[
+            RuntimeError("server error"),
+            RuntimeError("rate limit exceeded"),
+            "https://github.com/test/repo/pull/3",
+        ]
+    )
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider, tracker, "pull request",
+        "https://github.com/test/repo", "feat/x", "main",
+        "add feature", "body", False,
+    )
+
+    assert result == "https://github.com/test/repo/pull/3"
+    assert provider.create_pr.call_count == 3
+    assert mock_sleep.call_count == 2
+    mock_sleep.assert_any_call(1.0)  # 2^0
+    mock_sleep.assert_any_call(2.0)  # 2^1
+
+
+@patch("lintel.workflows.nodes.close.asyncio.sleep", new_callable=AsyncMock)
+async def test_create_pr_with_retry_exhausts_all_attempts(
+    mock_sleep: AsyncMock,
+) -> None:
+    """PR creation fails all 3 attempts — returns empty string."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(side_effect=RuntimeError("API down"))
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider, tracker, "pull request",
+        "https://github.com/test/repo", "feat/x", "main",
+        "add feature", "body", False,
+    )
+
+    assert result == ""
+    assert provider.create_pr.call_count == 3
+    assert mock_sleep.call_count == 2
+
+
+@patch("lintel.workflows.nodes.close.asyncio.sleep", new_callable=AsyncMock)
+async def test_close_retries_pr_creation_via_repo_provider(
+    mock_sleep: AsyncMock,
+) -> None:
+    """Full close_workflow retries PR creation when using injected repo_provider."""
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_success_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    repo_provider = AsyncMock()
+    repo_provider.create_pr = AsyncMock(
+        side_effect=[
+            ConnectionError("GitHub API timeout"),
+            "https://github.com/test/repo/pull/99",
+        ]
+    )
+    repo_provider.add_comment = AsyncMock()
+
+    config: dict[str, Any] = {
+        "configurable": {
+            "sandbox_manager": sandbox,
+            "repo_provider": repo_provider,
+        }
+    }
+    result = await close_workflow(_make_state(), config)
+
+    assert result["pr_url"] == "https://github.com/test/repo/pull/99"
+    assert repo_provider.create_pr.call_count == 2
+    mock_sleep.assert_called_once_with(1.0)
+
+
+@patch("lintel.workflows.nodes.close.asyncio.sleep", new_callable=AsyncMock)
+async def test_close_retries_pr_creation_via_credentials(
+    mock_sleep: AsyncMock,
+) -> None:
+    """Full close_workflow retries PR creation when using credential-based provider."""
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_success_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    cred = MagicMock()
+    cred.credential_type = "github_token"
+    credential_store = AsyncMock()
+    credential_store.get = AsyncMock(return_value=cred)
+    credential_store.get_secret = AsyncMock(return_value="ghp_test")
+
+    mock_provider = AsyncMock()
+    mock_provider.create_pr = AsyncMock(
+        side_effect=[
+            RuntimeError("rate limit"),
+            "https://github.com/test/repo/pull/50",
+        ]
+    )
+    mock_provider.add_comment = AsyncMock()
+
+    config = _make_config(sandbox_manager=sandbox, credential_store=credential_store)
+    state = _make_state(credential_ids=["cred-1"])
+
+    with patch(
+        "lintel.repos.github_provider.GitHubRepoProvider",
+        return_value=mock_provider,
+    ):
+        result = await close_workflow(state, config)
+
+    assert result["pr_url"] == "https://github.com/test/repo/pull/50"
+    assert mock_provider.create_pr.call_count == 2
+    mock_sleep.assert_called_once_with(1.0)
