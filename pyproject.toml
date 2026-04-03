@@ -81,6 +81,7 @@ testpaths = [
     "packages/slack-workflows-api/tests",
     "packages/workflow-blueprints-api/tests",
     "packages/coding-rules-api/tests",
+    "packages/knowledge-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -151,6 +152,7 @@ mypy_path = [
     "packages/slack-workflows-api/src",
     "packages/workflow-blueprints-api/src",
     "packages/coding-rules-api/src",
+    "packages/knowledge-api/src",
 ]
 
 [[tool.mypy.overrides]]
