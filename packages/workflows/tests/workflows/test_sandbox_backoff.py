@@ -120,13 +120,15 @@ async def test_acquire_calls_log_fn_on_retry() -> None:
 
     result = await acquire_pool_sandbox(store, manager, delays=(0.01,), log_fn=log_fn)
     assert result == "sbx-1"
-    assert len(log_messages) == 1
+    # Backoff message + acquisition message
+    assert len(log_messages) == 2
     assert "attempt 1/2" in log_messages[0]
     assert "retrying" in log_messages[0].lower()
+    assert "Sandbox acquired" in log_messages[1]
 
 
-async def test_acquire_no_log_fn_on_success() -> None:
-    """Does not call log_fn when acquisition succeeds on first attempt."""
+async def test_acquire_logs_success_on_first_attempt() -> None:
+    """Logs acquisition message even on first attempt."""
     store = FakeSandboxStore([[{"sandbox_id": "sbx-1"}]])
     manager = AsyncMock()
     manager.get_status = AsyncMock(return_value="running")
@@ -137,11 +139,31 @@ async def test_acquire_no_log_fn_on_success() -> None:
         log_messages.append(msg)
 
     await acquire_pool_sandbox(store, manager, delays=(0.01,), log_fn=log_fn)
-    assert len(log_messages) == 0
+    assert len(log_messages) == 1
+    assert "Sandbox acquired" in log_messages[0]
 
 
 async def test_acquire_default_delays() -> None:
-    """Default delays are (5, 15, 30) giving 4 total attempts."""
+    """Default delays are (30, 60, 120) giving 4 total attempts."""
     from lintel.workflows.nodes._sandbox_backoff import DEFAULT_DELAYS
 
-    assert DEFAULT_DELAYS == (5.0, 15.0, 30.0)
+    assert DEFAULT_DELAYS == (30.0, 60.0, 120.0)
+
+
+async def test_acquire_logs_exhaustion_message() -> None:
+    """Logs a clear operator message when all retries are exhausted."""
+    store = FakeSandboxStore([[], []])
+    manager = AsyncMock()
+
+    log_messages: list[str] = []
+
+    async def log_fn(msg: str) -> None:
+        log_messages.append(msg)
+
+    with pytest.raises(NoSandboxAvailableError):
+        await acquire_pool_sandbox(store, manager, delays=(0.0,), log_fn=log_fn)
+
+    # Backoff message + exhaustion message
+    assert len(log_messages) == 2
+    assert "after 2 attempts" in log_messages[-1]
+    assert "Pre-provision" in log_messages[-1]
