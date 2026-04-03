@@ -19,6 +19,7 @@ BOT_MENTION_PATTERN = re.compile(r"@(\w+)")
 def translate_message_update(
     update: dict[str, Any],
     bot_username: str = "",
+    connection_id: str = "",
 ) -> InboundMessage | None:
     """Translate a Telegram Update dict into an InboundMessage envelope.
 
@@ -72,6 +73,7 @@ def translate_message_update(
         text=text,
         raw_payload=update,
         workspace_id="telegram",
+        connection_id=connection_id,
     )
 
 

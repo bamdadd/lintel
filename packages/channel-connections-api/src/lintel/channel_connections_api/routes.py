@@ -27,6 +27,8 @@ class CreateChannelConnectionRequest(BaseModel):
     channel_id: str
     workspace_id: str
     config: dict[str, Any] = {}
+    allowed_workflows: list[str] = []
+    project_ids: list[str] = []
 
 
 class UpdateChannelConnectionRequest(BaseModel):
@@ -34,6 +36,8 @@ class UpdateChannelConnectionRequest(BaseModel):
     channel_id: str | None = None
     workspace_id: str | None = None
     config: dict[str, Any] | None = None
+    allowed_workflows: list[str] | None = None
+    project_ids: list[str] | None = None
 
 
 @router.post("/channel-connections", status_code=201)
@@ -51,6 +55,8 @@ async def create_channel_connection(
         channel_id=body.channel_id,
         workspace_id=body.workspace_id,
         config=body.config,
+        allowed_workflows=tuple(body.allowed_workflows),
+        project_ids=tuple(body.project_ids),
         created_at=now,
         updated_at=now,
     )
@@ -87,6 +93,11 @@ async def update_channel_connection(
     if connection is None:
         raise HTTPException(status_code=404, detail="Channel connection not found")
     updates = body.model_dump(exclude_none=True)
+    # Convert list fields to tuples for the frozen dataclass
+    if "allowed_workflows" in updates:
+        updates["allowed_workflows"] = tuple(updates["allowed_workflows"])
+    if "project_ids" in updates:
+        updates["project_ids"] = tuple(updates["project_ids"])
     updated = ChannelConnection(
         **{
             **asdict(connection),

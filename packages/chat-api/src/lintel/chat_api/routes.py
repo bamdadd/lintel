@@ -74,6 +74,9 @@ async def create_conversation(
         project_id=body.project_id,
         model_id=body.model_id,
     )
+    # Store connection_id if provided (for connection-scoped routing)
+    if body.connection_id:
+        await store.update_fields(conversation_id, connection_id=body.connection_id)
     await dispatch_event(
         request,
         ConversationCreated(
