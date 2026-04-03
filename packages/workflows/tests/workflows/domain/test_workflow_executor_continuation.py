@@ -101,6 +101,7 @@ class TestRehydrateFromRun:
             project_id="proj-1",
             work_item_id="wi-1",
             run_id="new-run",
+            repo_url="https://github.com/org/repo",
             continue_from_run_id="prev-run",
         )
 
