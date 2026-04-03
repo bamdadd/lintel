@@ -360,8 +360,15 @@ async def _create_pull_request(
     repo_provider = _configurable.get("repo_provider")
     if repo_provider is not None:
         pr_url = await _create_pr_with_retry(
-            repo_provider, tracker, label, repo_url, feature_branch,
-            base_branch, pr_title, pr_body, draft,
+            repo_provider,
+            tracker,
+            label,
+            repo_url,
+            feature_branch,
+            base_branch,
+            pr_title,
+            pr_body,
+            draft,
         )
         if pr_url:
             await _add_review_comment(repo_provider, repo_url, pr_url, state)
@@ -390,8 +397,15 @@ async def _create_pull_request(
 
     provider = GitHubRepoProvider(token=github_token)
     pr_url = await _create_pr_with_retry(
-        provider, tracker, label, repo_url, feature_branch,
-        base_branch, pr_title, pr_body, draft,
+        provider,
+        tracker,
+        label,
+        repo_url,
+        feature_branch,
+        base_branch,
+        pr_title,
+        pr_body,
+        draft,
     )
     if pr_url:
         await _add_review_comment(provider, repo_url, pr_url, state)
@@ -440,7 +454,7 @@ async def _create_pr_with_retry(
                 error=str(exc)[:200],
             )
             if attempt < _PR_MAX_RETRIES - 1:
-                delay = _PR_BACKOFF_BASE ** attempt
+                delay = _PR_BACKOFF_BASE**attempt
                 await asyncio.sleep(delay)
 
     if last_exc is not None:

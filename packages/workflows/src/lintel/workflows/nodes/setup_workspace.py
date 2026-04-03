@@ -378,7 +378,9 @@ async def setup_workspace(
 
         try:
             sandbox_id = await acquire_pool_sandbox(
-                sandbox_store, sandbox_manager, log_fn=_log,
+                sandbox_store,
+                sandbox_manager,
+                log_fn=_log,
             )
         except Exception:
             error_msg = (
@@ -501,7 +503,9 @@ async def setup_workspace(
 
         try:
             sandbox_id = await acquire_pool_sandbox(
-                sandbox_store, sandbox_manager, log_fn=_log_code,
+                sandbox_store,
+                sandbox_manager,
+                log_fn=_log_code,
             )
         except Exception:
             error_msg = (

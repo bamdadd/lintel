@@ -176,9 +176,11 @@ async def test_setup_workspace_fails_when_no_sandbox_available() -> None:
     }
     state = _make_state(repo_url="https://github.com/test/repo")
 
-    with patch("lintel.workflows.nodes._sandbox_backoff.asyncio.sleep", new_callable=AsyncMock):
-        with pytest.raises(NoSandboxAvailableError):
-            await setup_workspace(state, config)
+    with (
+        patch("lintel.workflows.nodes._sandbox_backoff.asyncio.sleep", new_callable=AsyncMock),
+        pytest.raises(NoSandboxAvailableError),
+    ):
+        await setup_workspace(state, config)
 
 
 async def test_allocation_stamps_pipeline_id() -> None:
