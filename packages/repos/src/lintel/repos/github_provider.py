@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from lintel.repos.types import CheckRunConclusion, InlineComment, PRFile, ReviewVerdict
 
 logger = structlog.get_logger()
 
@@ -271,3 +274,159 @@ class GitHubRepoProvider:
                 }
                 for pr in resp.json()
             ]
+
+    async def get_pr_files(
+        self,
+        repo_url: str,
+        pr_number: int,
+    ) -> list[PRFile]:
+        """Fetch the list of files changed in a pull request."""
+        import httpx
+
+        from lintel.repos.types import PRFile
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/pulls/{pr_number}/files"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=self._headers())
+            resp.raise_for_status()
+            return [
+                PRFile(
+                    filename=f["filename"],
+                    status=f["status"],
+                    additions=f.get("additions", 0),
+                    deletions=f.get("deletions", 0),
+                    patch=f.get("patch", ""),
+                )
+                for f in resp.json()
+            ]
+
+    async def create_review(
+        self,
+        repo_url: str,
+        pr_number: int,
+        body: str,
+        verdict: ReviewVerdict,
+        comments: list[InlineComment] | None = None,
+    ) -> str:
+        """Post a pull request review with optional inline comments."""
+        import httpx
+
+        from lintel.repos.types import InlineComment, ReviewVerdict
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
+
+        event_str = verdict.value if isinstance(verdict, ReviewVerdict) else str(verdict)
+        payload: dict[str, Any] = {"body": body, "event": event_str}
+        if comments:
+            payload["comments"] = [
+                {"path": c.path, "line": c.line, "body": c.body, "side": c.side}
+                if isinstance(c, InlineComment)
+                else c
+                for c in comments
+            ]
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                headers=self._headers(),
+                json=payload,
+            )
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+        logger.info("pr_review_created", pr_number=pr_number, review_event=event_str)
+        return str(data["id"])
+
+    async def create_check_run(
+        self,
+        repo_url: str,
+        head_sha: str,
+        name: str,
+        *,
+        status: str = "in_progress",
+        conclusion: CheckRunConclusion | None = None,
+        title: str = "",
+        summary: str = "",
+    ) -> str:
+        """Create a GitHub check run."""
+        import httpx
+
+        from lintel.repos.types import CheckRunConclusion
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/check-runs"
+
+        payload: dict[str, Any] = {
+            "name": name,
+            "head_sha": head_sha,
+            "status": status,
+        }
+        if conclusion is not None:
+            payload["conclusion"] = (
+                conclusion.value if isinstance(conclusion, CheckRunConclusion) else str(conclusion)
+            )
+        if title or summary:
+            payload["output"] = {"title": title, "summary": summary}
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                url,
+                headers=self._headers(),
+                json=payload,
+            )
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+        logger.info("check_run_created", name=name, head_sha=head_sha[:8])
+        return str(data["id"])
+
+    async def update_check_run(
+        self,
+        repo_url: str,
+        check_run_id: str,
+        *,
+        status: str = "completed",
+        conclusion: CheckRunConclusion | None = None,
+        title: str = "",
+        summary: str = "",
+    ) -> None:
+        """Update an existing GitHub check run."""
+        import httpx
+
+        from lintel.repos.types import CheckRunConclusion
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/check-runs/{check_run_id}"
+
+        payload: dict[str, Any] = {"status": status}
+        if conclusion is not None:
+            payload["conclusion"] = (
+                conclusion.value if isinstance(conclusion, CheckRunConclusion) else str(conclusion)
+            )
+        if title or summary:
+            payload["output"] = {"title": title, "summary": summary}
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.patch(
+                url,
+                headers=self._headers(),
+                json=payload,
+            )
+            resp.raise_for_status()
+        logger.info("check_run_updated", check_run_id=check_run_id)
+
+    async def get_pr_diff(self, repo_url: str, pr_number: int) -> str:
+        """Fetch the unified diff for a pull request."""
+        import httpx
+
+        owner, repo = self._parse_owner_repo(repo_url)
+        url = f"{self._api_base}/repos/{owner}/{repo}/pulls/{pr_number}"
+
+        headers = self._headers()
+        headers["Accept"] = "application/vnd.github.v3.diff"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            return resp.text

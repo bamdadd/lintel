@@ -99,3 +99,45 @@ class PrAuthError(PrCreationError):
 
 class PrTransientError(PrCreationError):
     """Transient failure (rate limit, server error, network) — safe to retry."""
+
+
+# --- PR file diff types ---
+
+
+@dataclass(frozen=True)
+class PRFile:
+    """A file changed in a pull request."""
+
+    filename: str
+    status: str  # added, removed, modified, renamed
+    additions: int = 0
+    deletions: int = 0
+    patch: str = ""
+
+
+class ReviewVerdict(StrEnum):
+    """Verdict for a PR review submission."""
+
+    APPROVE = "APPROVE"
+    REQUEST_CHANGES = "REQUEST_CHANGES"
+    COMMENT = "COMMENT"
+
+
+@dataclass(frozen=True)
+class InlineComment:
+    """An inline review comment on a specific file and line."""
+
+    path: str
+    line: int
+    body: str
+    side: str = "RIGHT"
+
+
+class CheckRunConclusion(StrEnum):
+    """Conclusion for a GitHub check run."""
+
+    SUCCESS = "success"
+    FAILURE = "failure"
+    NEUTRAL = "neutral"
+    CANCELLED = "cancelled"
+    ACTION_REQUIRED = "action_required"
