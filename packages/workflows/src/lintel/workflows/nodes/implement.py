@@ -115,6 +115,43 @@ async def spawn_implementation(
     else:
         guidelines = await read_guidelines(sandbox_manager, sandbox_id, workspace_path)
 
+    # Guided context injection from codebase index
+    guided_context_section = ""
+    project_id = state.get("project_id", "")
+    index_store = _configurable.get("codebase_index_store")
+    if index_store is None:
+        _app = _configurable.get("app_state")
+        if _app is None and run_id:
+            from lintel.workflows.nodes._runtime_registry import get_app_state as _get_app
+
+            _app = _get_app(run_id)
+        if _app is not None:
+            index_store = getattr(_app, "codebase_index_store", None)
+    if index_store is not None and project_id:
+        try:
+            from lintel.context_injection import ContextInjector
+
+            injector = ContextInjector(index_store)
+            desc_parts = messages or []
+            description = "\n".join(desc_parts) if desc_parts else ""
+            if description:
+                from lintel.context_injection.types import ContextBudget
+
+                ctx = await injector.gather_context(
+                    project_id, description, budget=ContextBudget(max_tokens=6000)
+                )
+                guided_context_section = ctx.as_prompt_section
+                if guided_context_section:
+                    await tracker.append_log(
+                        "implement",
+                        f"Injected {len(ctx.snippets)} snippet(s) from codebase index",
+                    )
+                    guided_context_section = (
+                        f"\n\n## Guided Context (from codebase index)\n{guided_context_section}"
+                    )
+        except Exception:
+            logger.warning("implement_context_injection_failed", exc_info=True)
+
     # Build task descriptions from plan
     tasks = plan.get("tasks", [])
     all_file_paths: list[str] = []
@@ -194,6 +231,7 @@ async def spawn_implementation(
         f"## Plan\n{plan_summary}\n\n## Tasks\n{task_text}\n\n"
         f"## Original request\n{chr(10).join(messages)}"
         f"{file_context}{research_section}{guidelines_section}"
+        f"{guided_context_section}"
         f"{multi_repo_section}{review_section}{failure_section}"
     )
 

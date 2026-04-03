@@ -9,6 +9,7 @@ dependencies = [
     "lintel-sandbox",
     "lintel-domain",
     "lintel-repos",
+    "lintel-context-injection",
     "structlog>=24.4",
     "langgraph>=0.3",
 ]
@@ -20,6 +21,7 @@ lintel-observability = { workspace = true }
 lintel-sandbox = { workspace = true }
 lintel-domain = { workspace = true }
 lintel-repos = { workspace = true }
+lintel-context-injection = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

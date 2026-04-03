@@ -94,6 +94,37 @@ async def research_codebase(
     sandbox_manager: SandboxManager | None = _configurable.get("sandbox_manager")
     sandbox_id: str | None = state.get("sandbox_id")
 
+    # Guided context injection from codebase index (if available)
+    injected_context = ""
+    project_id = state.get("project_id", "")
+    index_store = _configurable.get("codebase_index_store")
+    if index_store is None:
+        _app = _configurable.get("app_state")
+        if _app is None and state.get("run_id"):
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            _app = get_app_state(state["run_id"])
+        if _app is not None:
+            index_store = getattr(_app, "codebase_index_store", None)
+    if index_store is not None and project_id:
+        try:
+            from lintel.context_injection import ContextInjector
+
+            injector = ContextInjector(index_store)
+            messages_for_query = state.get("sanitized_messages", [])
+            description = "\n".join(messages_for_query) if messages_for_query else ""
+            if description:
+                ctx = await injector.gather_context(project_id, description)
+                injected_context = ctx.as_prompt_section
+                if injected_context:
+                    await tracker.append_log(
+                        "research",
+                        f"Injected {len(ctx.snippets)} snippet(s) from codebase index "
+                        f"({ctx.total_tokens} tokens)",
+                    )
+        except Exception:
+            logger.warning("research_context_injection_failed", exc_info=True)
+
     # Gather codebase context from sandbox (if available)
     codebase_context = ""
     if sandbox_manager is not None and sandbox_id is not None:
@@ -172,6 +203,11 @@ async def research_codebase(
         if activity:
             await tracker.append_log("research", activity)
 
+    # Prepend guided context from codebase index when available
+    guided_section = ""
+    if injected_context:
+        guided_section = f"## Guided Context (from codebase index)\n{injected_context}\n\n---\n\n"
+
     result = await agent_runtime.execute_step(
         thread_ref=thread_ref,
         agent_role=AgentRole.RESEARCHER,
@@ -181,9 +217,9 @@ async def research_codebase(
             {
                 "role": "user",
                 "content": (
-                    f"{codebase_context}\n\n---\n\n## User Request\n{user_request}"
+                    f"{guided_section}{codebase_context}\n\n---\n\n## User Request\n{user_request}"
                     if codebase_context
-                    else f"## User Request\n{user_request}\n\n"
+                    else f"{guided_section}## User Request\n{user_request}\n\n"
                     "Note: No codebase context available. Analyse the request and provide "
                     "recommendations based on general software engineering best practices."
                 ),

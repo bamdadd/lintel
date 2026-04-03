@@ -29,6 +29,7 @@ members = [
     "lintel-coding-rules-api",
     "lintel-compliance-api",
     "lintel-context-attachments-api",
+    "lintel-context-injection",
     "lintel-contracts",
     "lintel-coordination",
     "lintel-credentials-api",
@@ -2455,6 +2456,23 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-context-injection"
+version = "0.1.0"
+source = { editable = "packages/context-injection" }
+dependencies = [
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-contracts"
 version = "0.1.0"
 source = { editable = "packages/contracts" }
@@ -3713,6 +3731,7 @@ source = { editable = "packages/workflows" }
 dependencies = [
     { name = "langgraph" },
     { name = "lintel-agents" },
+    { name = "lintel-context-injection" },
     { name = "lintel-contracts" },
     { name = "lintel-domain" },
     { name = "lintel-observability" },
@@ -3725,6 +3744,7 @@ dependencies = [
 requires-dist = [
     { name = "langgraph", specifier = ">=0.3" },
     { name = "lintel-agents", editable = "packages/agents" },
+    { name = "lintel-context-injection", editable = "packages/context-injection" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-observability", editable = "packages/observability" },
