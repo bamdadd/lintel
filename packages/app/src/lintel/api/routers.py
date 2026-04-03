@@ -19,6 +19,7 @@ from lintel.api.routes import (
     pii,
     streams,
     threads,
+    webhooks,
     workflows,
 )
 from lintel.approval_requests_api.routes import router as approval_requests_router
@@ -145,3 +146,4 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["workflow-blueprints"],
     )
+    app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
