@@ -73,3 +73,73 @@ def build_status_blocks(
             }
         )
     return blocks
+
+
+# --- Stage status emoji mapping ---
+_STATUS_EMOJI: dict[str, str] = {
+    "running": ":hourglass_flowing_sand:",
+    "succeeded": ":white_check_mark:",
+    "failed": ":x:",
+    "timed_out": ":alarm_clock:",
+    "skipped": ":fast_forward:",
+    "waiting_approval": ":raised_hand:",
+    "approved": ":thumbsup:",
+    "rejected": ":no_entry_sign:",
+}
+
+
+def build_stage_blocks(
+    stage_name: str,
+    status: str,
+    run_id: str,
+    duration_ms: int = 0,
+    error: str = "",
+    pr_url: str = "",
+) -> list[dict[str, Any]]:
+    """Build Block Kit blocks for a pipeline stage status update."""
+    emoji = _STATUS_EMOJI.get(status, ":grey_question:")
+    title = stage_name.replace("_", " ").title()
+    duration_text = f" ({duration_ms / 1000:.1f}s)" if duration_ms > 0 else ""
+
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"{emoji} *{title}* — `{status}`{duration_text}",
+            },
+        },
+    ]
+
+    if error:
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":warning: ```{error[:1500]}```",
+                },
+            }
+        )
+
+    if pr_url:
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f":link: <{pr_url}|View Pull Request>",
+                },
+            }
+        )
+
+    blocks.append(
+        {
+            "type": "context",
+            "elements": [
+                {"type": "mrkdwn", "text": f"Pipeline `{run_id[:8]}`"},
+            ],
+        }
+    )
+
+    return blocks
