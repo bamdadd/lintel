@@ -1376,3 +1376,31 @@ class ImageRebuildRecord:
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     error_message: str = ""
+
+
+class SandboxSnapshotStatus(StrEnum):
+    """Status of a sandbox session snapshot."""
+
+    PENDING = "pending"
+    COMPLETED = "completed"
+    RESTORING = "restoring"
+    EXPIRED = "expired"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SandboxSnapshot:
+    """A captured snapshot of a sandbox filesystem state."""
+
+    snapshot_id: str
+    sandbox_id: str
+    pipeline_run_id: str = ""
+    project_id: str = ""
+    status: SandboxSnapshotStatus = SandboxSnapshotStatus.PENDING
+    commit_sha: str = ""
+    image_tag: str = ""
+    size_mb: int = 0
+    ttl_seconds: int = 86400
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
+    restored_sandbox_id: str = ""

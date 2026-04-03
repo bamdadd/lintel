@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-from uuid import uuid4
+from typing import TYPE_CHECKING
 
 import pytest
-
-from lintel.contracts.types import ThreadRef  # noqa: TC001
-from lintel.sandbox.errors import SandboxNotFoundError
-from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -20,49 +15,8 @@ from lintel.sandboxes_api.snapshot_store import InMemorySnapshotStore
 from lintel.sandboxes_api.snapshots import snapshot_store_provider
 
 
-class _DummySandboxManager:
-    """Minimal sandbox manager stub for snapshot tests."""
-
-    def __init__(self) -> None:
-        self._sandboxes: dict[str, dict[str, str]] = {}
-
-    async def create(self, config: SandboxConfig, thread_ref: ThreadRef) -> str:
-        sid = str(uuid4())
-        self._sandboxes[sid] = {}
-        return sid
-
-    async def get_status(self, sandbox_id: str) -> SandboxStatus:
-        if sandbox_id not in self._sandboxes:
-            raise SandboxNotFoundError(sandbox_id)
-        return SandboxStatus.RUNNING
-
-    async def destroy(self, sandbox_id: str) -> None:
-        if sandbox_id not in self._sandboxes:
-            raise SandboxNotFoundError(sandbox_id)
-        del self._sandboxes[sandbox_id]
-
-    async def execute(self, sandbox_id: str, job: SandboxJob) -> SandboxResult:
-        return SandboxResult(exit_code=0, stdout="ok\n")
-
-    async def read_file(self, sandbox_id: str, path: str) -> str:
-        return ""
-
-    async def write_file(self, sandbox_id: str, path: str, content: str) -> None:
-        pass
-
-    async def list_files(self, sandbox_id: str, path: str = "/workspace") -> list[str]:
-        return []
-
-    async def collect_artifacts(
-        self,
-        sandbox_id: str,
-        workdir: str = "/workspace",
-    ) -> dict[str, Any]:
-        return {"type": "diff", "content": ""}
-
-
 @pytest.fixture()
-def snapshot_client() -> Generator[TestClient]:
+def snapshot_client(dummy_sandbox_manager: object) -> Generator[TestClient]:
     from lintel.api.app import create_app
     from lintel.sandboxes_api.routes import SandboxStore
 
@@ -70,7 +24,7 @@ def snapshot_client() -> Generator[TestClient]:
     with TestClient(app) as c:
         store = InMemorySnapshotStore()
         snapshot_store_provider.override(store)
-        app.state.sandbox_manager = _DummySandboxManager()
+        app.state.sandbox_manager = dummy_sandbox_manager
         app.state.sandbox_store = SandboxStore()
         yield c
 
@@ -189,7 +143,6 @@ class TestRestoreSnapshot:
 
         resp = snapshot_client.post(
             f"/api/v1/sandboxes/snapshots/{snapshot_id}/restore",
-            json={},
         )
         assert resp.status_code == 201
         data = resp.json()
@@ -199,7 +152,6 @@ class TestRestoreSnapshot:
     def test_restore_not_found(self, snapshot_client: TestClient) -> None:
         resp = snapshot_client.post(
             "/api/v1/sandboxes/snapshots/nonexistent/restore",
-            json={},
         )
         assert resp.status_code == 404
 

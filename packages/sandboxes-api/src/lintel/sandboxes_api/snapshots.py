@@ -33,10 +33,6 @@ class CreateSnapshotRequest(BaseModel):
     ttl_seconds: int = 86400
 
 
-class RestoreSnapshotRequest(BaseModel):
-    """Request body for restoring a snapshot to a new sandbox."""
-
-
 @router.post("/sandboxes/{sandbox_id}/snapshot", status_code=201)
 async def create_snapshot(
     sandbox_id: str,
@@ -111,7 +107,6 @@ async def get_snapshot(snapshot_id: str) -> dict[str, Any]:
 @router.post("/sandboxes/snapshots/{snapshot_id}/restore", status_code=201)
 async def restore_snapshot(
     snapshot_id: str,
-    _body: RestoreSnapshotRequest,
     request: Request,
 ) -> dict[str, Any]:
     """Restore a snapshot into a new sandbox."""
@@ -126,10 +121,11 @@ async def restore_snapshot(
     restored_sandbox_id = f"restored-{uuid.uuid4()!s}"
     await store.update(
         snapshot_id,
-        {"restored_sandbox_id": restored_sandbox_id, "status": "restoring"},
+        {
+            "restored_sandbox_id": restored_sandbox_id,
+            "status": SandboxSnapshotStatus.COMPLETED,
+        },
     )
-    # Mark completed after "restore" (real implementation would do Docker work)
-    await store.update(snapshot_id, {"status": "completed"})
 
     await dispatch_event(
         request,
