@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from lintel.agents.pii_scanner import AgentPIIScanner
+    from lintel.agents.prompt_firewall import PromptFirewall
     from lintel.agents.sub_session_tools import SubSessionToolDispatcher
     from lintel.agents.types import AgentRole
     from lintel.contracts.protocols import EventStore
@@ -47,6 +48,7 @@ class AgentRuntime:
         mcp_server_store: Any = None,  # noqa: ANN401
         sub_session_dispatcher: SubSessionToolDispatcher | None = None,
         pii_scanner: AgentPIIScanner | None = None,
+        prompt_firewall: PromptFirewall | None = None,
     ) -> None:
         self._event_store = event_store
         self._model_router = model_router
@@ -54,6 +56,7 @@ class AgentRuntime:
         self._mcp_server_store = mcp_server_store
         self._sub_session_dispatcher = sub_session_dispatcher
         self._pii_scanner = pii_scanner
+        self._prompt_firewall = prompt_firewall
         self._cost_tracker = LLMCostTracker()
 
     async def _gather_mcp_tools(self) -> list[dict[str, Any]]:
@@ -243,6 +246,11 @@ class AgentRuntime:
         if self._pii_scanner is not None:
             messages = await self._pii_scanner.scan_messages(messages)
 
+        # Prompt injection firewall: sanitise inputs and add boundary markers
+        if self._prompt_firewall is not None:
+            messages = self._prompt_firewall.scan_messages(messages)
+            messages = self._prompt_firewall.apply_boundary_markers(messages)
+
         # Build conversation messages (mutable copy for the tool loop)
         loop_messages: list[dict[str, Any]] = list(messages)
         total_input_tokens = 0
@@ -377,6 +385,14 @@ class AgentRuntime:
                 scan_result = await self._pii_scanner.scan_response(response_text)
                 if scan_result.was_modified:
                     result["content"] = scan_result.cleaned_text
+
+        # Prompt firewall: check output for leaked system prompt fragments
+        if self._prompt_firewall is not None:
+            response_text = result.get("content") or ""
+            if response_text:
+                fw_result = self._prompt_firewall.validate_output(response_text)
+                if fw_result.was_modified:
+                    result["content"] = fw_result.cleaned_text
 
         # Aggregate usage across all iterations
         step_duration_ms = int((time.monotonic() - step_start_time) * 1000)
