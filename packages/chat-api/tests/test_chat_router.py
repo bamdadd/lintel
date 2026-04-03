@@ -107,11 +107,11 @@ class TestLLMResponseParsing:
         assert result.workflow_type == "bug_fix"
         assert "fix" in result.reply.lower()
 
-    def test_unknown_workflow_defaults_to_feature(self) -> None:
+    def test_unknown_workflow_falls_back_to_chat(self) -> None:
         content = "ACTION: start_workflow\nWORKFLOW: unknown_type\nREPLY: On it."
         result = self.router._parse_llm_response(content)
-        assert result.action == "start_workflow"
-        assert result.workflow_type == "feature_to_pr"
+        assert result.action == "chat_reply"
+        assert result.workflow_type == ""
 
     def test_missing_action_defaults_to_chat(self) -> None:
         content = "I'm not sure what to do with this."
@@ -350,6 +350,91 @@ class TestWorkflowKeywordsIntegrity:
     def test_chat_router_result_entity_ref_defaults_to_empty(self) -> None:
         result = ChatRouterResult(action="chat_reply", reply="hi")
         assert result.entity_ref == ""
+
+
+class TestAmbiguousMessageGuard:
+    """Tests that ambiguous/short messages do not trigger workflows."""
+
+    def setup_method(self) -> None:
+        self.router = ChatRouter(model_router=None)
+
+    async def test_single_word_slack_is_chat_reply(self) -> None:
+        result = await self.router.classify("slack")
+        assert result.action == "chat_reply"
+
+    async def test_single_word_hello_is_chat_reply(self) -> None:
+        result = await self.router.classify("hello")
+        assert result.action == "chat_reply"
+
+    def test_llm_conversational_no_action_is_chat_reply(self) -> None:
+        """LLM responds conversationally with 'I can help you' but no ACTION line."""
+        content = "I can help you with that! Let me look into it."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "chat_reply"
+
+    def test_explicit_action_and_workflow_still_works(self) -> None:
+        """Explicit ACTION: start_workflow + WORKFLOW: feature_to_pr must still work."""
+        content = "ACTION: start_workflow\nWORKFLOW: feature_to_pr\nREPLY: Starting feature work."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "start_workflow"
+        assert result.workflow_type == "feature_to_pr"
+
+    def test_llm_lets_get_started_no_action_is_chat(self) -> None:
+        content = "Let's get started! I'll help you with that."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "chat_reply"
+
+    def test_llm_let_me_no_action_is_chat(self) -> None:
+        content = "Let me check that for you."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "chat_reply"
+
+    def test_llm_workflow_line_without_action_infers_start(self) -> None:
+        """If WORKFLOW line is present but no ACTION, it should infer start_workflow."""
+        content = "WORKFLOW: bug_fix\nREPLY: I'll fix the bug."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "start_workflow"
+        assert result.workflow_type == "bug_fix"
+
+
+class TestShortMessageGuardInService:
+    """Tests for the short-message guard in ChatService.handle_classified_message."""
+
+    async def test_short_message_overrides_start_workflow(self) -> None:
+        """Messages < 4 words classified as start_workflow get overridden to chat_reply."""
+        from lintel.chat_api.chat_router import ChatRouterResult
+
+        result = ChatRouterResult(
+            action="start_workflow", workflow_type="feature_to_pr", reply="Starting..."
+        )
+
+        # Build a minimal mock request/store
+        mock_store = AsyncMock()
+        mock_store.get.return_value = {"project_id": "p1", "messages": []}
+        mock_store.add_message = AsyncMock()
+
+        mock_project_store = AsyncMock()
+        mock_project_store.get.return_value = {"project_id": "p1", "name": "Test"}
+
+        mock_request = MagicMock()
+        mock_request.app.state.chat_router = AsyncMock()
+        mock_request.app.state.chat_router.reply = AsyncMock(return_value="Chat reply here.")
+        mock_request.app.state.project_store = mock_project_store
+
+        from lintel.chat_api.service import ChatService
+
+        svc = ChatService(request=mock_request, store=mock_store)
+
+        reply = await svc.handle_classified_message(
+            conversation_id="conv1",
+            message="slack",
+            classify_result=result,
+            model_policy=None,
+            api_base=None,
+        )
+        # Should have fallen through to chat reply, not dispatched a workflow
+        assert reply is not None
+        assert "Chat reply here." in reply
 
 
 class TestIntentKeywordsIntegrity:
