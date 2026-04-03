@@ -18,6 +18,7 @@ from lintel.api.routes import (
     onboarding,
     pii,
     streams,
+    sub_sessions,
     threads,
     webhooks,
     workflows,
@@ -146,4 +147,5 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["workflow-blueprints"],
     )
+    app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
