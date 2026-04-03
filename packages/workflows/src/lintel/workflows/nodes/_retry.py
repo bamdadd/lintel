@@ -47,6 +47,7 @@ _RESOURCE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"sandbox.*failed", re.IGNORECASE),
     re.compile(r"container.*exited", re.IGNORECASE),
     re.compile(r"memory\s*limit", re.IGNORECASE),
+    re.compile(r"No sandbox available", re.IGNORECASE),
 )
 
 _DETERMINISTIC_PATTERNS: tuple[re.Pattern[str], ...] = (

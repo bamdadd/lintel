@@ -44,6 +44,9 @@ class TestClassifyError:
     def test_container_exited_is_resource(self) -> None:
         assert classify_error("container exited with code 137") == ErrorCategory.RESOURCE
 
+    def test_no_sandbox_available_is_resource(self) -> None:
+        assert classify_error("No sandbox available in pool") == ErrorCategory.RESOURCE
+
     def test_validation_error_is_deterministic(self) -> None:
         assert classify_error("validation error: field X required") == ErrorCategory.DETERMINISTIC
 
@@ -121,6 +124,10 @@ class TestShouldRetry:
             "Token has expired and refresh failed"
         )
         assert should_retry(policy, attempt=0, error_message=msg)
+
+    def test_retries_sandbox_pool_exhausted(self) -> None:
+        policy = RetryPolicy(max_retries=3)
+        assert should_retry(policy, attempt=0, error_message="No sandbox available in pool")
 
     def test_unknown_error_not_retried_by_default(self) -> None:
         policy = RetryPolicy(max_retries=3)
