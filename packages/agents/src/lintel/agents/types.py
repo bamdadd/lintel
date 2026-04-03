@@ -6,6 +6,26 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
+class SubSessionStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True)
+class SubSession:
+    """Tracks a child research session spawned by a parent agent."""
+
+    session_id: str
+    parent_session_id: str
+    repo: str
+    prompt: str
+    status: SubSessionStatus = SubSessionStatus.PENDING
+    result: str = ""
+    error: str = ""
+
+
 class AgentCategory(StrEnum):
     ENGINEERING = "engineering"
     QUALITY = "quality"

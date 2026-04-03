@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from uuid import UUID
 
+    from lintel.agents.sub_session_tools import SubSessionToolDispatcher
     from lintel.agents.types import AgentRole
     from lintel.contracts.protocols import EventStore
     from lintel.contracts.types import ThreadRef
@@ -43,11 +44,13 @@ class AgentRuntime:
         model_router: ModelRouter,
         mcp_tool_client: MCPToolClient | None = None,
         mcp_server_store: Any = None,  # noqa: ANN401
+        sub_session_dispatcher: SubSessionToolDispatcher | None = None,
     ) -> None:
         self._event_store = event_store
         self._model_router = model_router
         self._mcp_tool_client = mcp_tool_client
         self._mcp_server_store = mcp_server_store
+        self._sub_session_dispatcher = sub_session_dispatcher
         self._cost_tracker = LLMCostTracker()
 
     async def _gather_mcp_tools(self) -> list[dict[str, Any]]:
@@ -108,6 +111,17 @@ class AgentRuntime:
             except Exception as exc:
                 logger.warning("sandbox_tool_error", tool=name, error=str(exc))
                 return f"Error executing {name}: {exc}"
+
+        # Sub-session tools
+        if self._sub_session_dispatcher is not None:
+            from lintel.agents.sub_session_tools import is_sub_session_tool
+
+            if is_sub_session_tool(name):
+                try:
+                    return await self._sub_session_dispatcher.dispatch(name, arguments)
+                except Exception as exc:
+                    logger.warning("sub_session_tool_error", tool=name, error=str(exc))
+                    return f"Error executing {name}: {exc}"
 
         # MCP tools — find the server URL from the tool metadata
         if self._mcp_tool_client is not None:
