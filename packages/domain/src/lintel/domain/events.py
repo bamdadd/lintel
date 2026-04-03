@@ -1203,6 +1203,21 @@ class SandboxImageRebuildFailed(EventEnvelope):
     event_type: str = "SandboxImageRebuildFailed"
 
 
+@dataclass(frozen=True)
+class SandboxSnapshotCreated(EventEnvelope):
+    event_type: str = "SandboxSnapshotCreated"
+
+
+@dataclass(frozen=True)
+class SandboxSnapshotRestored(EventEnvelope):
+    event_type: str = "SandboxSnapshotRestored"
+
+
+@dataclass(frozen=True)
+class SandboxSnapshotExpired(EventEnvelope):
+    event_type: str = "SandboxSnapshotExpired"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1404,6 +1419,9 @@ register_events(
     SandboxImageRebuildStarted,
     SandboxImageRebuildCompleted,
     SandboxImageRebuildFailed,
+    SandboxSnapshotCreated,
+    SandboxSnapshotRestored,
+    SandboxSnapshotExpired,
     CodingRuleCreated,
     CodingRuleUpdated,
     CodingRuleRemoved,
