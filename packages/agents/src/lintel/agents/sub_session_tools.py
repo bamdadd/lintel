@@ -12,7 +12,7 @@ import uuid
 
 import structlog
 
-from lintel.domain.types import SubSession, SubSessionStatus
+from lintel.domain.types import MAX_SUB_SESSIONS_PER_PIPELINE, SubSession, SubSessionStatus
 
 logger = structlog.get_logger()
 
@@ -92,7 +92,7 @@ class SubSessionToolDispatcher:
         self,
         store: Any,  # noqa: ANN401
         parent_pipeline_run_id: str,
-        max_sub_sessions: int = 10,
+        max_sub_sessions: int = MAX_SUB_SESSIONS_PER_PIPELINE,
     ) -> None:
         self._store = store
         self._parent_pipeline_run_id = parent_pipeline_run_id
@@ -122,8 +122,8 @@ class SubSessionToolDispatcher:
         return result
 
     async def _spawn(self, arguments: dict[str, Any]) -> str:
-        existing = await self._store.list_by_pipeline(self._parent_pipeline_run_id)
-        if len(existing) >= self._max_sub_sessions:
+        count = await self._store.count_by_pipeline(self._parent_pipeline_run_id)
+        if count >= self._max_sub_sessions:
             return json.dumps(
                 {
                     "error": f"Maximum {self._max_sub_sessions} sub-sessions reached",

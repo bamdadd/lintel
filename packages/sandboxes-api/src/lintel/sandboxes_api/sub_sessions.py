@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import SubSessionCompleted, SubSessionFailed, SubSessionSpawned
-from lintel.domain.types import SubSession, SubSessionStatus
+from lintel.domain.types import MAX_SUB_SESSIONS_PER_PIPELINE, SubSession, SubSessionStatus
 
 if TYPE_CHECKING:
     from .sub_session_store import InMemorySubSessionStore
@@ -19,8 +19,6 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 sub_session_store_provider: StoreProvider[InMemorySubSessionStore] = StoreProvider()
-
-MAX_SUB_SESSIONS_PER_PIPELINE = 10
 
 
 class SpawnSubSessionRequest(BaseModel):
@@ -30,7 +28,7 @@ class SpawnSubSessionRequest(BaseModel):
 
 
 class UpdateSubSessionRequest(BaseModel):
-    status: str
+    status: SubSessionStatus
     result: str = ""
     error: str = ""
 
@@ -43,8 +41,8 @@ async def spawn_sub_session(
     """Spawn a new agent sub-session for parallel research."""
     store = sub_session_store_provider.get()
 
-    existing = await store.list_by_pipeline(body.parent_pipeline_run_id)
-    if len(existing) >= MAX_SUB_SESSIONS_PER_PIPELINE:
+    count = await store.count_by_pipeline(body.parent_pipeline_run_id)
+    if count >= MAX_SUB_SESSIONS_PER_PIPELINE:
         raise HTTPException(
             status_code=409,
             detail=f"Maximum {MAX_SUB_SESSIONS_PER_PIPELINE} sub-sessions per pipeline",
@@ -127,20 +125,13 @@ async def update_sub_session(
 ) -> dict[str, Any]:
     """Update sub-session status (e.g. mark running, completed, failed)."""
     store = sub_session_store_provider.get()
-    try:
-        new_status = SubSessionStatus(body.status)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status: {body.status!r}",
-        ) from None
 
-    updates: dict[str, Any] = {"status": new_status}
+    updates: dict[str, Any] = {"status": body.status}
     if body.result:
         updates["result"] = body.result
     if body.error:
         updates["error"] = body.error
-    if new_status in (SubSessionStatus.COMPLETED, SubSessionStatus.FAILED):
+    if body.status in (SubSessionStatus.COMPLETED, SubSessionStatus.FAILED):
         from datetime import UTC, datetime
 
         updates["completed_at"] = datetime.now(UTC)
@@ -149,13 +140,13 @@ async def update_sub_session(
     if updated is None:
         raise HTTPException(status_code=404, detail="Sub-session not found")
 
-    if new_status == SubSessionStatus.COMPLETED:
+    if body.status == SubSessionStatus.COMPLETED:
         await dispatch_event(
             request,
             SubSessionCompleted(payload={"resource_id": session_id}),
             stream_id=f"sub-session:{session_id}",
         )
-    elif new_status == SubSessionStatus.FAILED:
+    elif body.status == SubSessionStatus.FAILED:
         await dispatch_event(
             request,
             SubSessionFailed(payload={"resource_id": session_id, "error": body.error}),

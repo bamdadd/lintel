@@ -202,7 +202,7 @@ class TestUpdateSubSession:
             f"/api/v1/sandboxes/sub-sessions/{session_id}",
             json={"status": "bogus"},
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 422
 
     def test_update_not_found(self, sub_session_client: TestClient) -> None:
         resp = sub_session_client.patch(

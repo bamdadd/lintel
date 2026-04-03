@@ -25,6 +25,11 @@ class InMemorySubSessionStore:
         item = self._items.get(session_id)
         return _sub_session_to_dict(item) if item else None
 
+    async def count_by_pipeline(self, parent_pipeline_run_id: str) -> int:
+        return sum(
+            1 for s in self._items.values() if s.parent_pipeline_run_id == parent_pipeline_run_id
+        )
+
     async def list_by_pipeline(
         self,
         parent_pipeline_run_id: str,

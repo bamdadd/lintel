@@ -1345,6 +1345,9 @@ class SandboxPoolConfig:
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
+MAX_SUB_SESSIONS_PER_PIPELINE = 10
+
+
 class SubSessionStatus(StrEnum):
     """Status of an agent sub-session."""
 
