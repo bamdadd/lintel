@@ -99,6 +99,13 @@ class GitLabRepoProvider:
         """Create a merge request (GitLab equivalent of a PR)."""
         import httpx
 
+        from lintel.repos.types import (
+            PrAlreadyExistsError,
+            PrAuthError,
+            PrCreationError,
+            PrTransientError,
+        )
+
         project = self._parse_project_path(repo_url)
         url = f"{self._api_base}/projects/{project}/merge_requests"
 
@@ -109,25 +116,71 @@ class GitLabRepoProvider:
             "description": body,
         }
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                url,
-                headers=self._headers(),
-                json=payload,
-            )
-            if resp.status_code >= 400:
-                logger.error(
-                    "gitlab_create_mr_failed",
-                    status=resp.status_code,
-                    body=resp.text[:500],
-                    head=head,
-                    base=base,
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    url,
+                    headers=self._headers(),
+                    json=payload,
                 )
-            resp.raise_for_status()
-            data: dict[str, Any] = resp.json()
-            mr_url: str = data["web_url"]
-            logger.info("mr_created", mr_url=mr_url)
-            return mr_url
+        except (httpx.ConnectError, httpx.TimeoutException, OSError) as exc:
+            msg = f"Network error creating MR: {exc}"
+            logger.error("gitlab_create_mr_network_error", error=str(exc)[:200])
+            raise PrTransientError(msg) from exc
+
+        resp_text = resp.text[:500]
+
+        if resp.status_code >= 400:
+            logger.error(
+                "gitlab_create_mr_failed",
+                status=resp.status_code,
+                body=resp_text,
+                head=head,
+                base=base,
+            )
+            if resp.status_code in (401, 403):
+                raise PrAuthError(
+                    f"GitLab authentication failed ({resp.status_code}): {resp_text}",
+                    status_code=resp.status_code,
+                    response_body=resp_text,
+                )
+            if resp.status_code == 409 or (
+                resp.status_code == 422 and "already exists" in resp_text.lower()
+            ):
+                raise PrAlreadyExistsError(
+                    f"A merge request already exists for {head} -> {base}",
+                    status_code=resp.status_code,
+                    response_body=resp_text,
+                )
+            if resp.status_code in (429, 500, 502, 503, 504):
+                raise PrTransientError(
+                    f"GitLab API error ({resp.status_code}): {resp_text}",
+                    status_code=resp.status_code,
+                    response_body=resp_text,
+                )
+            raise PrCreationError(
+                f"GitLab MR creation failed ({resp.status_code}): {resp_text}",
+                status_code=resp.status_code,
+                response_body=resp_text,
+            )
+
+        data: dict[str, Any] = resp.json()
+        mr_url: str = data["web_url"]
+        logger.info("mr_created", mr_url=mr_url)
+        return mr_url
+
+    async def find_existing_pr(
+        self,
+        repo_url: str,
+        head: str,
+        base: str,
+    ) -> str:
+        """Find an open MR for the given source→target and return its URL, or empty string."""
+        prs = await self.list_pull_requests(repo_url, state="open")
+        for pr in prs:
+            if pr.get("head_branch") == head and pr.get("base_branch") == base:
+                return str(pr.get("html_url", ""))
+        return ""
 
     async def add_comment(self, repo_url: str, pr_number: int, body: str) -> None:
         import httpx

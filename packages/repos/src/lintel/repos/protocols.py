@@ -85,6 +85,13 @@ class RepoProvider(Protocol):
         limit: int = 20,
     ) -> list[dict[str, Any]]: ...
 
+    async def find_existing_pr(
+        self,
+        repo_url: str,
+        head: str,
+        base: str,
+    ) -> str: ...
+
     async def list_pull_requests(
         self,
         repo_url: str,
