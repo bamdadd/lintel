@@ -14,6 +14,7 @@ from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.contracts.types import ThreadRef
 from lintel.pipelines_api._helpers import _stage_names_for_workflow
 from lintel.pipelines_api._store import InMemoryPipelineStore, pipeline_store_provider
+from lintel.pipelines_api.preflight import run_preflight_checks
 from lintel.workflows.commands import StartWorkflow
 from lintel.workflows.events import (
     PipelineRunCancelled,
@@ -112,6 +113,27 @@ async def create_pipeline(
                         repo_urls = tuple(all_urls)
         except Exception:
             logger.warning("pipeline_create_repo_resolution_failed", exc_info=True)
+
+    # Pre-flight checks before dispatch
+    preflight = await run_preflight_checks(
+        workflow_type=body.workflow_definition_id,
+        repo_url=repo_url,
+        repo_urls=repo_urls,
+        project_id=body.project_id,
+    )
+    if preflight.warnings:
+        for w in preflight.warnings:
+            logger.warning("pipeline_preflight_warning: %s", w)
+    if not preflight.passed:
+        # Cancel the just-created pipeline run with the preflight error
+        from dataclasses import replace
+
+        failed_run = replace(run, status=PipelineStatus.FAILED)
+        await store.update(failed_run)
+        raise HTTPException(
+            status_code=422,
+            detail=f"Pre-flight check failed: {'; '.join(preflight.errors)}",
+        )
 
     # Dispatch StartWorkflow so the graph actually executes
     dispatcher = getattr(request.app.state, "command_dispatcher", None)
