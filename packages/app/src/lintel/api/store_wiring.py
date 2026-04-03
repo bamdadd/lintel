@@ -128,6 +128,8 @@ from lintel.process_mining_api.routes import process_mining_store_provider
 from lintel.process_mining_api.store import InMemoryProcessMiningStore
 from lintel.projects_api.routes import project_store_provider
 from lintel.projects_api.store import ProjectStore
+from lintel.release_notes_api.routes import release_note_store_provider
+from lintel.release_notes_api.store import InMemoryReleaseNoteStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import repo_provider_provider, repository_store_provider
 from lintel.sandbox_pool_api.routes import (
@@ -241,6 +243,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
         "user_store": InMemoryUserStore(),
+        "release_note_store": InMemoryReleaseNoteStore(),
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),
         "notification_rule_store": NotificationRuleStore(),
@@ -627,6 +630,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
 def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: ANN401
     """Wire all StoreProvider instances with their backing stores."""
     user_store_provider.override(stores["user_store"])
+    release_note_store_provider.override(stores["release_note_store"])
     team_store_provider.override(stores["team_store"])
     policy_store_provider.override(stores["policy_store"])
     notification_rule_store_provider.override(stores["notification_rule_store"])

@@ -52,6 +52,7 @@ from lintel.policies_api.routes import router as policies_router
 from lintel.privacy_controls_api.routes import router as privacy_controls_router
 from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
+from lintel.release_notes_api.routes import router as release_notes_router
 from lintel.repositories_api.routes import router as repositories_router
 from lintel.sandbox_pool_api.routes import router as sandbox_pool_router
 from lintel.sandboxes_api.routes import router as sandboxes_router
@@ -155,5 +156,6 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["workflow-blueprints"],
     )
+    app.include_router(release_notes_router, prefix="/api/v1", tags=["release-notes"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
