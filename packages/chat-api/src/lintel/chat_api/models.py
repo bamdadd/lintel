@@ -11,6 +11,7 @@ class StartConversationRequest(BaseModel):
     message: str | None = None
     project_id: str | None = None
     model_id: str | None = None
+    connection_id: str | None = None
 
 
 class SendMessageRequest(BaseModel):

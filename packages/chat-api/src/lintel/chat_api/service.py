@@ -14,6 +14,7 @@ from lintel.chat_api.chat_router import ChatRouterResult
 if TYPE_CHECKING:
     from fastapi import Request
 
+    from lintel.channel_connections_api.types import ChannelConnection
     from lintel.chat_api.store import ChatStore
 
 from lintel.api_support.event_dispatcher import dispatch_event
@@ -39,6 +40,71 @@ class ChatService:
     def __init__(self, request: Request, store: ChatStore) -> None:
         self._request = request
         self._store = store
+
+    # --- Connection-scoped routing helpers ---
+
+    async def _get_connection_for_conversation(
+        self,
+        conversation_id: str,
+    ) -> ChannelConnection | None:
+        """Look up the ChannelConnection for a conversation's connection_id."""
+        conv = await self._store.get(conversation_id)
+        if conv is None:
+            return None
+        connection_id = conv.get("connection_id", "")
+        if not connection_id:
+            return None
+        from lintel.channel_connections_api.routes import connection_store_provider
+
+        try:
+            conn_store = connection_store_provider.get()
+        except RuntimeError:
+            return None
+        return await conn_store.get(connection_id)
+
+    def check_workflow_allowed(
+        self,
+        connection: ChannelConnection | None,
+        workflow_type: str,
+    ) -> str | None:
+        """Check if a workflow type is allowed by the connection.
+
+        Returns an error message if the workflow is blocked, or None if allowed.
+        """
+        if connection is None:
+            return None
+        allowed = connection.allowed_workflows
+        if not allowed:
+            # Empty means all workflows are allowed
+            return None
+        if workflow_type not in allowed:
+            return (
+                f"This channel is not configured for {workflow_type} workflows. "
+                f"Allowed workflows: {', '.join(allowed)}"
+            )
+        return None
+
+    def check_project_allowed(
+        self,
+        connection: ChannelConnection | None,
+        project_id: str,
+    ) -> str | None:
+        """Check if a project is allowed by the connection.
+
+        Returns an error message if the project is blocked, or None if allowed.
+        """
+        if connection is None:
+            return None
+        allowed_projects = connection.project_ids
+        if not allowed_projects:
+            # Empty means all projects are allowed
+            return None
+        if project_id not in allowed_projects:
+            return (
+                f"This channel is not configured for project {project_id}. "
+                f"Allowed projects: {', '.join(allowed_projects)}"
+            )
+        return None
 
     async def resolve_model(
         self,
@@ -223,7 +289,11 @@ class ChatService:
         return "\n".join(parts)
 
     async def prompt_project_selection(self, conversation_id: str) -> str:
-        """Build a message prompting the user to select a project."""
+        """Build a message prompting the user to select a project.
+
+        If the conversation has a connection_id with project_ids set, only
+        show projects within that allowlist.
+        """
         request = self._request
         project_store = getattr(request.app.state, "project_store", None)
         if project_store is None:
@@ -232,6 +302,18 @@ class ChatService:
         projects = await project_store.list_all()
         if not projects:
             return "No projects found. Please create a project first at Settings > Projects."
+
+        # Scope to connection's allowed projects if set
+        connection = await self._get_connection_for_conversation(conversation_id)
+        if connection is not None:
+            allowed_projects = connection.project_ids
+            if allowed_projects:
+                projects = [p for p in projects if p.get("project_id") in allowed_projects]
+                if not projects:
+                    return (
+                        "No projects are configured for this channel connection. "
+                        "Please contact an administrator."
+                    )
 
         lines = ["Which project is this for?\n"]
         for i, p in enumerate(projects, 1):
@@ -393,6 +475,26 @@ class ChatService:
 
         # Resolve project and repo context
         project, repo_url, repo_branch = await self.resolve_project_context(conversation_id)
+
+        # Enforce connection-scoped project filtering
+        connection = await self._get_connection_for_conversation(conversation_id)
+        if project is not None:
+            project_id_check = project.get("project_id", "")
+            project_blocked = self.check_project_allowed(connection, project_id_check)
+            if project_blocked:
+                logger.info(
+                    "project_blocked_by_connection",
+                    project_id=project_id_check,
+                    conversation_id=conversation_id,
+                )
+                await store.add_message(
+                    conversation_id,
+                    user_id="system",
+                    display_name="Lintel",
+                    role="agent",
+                    content=project_blocked,
+                )
+                return
 
         # If no explicit repo, try auto-classifying from message
         if repo_url is None:
@@ -681,6 +783,24 @@ class ChatService:
             result = ChatRouterResult(action="chat_reply", reply="")  # type: ignore[assignment]
 
         if result.action == "start_workflow":
+            # Check connection-scoped workflow filtering
+            connection = await self._get_connection_for_conversation(conversation_id)
+            workflow_blocked = self.check_workflow_allowed(connection, result.workflow_type)
+            if workflow_blocked:
+                logger.info(
+                    "workflow_blocked_by_connection",
+                    workflow_type=result.workflow_type,
+                    conversation_id=conversation_id,
+                )
+                await self._store.add_message(
+                    conversation_id,
+                    user_id="system",
+                    display_name="Lintel",
+                    role="agent",
+                    content=workflow_blocked,
+                )
+                return None
+
             # Check if the workflow is enabled
             workflow_enabled = await self.is_workflow_enabled(result.workflow_type)
             if not workflow_enabled:

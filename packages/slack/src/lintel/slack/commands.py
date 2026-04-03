@@ -17,6 +17,7 @@ class ProcessIncomingMessage:
     sender_id: str
     sender_name: str
     idempotency_key: str = field(default_factory=lambda: str(uuid4()))
+    connection_id: str = ""
 
 
 @dataclass(frozen=True)

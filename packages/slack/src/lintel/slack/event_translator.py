@@ -11,6 +11,7 @@ from lintel.slack.commands import GrantApproval, ProcessIncomingMessage, RejectA
 
 def translate_message_event(
     event: dict[str, Any],
+    connection_id: str = "",
 ) -> ProcessIncomingMessage | None:
     """Translate a Slack message event to a ProcessIncomingMessage command."""
     if event.get("bot_id") or event.get("subtype"):
@@ -33,6 +34,7 @@ def translate_message_event(
         raw_text=event.get("text", ""),
         sender_id=event.get("user", ""),
         sender_name="",
+        connection_id=connection_id,
     )
 
 

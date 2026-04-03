@@ -26,3 +26,4 @@ class InboundMessage:
     raw_payload: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     workspace_id: str = ""
+    connection_id: str = ""

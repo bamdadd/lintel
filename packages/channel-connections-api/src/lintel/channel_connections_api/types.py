@@ -16,6 +16,8 @@ class ChannelConnection:
     channel_id: str
     workspace_id: str
     config: dict[str, Any] = field(default_factory=dict)
+    allowed_workflows: tuple[str, ...] = ()
+    project_ids: tuple[str, ...] = ()
     created_at: str = field(
         default_factory=lambda: datetime.now(UTC).isoformat(),
     )
