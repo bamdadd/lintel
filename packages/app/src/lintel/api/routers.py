@@ -37,6 +37,7 @@ from lintel.coding_rules_api.routes import router as coding_rules_router
 from lintel.compliance_api.routes import router as compliance_router
 from lintel.context_attachments_api.routes import router as context_attachments_router
 from lintel.credentials_api.routes import router as credentials_router
+from lintel.digest_api.routes import router as digest_router
 from lintel.drift_detection_api.routes import router as drift_detection_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
@@ -92,6 +93,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(workflow_definitions_router, prefix="/api/v1", tags=["workflow-definitions"])
     app.include_router(metrics.router, prefix="/api/v1", tags=["metrics"])
     app.include_router(credentials_router, prefix="/api/v1", tags=["credentials"])
+    app.include_router(digest_router, prefix="/api/v1", tags=["digests"])
     app.include_router(ai_providers_router, prefix="/api/v1", tags=["ai-providers"])
     app.include_router(projects_router, prefix="/api/v1", tags=["projects"])
     app.include_router(work_items_router, prefix="/api/v1", tags=["work-items"])

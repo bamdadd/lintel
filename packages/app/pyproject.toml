@@ -29,6 +29,7 @@ dependencies = [
     "lintel-environments-api",
     "lintel-variables-api",
     "lintel-credentials-api",
+    "lintel-digest-api",
     "lintel-drift-detection-api",
     "lintel-audit-api",
     "lintel-approval-requests-api",
@@ -111,6 +112,7 @@ lintel-notifications-api = { workspace = true }
 lintel-environments-api = { workspace = true }
 lintel-variables-api = { workspace = true }
 lintel-credentials-api = { workspace = true }
+lintel-digest-api = { workspace = true }
 lintel-drift-detection-api = { workspace = true }
 lintel-audit-api = { workspace = true }
 lintel-approval-requests-api = { workspace = true }

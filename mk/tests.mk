@@ -55,6 +55,9 @@ test-projections: ## Run projections package tests
 test-api-support: ## Run api-support package tests
 	uv run pytest packages/api-support/tests/ -v
 
+test-digest-api: ## Run digest-api package tests
+	uv run pytest packages/digest-api/tests/ -v
+
 test-users: ## Run users package tests
 	uv run pytest packages/users/tests/ -v
 

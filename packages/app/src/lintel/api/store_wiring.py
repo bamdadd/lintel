@@ -71,6 +71,8 @@ from lintel.context_attachments_api.routes import attachment_store_provider
 from lintel.context_attachments_api.store import InMemoryAttachmentStore
 from lintel.credentials_api.routes import credential_store_provider
 from lintel.credentials_api.store import InMemoryCredentialStore
+from lintel.digest_api.routes import digest_config_store_provider, digest_store_provider
+from lintel.digest_api.store import InMemoryDigestConfigStore, InMemoryDigestStore
 from lintel.drift_detection_api.routes import (
     drift_alert_store_provider,
     drift_rule_store_provider,
@@ -240,6 +242,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "trigger_store": InMemoryTriggerStore(),
         "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
+        "digest_store": InMemoryDigestStore(),
+        "digest_config_store": InMemoryDigestConfigStore(),
         "user_store": InMemoryUserStore(),
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),
@@ -626,6 +630,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
 
 def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: ANN401
     """Wire all StoreProvider instances with their backing stores."""
+    digest_store_provider.override(stores["digest_store"])
+    digest_config_store_provider.override(stores["digest_config_store"])
     user_store_provider.override(stores["user_store"])
     team_store_provider.override(stores["team_store"])
     policy_store_provider.override(stores["policy_store"])

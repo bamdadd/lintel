@@ -1228,6 +1228,21 @@ class SandboxSnapshotExpired(EventEnvelope):
     event_type: str = "SandboxSnapshotExpired"
 
 
+@dataclass(frozen=True)
+class DigestCreated(EventEnvelope):
+    event_type: str = "DigestCreated"
+
+
+@dataclass(frozen=True)
+class DigestConfigCreated(EventEnvelope):
+    event_type: str = "DigestConfigCreated"
+
+
+@dataclass(frozen=True)
+class DigestConfigUpdated(EventEnvelope):
+    event_type: str = "DigestConfigUpdated"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1438,4 +1453,7 @@ register_events(
     RuleViolationDetected,
     RuleViolationResolved,
     DeploymentReceived,
+    DigestCreated,
+    DigestConfigCreated,
+    DigestConfigUpdated,
 )
