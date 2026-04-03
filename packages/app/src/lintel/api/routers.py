@@ -69,6 +69,7 @@ from lintel.triggers_api.routes import router as triggers_router
 from lintel.trust_scores_api.routes import router as trust_scores_router
 from lintel.users.routes import router as users_router
 from lintel.variables_api.routes import router as variables_router
+from lintel.visual_verification_api.routes import router as visual_verification_router
 from lintel.work_items_api.routes import router as work_items_router
 from lintel.workflow_blueprints_api.routes import router as workflow_blueprints_router
 from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
@@ -159,5 +160,10 @@ def mount_routers(app: FastAPI) -> None:
         tags=["workflow-blueprints"],
     )
     app.include_router(release_notes_router, prefix="/api/v1", tags=["release-notes"])
+    app.include_router(
+        visual_verification_router,
+        prefix="/api/v1",
+        tags=["visual-verification"],
+    )
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
