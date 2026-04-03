@@ -100,6 +100,8 @@ from lintel.governance_api.routes import (
     governance_audit_store_provider,
     governance_policy_store_provider,
 )
+from lintel.improvement_api.routes import improvement_store_provider
+from lintel.improvement_api.store import InMemoryImprovementStore
 from lintel.integration_patterns_api.routes import integration_pattern_store_provider
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
 from lintel.mcp_servers_api.routes import (
@@ -296,6 +298,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "mutation_store": ComplianceStore("mutation_id"),
         "tournament_store": ComplianceStore("tournament_id"),
         "feedback_store": InMemoryFeedbackStore(),
+        "improvement_store": InMemoryImprovementStore(),
         "codebase_index_store": InMemoryCodebaseIndexStore(),
         "knowledge_entry_store": ComplianceStore("entry_id"),
         "knowledge_extraction_store": ComplianceStore("run_id"),
@@ -710,6 +713,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     mutation_store_provider.override(stores["mutation_store"])
     tournament_store_provider.override(stores["tournament_store"])
     feedback_store_provider.override(stores["feedback_store"])
+    improvement_store_provider.override(stores["improvement_store"])
     codebase_index_store_provider.override(stores["codebase_index_store"])
     integration_pattern_store_provider.override(stores["integration_patterns"])
     process_mining_store_provider.override(stores["process_mining"])
