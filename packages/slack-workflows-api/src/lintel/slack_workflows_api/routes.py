@@ -1,18 +1,21 @@
-"""Slack workflow invocation CRUD endpoints."""
+"""Slack workflow invocation CRUD and slash command endpoints."""
 
 from __future__ import annotations
 
 from typing import Annotated, Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from pydantic import BaseModel, Field
+import structlog
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.domain.events import SlackInvocationReceived
 from lintel.domain.types import SlackInvocation
 from lintel.slack_workflows_api.store import InMemorySlackInvocationStore  # noqa: TC001
+
+logger = structlog.get_logger()
 
 router = APIRouter()
 
@@ -83,3 +86,99 @@ async def get_invocation(
     if item is None:
         raise HTTPException(status_code=404, detail="Slack invocation not found")
     return item
+
+
+# --- Slash command endpoint ---
+
+
+@router.post("/slack/commands")
+async def handle_slash_command(
+    request: Request,
+    text: str = Form(default=""),
+    command: str = Form(default="/lintel"),
+    user_id: str = Form(default=""),
+    channel_id: str = Form(default=""),
+) -> dict[str, Any]:
+    """Handle incoming Slack slash commands (/lintel <subcommand>).
+
+    Slack sends slash commands as application/x-www-form-urlencoded.
+    Returns a JSON response with response_type and blocks.
+    """
+    from lintel.slack.block_kit import build_board_blocks
+    from lintel.slack.slash_commands import (
+        build_create_response,
+        build_error_response,
+        build_help_response,
+        build_status_response,
+        parse_slash_command,
+    )
+
+    cmd = parse_slash_command(text)
+    logger.info(
+        "slash_command_received",
+        subcommand=cmd.subcommand,
+        user_id=user_id,
+        channel_id=channel_id,
+    )
+
+    if cmd.subcommand == "help":
+        return {"response_type": "ephemeral", "blocks": build_help_response()}
+
+    if cmd.subcommand == "board":
+        work_item_store = getattr(request.app.state, "work_item_store", None)
+        items = await work_item_store.list_all() if work_item_store else []
+        return {"response_type": "ephemeral", "blocks": build_board_blocks(items)}
+
+    if cmd.subcommand == "status":
+        if not cmd.args:
+            return {
+                "response_type": "ephemeral",
+                "blocks": build_error_response("Usage: `/lintel status <WORK-ID>`"),
+            }
+        work_item_store = getattr(request.app.state, "work_item_store", None)
+        item = await work_item_store.get(cmd.args.lower()) if work_item_store else None
+        return {
+            "response_type": "ephemeral",
+            "blocks": build_status_response(item, cmd.args),
+        }
+
+    if cmd.subcommand == "create":
+        parts = cmd.args.split(None, 1)
+        valid_types = {"story", "bug", "task", "feature", "refactor"}
+        work_type = parts[0].lower() if parts and parts[0].lower() in valid_types else "task"
+        title = parts[1] if len(parts) > 1 and parts[0].lower() in valid_types else cmd.args
+        if not title.strip():
+            return {
+                "response_type": "ephemeral",
+                "blocks": build_error_response("Usage: `/lintel create [story|bug|task] <title>`"),
+            }
+        # Map 'story' to 'feature' for domain type
+        if work_type == "story":
+            work_type = "feature"
+        work_item_store = getattr(request.app.state, "work_item_store", None)
+        if work_item_store is None:
+            return {
+                "response_type": "ephemeral",
+                "blocks": build_error_response("Work item store not available."),
+            }
+        from lintel.domain.types import WorkItem
+
+        wi_id = str(uuid4())
+        wi = WorkItem(
+            work_item_id=wi_id,
+            title=title.strip(),
+            description="",
+            status="open",
+            work_type=work_type,
+            project_id="",
+        )
+        await work_item_store.add(wi)
+        return {
+            "response_type": "in_channel",
+            "blocks": build_create_response(title.strip(), work_type, wi_id),
+        }
+
+    return {
+        "response_type": "ephemeral",
+        "blocks": build_error_response(f"Unknown command `{cmd.subcommand}`. Try `/lintel help`."),
+    }
