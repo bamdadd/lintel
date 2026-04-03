@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from lintel.repos.types import CheckRunConclusion, InlineComment, PRFile, ReviewVerdict
 
 logger = structlog.get_logger()
 
@@ -287,3 +290,78 @@ class GitLabRepoProvider:
                 }
                 for mr in resp.json()
             ]
+
+    async def get_pr_files(self, repo_url: str, pr_number: int) -> list[PRFile]:
+        import httpx
+
+        from lintel.repos.types import PRFile
+
+        project = self._parse_project_path(repo_url)
+        url = f"{self._api_base}/projects/{project}/merge_requests/{pr_number}/changes"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=self._headers())
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+            return [
+                PRFile(
+                    filename=c["new_path"],
+                    status=(c.get("renamed_file", False) and "renamed")
+                    or ("added" if c.get("new_file") else "modified"),
+                    additions=0,
+                    deletions=0,
+                    patch=c.get("diff", ""),
+                )
+                for c in data.get("changes", [])
+            ]
+
+    async def create_review(
+        self,
+        repo_url: str,
+        pr_number: int,
+        body: str,
+        verdict: ReviewVerdict,
+        comments: list[InlineComment] | None = None,
+    ) -> str:
+        """Post a review as a MR note (GitLab has no formal review API)."""
+        await self.add_comment(repo_url, pr_number, body)
+        return ""
+
+    async def create_check_run(
+        self,
+        repo_url: str,
+        head_sha: str,
+        name: str,
+        status: str = "in_progress",
+        conclusion: CheckRunConclusion | None = None,
+        title: str = "",
+        summary: str = "",
+    ) -> str:
+        """GitLab uses pipeline statuses, not check runs. Stub for now."""
+        logger.info("gitlab_check_run_stub", name=name, head_sha=head_sha[:8])
+        return ""
+
+    async def update_check_run(
+        self,
+        repo_url: str,
+        check_run_id: str,
+        status: str = "completed",
+        conclusion: CheckRunConclusion | None = None,
+        title: str = "",
+        summary: str = "",
+    ) -> None:
+        """GitLab uses pipeline statuses, not check runs. Stub for now."""
+
+    async def get_pr_diff(self, repo_url: str, pr_number: int) -> str:
+        """Fetch the diff for a merge request."""
+        import httpx
+
+        project = self._parse_project_path(repo_url)
+        url = f"{self._api_base}/projects/{project}/merge_requests/{pr_number}/changes"
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=self._headers())
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+            diffs = [c.get("diff", "") for c in data.get("changes", [])]
+            return "\n".join(diffs)

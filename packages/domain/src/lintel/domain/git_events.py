@@ -11,10 +11,15 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+import structlog
+
 from lintel.contracts.events import EventEnvelope, register_events
 
 if TYPE_CHECKING:
     from lintel.contracts.protocols import CommandDispatcher
+    from lintel.domain.reviews.pr_review_service import PRReviewService
+
+logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
@@ -139,11 +144,27 @@ class GitEventWorkflowTriggered(EventEnvelope):
     event_type: str = "GitEventWorkflowTriggered"
 
 
+@dataclass(frozen=True)
+class PRAutoReviewStarted(EventEnvelope):
+    """Recorded when an automated PR review begins."""
+
+    event_type: str = "PRAutoReviewStarted"
+
+
+@dataclass(frozen=True)
+class PRAutoReviewCompleted(EventEnvelope):
+    """Recorded when an automated PR review finishes."""
+
+    event_type: str = "PRAutoReviewCompleted"
+
+
 register_events(
     GitCommitPushReceived,
     GitPullRequestReceived,
     GitPRReviewReceived,
     GitEventWorkflowTriggered,
+    PRAutoReviewStarted,
+    PRAutoReviewCompleted,
 )
 
 
@@ -165,10 +186,12 @@ class GitEventListener:
         dispatcher: CommandDispatcher,
         *,
         rules: dict[str, str] | None = None,
+        auto_review: PRReviewService | None = None,
     ) -> None:
         self._dispatcher = dispatcher
         # rule_key -> workflow_type, e.g. {"pr_opened": "code-review"}
         self._rules: dict[str, str] = rules or {}
+        self._auto_review = auto_review
 
     # -- public API --
 
@@ -191,6 +214,24 @@ class GitEventListener:
 
     async def on_pull_request(self, event: PullRequestEvent) -> str | None:
         """Handle an incoming pull request event."""
+        # Trigger auto-review on opened/synchronize if configured
+        if self._auto_review and event.action in (
+            GitEventAction.OPENED,
+            GitEventAction.SYNCHRONIZE,
+        ):
+            try:
+                await self._auto_review.review_pr(
+                    event.repo_url,
+                    event.pr_number,
+                )
+            except Exception:
+                logger.warning(
+                    "auto_review_failed",
+                    pr_number=event.pr_number,
+                    repo_url=event.repo_url,
+                    exc_info=True,
+                )
+
         rule_key = f"pr_{event.action.value}"
         workflow_type = self._rules.get(rule_key)
         if workflow_type is None:

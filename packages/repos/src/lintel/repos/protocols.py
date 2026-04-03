@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from lintel.repos.types import Repository
+    from lintel.repos.types import (
+        CheckRunConclusion,
+        InlineComment,
+        PRFile,
+        Repository,
+        ReviewVerdict,
+    )
 
 
 class RepositoryStore(Protocol):
@@ -98,3 +104,47 @@ class RepoProvider(Protocol):
         state: str = "open",
         limit: int = 20,
     ) -> list[dict[str, Any]]: ...
+
+    async def get_pr_files(
+        self,
+        repo_url: str,
+        pr_number: int,
+    ) -> list[PRFile]: ...
+
+    async def create_review(
+        self,
+        repo_url: str,
+        pr_number: int,
+        body: str,
+        verdict: ReviewVerdict,
+        comments: list[InlineComment] | None = None,
+    ) -> str: ...
+
+    async def create_check_run(
+        self,
+        repo_url: str,
+        head_sha: str,
+        name: str,
+        *,
+        status: str = "in_progress",
+        conclusion: CheckRunConclusion | None = None,
+        title: str = "",
+        summary: str = "",
+    ) -> str: ...
+
+    async def update_check_run(
+        self,
+        repo_url: str,
+        check_run_id: str,
+        *,
+        status: str = "completed",
+        conclusion: CheckRunConclusion | None = None,
+        title: str = "",
+        summary: str = "",
+    ) -> None: ...
+
+    async def get_pr_diff(
+        self,
+        repo_url: str,
+        pr_number: int,
+    ) -> str: ...

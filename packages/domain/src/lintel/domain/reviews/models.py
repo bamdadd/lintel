@@ -105,3 +105,27 @@ class ReviewPolicy:
         """Return True if the severity warrants auto-fix."""
         severity_order = list(FindingSeverity)
         return severity_order.index(severity) >= severity_order.index(self.auto_fix_min_severity)
+
+
+class PRReviewVerdict(StrEnum):
+    """Overall verdict of an automated PR review."""
+
+    PASS = "pass"
+    WARN = "warn"
+    FAIL = "fail"
+
+
+@dataclass(frozen=True)
+class PRReviewResult:
+    """Result of an automated pull request review."""
+
+    review_id: str
+    repo_url: str
+    pr_number: int
+    verdict: PRReviewVerdict
+    overall_score: float
+    total_findings: int
+    critical_count: int
+    high_count: int
+    file_reviews: tuple[FileReview, ...]
+    summary: str = ""
