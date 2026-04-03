@@ -1,4 +1,4 @@
-"""Audit entry endpoints (append-only)."""
+"""Audit entry endpoints (append-only with tamper-proof hash chain)."""
 
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from lintel.api_support.provider import StoreProvider
+from lintel.audit_api.hash_chain import HashChainAuditStore
 from lintel.audit_api.store import AuditEntryStore
 from lintel.domain.types import AuditEntry
 
@@ -81,6 +82,50 @@ async def list_audit_entries(
         limit=limit,
         offset=offset,
     )
+
+
+class VerifyResponse(BaseModel):
+    valid: bool
+    entries_checked: int
+    broken_at: str | None = None
+
+
+@router.get("/audit/verify")
+async def verify_audit_chain(
+    store: AuditEntryStore = Depends(audit_entry_store_provider),  # noqa: B008
+) -> VerifyResponse:
+    if not isinstance(store, HashChainAuditStore):
+        raise HTTPException(
+            status_code=501,
+            detail="Hash chain verification requires HashChainAuditStore",
+        )
+    result = await store.verify_chain()
+    return VerifyResponse(
+        valid=result.valid,
+        entries_checked=result.entries_checked,
+        broken_at=result.broken_at,
+    )
+
+
+class ExportResponse(BaseModel):
+    items: list[dict[str, Any]]
+    total: int
+
+
+@router.get("/audit/export")
+async def export_audit_entries(
+    store: AuditEntryStore = Depends(audit_entry_store_provider),  # noqa: B008
+    from_ts: str | None = None,
+    to_ts: str | None = None,
+) -> ExportResponse:
+    if not isinstance(store, HashChainAuditStore):
+        raise HTTPException(
+            status_code=501,
+            detail="Export requires HashChainAuditStore",
+        )
+    entries = await store.export_entries(from_ts=from_ts, to_ts=to_ts)
+    items = [asdict(e) for e in entries]
+    return ExportResponse(items=items, total=len(items))
 
 
 @router.get("/audit/{entry_id}")

@@ -1,11 +1,12 @@
 # lintel-audit-api
 
-Audit entry CRUD REST API routes and in-memory store.
+Audit entry CRUD REST API routes with tamper-proof hash chain.
 
 ## Structure
 
 - `src/lintel/audit_api/store.py` — In-memory audit entry store implementation
-- `src/lintel/audit_api/routes.py` — FastAPI router + request/response models
+- `src/lintel/audit_api/hash_chain.py` — SHA-256 hash chain store with verification and export
+- `src/lintel/audit_api/routes.py` — FastAPI router + verify/export endpoints
 
 ## Testing
 
