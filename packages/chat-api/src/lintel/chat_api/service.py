@@ -9,10 +9,11 @@ from uuid import uuid4
 
 import structlog
 
+from lintel.chat_api.chat_router import ChatRouterResult
+
 if TYPE_CHECKING:
     from fastapi import Request
 
-    from lintel.chat_api.chat_router import ChatRouterResult
     from lintel.chat_api.store import ChatStore
 
 from lintel.api_support.event_dispatcher import dispatch_event
@@ -669,6 +670,15 @@ class ChatService:
                     content=reply,
                 )
             return None
+
+        if result.action == "start_workflow" and len(message.split()) < 4:
+            # Short messages should never trigger a full workflow pipeline
+            logger.info(
+                "short_message_override_to_chat",
+                message=message,
+                workflow_type=result.workflow_type,
+            )
+            result = ChatRouterResult(action="chat_reply", reply="")  # type: ignore[assignment]
 
         if result.action == "start_workflow":
             # Check if the workflow is enabled
