@@ -1305,6 +1305,26 @@ class ScheduledTaskRemoved(EventEnvelope):
     event_type: str = "ScheduledTaskRemoved"
 
 
+@dataclass(frozen=True)
+class CveAdvisoryCreated(EventEnvelope):
+    event_type: str = "CveAdvisoryCreated"
+
+
+@dataclass(frozen=True)
+class CveAdvisoryRemoved(EventEnvelope):
+    event_type: str = "CveAdvisoryRemoved"
+
+
+@dataclass(frozen=True)
+class CveRemediationStarted(EventEnvelope):
+    event_type: str = "CveRemediationStarted"
+
+
+@dataclass(frozen=True)
+class CveRemediationCompleted(EventEnvelope):
+    event_type: str = "CveRemediationCompleted"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1528,4 +1548,8 @@ register_events(
     ScheduledTaskCreated,
     ScheduledTaskUpdated,
     ScheduledTaskRemoved,
+    CveAdvisoryCreated,
+    CveAdvisoryRemoved,
+    CveRemediationStarted,
+    CveRemediationCompleted,
 )
