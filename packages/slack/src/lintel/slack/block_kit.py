@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Any
 
 
@@ -141,5 +142,96 @@ def build_stage_blocks(
             ],
         }
     )
+
+    return blocks
+
+
+# --- Board view ---
+
+_COLUMN_ORDER: list[tuple[str, str, set[str]]] = [
+    ("Open", ":large_blue_circle:", {"open"}),
+    ("In Progress", ":hourglass_flowing_sand:", {"in_progress"}),
+    ("In Review", ":eyes:", {"in_review", "approved"}),
+    ("Done", ":white_check_mark:", {"merged", "closed"}),
+]
+
+_TYPE_TAG: dict[str, str] = {
+    "bug": ":bug:",
+    "feature": ":sparkles:",
+    "refactor": ":recycle:",
+    "task": ":clipboard:",
+}
+
+
+def build_board_blocks(
+    work_items: list[dict[str, Any]],
+    *,
+    max_per_column: int = 5,
+) -> list[dict[str, Any]]:
+    """Build Block Kit blocks for a kanban board view of work items."""
+    if not work_items:
+        return [
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": "The board is empty — no work items yet."},
+            }
+        ]
+
+    by_column: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in work_items:
+        status = item.get("status", "open")
+        for col_name, _emoji, statuses in _COLUMN_ORDER:
+            if status in statuses:
+                by_column[col_name].append(item)
+                break
+
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "header",
+            "text": {"type": "plain_text", "text": "Board"},
+        },
+    ]
+
+    for col_name, col_emoji, _statuses in _COLUMN_ORDER:
+        items = by_column.get(col_name)
+        if not items:
+            continue
+
+        blocks.append({"type": "divider"})
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"{col_emoji} *{col_name}* ({len(items)})",
+                },
+            }
+        )
+
+        for item in items[:max_per_column]:
+            title = item.get("title", "Untitled")
+            wtype = item.get("work_type", "task")
+            tag = _TYPE_TAG.get(wtype, ":clipboard:")
+            wid = item.get("work_item_id", "")[:8]
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"{tag} `{wid}` {title}",
+                    },
+                }
+            )
+
+        overflow = len(items) - max_per_column
+        if overflow > 0:
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [
+                        {"type": "mrkdwn", "text": f"+{overflow} more"},
+                    ],
+                }
+            )
 
     return blocks
