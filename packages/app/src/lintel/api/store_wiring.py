@@ -47,6 +47,7 @@ from lintel.automations_api.routes import InMemoryAutomationStore, automation_st
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
 from lintel.chat_api.routes import ChatStore, chat_store_provider
+from lintel.chat_api.streaming import chat_stream_store_provider
 from lintel.codebase_index_api.routes import index_store_provider as codebase_index_store_provider
 from lintel.codebase_index_api.store import InMemoryCodebaseIndexStore
 from lintel.coding_rules_api.routes import coding_rule_store_provider, violation_store_provider
@@ -658,6 +659,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     repo_provider_provider.override(repo_provider)
     automation_store_provider.override(stores["automation_store"])
     chat_store_provider.override(stores["chat_store"])
+    chat_stream_store_provider.override(stores["chat_store"])
     pipeline_store_provider.override(stores["pipeline_store"])
     regulation_store_provider.override(stores["regulation_store"])
     compliance_policy_store_provider.override(stores["compliance_policy_store"])

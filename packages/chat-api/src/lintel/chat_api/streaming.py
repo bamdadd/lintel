@@ -13,8 +13,8 @@ import structlog
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from lintel.chat_api.models import SendMessageRequest
-
+from lintel.api_support.provider import StoreProvider
+from lintel.chat_api.models import SendMessageRequest  # noqa: TC001 — runtime for FastAPI
 from lintel.chat_api.service import ChatService
 from lintel.chat_api.store import ChatStore
 
@@ -22,9 +22,11 @@ logger = structlog.get_logger()
 
 streaming_router = APIRouter()
 
+chat_stream_store_provider: StoreProvider[ChatStore] = StoreProvider()
 
-def _get_chat_store(request: Request) -> ChatStore:
-    return request.app.state.chat_store  # type: ignore[no-any-return]
+
+def _get_chat_store() -> ChatStore:
+    return chat_stream_store_provider.get()
 
 
 _ChatStoreDep = Annotated[ChatStore, Depends(_get_chat_store)]

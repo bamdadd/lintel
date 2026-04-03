@@ -30,6 +30,7 @@ from lintel.auth_api.routes import router as auth_router
 from lintel.automations_api.routes import router as automations_router
 from lintel.boards.routes import router as boards_router
 from lintel.chat_api.routes import router as chat_router_routes
+from lintel.chat_api.streaming import streaming_router as chat_streaming_router
 from lintel.codebase_index_api.routes import router as codebase_index_router
 from lintel.coding_rules_api.routes import router as coding_rules_router
 from lintel.compliance_api.routes import router as compliance_router
@@ -106,6 +107,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(artifacts_router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approval_requests_router, prefix="/api/v1", tags=["approval-requests"])
     app.include_router(chat_router_routes, prefix="/api/v1", tags=["chat"])
+    app.include_router(chat_streaming_router, prefix="/api/v1", tags=["chat"])
     app.include_router(models_router, prefix="/api/v1", tags=["models"])
     app.include_router(mcp_servers_router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
