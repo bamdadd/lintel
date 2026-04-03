@@ -101,11 +101,10 @@ class TestLLMResponseParsing:
         assert result.workflow_type == "bug_fix"
         assert "fix" in result.reply.lower()
 
-    def test_unknown_workflow_defaults_to_feature(self) -> None:
+    def test_unknown_workflow_defaults_to_chat_reply(self) -> None:
         content = "ACTION: start_workflow\nWORKFLOW: unknown_type\nREPLY: On it."
         result = self.router._parse_llm_response(content)
-        assert result.action == "start_workflow"
-        assert result.workflow_type == "feature_to_pr"
+        assert result.action == "chat_reply"
 
     def test_missing_action_defaults_to_chat(self) -> None:
         content = "I'm not sure what to do with this."
