@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 MAX_TDD_FIX_ATTEMPTS = 2
+MAX_TDD_IMPL_RETRIES = 2
 
 TDD_SYSTEM_PROMPT = """\
 You are a senior software engineer implementing a feature using strict TDD \
@@ -165,8 +166,6 @@ async def implement_tdd(
     )
     await tracker.append_log("implement", f"Skill: {skill_id} (TDD)")
 
-    await tracker.append_log("implement", "Starting TDD implementation...")
-
     async def _on_activity(activity: str) -> None:
         if activity:
             await tracker.append_log("implement", activity)
@@ -181,115 +180,153 @@ async def implement_tdd(
     # Bedrock needs more iterations — it explores before writing
     tdd_max_iter = 50 if not is_native_claude_code else 20
 
-    try:
-        result = await agent_runtime.execute_step(
-            thread_ref=thread_ref,
-            agent_role=AgentRole.CODER,
-            step_name="implement_generate",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            tools=tdd_tools,
-            max_iterations=tdd_max_iter,
-            sandbox_manager=sandbox_manager,
-            sandbox_id=sandbox_id,
-            on_activity=_on_activity,
-            run_id=state.get("run_id", ""),
-        )
-        usage = StageTracker.extract_token_usage(result)
-        content = result.get("content", "")
-        await tracker.append_log("implement", f"TDD session complete ({len(content):,} chars)")
-    except Exception:
-        logger.exception("implement_tdd_failed")
-        await tracker.append_log("implement", "TDD session failed")
-        return "Implementation failed.", False, []
-
-    # Detect "no changes" — LLM concluded everything was already done
-    from lintel.sandbox.types import SandboxJob
-
-    # Check for uncommitted changes (sandbox_write_file doesn't git-add) AND committed changes.
-    # git status --porcelain shows unstaged/staged files; git diff shows committed-but-not-pushed.
-    diff_check = await sandbox_manager.execute(
-        sandbox_id,
-        SandboxJob(
-            command=(
-                "{ git status --porcelain;"
-                " git diff --name-only origin/main..HEAD 2>/dev/null;"
-                " git diff --name-only main..HEAD 2>/dev/null;"
-                " } | sort -u"
-            ),
-            workdir=workspace_path,
-            timeout_seconds=10,
-        ),
-    )
-    changed_files = [f for f in diff_check.stdout.strip().split("\n") if f.strip()]
-    if not changed_files:
-        await tracker.append_log("implement", "No files changed — skipping tests")
-        return "No changes made.", True, [usage]
-
-    await tracker.append_log("implement", f"{len(changed_files)} file(s) changed")
-
-    # Auto-format before testing — agent-generated code may have lint issues
-    await auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
-
-    # Test/fix loop — give the LLM a chance to fix failures
+    # Outer retry loop: re-run the full TDD session with error feedback
     test_passed = False
     test_output = ""
-    for attempt in range(MAX_TDD_FIX_ATTEMPTS + 1):
-        test_output, test_exit = await run_tests(
-            config, state, sandbox_manager, sandbox_id, workspace_path
+    usage: dict[str, Any] = {"input_tokens": 0, "output_tokens": 0}
+    effective_prompt = user_prompt
+
+    for impl_retry in range(MAX_TDD_IMPL_RETRIES + 1):
+        if impl_retry > 0:
+            retry_msg = (
+                f"Implementation retry {impl_retry}/{MAX_TDD_IMPL_RETRIES}"
+                " — restarting TDD session with error feedback"
+            )
+            await tracker.append_log("implement", retry_msg)
+            logger.info("implement_tdd_retry", retry=impl_retry, max=MAX_TDD_IMPL_RETRIES)
+            effective_prompt = (
+                f"{user_prompt}\n\n"
+                f"## Previous Attempt Failed\n"
+                f"The previous implementation attempt failed tests. "
+                f"Error output:\n```\n{test_output}\n```\n"
+                f"Avoid the same mistakes and fix the issues."
+            )
+
+        await tracker.append_log("implement", "Starting TDD implementation...")
+
+        try:
+            result = await agent_runtime.execute_step(
+                thread_ref=thread_ref,
+                agent_role=AgentRole.CODER,
+                step_name="implement_generate",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": effective_prompt},
+                ],
+                tools=tdd_tools,
+                max_iterations=tdd_max_iter,
+                sandbox_manager=sandbox_manager,
+                sandbox_id=sandbox_id,
+                on_activity=_on_activity,
+                run_id=state.get("run_id", ""),
+            )
+            step_usage = StageTracker.extract_token_usage(result)
+            usage["input_tokens"] += step_usage.get("input_tokens", 0)
+            usage["output_tokens"] += step_usage.get("output_tokens", 0)
+            content = result.get("content", "")
+            await tracker.append_log("implement", f"TDD session complete ({len(content):,} chars)")
+        except Exception:
+            logger.exception("implement_tdd_failed")
+            await tracker.append_log("implement", "TDD session failed")
+            if impl_retry < MAX_TDD_IMPL_RETRIES:
+                test_output = "TDD session raised an exception"
+                continue
+            return "Implementation failed.", False, []
+
+        # Detect "no changes" — LLM concluded everything was already done
+        from lintel.sandbox.types import SandboxJob
+
+        diff_check = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "{ git status --porcelain;"
+                    " git diff --name-only origin/main..HEAD 2>/dev/null;"
+                    " git diff --name-only main..HEAD 2>/dev/null;"
+                    " } | sort -u"
+                ),
+                workdir=workspace_path,
+                timeout_seconds=10,
+            ),
         )
-        if test_exit == 0:
-            test_passed = True
-            await tracker.append_log("implement", "Tests: PASSED")
+        changed_files = [f for f in diff_check.stdout.strip().split("\n") if f.strip()]
+        if not changed_files:
+            await tracker.append_log("implement", "No files changed — skipping tests")
+            return "No changes made.", True, [usage]
+
+        await tracker.append_log("implement", f"{len(changed_files)} file(s) changed")
+
+        # Auto-format before testing — agent-generated code may have lint issues
+        await auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
+
+        # Test/fix loop — give the LLM a chance to fix failures
+        test_passed = False
+        test_output = ""
+        for attempt in range(MAX_TDD_FIX_ATTEMPTS + 1):
+            test_output, test_exit = await run_tests(
+                config, state, sandbox_manager, sandbox_id, workspace_path
+            )
+            if test_exit == 0:
+                test_passed = True
+                await tracker.append_log("implement", "Tests: PASSED")
+                break
+
+            if attempt < MAX_TDD_FIX_ATTEMPTS:
+                msg = f"Tests failed (attempt {attempt + 1}/{MAX_TDD_FIX_ATTEMPTS}) — fixing..."
+                await tracker.append_log("implement", msg)
+                await log_test_output(test_output, config, state)
+                try:
+                    fix_tools = (
+                        None
+                        if is_native_claude_code
+                        else sandbox_tool_schemas(
+                            exclude={"sandbox_list_files", "sandbox_execute_command"},
+                        )
+                    )
+                    fix_result = await agent_runtime.execute_step(
+                        thread_ref=thread_ref,
+                        agent_role=AgentRole.CODER,
+                        step_name="implement_fix",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {
+                                "role": "user",
+                                "content": (
+                                    f"## Test Failures\n```\n{test_output}\n```\n\n"
+                                    "Fix ONLY the failing tests."
+                                    " Do not change anything else."
+                                ),
+                            },
+                        ],
+                        tools=fix_tools,
+                        sandbox_manager=sandbox_manager,
+                        sandbox_id=sandbox_id,
+                        on_activity=_on_activity,
+                        run_id=state.get("run_id", ""),
+                    )
+                    fix_usage = StageTracker.extract_token_usage(fix_result)
+                    usage["input_tokens"] += fix_usage.get("input_tokens", 0)
+                    usage["output_tokens"] += fix_usage.get("output_tokens", 0)
+                except Exception:
+                    logger.exception("implement_tdd_fix_failed")
+                    await tracker.append_log("implement", "Fix attempt failed")
+                    break
+                # Re-format after fix
+                await auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
+
+        if test_passed:
             break
 
-        if attempt < MAX_TDD_FIX_ATTEMPTS:
-            msg = f"Tests failed (attempt {attempt + 1}/{MAX_TDD_FIX_ATTEMPTS}) — fixing..."
-            await tracker.append_log("implement", msg)
+        # Log failure before potential retry
+        if impl_retry < MAX_TDD_IMPL_RETRIES:
+            await tracker.append_log(
+                "implement",
+                "Fix loop exhausted — will retry full TDD session",
+            )
             await log_test_output(test_output, config, state)
-            try:
-                fix_tools = (
-                    None
-                    if is_native_claude_code
-                    else sandbox_tool_schemas(
-                        exclude={"sandbox_list_files", "sandbox_execute_command"},
-                    )
-                )
-                fix_result = await agent_runtime.execute_step(
-                    thread_ref=thread_ref,
-                    agent_role=AgentRole.CODER,
-                    step_name="implement_fix",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {
-                            "role": "user",
-                            "content": (
-                                f"## Test Failures\n```\n{test_output}\n```\n\n"
-                                "Fix ONLY the failing tests. Do not change anything else."
-                            ),
-                        },
-                    ],
-                    tools=fix_tools,
-                    sandbox_manager=sandbox_manager,
-                    sandbox_id=sandbox_id,
-                    on_activity=_on_activity,
-                    run_id=state.get("run_id", ""),
-                )
-                fix_usage = StageTracker.extract_token_usage(fix_result)
-                usage["input_tokens"] += fix_usage.get("input_tokens", 0)
-                usage["output_tokens"] += fix_usage.get("output_tokens", 0)
-            except Exception:
-                logger.exception("implement_tdd_fix_failed")
-                await tracker.append_log("implement", "Fix attempt failed")
-                break
-            # Re-format after fix
-            await auto_format(sandbox_manager, sandbox_id, workspace_path, tracker)
-
-    if not test_passed:
-        await tracker.append_log("implement", "Tests still failing after fix attempts")
-        await log_test_output(test_output, config, state)
+        else:
+            await tracker.append_log("implement", "Tests still failing after all retry attempts")
+            await log_test_output(test_output, config, state)
 
     # Verify lint
     lint_output, lint_exit = await run_lint(
