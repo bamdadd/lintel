@@ -44,9 +44,11 @@ async def test_acquire_succeeds_first_attempt() -> None:
 
 async def test_acquire_skips_allocated_sandboxes() -> None:
     """Ignores sandboxes already allocated to a pipeline."""
-    store = FakeSandboxStore([
-        [{"sandbox_id": "sbx-busy", "pipeline_id": "run-1"}, {"sandbox_id": "sbx-free"}],
-    ])
+    store = FakeSandboxStore(
+        [
+            [{"sandbox_id": "sbx-busy", "pipeline_id": "run-1"}, {"sandbox_id": "sbx-free"}],
+        ]
+    )
     manager = AsyncMock()
     manager.get_status = AsyncMock(return_value="running")
 
@@ -56,10 +58,12 @@ async def test_acquire_skips_allocated_sandboxes() -> None:
 
 async def test_acquire_retries_on_empty_pool() -> None:
     """Retries with backoff when pool is initially exhausted, succeeds on retry."""
-    store = FakeSandboxStore([
-        [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],  # attempt 1: all busy
-        [{"sandbox_id": "sbx-1"}],  # attempt 2: now free
-    ])
+    store = FakeSandboxStore(
+        [
+            [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],  # attempt 1: all busy
+            [{"sandbox_id": "sbx-1"}],  # attempt 2: now free
+        ]
+    )
     manager = AsyncMock()
     manager.get_status = AsyncMock(return_value="running")
 
@@ -69,10 +73,12 @@ async def test_acquire_retries_on_empty_pool() -> None:
 
 async def test_acquire_retries_on_stale_sandbox() -> None:
     """Retries when the only free sandbox is stale (get_status raises)."""
-    store = FakeSandboxStore([
-        [{"sandbox_id": "sbx-stale"}],  # attempt 1: stale
-        [{"sandbox_id": "sbx-good"}],   # attempt 2: healthy
-    ])
+    store = FakeSandboxStore(
+        [
+            [{"sandbox_id": "sbx-stale"}],  # attempt 1: stale
+            [{"sandbox_id": "sbx-good"}],  # attempt 2: healthy
+        ]
+    )
     manager = AsyncMock()
     manager.get_status = AsyncMock(side_effect=[RuntimeError("container gone"), "running"])
 
@@ -82,12 +88,14 @@ async def test_acquire_retries_on_stale_sandbox() -> None:
 
 async def test_acquire_raises_after_all_retries_exhausted() -> None:
     """Raises NoSandboxAvailableError after all attempts fail."""
-    store = FakeSandboxStore([
-        [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
-        [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
-        [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
-        [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
-    ])
+    store = FakeSandboxStore(
+        [
+            [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
+            [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
+            [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
+            [{"sandbox_id": "sbx-1", "pipeline_id": "run-1"}],
+        ]
+    )
     manager = AsyncMock()
 
     with pytest.raises(NoSandboxAvailableError):
@@ -96,10 +104,12 @@ async def test_acquire_raises_after_all_retries_exhausted() -> None:
 
 async def test_acquire_calls_log_fn_on_retry() -> None:
     """Calls log_fn with a message on each retry."""
-    store = FakeSandboxStore([
-        [],  # attempt 1: empty
-        [{"sandbox_id": "sbx-1"}],  # attempt 2: available
-    ])
+    store = FakeSandboxStore(
+        [
+            [],  # attempt 1: empty
+            [{"sandbox_id": "sbx-1"}],  # attempt 2: available
+        ]
+    )
     manager = AsyncMock()
     manager.get_status = AsyncMock(return_value="running")
 

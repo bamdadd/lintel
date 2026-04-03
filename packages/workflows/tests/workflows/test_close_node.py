@@ -313,9 +313,15 @@ async def test_create_pr_with_retry_succeeds_first_attempt() -> None:
     tracker = AsyncMock()
 
     result = await _create_pr_with_retry(
-        provider, tracker, "pull request",
-        "https://github.com/test/repo", "feat/x", "main",
-        "add feature", "body", False,
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
     )
 
     assert result == "https://github.com/test/repo/pull/1"
@@ -337,9 +343,15 @@ async def test_create_pr_with_retry_succeeds_on_second_attempt(
     tracker = AsyncMock()
 
     result = await _create_pr_with_retry(
-        provider, tracker, "pull request",
-        "https://github.com/test/repo", "feat/x", "main",
-        "add feature", "body", False,
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
     )
 
     assert result == "https://github.com/test/repo/pull/2"
@@ -363,9 +375,15 @@ async def test_create_pr_with_retry_succeeds_on_third_attempt(
     tracker = AsyncMock()
 
     result = await _create_pr_with_retry(
-        provider, tracker, "pull request",
-        "https://github.com/test/repo", "feat/x", "main",
-        "add feature", "body", False,
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
     )
 
     assert result == "https://github.com/test/repo/pull/3"
@@ -385,9 +403,15 @@ async def test_create_pr_with_retry_exhausts_all_attempts(
     tracker = AsyncMock()
 
     result = await _create_pr_with_retry(
-        provider, tracker, "pull request",
-        "https://github.com/test/repo", "feat/x", "main",
-        "add feature", "body", False,
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
     )
 
     assert result == ""
