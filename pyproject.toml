@@ -207,4 +207,6 @@ dev = [
     "mypy>=1.13",
     "pre-commit>=4.0",
     "qdrant-client>=1.9",
+    "mkdocs-material>=9.7.6",
+    "pymdown-extensions>=10.21.2",
 ]
