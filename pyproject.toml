@@ -86,6 +86,7 @@ testpaths = [
     "packages/knowledge-api/tests",
     "packages/tech-spec-api/tests",
     "packages/sandbox-credentials-api/tests",
+    "packages/improvement-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -161,6 +162,7 @@ mypy_path = [
     "packages/knowledge-api/src",
     "packages/tech-spec-api/src",
     "packages/sandbox-credentials-api/src",
+    "packages/improvement-api/src",
 ]
 
 [[tool.mypy.overrides]]
