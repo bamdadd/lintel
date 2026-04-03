@@ -1,4 +1,4 @@
-.PHONY: help install all dev
+.PHONY: help install all dev docs
 
 include mk/tests.mk
 include mk/quality.mk
@@ -16,3 +16,7 @@ all: lint typecheck test-unit test-postgres test-integration ui-build ## Run lin
 
 dev: ## Launch tmux dev environment (3 claude prompts + API/UI/DB)
 	./scripts/dev-tmux.sh
+
+docs: ## Build and serve documentation site (MkDocs)
+	python scripts/generate_package_catalogue.py
+	uv run mkdocs serve
