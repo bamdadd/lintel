@@ -72,7 +72,7 @@ async def notify_interrupt(
             continue
 
         try:
-            adapter = channel_registry.get(channel_type)
+            adapter = channel_registry.get_by_type(channel_type)
             await _send_for_channel(
                 adapter,
                 channel_type,

@@ -71,7 +71,7 @@ async def send_interrupt_notification(
         )
         return
 
-    adapter = channel_registry.get(channel_type)
+    adapter = channel_registry.get_by_type(channel_type)
 
     # Build message
     deadline_str = request.deadline.isoformat() if request.deadline else "none"

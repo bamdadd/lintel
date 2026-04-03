@@ -82,7 +82,7 @@ async def restore_telegram_from_store(app: object) -> None:
     if channel_registry is not None:
         from lintel.contracts.channel_type import ChannelType
 
-        channel_registry.register(ChannelType.TELEGRAM, adapter)
+        channel_registry.register(TELEGRAM_CREDENTIAL_ID, ChannelType.TELEGRAM, adapter)
 
     logger.info("telegram.restored_from_store", bot_username=adapter.bot_username)
 
@@ -291,7 +291,7 @@ async def connect_telegram(
     # Register with channel registry if available
     channel_registry = getattr(request.app.state, "channel_registry", None)
     if channel_registry is not None:
-        channel_registry.register(ChannelType.TELEGRAM, adapter)
+        channel_registry.register(TELEGRAM_CREDENTIAL_ID, ChannelType.TELEGRAM, adapter)
 
     bot_username = bot_info.get("username", "")
     logger.info("telegram.connected", bot_username=bot_username)
@@ -355,9 +355,6 @@ async def disconnect_telegram(request: Request) -> None:
     # Deregister from channel registry
     channel_registry = getattr(request.app.state, "channel_registry", None)
     if channel_registry is not None:
-        from lintel.contracts.channel_type import ChannelType
-
-        if channel_registry.is_registered(ChannelType.TELEGRAM):
-            pass  # Registry doesn't support unregister, just leave it
+        channel_registry.unregister(TELEGRAM_CREDENTIAL_ID)
 
     logger.info("telegram.disconnected")
