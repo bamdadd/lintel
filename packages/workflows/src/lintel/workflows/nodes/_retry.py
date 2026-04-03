@@ -34,6 +34,9 @@ _TRANSIENT_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"ECONNREFUSED|ECONNRESET|ETIMEDOUT", re.IGNORECASE),
     re.compile(r"server\s*(error|unavailable)", re.IGNORECASE),
     re.compile(r"retry.?after", re.IGNORECASE),
+    re.compile(r"token.*expired", re.IGNORECASE),
+    re.compile(r"refresh.*failed", re.IGNORECASE),
+    re.compile(r"APIConnectionError", re.IGNORECASE),
 )
 
 _RESOURCE_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -44,6 +47,7 @@ _RESOURCE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"sandbox.*failed", re.IGNORECASE),
     re.compile(r"container.*exited", re.IGNORECASE),
     re.compile(r"memory\s*limit", re.IGNORECASE),
+    re.compile(r"No sandbox available", re.IGNORECASE),
 )
 
 _DETERMINISTIC_PATTERNS: tuple[re.Pattern[str], ...] = (

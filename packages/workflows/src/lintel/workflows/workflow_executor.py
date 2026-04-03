@@ -188,11 +188,64 @@ class WorkflowExecutor:
         finally:
             self._semaphore.release()
 
+    async def _pre_flight_check(self, command: StartWorkflow) -> list[str]:
+        """Validate preconditions before starting workflow execution.
+
+        Returns list of blocking errors (empty = good to go).
+        """
+        errors: list[str] = []
+        workflow_type = command.workflow_type or ""
+        repo_url = command.repo_url or ""
+
+        code_workflows = {
+            "feature",
+            "bug_fix",
+            "code_review",
+            "refactor",
+            "security_audit",
+            "incident_response",
+            "release",
+        }
+        if workflow_type in code_workflows and not repo_url:
+            errors.append(
+                f"No repository URL configured for workflow '{workflow_type}'. "
+                "Link a repository to the project before dispatching."
+            )
+
+        return errors
+
     async def _execute_inner(self, command: StartWorkflow, run_id: str) -> str:
         """Inner execution logic, called while holding the semaphore."""
         from lintel.workflows.nodes._runtime_registry import register as _register_runtime
 
         stream_id = f"run:{run_id}"
+
+        # Pre-flight validation — catch misconfigurations before starting stages
+        preflight_errors = await self._pre_flight_check(command)
+        if preflight_errors:
+            error_msg = "; ".join(preflight_errors)
+            logger.warning("pre_flight_check_failed", run_id=run_id, errors=preflight_errors)
+            failed_event = PipelineRunFailed(
+                event_type="PipelineRunFailed",
+                payload={"run_id": run_id, "error": error_msg},
+            )
+            await self._event_store.append(stream_id=stream_id, events=[failed_event])
+            await self._project_events([failed_event])
+            await _update_pipeline_status(self._app_state, run_id, "failed")
+            await _fail_work_item(
+                self._app_state,
+                self._event_store,
+                self._project_events,
+                run_id,
+                command.work_item_id or "",
+                command.project_id or "",
+            )
+            await _notify_chat(
+                self._app_state,
+                run_id,
+                f"Pre-flight check failed: {error_msg}\n[View pipeline](/pipelines/{run_id})",
+            )
+            return run_id
 
         # Register services so nodes can look them up after LangGraph interrupts
         _register_runtime(
