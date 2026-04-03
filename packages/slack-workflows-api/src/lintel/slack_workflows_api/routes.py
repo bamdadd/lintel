@@ -182,3 +182,73 @@ async def handle_slash_command(
         "response_type": "ephemeral",
         "blocks": build_error_response(f"Unknown command `{cmd.subcommand}`. Try `/lintel help`."),
     }
+
+
+# --- Slack interactions (modals / view_submission) ---
+
+
+@router.post("/slack/interactions")
+async def handle_interaction(
+    request: Request,
+    payload: str = Form(default=""),
+) -> dict[str, Any]:
+    """Handle Slack interactive payloads (view_submission, block_actions).
+
+    Slack sends interactions as application/x-www-form-urlencoded with a
+    JSON-encoded 'payload' field.
+    """
+    import json
+
+    from lintel.slack.block_kit import parse_view_submission
+
+    try:
+        data = json.loads(payload) if payload else {}
+    except json.JSONDecodeError:
+        return {"response_action": "errors", "errors": {"title_block": "Invalid payload"}}
+
+    interaction_type = data.get("type", "")
+    logger.info("slack_interaction_received", interaction_type=interaction_type)
+
+    if interaction_type == "view_submission":
+        view = data.get("view", {})
+        callback_id = view.get("callback_id", "")
+
+        if callback_id == "create_work_item":
+            fields = parse_view_submission(view)
+            title = fields["title"].strip()
+            if not title:
+                return {
+                    "response_action": "errors",
+                    "errors": {"title_block": "Title is required"},
+                }
+
+            work_item_store = getattr(request.app.state, "work_item_store", None)
+            if work_item_store is None:
+                return {
+                    "response_action": "errors",
+                    "errors": {"title_block": "Work item store not available"},
+                }
+
+            from lintel.domain.types import WorkItem
+
+            wi_id = str(uuid4())
+            wi = WorkItem(
+                work_item_id=wi_id,
+                title=title,
+                description=fields["description"],
+                status="open",
+                work_type=fields["work_type"],
+                project_id=view.get("private_metadata", ""),
+            )
+            await work_item_store.add(wi)
+            logger.info(
+                "work_item_created_via_modal",
+                work_item_id=wi_id,
+                title=title,
+                work_type=fields["work_type"],
+            )
+            # Return empty response to close the modal
+            return {}
+
+    # Unhandled interaction type
+    return {}

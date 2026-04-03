@@ -7,8 +7,10 @@ from typing import Any
 from lintel.slack.block_kit import (
     build_approval_blocks,
     build_board_blocks,
+    build_create_work_item_modal,
     build_stage_blocks,
     build_status_blocks,
+    parse_view_submission,
 )
 
 
@@ -194,3 +196,96 @@ class TestBuildBoardBlocks:
         assert "Done" in texts
         assert "Alpha" in texts
         assert "Zeta" in texts
+
+
+class TestBuildCreateWorkItemModal:
+    def test_modal_type(self) -> None:
+        modal = build_create_work_item_modal()
+        assert modal["type"] == "modal"
+
+    def test_has_callback_id(self) -> None:
+        modal = build_create_work_item_modal(callback_id="my_callback")
+        assert modal["callback_id"] == "my_callback"
+
+    def test_has_title_and_description_and_type_blocks(self) -> None:
+        modal = build_create_work_item_modal()
+        block_ids = [b["block_id"] for b in modal["blocks"]]
+        assert "title_block" in block_ids
+        assert "description_block" in block_ids
+        assert "type_block" in block_ids
+
+    def test_has_submit_and_close(self) -> None:
+        modal = build_create_work_item_modal()
+        assert modal["submit"]["text"] == "Create"
+        assert modal["close"]["text"] == "Cancel"
+
+    def test_private_metadata(self) -> None:
+        modal = build_create_work_item_modal(private_metadata="proj-1")
+        assert modal["private_metadata"] == "proj-1"
+
+    def test_description_is_optional(self) -> None:
+        modal = build_create_work_item_modal()
+        desc_block = next(b for b in modal["blocks"] if b["block_id"] == "description_block")
+        assert desc_block.get("optional") is True
+
+    def test_type_has_four_options(self) -> None:
+        modal = build_create_work_item_modal()
+        type_block = next(b for b in modal["blocks"] if b["block_id"] == "type_block")
+        options = type_block["element"]["options"]
+        assert len(options) == 4
+        values = {o["value"] for o in options}
+        assert values == {"feature", "bug", "task", "refactor"}
+
+
+class TestParseViewSubmission:
+    def test_extracts_all_fields(self) -> None:
+        view = {
+            "state": {
+                "values": {
+                    "title_block": {
+                        "title_input": {"value": "Add dark mode"},
+                    },
+                    "description_block": {
+                        "description_input": {"value": "Support dark theme"},
+                    },
+                    "type_block": {
+                        "type_select": {
+                            "selected_option": {"value": "feature"},
+                        },
+                    },
+                },
+            },
+        }
+        result = parse_view_submission(view)
+        assert result["title"] == "Add dark mode"
+        assert result["description"] == "Support dark theme"
+        assert result["work_type"] == "feature"
+
+    def test_empty_description(self) -> None:
+        view = {
+            "state": {
+                "values": {
+                    "title_block": {"title_input": {"value": "Fix bug"}},
+                    "description_block": {"description_input": {"value": None}},
+                    "type_block": {
+                        "type_select": {"selected_option": {"value": "bug"}},
+                    },
+                },
+            },
+        }
+        result = parse_view_submission(view)
+        assert result["description"] == ""
+        assert result["work_type"] == "bug"
+
+    def test_missing_type_defaults_to_feature(self) -> None:
+        view = {
+            "state": {
+                "values": {
+                    "title_block": {"title_input": {"value": "Something"}},
+                    "description_block": {"description_input": {"value": ""}},
+                    "type_block": {"type_select": {"selected_option": None}},
+                },
+            },
+        }
+        result = parse_view_submission(view)
+        assert result["work_type"] == "feature"
