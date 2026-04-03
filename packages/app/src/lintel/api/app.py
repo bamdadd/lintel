@@ -16,6 +16,7 @@ from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routers import mount_routers
 from lintel.auth_api.access_log import AccessLogMiddleware
 from lintel.auth_api.middleware import JWTAuthMiddleware
+from lintel.auth_api.rate_limit import RateLimitMiddleware
 
 
 def create_app() -> FastAPI:
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
         allow_headers=["*", "X-Correlation-ID"],
         expose_headers=["X-Correlation-ID"],
     )
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(AccessLogMiddleware)
 
     mount_routers(app)
