@@ -260,6 +260,164 @@ def _tdd_patches(exit_codes: list[int]):  # noqa: ANN202
     return stack
 
 
+# ---------------------------------------------------------------------------
+# Node-level fix loop tests (spawn_implementation)
+# ---------------------------------------------------------------------------
+
+_STRUCTURED = "lintel.workflows.nodes._impl_structured.implement_structured"
+
+
+def _mock_strategy_fails() -> AsyncMock:
+    """Return a strategy mock that always reports test failure."""
+    return AsyncMock(return_value=("Implementation complete — tests failing.", False, []))
+
+
+def _mock_strategy_passes() -> AsyncMock:
+    """Return a strategy mock that reports test success."""
+    return AsyncMock(return_value=("Implementation complete.", True, []))
+
+
+class TestNodeLevelFixLoop:
+    async def test_no_fix_loop_when_strategy_passes(self) -> None:
+        """When the strategy passes tests, the node-level fix loop is skipped."""
+        from lintel.workflows.nodes.implement import spawn_implementation
+
+        fix_mock = _mock_fix_failures()
+        with (
+            patch(_STRUCTURED, _mock_strategy_passes()),
+            patch(f"{_DISC_MOD}.run_tests", _mock_run_tests([0])),
+            patch(f"{_DISC_MOD}.fix_failures", fix_mock),
+        ):
+            result = await spawn_implementation(
+                _make_state(),  # type: ignore[arg-type]
+                {
+                    "configurable": {
+                        "sandbox_manager": _FakeSandboxManager(),
+                        "agent_runtime": _FakeRuntime(),
+                    }
+                },
+            )
+
+        assert "error" not in result or result.get("error") is None
+        fix_mock.assert_not_called()
+
+    async def test_node_fix_recovers_on_first_attempt(self) -> None:
+        """Strategy fails, but node-level fix attempt 1 passes tests."""
+        from lintel.workflows.nodes.implement import spawn_implementation
+
+        # Strategy returns failure; node fix: first run_tests=1 (fail), fix, retest=0 (pass)
+        run_tests_mock = _mock_run_tests([1, 0])
+        fix_mock = _mock_fix_failures()
+
+        with (
+            patch(_STRUCTURED, _mock_strategy_fails()),
+            patch(f"{_DISC_MOD}.run_tests", run_tests_mock),
+            patch(f"{_DISC_MOD}.fix_failures", fix_mock),
+        ):
+            result = await spawn_implementation(
+                _make_state(),  # type: ignore[arg-type]
+                {
+                    "configurable": {
+                        "sandbox_manager": _FakeSandboxManager(),
+                        "agent_runtime": _FakeRuntime(),
+                    }
+                },
+            )
+
+        assert result.get("error") is None
+        fix_mock.assert_called_once()
+        # test verdict should be passed
+        verdicts = [o for o in result["agent_outputs"] if o.get("node") == "test"]
+        assert verdicts[0]["verdict"] == "passed"
+
+    async def test_node_fix_recovers_on_second_attempt(self) -> None:
+        """Strategy fails, fix attempt 1 fails, fix attempt 2 passes."""
+        from lintel.workflows.nodes.implement import spawn_implementation
+
+        # run_tests calls: attempt1-capture=1, attempt1-retest=1,
+        #                  attempt2-capture=1, attempt2-retest=0
+        run_tests_mock = _mock_run_tests([1, 1, 1, 0])
+        fix_mock = _mock_fix_failures()
+
+        with (
+            patch(_STRUCTURED, _mock_strategy_fails()),
+            patch(f"{_DISC_MOD}.run_tests", run_tests_mock),
+            patch(f"{_DISC_MOD}.fix_failures", fix_mock),
+        ):
+            result = await spawn_implementation(
+                _make_state(),  # type: ignore[arg-type]
+                {
+                    "configurable": {
+                        "sandbox_manager": _FakeSandboxManager(),
+                        "agent_runtime": _FakeRuntime(),
+                    }
+                },
+            )
+
+        assert result.get("error") is None
+        assert fix_mock.call_count == 2
+
+    async def test_node_fix_gives_up_after_max_attempts(self) -> None:
+        """Strategy fails and all node-level fix attempts also fail."""
+        from lintel.workflows.nodes.implement import MAX_NODE_FIX_ATTEMPTS, spawn_implementation
+
+        # All run_tests calls return failure
+        run_tests_mock = _mock_run_tests([1] * 20)
+        fix_mock = _mock_fix_failures()
+
+        with (
+            patch(_STRUCTURED, _mock_strategy_fails()),
+            patch(f"{_DISC_MOD}.run_tests", run_tests_mock),
+            patch(f"{_DISC_MOD}.fix_failures", fix_mock),
+        ):
+            result = await spawn_implementation(
+                _make_state(),  # type: ignore[arg-type]
+                {
+                    "configurable": {
+                        "sandbox_manager": _FakeSandboxManager(),
+                        "agent_runtime": _FakeRuntime(),
+                    }
+                },
+            )
+
+        assert "error" in result
+        assert fix_mock.call_count == MAX_NODE_FIX_ATTEMPTS
+
+    async def test_node_fix_passes_on_initial_rerun(self) -> None:
+        """Strategy reports failure but re-running tests at node level passes.
+
+        This can happen when the strategy's test runner had a transient failure.
+        """
+        from lintel.workflows.nodes.implement import spawn_implementation
+
+        # First run_tests in node loop returns 0 (pass on re-run)
+        run_tests_mock = _mock_run_tests([0])
+        fix_mock = _mock_fix_failures()
+
+        with (
+            patch(_STRUCTURED, _mock_strategy_fails()),
+            patch(f"{_DISC_MOD}.run_tests", run_tests_mock),
+            patch(f"{_DISC_MOD}.fix_failures", fix_mock),
+        ):
+            result = await spawn_implementation(
+                _make_state(),  # type: ignore[arg-type]
+                {
+                    "configurable": {
+                        "sandbox_manager": _FakeSandboxManager(),
+                        "agent_runtime": _FakeRuntime(),
+                    }
+                },
+            )
+
+        assert result.get("error") is None
+        fix_mock.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# TDD path tests
+# ---------------------------------------------------------------------------
+
+
 class TestTddImplRetry:
     async def test_passes_first_try_no_retry(self) -> None:
         from lintel.workflows.nodes._impl_tdd import implement_tdd
