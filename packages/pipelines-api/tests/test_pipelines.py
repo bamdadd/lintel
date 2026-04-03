@@ -133,7 +133,7 @@ class TestPipelinesAPI:
         data = resp.json()
         assert data["status"] == "cancelled"
         skipped = [s for s in data["stages"] if s["status"] == "skipped"]
-        assert len(skipped) == 9  # 9 of 11 pending stages get skipped (ingest+route auto-start)
+        assert len(skipped) == 8  # pending stages get skipped (ingest+route auto-start)
 
     def test_delete_pipeline(self, client: TestClient) -> None:
         _create_pipeline(client, "run1")

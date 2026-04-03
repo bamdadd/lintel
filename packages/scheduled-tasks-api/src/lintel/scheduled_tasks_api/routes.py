@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 router = APIRouter()
 
-scheduled_task_store_provider: StoreProvider = StoreProvider()
+scheduled_task_store_provider: StoreProvider[InMemoryScheduledTaskStore] = StoreProvider()
 
 
 class CreateScheduledTaskRequest(BaseModel):
