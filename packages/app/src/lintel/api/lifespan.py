@@ -244,8 +244,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             webhook_secret=telegram_secret,
         )
         from lintel.contracts.channel_type import ChannelType
+        from lintel.settings_api.channels_router import TELEGRAM_CREDENTIAL_ID
 
-        channel_registry.register(ChannelType.TELEGRAM, telegram_adapter)
+        channel_registry.register(TELEGRAM_CREDENTIAL_ID, ChannelType.TELEGRAM, telegram_adapter)
         app.state.telegram_adapter = telegram_adapter
     else:
         # Restore from credential store (token saved via Settings > Channels UI)

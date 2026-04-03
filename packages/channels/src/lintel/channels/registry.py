@@ -1,12 +1,23 @@
-"""ChannelRegistry — runtime registry mapping ChannelType to ChannelAdapter instances."""
+"""ChannelRegistry — runtime registry for channel adapters.
+
+Supports two lookup strategies:
+- **by connection_id** — the primary key, allows multiple adapters per channel type
+  (e.g. two Slack workspaces each with their own connection).
+- **by ChannelType** — backward-compatible convenience that returns the first
+  registered adapter of that type.
+"""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import structlog
 
-from lintel.channels.exceptions import ChannelNotRegisteredError
+from lintel.channels.exceptions import (
+    ChannelNotRegisteredError,
+    ConnectionNotRegisteredError,
+)
 
 if TYPE_CHECKING:
     from lintel.contracts.channel_adapter import ChannelAdapter
@@ -16,39 +27,127 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
-class ChannelRegistry:
-    """Maps ChannelType values to registered ChannelAdapter instances.
+@dataclass(frozen=True)
+class RegisteredAdapter:
+    """An adapter together with its connection metadata."""
 
-    Acts as the single point of indirection so the coordination layer
-    never needs to know which specific adapter is handling a message.
+    connection_id: str
+    channel_type: ChannelType
+    adapter: ChannelAdapter
+
+
+class ChannelRegistry:
+    """Maps connection_id strings to registered ChannelAdapter instances.
+
+    Also maintains a secondary index by ChannelType so that callers that
+    only know the channel type (e.g. interrupt notifier) can still resolve
+    an adapter.
     """
 
     def __init__(self) -> None:
-        self._adapters: dict[ChannelType, ChannelAdapter] = {}
+        self._by_connection: dict[str, RegisteredAdapter] = {}
+        self._by_type: dict[ChannelType, list[str]] = {}
 
-    def register(self, channel_type: ChannelType, adapter: ChannelAdapter) -> None:
-        """Register an adapter for a channel type."""
-        logger.info("channel_adapter.registered", channel_type=channel_type.value)
-        self._adapters[channel_type] = adapter
+    # ------------------------------------------------------------------
+    # connection_id-keyed API (primary)
+    # ------------------------------------------------------------------
 
-    def get(self, channel_type: ChannelType) -> ChannelAdapter:
-        """Get the adapter for a channel type.
+    def register(
+        self,
+        connection_id: str,
+        channel_type: ChannelType,
+        adapter: ChannelAdapter,
+    ) -> None:
+        """Register an adapter for a connection_id."""
+        logger.info(
+            "channel_adapter.registered",
+            connection_id=connection_id,
+            channel_type=channel_type.value,
+        )
+        entry = RegisteredAdapter(
+            connection_id=connection_id,
+            channel_type=channel_type,
+            adapter=adapter,
+        )
+        self._by_connection[connection_id] = entry
 
-        Raises ChannelNotRegisteredError if no adapter is registered.
+        # Update secondary index
+        if channel_type not in self._by_type:
+            self._by_type[channel_type] = []
+        if connection_id not in self._by_type[channel_type]:
+            self._by_type[channel_type].append(connection_id)
+
+    def get(self, connection_id: str) -> ChannelAdapter:
+        """Get the adapter for a connection_id.
+
+        Raises ConnectionNotRegisteredError if not found.
         """
-        adapter = self._adapters.get(channel_type)
-        if adapter is None:
+        entry = self._by_connection.get(connection_id)
+        if entry is None:
+            raise ConnectionNotRegisteredError(connection_id)
+        return entry.adapter
+
+    def get_entry(self, connection_id: str) -> RegisteredAdapter:
+        """Get the full RegisteredAdapter entry for a connection_id.
+
+        Raises ConnectionNotRegisteredError if not found.
+        """
+        entry = self._by_connection.get(connection_id)
+        if entry is None:
+            raise ConnectionNotRegisteredError(connection_id)
+        return entry
+
+    def unregister(self, connection_id: str) -> None:
+        """Remove an adapter by connection_id. No-op if not registered."""
+        entry = self._by_connection.pop(connection_id, None)
+        if entry is None:
+            return
+        type_list = self._by_type.get(entry.channel_type, [])
+        if connection_id in type_list:
+            type_list.remove(connection_id)
+        if not type_list:
+            self._by_type.pop(entry.channel_type, None)
+        logger.info(
+            "channel_adapter.unregistered",
+            connection_id=connection_id,
+            channel_type=entry.channel_type.value,
+        )
+
+    def list(self) -> list[RegisteredAdapter]:
+        """Return all registered adapter entries."""
+        return list(self._by_connection.values())
+
+    def is_connection_registered(self, connection_id: str) -> bool:
+        """Check if a connection_id is registered."""
+        return connection_id in self._by_connection
+
+    # ------------------------------------------------------------------
+    # ChannelType-keyed API (backward-compatible convenience)
+    # ------------------------------------------------------------------
+
+    def get_by_type(self, channel_type: ChannelType) -> ChannelAdapter:
+        """Get the first adapter registered for a channel type.
+
+        Raises ChannelNotRegisteredError if none registered.
+        """
+        conn_ids = self._by_type.get(channel_type, [])
+        if not conn_ids:
             raise ChannelNotRegisteredError(channel_type)
-        return adapter
+        return self._by_connection[conn_ids[0]].adapter
 
     def is_registered(self, channel_type: ChannelType) -> bool:
-        """Check if an adapter is registered for a channel type."""
-        return channel_type in self._adapters
+        """Check if any adapter is registered for a channel type."""
+        return bool(self._by_type.get(channel_type))
 
     def registered_types(self) -> list[ChannelType]:
-        """Return list of all registered channel types."""
-        return list(self._adapters.keys())
+        """Return list of all channel types that have at least one adapter."""
+        return list(self._by_type.keys())
+
+    def list_by_type(self, channel_type: ChannelType) -> list[RegisteredAdapter]:
+        """Return all adapters registered for a given channel type."""
+        conn_ids = self._by_type.get(channel_type, [])
+        return [self._by_connection[cid] for cid in conn_ids]
 
     def get_for_message(self, message: InboundMessage) -> ChannelAdapter:
         """Get the appropriate adapter for an inbound message."""
-        return self.get(message.channel_type)
+        return self.get_by_type(message.channel_type)
