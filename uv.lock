@@ -22,6 +22,7 @@ members = [
     "lintel-auth-api",
     "lintel-automations-api",
     "lintel-boards",
+    "lintel-channel-connections-api",
     "lintel-channels",
     "lintel-chat-api",
     "lintel-codebase-index-api",
@@ -1835,6 +1836,7 @@ dependencies = [
     { name = "lintel-auth-api" },
     { name = "lintel-automations-api" },
     { name = "lintel-boards" },
+    { name = "lintel-channel-connections-api" },
     { name = "lintel-channels" },
     { name = "lintel-chat-api" },
     { name = "lintel-codebase-index-api" },
@@ -1917,6 +1919,7 @@ requires-dist = [
     { name = "lintel-auth-api", editable = "packages/auth-api" },
     { name = "lintel-automations-api", editable = "packages/automations-api" },
     { name = "lintel-boards", editable = "packages/boards" },
+    { name = "lintel-channel-connections-api", editable = "packages/channel-connections-api" },
     { name = "lintel-channels", editable = "packages/channels" },
     { name = "lintel-chat-api", editable = "packages/chat-api" },
     { name = "lintel-codebase-index-api", editable = "packages/codebase-index-api" },
@@ -2255,6 +2258,29 @@ requires-dist = [
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-persistence", editable = "packages/persistence" },
     { name = "lintel-work-items-api", editable = "packages/work-items-api" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-channel-connections-api"
+version = "0.1.0"
+source = { editable = "packages/channel-connections-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
