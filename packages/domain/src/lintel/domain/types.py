@@ -739,6 +739,7 @@ class AuditEntry:
     resource_id: str
     details: dict[str, object] | None = None
     timestamp: str = ""
+    previous_hash: str | None = None
 
 
 @dataclass(frozen=True)
