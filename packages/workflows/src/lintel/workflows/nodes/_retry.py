@@ -37,6 +37,7 @@ _TRANSIENT_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"token.*expired", re.IGNORECASE),
     re.compile(r"refresh.*failed", re.IGNORECASE),
     re.compile(r"APIConnectionError", re.IGNORECASE),
+    re.compile(r"sso", re.IGNORECASE),
 )
 
 _RESOURCE_PATTERNS: tuple[re.Pattern[str], ...] = (

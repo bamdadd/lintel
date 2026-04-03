@@ -87,9 +87,7 @@ class ZombieRunReaper:
             updated = replace(run, status=PipelineStatus.FAILED, stages=failed_stages)
             await self._store.update(updated)
             count += 1
-            logger.info(
-                "reaper.failed_stale_running", extra={"run_id": run.run_id, "age_s": age}
-            )
+            logger.info("reaper.failed_stale_running", extra={"run_id": run.run_id, "age_s": age})
 
         return count
 

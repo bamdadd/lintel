@@ -92,7 +92,12 @@ class TestReapStaleRunning:
     async def test_fails_old_running_run(self) -> None:
         store = InMemoryPipelineStore()
         stages = (
-            Stage(stage_id="s1", name="research", stage_type="research", status=StageStatus.RUNNING),
+            Stage(
+                stage_id="s1",
+                name="research",
+                stage_type="research",
+                status=StageStatus.RUNNING,
+            ),
         )
         run = _make_run(
             run_id="old-r",
@@ -114,11 +119,15 @@ class TestReapStaleRunning:
         store = InMemoryPipelineStore()
         stages = (
             Stage(
-                stage_id="s1", name="research", stage_type="research",
+                stage_id="s1",
+                name="research",
+                stage_type="research",
                 status=StageStatus.SUCCEEDED,
             ),
             Stage(
-                stage_id="s2", name="implement", stage_type="implement",
+                stage_id="s2",
+                name="implement",
+                stage_type="implement",
                 status=StageStatus.RUNNING,
             ),
         )
