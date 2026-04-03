@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 MAX_FIX_ATTEMPTS = 3
+MAX_IMPL_RETRIES = 2
 
 GENERATE_SYSTEM_PROMPT = """\
 You are a senior software engineer. Given a plan and existing file contents, \
@@ -64,86 +65,120 @@ async def implement_structured(
 
     await tracker.append_log("implement", "Skill: structured-generate (JSON)")
 
-    # --- Phase 1: Generate code (single LLM call, no tools) ---
-    await tracker.append_log("implement", "Generating code...")
-    try:
-        gen_result = await agent_runtime.execute_step(
-            thread_ref=thread_ref,
-            agent_role=AgentRole.CODER,
-            step_name="implement_generate",
-            messages=[
-                {"role": "system", "content": GENERATE_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            tools=[],  # No tools — single-shot JSON generation
-            max_iterations=1,
-            run_id=state.get("run_id", ""),
-        )
-        gen_content = gen_result.get("content", "")
-        usage = StageTracker.extract_token_usage(gen_result)
-        total_usage.append(usage)
-
-        files_to_write = parse_file_output(gen_content)
-        if not files_to_write:
-            await tracker.append_log("implement", "No files generated — fallback to tools")
-            files_to_write = {}
-    except Exception:
-        logger.exception("implement_generate_failed")
-        await tracker.append_log("implement", "Code generation failed")
-        files_to_write = {}
-
-    # --- Phase 2: Write files to sandbox ---
-    if files_to_write:
-        await tracker.append_log("implement", f"Writing {len(files_to_write)} file(s)")
-        for rel_path, content in files_to_write.items():
-            abs_path = f"{workspace_path}/{rel_path}" if not rel_path.startswith("/") else rel_path
-            try:
-                await sandbox_manager.write_file(sandbox_id, abs_path, content)
-                lines = content.count("\n") + 1
-                fname = rel_path.split("/")[-1]
-                await tracker.append_log("implement", f"  wrote {fname} ({lines} lines)")
-            except Exception:
-                logger.warning("implement_write_failed", path=rel_path)
-                await tracker.append_log("implement", f"  FAILED: {rel_path}")
-
-    # --- Phase 3: Run tests, fix if broken ---
+    # Outer retry loop: re-generate from scratch with error feedback
     test_passed = False
     test_output = ""
-    for attempt in range(MAX_FIX_ATTEMPTS + 1):
-        test_output, test_exit = await run_tests(
-            config, state, sandbox_manager, sandbox_id, workspace_path
-        )
-        if test_exit == 0:
-            test_passed = True
-            await tracker.append_log("implement", "Tests passed")
-            break
+    effective_prompt = user_prompt
 
-        if attempt < MAX_FIX_ATTEMPTS:
-            fix_msg = f"Tests failed (attempt {attempt + 1}/{MAX_FIX_ATTEMPTS}) — fixing..."
-            await tracker.append_log("implement", fix_msg)
-            # Log test output so failures are visible in the pipeline UI
-            await log_test_output(test_output, config, state)
-            try:
-                fix_result = await fix_failures(
-                    agent_runtime,
-                    thread_ref,
-                    workspace_path,
-                    test_output,
-                    sandbox_manager,
-                    sandbox_id,
-                    config,
-                    state,
+    for impl_retry in range(MAX_IMPL_RETRIES + 1):
+        if impl_retry > 0:
+            retry_msg = (
+                f"Implementation retry {impl_retry}/{MAX_IMPL_RETRIES}"
+                " — regenerating with error feedback"
+            )
+            await tracker.append_log("implement", retry_msg)
+            logger.info("implement_retry", retry=impl_retry, max=MAX_IMPL_RETRIES)
+            # Enrich prompt with previous failure context
+            effective_prompt = (
+                f"{user_prompt}\n\n"
+                f"## Previous Attempt Failed\n"
+                f"The previous implementation attempt failed tests. "
+                f"Error output:\n```\n{test_output}\n```\n"
+                f"Avoid the same mistakes and fix the issues."
+            )
+
+        # --- Phase 1: Generate code (single LLM call, no tools) ---
+        await tracker.append_log("implement", "Generating code...")
+        try:
+            gen_result = await agent_runtime.execute_step(
+                thread_ref=thread_ref,
+                agent_role=AgentRole.CODER,
+                step_name="implement_generate",
+                messages=[
+                    {"role": "system", "content": GENERATE_SYSTEM_PROMPT},
+                    {"role": "user", "content": effective_prompt},
+                ],
+                tools=[],  # No tools — single-shot JSON generation
+                max_iterations=1,
+                run_id=state.get("run_id", ""),
+            )
+            gen_content = gen_result.get("content", "")
+            usage = StageTracker.extract_token_usage(gen_result)
+            total_usage.append(usage)
+
+            files_to_write = parse_file_output(gen_content)
+            if not files_to_write:
+                await tracker.append_log("implement", "No files generated — fallback to tools")
+                files_to_write = {}
+        except Exception:
+            logger.exception("implement_generate_failed")
+            await tracker.append_log("implement", "Code generation failed")
+            files_to_write = {}
+
+        # --- Phase 2: Write files to sandbox ---
+        if files_to_write:
+            await tracker.append_log("implement", f"Writing {len(files_to_write)} file(s)")
+            for rel_path, content in files_to_write.items():
+                abs_path = (
+                    f"{workspace_path}/{rel_path}" if not rel_path.startswith("/") else rel_path
                 )
-                fix_usage = StageTracker.extract_token_usage(fix_result)
-                total_usage.append(fix_usage)
-            except Exception:
-                logger.exception("implement_fix_failed")
-                await tracker.append_log("implement", "Fix attempt failed")
+                try:
+                    await sandbox_manager.write_file(sandbox_id, abs_path, content)
+                    lines = content.count("\n") + 1
+                    fname = rel_path.split("/")[-1]
+                    await tracker.append_log("implement", f"  wrote {fname} ({lines} lines)")
+                except Exception:
+                    logger.warning("implement_write_failed", path=rel_path)
+                    await tracker.append_log("implement", f"  FAILED: {rel_path}")
+
+        # --- Phase 3: Run tests, fix if broken ---
+        test_passed = False
+        test_output = ""
+        for attempt in range(MAX_FIX_ATTEMPTS + 1):
+            test_output, test_exit = await run_tests(
+                config, state, sandbox_manager, sandbox_id, workspace_path
+            )
+            if test_exit == 0:
+                test_passed = True
+                await tracker.append_log("implement", "Tests passed")
                 break
 
-    if not test_passed:
-        await tracker.append_log("implement", "Tests still failing after fix attempts")
-        await log_test_output(test_output, config, state)
+            if attempt < MAX_FIX_ATTEMPTS:
+                fix_msg = f"Tests failed (attempt {attempt + 1}/{MAX_FIX_ATTEMPTS}) — fixing..."
+                await tracker.append_log("implement", fix_msg)
+                # Log test output so failures are visible in the pipeline UI
+                await log_test_output(test_output, config, state)
+                try:
+                    fix_result = await fix_failures(
+                        agent_runtime,
+                        thread_ref,
+                        workspace_path,
+                        test_output,
+                        sandbox_manager,
+                        sandbox_id,
+                        config,
+                        state,
+                    )
+                    fix_usage = StageTracker.extract_token_usage(fix_result)
+                    total_usage.append(fix_usage)
+                except Exception:
+                    logger.exception("implement_fix_failed")
+                    await tracker.append_log("implement", "Fix attempt failed")
+                    break
+
+        if test_passed:
+            break
+
+        # Log failure before potential retry
+        if impl_retry < MAX_IMPL_RETRIES:
+            await tracker.append_log(
+                "implement",
+                "Fix loop exhausted — will retry full implementation",
+            )
+            await log_test_output(test_output, config, state)
+        else:
+            await tracker.append_log("implement", "Tests still failing after all retry attempts")
+            await log_test_output(test_output, config, state)
 
     # Verify lint
     lint_output, lint_exit = await run_lint(
