@@ -84,6 +84,31 @@ class NetworkEgressPolicy:
 
 
 @dataclass(frozen=True)
+class NetworkEndpoint:
+    """An authorized network endpoint for sandbox egress whitelisting.
+
+    When ``port`` is ``None`` all ports are allowed for the given host.
+    """
+
+    host: str
+    port: int | None = None
+    protocol: str = "tcp"
+
+
+@dataclass(frozen=True)
+class NetworkPolicy:
+    """Per-sandbox network isolation policy.
+
+    ``allowed_endpoints`` restricts egress to specific host/port pairs.
+    ``isolate`` creates a dedicated Docker network per sandbox so containers
+    cannot communicate with each other via the shared bridge network.
+    """
+
+    allowed_endpoints: tuple[NetworkEndpoint, ...] = ()
+    isolate: bool = True
+
+
+@dataclass(frozen=True)
 class ToolCallLimits:
     """Per-step limits on agent tool usage inside a sandbox session."""
 
@@ -107,6 +132,7 @@ class SandboxConfig:
     network_egress: NetworkEgressPolicy = NetworkEgressPolicy()
     tool_limits: ToolCallLimits = ToolCallLimits()
     storage_limits: StorageLimits = StorageLimits()
+    network_policy: NetworkPolicy | None = None
 
 
 @dataclass(frozen=True)

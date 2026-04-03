@@ -120,6 +120,73 @@ class TestCreateSandbox:
         assert "/mnt/extra" in targets
 
 
+class TestCreateSandboxWithNetworkPolicy:
+    def test_creates_with_network_policy(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "network_enabled": True,
+                "network_policy": {
+                    "allowed_endpoints": [
+                        {"host": "github.com", "port": 443},
+                        {"host": "pypi.org", "port": 443, "protocol": "tcp"},
+                    ],
+                    "isolate": True,
+                },
+            },
+        )
+        assert resp.status_code == 201
+
+        manager = client.app.state.sandbox_manager  # type: ignore[union-attr]
+        config = manager.last_config
+        assert config.network_policy is not None
+        assert config.network_policy.isolate is True
+        assert len(config.network_policy.allowed_endpoints) == 2
+        assert config.network_policy.allowed_endpoints[0].host == "github.com"
+        assert config.network_policy.allowed_endpoints[0].port == 443
+        assert config.network_policy.allowed_endpoints[1].host == "pypi.org"
+
+    def test_creates_without_network_policy(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+            },
+        )
+        assert resp.status_code == 201
+
+        manager = client.app.state.sandbox_manager  # type: ignore[union-attr]
+        config = manager.last_config
+        assert config.network_policy is None
+
+    def test_network_policy_stored_in_metadata(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/sandboxes",
+            json={
+                "workspace_id": "ws1",
+                "channel_id": "ch1",
+                "thread_ts": "1.0",
+                "network_enabled": True,
+                "network_policy": {
+                    "allowed_endpoints": [{"host": "github.com", "port": 443}],
+                    "isolate": True,
+                },
+            },
+        )
+        sandbox_id = resp.json()["sandbox_id"]
+
+        list_resp = client.get("/api/v1/sandboxes")
+        entry = next(s for s in list_resp.json() if s["sandbox_id"] == sandbox_id)
+        assert "network_policy" in entry
+        assert entry["network_policy"]["isolate"] is True
+        assert len(entry["network_policy"]["allowed_endpoints"]) == 1
+
+
 class TestGetSandboxStatus:
     def test_returns_status(self, client: TestClient) -> None:
         resp = client.post(

@@ -15,7 +15,7 @@ from lintel.sandbox.events import (
     SandboxCreated,
     SandboxDestroyed,
 )
-from lintel.sandbox.types import SandboxBackend, SandboxConfig
+from lintel.sandbox.types import NetworkEndpoint, NetworkPolicy, SandboxBackend, SandboxConfig
 
 if TYPE_CHECKING:
     from lintel.sandbox.protocols import SandboxManager
@@ -188,6 +188,21 @@ class MountConfig(BaseModel):
     type: str = "bind"
 
 
+class NetworkEndpointConfig(BaseModel):
+    """An authorized network endpoint for egress whitelisting."""
+
+    host: str
+    port: int | None = None
+    protocol: str = "tcp"
+
+
+class NetworkPolicyConfig(BaseModel):
+    """Network isolation policy for a sandbox."""
+
+    allowed_endpoints: list[NetworkEndpointConfig] = []
+    isolate: bool = True
+
+
 class CreateSandboxRequest(BaseModel):
     workspace_id: str
     channel_id: str
@@ -195,6 +210,7 @@ class CreateSandboxRequest(BaseModel):
     preset: str | None = None
     image: str = "lintel-sandbox:latest"
     network_enabled: bool = False
+    network_policy: NetworkPolicyConfig | None = None
     devcontainer: DevcontainerConfig | None = None
     mounts: list[MountConfig] = []
     backend: str = "docker"  # "docker" or "openshell"
@@ -285,11 +301,23 @@ async def create_sandbox(
         if _resolve_env(m["source"])  # skip mounts with unresolvable source
     )
 
+    # Build network policy from request
+    net_policy: NetworkPolicy | None = None
+    if body.network_policy is not None:
+        net_policy = NetworkPolicy(
+            allowed_endpoints=tuple(
+                NetworkEndpoint(host=ep.host, port=ep.port, protocol=ep.protocol)
+                for ep in body.network_policy.allowed_endpoints
+            ),
+            isolate=body.network_policy.isolate,
+        )
+
     config = SandboxConfig(
         image=image,
         network_enabled=body.network_enabled,
         mounts=resolved_mounts,
         backend=backend,
+        network_policy=net_policy,
     )
     thread_ref = ThreadRef(
         workspace_id=body.workspace_id,
@@ -306,6 +334,8 @@ async def create_sandbox(
         "mounts": [{"source": s, "target": t, "type": tp} for s, t, tp in resolved_mounts],
         "backend": backend.value,
     }
+    if body.network_policy is not None:
+        entry["network_policy"] = body.network_policy.model_dump()
     if body.devcontainer:
         entry["devcontainer"] = body.devcontainer.model_dump()
     store = request.app.state.sandbox_store
