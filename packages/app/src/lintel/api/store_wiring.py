@@ -134,6 +134,10 @@ from lintel.release_notes_api.routes import release_note_store_provider
 from lintel.release_notes_api.store import InMemoryReleaseNoteStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import repo_provider_provider, repository_store_provider
+from lintel.sandbox_credentials_api.routes import (
+    sandbox_credential_store_provider,
+)
+from lintel.sandbox_credentials_api.store import InMemorySandboxCredentialStore
 from lintel.sandbox_pool_api.routes import (
     image_rebuild_store_provider,
     pooled_sandbox_store_provider,
@@ -332,6 +336,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "channel_connection_store": InMemoryChannelConnectionStore(),
         # Visual Verification
         "visual_verification_store": InMemoryVisualVerificationStore(),
+        # Sandbox Credentials
+        "sandbox_credential_store": InMemorySandboxCredentialStore(),
     }
 
 
@@ -632,6 +638,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "image_rebuild_store": InMemoryImageRebuildStore(),
         # Sandbox Snapshots: in-memory until Postgres implementation exists
         "snapshot_store": InMemorySnapshotStore(),
+        # Sandbox Credentials: in-memory until Postgres implementation exists
+        "sandbox_credential_store": InMemorySandboxCredentialStore(),
     }
 
 
@@ -731,6 +739,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     snapshot_store_provider.override(stores["snapshot_store"])
     connection_store_provider.override(stores["channel_connection_store"])
     verification_store_provider.override(stores["visual_verification_store"])
+    sandbox_credential_store_provider.override(stores["sandbox_credential_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
