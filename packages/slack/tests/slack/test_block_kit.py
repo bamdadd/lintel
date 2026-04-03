@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from lintel.slack.block_kit import (
     build_approval_blocks,
+    build_stage_blocks,
     build_status_blocks,
 )
 
@@ -67,3 +68,43 @@ class TestBuildStatusBlocks:
     def test_no_metadata_block_when_none(self) -> None:
         blocks = build_status_blocks("coder", "implementing", "Working...")
         assert len(blocks) == 2
+
+
+class TestBuildStageBlocks:
+    def test_basic_stage_blocks(self) -> None:
+        blocks = build_stage_blocks("implement", "succeeded", "run-abc123")
+        assert len(blocks) >= 2
+        text = blocks[0]["text"]["text"]
+        assert "Implement" in text
+        assert "succeeded" in text
+
+    def test_includes_duration(self) -> None:
+        blocks = build_stage_blocks("review", "succeeded", "run-1", duration_ms=5000)
+        text = blocks[0]["text"]["text"]
+        assert "5.0s" in text
+
+    def test_includes_error_block(self) -> None:
+        blocks = build_stage_blocks("implement", "failed", "run-1", error="Syntax error on line 42")
+        block_texts = [b.get("text", {}).get("text", "") for b in blocks]
+        assert any("Syntax error" in t for t in block_texts)
+
+    def test_includes_pr_url(self) -> None:
+        blocks = build_stage_blocks(
+            "merge", "succeeded", "run-1", pr_url="https://github.com/org/repo/pull/99"
+        )
+        block_texts = [b.get("text", {}).get("text", "") for b in blocks]
+        assert any("pull/99" in t for t in block_texts)
+
+    def test_context_block_has_run_id(self) -> None:
+        blocks = build_stage_blocks("research", "running", "run-abcd1234")
+        context = [b for b in blocks if b["type"] == "context"]
+        assert len(context) == 1
+        assert "run-abcd" in context[0]["elements"][0]["text"]
+
+    def test_emoji_for_succeeded(self) -> None:
+        blocks = build_stage_blocks("test", "succeeded", "run-1")
+        assert ":white_check_mark:" in blocks[0]["text"]["text"]
+
+    def test_emoji_for_failed(self) -> None:
+        blocks = build_stage_blocks("test", "failed", "run-1")
+        assert ":x:" in blocks[0]["text"]["text"]
