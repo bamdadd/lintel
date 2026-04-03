@@ -55,6 +55,7 @@ from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
 from lintel.release_notes_api.routes import router as release_notes_router
 from lintel.repositories_api.routes import router as repositories_router
+from lintel.sandbox_credentials_api.routes import router as sandbox_credentials_router
 from lintel.sandbox_pool_api.routes import router as sandbox_pool_router
 from lintel.sandboxes_api.routes import router as sandboxes_router
 from lintel.settings_api.channels_router import router as channels_settings_router
@@ -154,6 +155,11 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(slack_workflows_router, prefix="/api/v1", tags=["slack-workflows"])
     app.include_router(coding_rules_router, prefix="/api/v1", tags=["coding-rules"])
     app.include_router(sandbox_pool_router, prefix="/api/v1", tags=["sandbox-pool"])
+    app.include_router(
+        sandbox_credentials_router,
+        prefix="/api/v1",
+        tags=["sandbox-credentials"],
+    )
     app.include_router(
         workflow_blueprints_router,
         prefix="/api/v1",

@@ -1274,6 +1274,19 @@ class VisualVerificationStatusChanged(EventEnvelope):
     event_type: str = "VisualVerificationStatusChanged"
 
 
+# --- Sandbox Credential Events ---
+
+
+@dataclass(frozen=True)
+class SandboxCredentialIssued(EventEnvelope):
+    event_type: str = "SandboxCredentialIssued"
+
+
+@dataclass(frozen=True)
+class SandboxCredentialRevoked(EventEnvelope):
+    event_type: str = "SandboxCredentialRevoked"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1492,4 +1505,6 @@ register_events(
     TechSpecRemoved,
     VisualVerificationCreated,
     VisualVerificationStatusChanged,
+    SandboxCredentialIssued,
+    SandboxCredentialRevoked,
 )
