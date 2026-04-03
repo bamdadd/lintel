@@ -87,34 +87,91 @@ class GitHubRepoProvider:
     ) -> str:
         import httpx
 
+        from lintel.repos.types import (
+            PrAlreadyExistsError,
+            PrAuthError,
+            PrCreationError,
+            PrTransientError,
+        )
+
         owner, repo = self._parse_owner_repo(repo_url)
         url = f"{self._api_base}/repos/{owner}/{repo}/pulls"
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                url,
-                headers=self._headers(),
-                json={
-                    "title": title,
-                    "body": body,
-                    "head": head,
-                    "base": base,
-                    "draft": draft,
-                },
-            )
-            if resp.status_code >= 400:
-                logger.error(
-                    "github_create_pr_failed",
-                    status=resp.status_code,
-                    body=resp.text[:500],
-                    head=head,
-                    base=base,
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    url,
+                    headers=self._headers(),
+                    json={
+                        "title": title,
+                        "body": body,
+                        "head": head,
+                        "base": base,
+                        "draft": draft,
+                    },
                 )
-            resp.raise_for_status()
-            data: dict[str, Any] = resp.json()
-            pr_url: str = data["html_url"]
-            logger.info("pr_created", pr_url=pr_url)
-            return pr_url
+        except (httpx.ConnectError, httpx.TimeoutException, OSError) as exc:
+            msg = f"Network error creating PR: {exc}"
+            logger.error("github_create_pr_network_error", error=str(exc)[:200])
+            raise PrTransientError(msg) from exc
+
+        resp_text = resp.text[:500]
+
+        if resp.status_code >= 400:
+            logger.error(
+                "github_create_pr_failed",
+                status=resp.status_code,
+                body=resp_text,
+                head=head,
+                base=base,
+            )
+
+            # Classify the error
+            if resp.status_code in (401, 403):
+                raise PrAuthError(
+                    f"GitHub authentication failed ({resp.status_code}): {resp_text}",
+                    status_code=resp.status_code,
+                    response_body=resp_text,
+                )
+
+            if resp.status_code == 422 and "already exists" in resp_text.lower():
+                raise PrAlreadyExistsError(
+                    f"A pull request already exists for {head} -> {base}",
+                    status_code=resp.status_code,
+                    response_body=resp_text,
+                )
+
+            if resp.status_code in (429, 500, 502, 503, 504):
+                raise PrTransientError(
+                    f"GitHub API error ({resp.status_code}): {resp_text}",
+                    status_code=resp.status_code,
+                    response_body=resp_text,
+                )
+
+            # Other 4xx errors (validation, etc.)
+            raise PrCreationError(
+                f"GitHub PR creation failed ({resp.status_code}): {resp_text}",
+                status_code=resp.status_code,
+                response_body=resp_text,
+            )
+
+        data: dict[str, Any] = resp.json()
+        pr_url: str = data["html_url"]
+        logger.info("pr_created", pr_url=pr_url)
+        return pr_url
+
+    async def find_existing_pr(
+        self,
+        repo_url: str,
+        head: str,
+        base: str,
+    ) -> str:
+        """Find an open PR for the given head→base and return its URL, or empty string."""
+        prs = await self.list_pull_requests(repo_url, state="open")
+        for pr in prs:
+            if pr.get("head_branch") == head and pr.get("base_branch") == base:
+                return str(pr.get("html_url", ""))
+        return ""
 
     async def add_comment(self, repo_url: str, pr_number: int, body: str) -> None:
         import httpx

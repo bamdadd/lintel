@@ -424,7 +424,16 @@ async def _create_pr_with_retry(
     pr_body: str,
     draft: bool,
 ) -> str:
-    """Call provider.create_pr with up to ``_PR_MAX_RETRIES`` attempts."""
+    """Call provider.create_pr with up to ``_PR_MAX_RETRIES`` attempts.
+
+    Error handling:
+    - **Already exists**: finds and links the existing PR instead of failing.
+    - **Auth errors (401/403)**: surfaces a clear message, no retry.
+    - **Transient errors (429, 5xx, network)**: retries with exponential backoff.
+    - **Other errors**: logged with stderr/response body, no retry.
+    """
+    from lintel.repos.types import PrAlreadyExistsError, PrAuthError, PrTransientError
+
     last_exc: Exception | None = None
     for attempt in range(_PR_MAX_RETRIES):
         try:
@@ -445,23 +454,87 @@ async def _create_pr_with_retry(
             )
             await tracker.append_log("close", f"PR created: {pr_url}")
             return pr_url
-        except Exception as exc:
+
+        except PrAlreadyExistsError as exc:
+            logger.info(
+                "close_pr_already_exists",
+                head=feature_branch,
+                base=base_branch,
+                response=exc.response_body[:200],
+            )
+            existing = await _find_existing_pr(provider, repo_url, feature_branch, base_branch)
+            if existing:
+                await tracker.append_log("close", f"PR already exists, linked: {existing}")
+                return existing
+            await tracker.append_log(
+                "close",
+                "PR already exists but could not locate it — check GitHub manually",
+            )
+            return ""
+
+        except PrAuthError as exc:
+            logger.error(
+                "close_pr_auth_error",
+                status=exc.status_code,
+                error=str(exc)[:200],
+            )
+            await tracker.append_log(
+                "close",
+                f"PR creation auth failure ({exc.status_code}): check GitHub token permissions",
+            )
+            return ""
+
+        except PrTransientError as exc:
             last_exc = exc
             logger.warning(
-                "close_pr_creation_failed",
+                "close_pr_transient_error",
                 attempt=attempt + 1,
                 max_retries=_PR_MAX_RETRIES,
+                status=exc.status_code,
                 error=str(exc)[:200],
             )
             if attempt < _PR_MAX_RETRIES - 1:
                 delay = _PR_BACKOFF_BASE**attempt
                 await asyncio.sleep(delay)
 
+        except Exception as exc:
+            # Non-transient, non-classified error — log and stop retrying
+            logger.warning(
+                "close_pr_creation_failed",
+                attempt=attempt + 1,
+                error=str(exc)[:200],
+            )
+            await tracker.append_log(
+                "close",
+                f"PR creation failed: {exc!s:.200}",
+            )
+            return ""
+
     if last_exc is not None:
         await tracker.append_log(
             "close",
             f"PR creation failed after {_PR_MAX_RETRIES} attempts: {last_exc!s:.200}",
         )
+    return ""
+
+
+async def _find_existing_pr(
+    provider: RepoProvider,
+    repo_url: str,
+    head: str,
+    base: str,
+) -> str:
+    """Try to find an existing PR for the head→base combination."""
+    try:
+        if hasattr(provider, "find_existing_pr"):
+            return await provider.find_existing_pr(repo_url, head, base)
+        # Fallback: search open PRs manually
+        prs = await provider.list_pull_requests(repo_url, state="open")
+        for pr in prs:
+            if pr.get("head_branch") == head and pr.get("base_branch") == base:
+                return str(pr.get("html_url", ""))
+    except Exception:
+        logger.warning("close_find_existing_pr_failed", repo_url=repo_url[:80])
     return ""
 
 

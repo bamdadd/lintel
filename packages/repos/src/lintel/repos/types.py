@@ -75,3 +75,27 @@ class RepoClassification:
     confidence: float
     matched_keywords: tuple[str, ...] = ()
     reason: str = ""
+
+
+# --- PR creation error hierarchy ---
+
+
+class PrCreationError(RuntimeError):
+    """Base for PR creation failures with captured response details."""
+
+    def __init__(self, message: str, *, status_code: int = 0, response_body: str = "") -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.response_body = response_body
+
+
+class PrAlreadyExistsError(PrCreationError):
+    """A pull request already exists for this head/base combination."""
+
+
+class PrAuthError(PrCreationError):
+    """Authentication or authorization failure (401/403)."""
+
+
+class PrTransientError(PrCreationError):
+    """Transient failure (rate limit, server error, network) — safe to retry."""

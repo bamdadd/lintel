@@ -3612,6 +3612,7 @@ dependencies = [
     { name = "lintel-contracts" },
     { name = "lintel-domain" },
     { name = "lintel-observability" },
+    { name = "lintel-repos" },
     { name = "lintel-sandbox" },
     { name = "structlog" },
 ]
@@ -3623,6 +3624,7 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-observability", editable = "packages/observability" },
+    { name = "lintel-repos", editable = "packages/repos" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "structlog", specifier = ">=24.4" },
 ]

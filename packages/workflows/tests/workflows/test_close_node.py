@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from lintel.repos.types import PrAlreadyExistsError, PrAuthError, PrTransientError
 from lintel.sandbox.types import SandboxResult
 from lintel.workflows.nodes.close import (
     _create_pr_with_retry,
@@ -336,7 +337,7 @@ async def test_create_pr_with_retry_succeeds_on_second_attempt(
     provider = AsyncMock()
     provider.create_pr = AsyncMock(
         side_effect=[
-            RuntimeError("rate limit exceeded"),
+            PrTransientError("rate limit exceeded", status_code=429),
             "https://github.com/test/repo/pull/2",
         ]
     )
@@ -367,8 +368,8 @@ async def test_create_pr_with_retry_succeeds_on_third_attempt(
     provider = AsyncMock()
     provider.create_pr = AsyncMock(
         side_effect=[
-            RuntimeError("server error"),
-            RuntimeError("rate limit exceeded"),
+            PrTransientError("server error", status_code=500),
+            PrTransientError("rate limit exceeded", status_code=429),
             "https://github.com/test/repo/pull/3",
         ]
     )
@@ -399,7 +400,7 @@ async def test_create_pr_with_retry_exhausts_all_attempts(
 ) -> None:
     """PR creation fails all 3 attempts — returns empty string."""
     provider = AsyncMock()
-    provider.create_pr = AsyncMock(side_effect=RuntimeError("API down"))
+    provider.create_pr = AsyncMock(side_effect=PrTransientError("API down", status_code=503))
     tracker = AsyncMock()
 
     result = await _create_pr_with_retry(
@@ -432,7 +433,7 @@ async def test_close_retries_pr_creation_via_repo_provider(
     repo_provider = AsyncMock()
     repo_provider.create_pr = AsyncMock(
         side_effect=[
-            ConnectionError("GitHub API timeout"),
+            PrTransientError("GitHub API timeout", status_code=504),
             "https://github.com/test/repo/pull/99",
         ]
     )
@@ -470,7 +471,7 @@ async def test_close_retries_pr_creation_via_credentials(
     mock_provider = AsyncMock()
     mock_provider.create_pr = AsyncMock(
         side_effect=[
-            RuntimeError("rate limit"),
+            PrTransientError("rate limit", status_code=429),
             "https://github.com/test/repo/pull/50",
         ]
     )
@@ -488,3 +489,151 @@ async def test_close_retries_pr_creation_via_credentials(
     assert result["pr_url"] == "https://github.com/test/repo/pull/50"
     assert mock_provider.create_pr.call_count == 2
     mock_sleep.assert_called_once_with(1.0)
+
+
+# --- Already-exists error tests ---
+
+
+async def test_create_pr_already_exists_finds_existing() -> None:
+    """On PrAlreadyExistsError, find and return the existing PR URL."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(
+        side_effect=PrAlreadyExistsError(
+            "PR already exists", status_code=422, response_body="already exists"
+        )
+    )
+    provider.find_existing_pr = AsyncMock(return_value="https://github.com/test/repo/pull/10")
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
+    )
+
+    assert result == "https://github.com/test/repo/pull/10"
+    assert provider.create_pr.call_count == 1
+    provider.find_existing_pr.assert_called_once_with(
+        "https://github.com/test/repo", "feat/x", "main"
+    )
+
+
+async def test_create_pr_already_exists_fallback_list() -> None:
+    """On PrAlreadyExistsError without find_existing_pr, falls back to list_pull_requests."""
+    provider = AsyncMock(spec=["create_pr", "list_pull_requests"])
+    provider.create_pr = AsyncMock(
+        side_effect=PrAlreadyExistsError(
+            "PR already exists", status_code=422, response_body="already exists"
+        )
+    )
+    provider.list_pull_requests = AsyncMock(
+        return_value=[
+            {
+                "head_branch": "feat/x",
+                "base_branch": "main",
+                "html_url": "https://github.com/test/repo/pull/11",
+            },
+        ]
+    )
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
+    )
+
+    assert result == "https://github.com/test/repo/pull/11"
+
+
+async def test_create_pr_already_exists_not_found() -> None:
+    """On PrAlreadyExistsError when existing PR cannot be located, returns empty."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(
+        side_effect=PrAlreadyExistsError(
+            "PR already exists", status_code=422, response_body="already exists"
+        )
+    )
+    provider.find_existing_pr = AsyncMock(return_value="")
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
+    )
+
+    assert result == ""
+
+
+# --- Auth error tests ---
+
+
+async def test_create_pr_auth_error_no_retry() -> None:
+    """Auth errors (401/403) are not retried and surface a clear message."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(
+        side_effect=PrAuthError("Bad credentials", status_code=401, response_body="Bad credentials")
+    )
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
+    )
+
+    assert result == ""
+    assert provider.create_pr.call_count == 1  # No retry
+    # Verify tracker logged the auth failure
+    log_calls = [str(c) for c in tracker.append_log.call_args_list]
+    assert any("auth failure" in c for c in log_calls)
+
+
+# --- Non-classified error tests ---
+
+
+async def test_create_pr_unknown_error_no_retry() -> None:
+    """Non-classified errors (e.g. plain RuntimeError) are not retried."""
+    provider = AsyncMock()
+    provider.create_pr = AsyncMock(side_effect=RuntimeError("unexpected"))
+    tracker = AsyncMock()
+
+    result = await _create_pr_with_retry(
+        provider,
+        tracker,
+        "pull request",
+        "https://github.com/test/repo",
+        "feat/x",
+        "main",
+        "add feature",
+        "body",
+        False,
+    )
+
+    assert result == ""
+    assert provider.create_pr.call_count == 1
