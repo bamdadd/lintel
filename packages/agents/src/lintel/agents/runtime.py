@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from uuid import UUID
 
+    from lintel.agents.pii_scanner import AgentPIIScanner
     from lintel.agents.sub_session_tools import SubSessionToolDispatcher
     from lintel.agents.types import AgentRole
     from lintel.contracts.protocols import EventStore
@@ -45,12 +46,14 @@ class AgentRuntime:
         mcp_tool_client: MCPToolClient | None = None,
         mcp_server_store: Any = None,  # noqa: ANN401
         sub_session_dispatcher: SubSessionToolDispatcher | None = None,
+        pii_scanner: AgentPIIScanner | None = None,
     ) -> None:
         self._event_store = event_store
         self._model_router = model_router
         self._mcp_tool_client = mcp_tool_client
         self._mcp_server_store = mcp_server_store
         self._sub_session_dispatcher = sub_session_dispatcher
+        self._pii_scanner = pii_scanner
         self._cost_tracker = LLMCostTracker()
 
     async def _gather_mcp_tools(self) -> list[dict[str, Any]]:
@@ -236,6 +239,10 @@ class AgentRuntime:
                 tool_count=len(mcp_tools),
             )
 
+        # PII scan input messages before sending to LLM
+        if self._pii_scanner is not None:
+            messages = await self._pii_scanner.scan_messages(messages)
+
         # Build conversation messages (mutable copy for the tool loop)
         loop_messages: list[dict[str, Any]] = list(messages)
         total_input_tokens = 0
@@ -362,6 +369,14 @@ class AgentRuntime:
                 max_iterations=max_iterations,
                 step_name=step_name,
             )
+
+        # PII scan LLM response before storing
+        if self._pii_scanner is not None:
+            response_text = result.get("content") or ""
+            if response_text:
+                scan_result = await self._pii_scanner.scan_response(response_text)
+                if scan_result.was_modified:
+                    result["content"] = scan_result.cleaned_text
 
         # Aggregate usage across all iterations
         step_duration_ms = int((time.monotonic() - step_start_time) * 1000)
