@@ -1434,3 +1434,42 @@ class DeploymentEvent:
     started_at: str = ""
     finished_at: str = ""
     url: str = ""
+
+
+# --- Tech Specs ---
+
+
+class TechSpecStatus(StrEnum):
+    """Status of a tech spec."""
+
+    DRAFT = "draft"
+    REVIEW = "review"
+    APPROVED = "approved"
+    SUPERSEDED = "superseded"
+
+
+@dataclass(frozen=True)
+class Milestone:
+    """A milestone within a tech spec."""
+
+    name: str
+    description: str = ""
+    estimated_effort: str = ""
+
+
+@dataclass(frozen=True)
+class TechSpec:
+    """A technical specification document."""
+
+    id: str
+    project_id: str
+    title: str
+    problem_statement: str = ""
+    proposed_solution: str = ""
+    alternatives: tuple[str, ...] = ()
+    dependencies: tuple[str, ...] = ()
+    risks: tuple[str, ...] = ()
+    milestones: tuple[Milestone, ...] = ()
+    status: TechSpecStatus = TechSpecStatus.DRAFT
+    created_at: str = ""
+    updated_at: str = ""
