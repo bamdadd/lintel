@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from lintel.api.lifespan import lifespan
 from lintel.api.middleware import CorrelationMiddleware
 from lintel.api.routers import mount_routers
+from lintel.auth_api.access_log import AccessLogMiddleware
 from lintel.auth_api.middleware import JWTAuthMiddleware
 
 
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
         allow_headers=["*", "X-Correlation-ID"],
         expose_headers=["X-Correlation-ID"],
     )
+    app.add_middleware(AccessLogMiddleware)
 
     mount_routers(app)
 
