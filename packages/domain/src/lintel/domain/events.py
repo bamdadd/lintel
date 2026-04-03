@@ -1287,6 +1287,24 @@ class SandboxCredentialRevoked(EventEnvelope):
     event_type: str = "SandboxCredentialRevoked"
 
 
+# --- Scheduled Task Events ---
+
+
+@dataclass(frozen=True)
+class ScheduledTaskCreated(EventEnvelope):
+    event_type: str = "ScheduledTaskCreated"
+
+
+@dataclass(frozen=True)
+class ScheduledTaskUpdated(EventEnvelope):
+    event_type: str = "ScheduledTaskUpdated"
+
+
+@dataclass(frozen=True)
+class ScheduledTaskRemoved(EventEnvelope):
+    event_type: str = "ScheduledTaskRemoved"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1507,4 +1525,7 @@ register_events(
     VisualVerificationStatusChanged,
     SandboxCredentialIssued,
     SandboxCredentialRevoked,
+    ScheduledTaskCreated,
+    ScheduledTaskUpdated,
+    ScheduledTaskRemoved,
 )
