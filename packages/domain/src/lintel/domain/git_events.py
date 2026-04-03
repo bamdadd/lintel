@@ -214,6 +214,24 @@ class GitEventListener:
 
     async def on_pull_request(self, event: PullRequestEvent) -> str | None:
         """Handle an incoming pull request event."""
+        # Trigger auto-review on opened/synchronize if configured
+        if self._auto_review and event.action in (
+            GitEventAction.OPENED,
+            GitEventAction.SYNCHRONIZE,
+        ):
+            try:
+                await self._auto_review.review_pr(
+                    event.repo_url,
+                    event.pr_number,
+                )
+            except Exception:
+                logger.warning(
+                    "auto_review_failed",
+                    pr_number=event.pr_number,
+                    repo_url=event.repo_url,
+                    exc_info=True,
+                )
+
         rule_key = f"pr_{event.action.value}"
         workflow_type = self._rules.get(rule_key)
         if workflow_type is None:

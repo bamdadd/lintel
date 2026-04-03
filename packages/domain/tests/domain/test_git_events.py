@@ -190,3 +190,85 @@ class TestGitEventListener:
         result = await listener.on_pr_review(PRReviewEvent(review_state=PRReviewState.COMMENTED))
         assert result is None
         dispatcher.dispatch.assert_not_called()
+
+
+class TestGitEventListenerAutoReview:
+    async def test_pr_opened_triggers_auto_review(self) -> None:
+        dispatcher = _FakeDispatcher()
+        auto_review = AsyncMock()
+        listener = GitEventListener(
+            dispatcher,  # type: ignore[arg-type]
+            rules={},
+            auto_review=auto_review,
+        )
+        await listener.on_pull_request(
+            PullRequestEvent(
+                action=GitEventAction.OPENED,
+                pr_number=42,
+                repo_url="https://github.com/org/repo",
+            )
+        )
+        auto_review.review_pr.assert_awaited_once_with(
+            "https://github.com/org/repo", 42
+        )
+
+    async def test_pr_synchronize_triggers_auto_review(self) -> None:
+        dispatcher = _FakeDispatcher()
+        auto_review = AsyncMock()
+        listener = GitEventListener(
+            dispatcher,  # type: ignore[arg-type]
+            rules={},
+            auto_review=auto_review,
+        )
+        await listener.on_pull_request(
+            PullRequestEvent(
+                action=GitEventAction.SYNCHRONIZE,
+                pr_number=10,
+                repo_url="https://github.com/org/repo",
+            )
+        )
+        auto_review.review_pr.assert_awaited_once()
+
+    async def test_pr_closed_does_not_trigger_auto_review(self) -> None:
+        dispatcher = _FakeDispatcher()
+        auto_review = AsyncMock()
+        listener = GitEventListener(
+            dispatcher,  # type: ignore[arg-type]
+            rules={},
+            auto_review=auto_review,
+        )
+        await listener.on_pull_request(
+            PullRequestEvent(action=GitEventAction.CLOSED, pr_number=5)
+        )
+        auto_review.review_pr.assert_not_awaited()
+
+    async def test_auto_review_failure_does_not_block_workflow(self) -> None:
+        dispatcher = _FakeDispatcher()
+        auto_review = AsyncMock()
+        auto_review.review_pr.side_effect = RuntimeError("API error")
+        listener = GitEventListener(
+            dispatcher,  # type: ignore[arg-type]
+            rules={"pr_opened": "code-review"},
+            auto_review=auto_review,
+        )
+        result = await listener.on_pull_request(
+            PullRequestEvent(
+                action=GitEventAction.OPENED,
+                pr_number=42,
+                repo_url="https://github.com/org/repo",
+            )
+        )
+        # Workflow should still trigger despite auto-review failure
+        assert result == "run-123"
+        dispatcher.dispatch.assert_called_once()
+
+    async def test_no_auto_review_when_not_configured(self) -> None:
+        dispatcher = _FakeDispatcher()
+        listener = GitEventListener(
+            dispatcher,  # type: ignore[arg-type]
+            rules={},
+        )
+        # Should not raise — auto_review is None
+        await listener.on_pull_request(
+            PullRequestEvent(action=GitEventAction.OPENED, pr_number=1)
+        )
