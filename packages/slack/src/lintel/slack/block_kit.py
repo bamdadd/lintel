@@ -235,3 +235,86 @@ def build_board_blocks(
             )
 
     return blocks
+
+
+# --- Modals ---
+
+_WORK_TYPE_OPTIONS: list[dict[str, Any]] = [
+    {"text": {"type": "plain_text", "text": "Feature"}, "value": "feature"},
+    {"text": {"type": "plain_text", "text": "Bug"}, "value": "bug"},
+    {"text": {"type": "plain_text", "text": "Task"}, "value": "task"},
+    {"text": {"type": "plain_text", "text": "Refactor"}, "value": "refactor"},
+]
+
+
+def build_create_work_item_modal(
+    *,
+    callback_id: str = "create_work_item",
+    private_metadata: str = "",
+) -> dict[str, Any]:
+    """Build a Slack modal view for creating a work item."""
+    return {
+        "type": "modal",
+        "callback_id": callback_id,
+        "private_metadata": private_metadata,
+        "title": {"type": "plain_text", "text": "Create Work Item"},
+        "submit": {"type": "plain_text", "text": "Create"},
+        "close": {"type": "plain_text", "text": "Cancel"},
+        "blocks": [
+            {
+                "type": "input",
+                "block_id": "title_block",
+                "label": {"type": "plain_text", "text": "Title"},
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "title_input",
+                    "placeholder": {"type": "plain_text", "text": "e.g. Add dark mode"},
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "description_block",
+                "optional": True,
+                "label": {"type": "plain_text", "text": "Description"},
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "description_input",
+                    "multiline": True,
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Describe the work item...",
+                    },
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "type_block",
+                "label": {"type": "plain_text", "text": "Type"},
+                "element": {
+                    "type": "static_select",
+                    "action_id": "type_select",
+                    "options": _WORK_TYPE_OPTIONS,
+                    "initial_option": _WORK_TYPE_OPTIONS[0],
+                },
+            },
+        ],
+    }
+
+
+def parse_view_submission(view: dict[str, Any]) -> dict[str, str]:
+    """Extract field values from a Slack view_submission payload's view object.
+
+    Returns a dict with keys: title, description, work_type.
+    """
+    values = view.get("state", {}).get("values", {})
+    title = values.get("title_block", {}).get("title_input", {}).get("value", "") or ""
+    description = (
+        values.get("description_block", {}).get("description_input", {}).get("value", "") or ""
+    )
+    type_obj = values.get("type_block", {}).get("type_select", {}).get("selected_option")
+    work_type = type_obj.get("value", "feature") if type_obj else "feature"
+    return {
+        "title": title,
+        "description": description,
+        "work_type": work_type,
+    }
