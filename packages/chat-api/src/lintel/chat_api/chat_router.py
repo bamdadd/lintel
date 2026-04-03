@@ -212,21 +212,7 @@ class ChatRouter:
 
         # If LLM didn't follow the structured format, infer from content
         if not action:
-            # If a WORKFLOW line was found, it's clearly a workflow
-            if workflow_type or any(
-                phrase in content.lower()
-                for phrase in (
-                    "refactor",
-                    "implement",
-                    "i'll help you",
-                    "let's get started",
-                    "i will help",
-                    "let me",
-                    "i can help you",
-                    "start_workflow",
-                    "workflow",
-                )
-            ):
+            if workflow_type or "start_workflow" in content.lower():
                 action = "start_workflow"
             else:
                 action = "chat_reply"
@@ -249,7 +235,8 @@ class ChatRouter:
                     workflow_type = wf_type
                     break
             else:
-                workflow_type = "feature_to_pr"
+                # No workflow type could be inferred — don't guess, ask the user
+                action = "chat_reply"
 
         logger.info("classify_result", action=action, workflow_type=workflow_type)
         return ChatRouterResult(action=action, workflow_type=workflow_type, reply=reply)

@@ -645,7 +645,18 @@ class ChatService:
         Returns the reply text, or None if a workflow was dispatched
         (in which case dispatch_workflow already added the message).
         """
+        from lintel.chat_api.chat_router import ChatRouterResult as _Result
+
         result: ChatRouterResult = classify_result  # type: ignore[assignment]
+
+        # Safety net: very short messages should never trigger a full pipeline run
+        if result.action == "start_workflow" and len(message.split()) < 4:
+            logger.info(
+                "message_too_short_for_workflow",
+                message=message,
+                workflow_type=result.workflow_type,
+            )
+            result = _Result(action="chat_reply", reply="")
 
         if result.action == "show_board":
             reply = await self.handle_show_board(conversation_id)

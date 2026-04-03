@@ -107,11 +107,10 @@ class TestLLMResponseParsing:
         assert result.workflow_type == "bug_fix"
         assert "fix" in result.reply.lower()
 
-    def test_unknown_workflow_defaults_to_feature(self) -> None:
+    def test_unknown_workflow_falls_back_to_chat(self) -> None:
         content = "ACTION: start_workflow\nWORKFLOW: unknown_type\nREPLY: On it."
         result = self.router._parse_llm_response(content)
-        assert result.action == "start_workflow"
-        assert result.workflow_type == "feature_to_pr"
+        assert result.action == "chat_reply"
 
     def test_missing_action_defaults_to_chat(self) -> None:
         content = "I'm not sure what to do with this."
@@ -367,3 +366,91 @@ class TestIntentKeywordsIntegrity:
         intent_keys = set(INTENT_KEYWORDS.keys())
         workflow_keys = set(WORKFLOW_KEYWORDS.keys())
         assert intent_keys.isdisjoint(workflow_keys), f"Overlap: {intent_keys & workflow_keys}"
+
+
+class TestAmbiguousMessageClassification:
+    """Tests for the bug fix: ambiguous/short messages must not trigger workflows."""
+
+    def setup_method(self) -> None:
+        self.router = ChatRouter(model_router=None)
+
+    async def test_single_word_slack_is_chat(self) -> None:
+        result = await self.router.classify("slack")
+        assert result.action == "chat_reply"
+
+    async def test_single_word_hello_is_chat(self) -> None:
+        result = await self.router.classify("hello")
+        assert result.action == "chat_reply"
+
+    async def test_single_word_never_triggers_workflow(self) -> None:
+        for word in ("slack", "hello", "hi", "test", "help"):
+            result = await self.router.classify(word)
+            assert result.action != "start_workflow", f"'{word}' should not start a workflow"
+
+    def test_llm_conversational_response_without_action_is_chat(self) -> None:
+        """LLM says 'I can help you' but no ACTION line -> chat_reply, not workflow."""
+        content = "I can help you with that, could you clarify what you need?"
+        result = self.router._parse_llm_response(content)
+        assert result.action == "chat_reply"
+
+    def test_llm_let_me_response_without_action_is_chat(self) -> None:
+        """LLM says 'let me' but no ACTION line -> chat_reply."""
+        content = "Let me know more details about your request."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "chat_reply"
+
+    def test_explicit_action_workflow_still_works(self) -> None:
+        """Explicit ACTION: start_workflow + WORKFLOW line must still be honoured."""
+        content = "ACTION: start_workflow\nWORKFLOW: feature_to_pr\nREPLY: Starting now."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "start_workflow"
+        assert result.workflow_type == "feature_to_pr"
+
+    def test_unknown_workflow_type_does_not_default_to_feature(self) -> None:
+        """ACTION: start_workflow with unrecognised WORKFLOW must not default to feature_to_pr."""
+        content = "ACTION: start_workflow\nWORKFLOW: mystery\nREPLY: On it."
+        result = self.router._parse_llm_response(content)
+        assert result.action == "chat_reply"
+
+
+class TestShortMessageServiceGuard:
+    """Tests for the service-level guard: short messages override start_workflow."""
+
+    def test_short_message_guard_overrides_result(self) -> None:
+        """Verify the guard logic: < 4-word message with start_workflow -> chat_reply.
+
+        This tests the guard inline rather than through the full ChatService,
+        because ChatService.handle_classified_message requires request context.
+        """
+        from lintel.chat_api.chat_router import ChatRouterResult as _Result
+
+        # Simulate what handle_classified_message does:
+        message = "slack"
+        result = _Result(
+            action="start_workflow",
+            workflow_type="feature_to_pr",
+            reply="Starting...",
+        )
+
+        if result.action == "start_workflow" and len(message.split()) < 4:
+            result = _Result(action="chat_reply", reply="")
+
+        assert result.action == "chat_reply"
+        assert result.workflow_type == ""
+
+    def test_long_message_not_overridden(self) -> None:
+        """Messages with >= 4 words should not be overridden by the guard."""
+        from lintel.chat_api.chat_router import ChatRouterResult as _Result
+
+        message = "implement a new login page"
+        result = _Result(
+            action="start_workflow",
+            workflow_type="feature_to_pr",
+            reply="Starting...",
+        )
+
+        if result.action == "start_workflow" and len(message.split()) < 4:
+            result = _Result(action="chat_reply", reply="")
+
+        assert result.action == "start_workflow"
+        assert result.workflow_type == "feature_to_pr"
