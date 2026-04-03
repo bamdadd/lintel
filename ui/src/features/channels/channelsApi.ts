@@ -78,3 +78,35 @@ export async function disconnectSlack(): Promise<void> {
     { method: 'DELETE' },
   );
 }
+
+// --- Channel Connection CRUD (project-scoped linking) ---
+
+export interface ChannelConnectionDetail {
+  id: string;
+  provider: string;
+  channel_id: string;
+  workspace_id: string;
+  config: Record<string, unknown>;
+  allowed_workflows: string[];
+  project_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listChannelConnectionDetails(): Promise<ChannelConnectionDetail[]> {
+  const { data } = await customInstance<{ data: ChannelConnectionDetail[] }>(
+    '/api/v1/channel-connections',
+  );
+  return data ?? [];
+}
+
+export async function updateChannelConnection(
+  connectionId: string,
+  body: { project_ids?: string[]; allowed_workflows?: string[] },
+): Promise<ChannelConnectionDetail> {
+  const { data } = await customInstance<{ data: ChannelConnectionDetail }>(
+    `/api/v1/channel-connections/${connectionId}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+  );
+  return data!;
+}

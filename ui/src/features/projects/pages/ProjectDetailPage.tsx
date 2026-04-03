@@ -12,8 +12,9 @@ import {
   IconShieldCheck, IconFileText, IconListDetails, IconTool,
   IconTarget, IconChartBar, IconFlask, IconBrain,
   IconListCheck, IconPlayerPlay, IconLayoutKanban, IconBulb,
-  IconGitBranch, IconExternalLink,
+  IconGitBranch, IconExternalLink, IconPlug,
 } from '@tabler/icons-react';
+import { ProjectChannelsTab } from '@/features/projects/components/ProjectChannelsTab';
 import {
   useProjectsGetProject,
   useProjectsUpdateProject,
@@ -160,6 +161,9 @@ export function Component() {
             {(counts.regulations ?? 0) + (counts.policies ?? 0) > 0 && (
               <Badge size="xs" ml={4} variant="light" color="blue">{(counts.regulations ?? 0) + (counts.policies ?? 0)}</Badge>
             )}
+          </Tabs.Tab>
+          <Tabs.Tab value="channels" leftSection={<IconPlug size={14} />}>
+            Channels
           </Tabs.Tab>
         </Tabs.List>
 
@@ -352,6 +356,13 @@ export function Component() {
               View Full Compliance Dashboard
             </Button>
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="channels" pt="md">
+          <ProjectChannelsTab
+            projectId={project.project_id}
+            workflows={(workflowsResp?.data ?? []) as unknown as { definition_id: string; name: string; enabled: boolean }[]}
+          />
         </Tabs.Panel>
       </Tabs>
 
