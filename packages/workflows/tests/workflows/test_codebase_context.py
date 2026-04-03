@@ -33,7 +33,7 @@ class TestGatherCodebaseContext:
     async def test_returns_directory_tree(self) -> None:
         sandbox = _sandbox_with_tree(".\n├── src/\n│   └── main.py\n└── tests/")
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert "Directory Structure" in result
         assert "src/" in result
@@ -57,7 +57,7 @@ class TestGatherCodebaseContext:
         sandbox.execute.side_effect = mock_execute
         sandbox.read_file.side_effect = FileNotFoundError
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert "Directory Structure" in result
         assert "main.py" in result
@@ -72,7 +72,7 @@ class TestGatherCodebaseContext:
 
         sandbox.read_file.side_effect = mock_read_file
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert "README.md" in result
         assert "A cool project" in result
@@ -87,7 +87,7 @@ class TestGatherCodebaseContext:
 
         sandbox.read_file.side_effect = mock_read_file
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert "pyproject.toml" in result
         assert 'name = "myproject"' in result
@@ -102,7 +102,7 @@ class TestGatherCodebaseContext:
 
         sandbox.read_file.side_effect = mock_read_file
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert "... (truncated)" in result
 
@@ -110,7 +110,7 @@ class TestGatherCodebaseContext:
         grep_out = "src/main.py:1:def main():\nsrc/app.py:5:if __name__"
         sandbox = _sandbox_with_tree(".", grep_output=grep_out)
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert "Entry points" in result
         assert "def main():" in result
@@ -119,7 +119,7 @@ class TestGatherCodebaseContext:
         grep_out = "/workspace/repo/src/app.py:10:@router.get"
         sandbox = _sandbox_with_tree(".", grep_output=grep_out)
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert "/workspace/repo/" not in result
         assert "src/app.py:10" in result
@@ -137,7 +137,7 @@ class TestGatherCodebaseContext:
         sandbox.execute.side_effect = mock_execute
         sandbox.read_file.side_effect = FileNotFoundError
 
-        result = await gather_codebase_context(sandbox, "sandbox-1")
+        result = await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
         assert result == ""
 
@@ -157,7 +157,7 @@ class TestGatherCodebaseContext:
         import pytest
 
         with pytest.raises(FileNotFoundError, match="Repository not found"):
-            await gather_codebase_context(sandbox, "sandbox-1")
+            await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")
 
     async def test_handles_sandbox_errors_gracefully(self) -> None:
         """When the sandbox is unreachable, the repo check fails and raises."""
@@ -168,4 +168,4 @@ class TestGatherCodebaseContext:
         import pytest
 
         with pytest.raises(FileNotFoundError, match="Repository not found"):
-            await gather_codebase_context(sandbox, "sandbox-1")
+            await gather_codebase_context(sandbox, "sandbox-1", repo_path="/workspace/repo")

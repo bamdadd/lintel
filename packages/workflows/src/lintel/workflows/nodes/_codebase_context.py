@@ -61,7 +61,7 @@ async def _run(
 async def gather_codebase_context(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
-    repo_path: str = "/workspace/repo",
+    repo_path: str,
 ) -> str:
     """Read directory structure and key files from the sandbox.
 

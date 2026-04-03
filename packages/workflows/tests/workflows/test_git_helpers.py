@@ -20,7 +20,7 @@ class TestRebaseOnUpstream:
     async def test_success(self) -> None:
         manager = _make_sandbox_manager(exit_code=0)
 
-        result = await rebase_on_upstream(manager, "sbx-1", "main")
+        result = await rebase_on_upstream(manager, "sbx-1", "main", workdir="/workspace/repo")
 
         assert result["success"] is True
         assert "Rebased successfully" in result["message"]
@@ -39,7 +39,7 @@ class TestRebaseOnUpstream:
             ],
         )
 
-        result = await rebase_on_upstream(manager, "sbx-1", "main")
+        result = await rebase_on_upstream(manager, "sbx-1", "main", workdir="/workspace/repo")
 
         assert result["success"] is False
         assert "conflicts" in result["message"].lower()
@@ -64,7 +64,7 @@ class TestGitOperations:
     async def test_rebase_success_via_class(self) -> None:
         manager = _make_sandbox_manager(exit_code=0)
         ops = GitOperations(manager, "sbx-1")
-        result = await ops.rebase_on_upstream("main")
+        result = await ops.rebase_on_upstream("main", workdir="/workspace/repo")
         assert result["success"] is True
         assert "Rebased successfully" in result["message"]
 
@@ -77,6 +77,6 @@ class TestGitOperations:
             ],
         )
         ops = GitOperations(manager, "sbx-1")
-        result = await ops.rebase_on_upstream("main")
+        result = await ops.rebase_on_upstream("main", workdir="/workspace/repo")
         assert result["success"] is False
         assert manager.execute.call_count == 2

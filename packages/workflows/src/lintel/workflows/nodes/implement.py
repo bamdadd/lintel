@@ -103,8 +103,17 @@ async def spawn_implementation(
     workspace_path = state.get("workspace_path") or "/workspace/repo"
     workspace_paths: tuple[tuple[str, str], ...] = state.get("workspace_paths", ())
 
-    # Read project guidelines
-    guidelines = await read_guidelines(sandbox_manager, sandbox_id, workspace_path)
+    # Read project guidelines from all repos
+    guidelines_parts: list[str] = []
+    if workspace_paths and len(workspace_paths) > 1:
+        for ws_url, ws_path in workspace_paths:
+            label = ws_url.rstrip("/").rsplit("/", 1)[-1] if ws_url else ws_path
+            g = await read_guidelines(sandbox_manager, sandbox_id, ws_path)
+            if g:
+                guidelines_parts.append(f"### {label}\n{g}")
+        guidelines = "\n\n".join(guidelines_parts)
+    else:
+        guidelines = await read_guidelines(sandbox_manager, sandbox_id, workspace_path)
 
     # Build task descriptions from plan
     tasks = plan.get("tasks", [])
@@ -303,7 +312,7 @@ async def spawn_implementation(
 
         try:
             git_ops = GitOperations(sandbox_manager, sandbox_id)
-            rebase_result = await git_ops.rebase_on_upstream(base_branch)
+            rebase_result = await git_ops.rebase_on_upstream(base_branch, workdir=workspace_path)
             if not rebase_result["success"]:
                 rebase_warning = rebase_result["message"]
         except Exception:
