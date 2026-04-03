@@ -514,7 +514,7 @@ class TestSetupWorkspace:
         assert len(ws_paths) == 2
         assert ws_paths[0][0] == "https://github.com/test/repo.git"
         assert ws_paths[1][0] == "https://github.com/test/repo2.git"
-        assert "repo-1" in ws_paths[1][1]
+        assert "repo2" in ws_paths[1][1]
 
     async def test_single_repo_workspace_paths(self) -> None:
         """Single-repo project returns workspace_paths with one entry."""
@@ -649,6 +649,30 @@ class TestResolveGithubToken:
         token = await resolve_github_token(state, store)  # type: ignore[arg-type]
 
         assert token == "ghp_fallback"
+
+
+class TestUrlBasename:
+    """Tests for _url_basename helper."""
+
+    def test_https_url(self) -> None:
+        from lintel.workflows.nodes.setup_workspace import _url_basename
+
+        assert _url_basename("https://github.com/org/my-repo") == "my-repo"
+
+    def test_https_url_with_git_suffix(self) -> None:
+        from lintel.workflows.nodes.setup_workspace import _url_basename
+
+        assert _url_basename("https://github.com/org/my-repo.git") == "my-repo"
+
+    def test_trailing_slash(self) -> None:
+        from lintel.workflows.nodes.setup_workspace import _url_basename
+
+        assert _url_basename("https://github.com/org/my-repo/") == "my-repo"
+
+    def test_empty_url(self) -> None:
+        from lintel.workflows.nodes.setup_workspace import _url_basename
+
+        assert _url_basename("") == "repo"
 
 
 class TestGatherMultiRepoContext:

@@ -55,7 +55,7 @@ Be specific — reference actual file paths and line numbers. Keep the report un
 async def _gather_context(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
-    repo_path: str = "/workspace/repo",
+    repo_path: str,
 ) -> str:
     """Gather codebase context from the sandbox."""
     from lintel.workflows.nodes._codebase_context import gather_codebase_context

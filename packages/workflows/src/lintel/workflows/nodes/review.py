@@ -70,24 +70,38 @@ async def review_output(
     sandbox_id = state.get("sandbox_id")
     diff_text = ""
 
-    # Get the diff from the sandbox
+    # Get the diff from the sandbox (multi-repo aware)
     if sandbox_id and sandbox_manager is not None:
         try:
-            workdir = state.get("workspace_path", "/workspace/repo")
-            # Stage new files so they appear in the diff
-            await sandbox_manager.execute(
-                sandbox_id,
-                SandboxJob(command="git add -A", workdir=workdir, timeout_seconds=10),
-            )
-            result = await sandbox_manager.execute(
-                sandbox_id,
-                SandboxJob(
-                    command="git diff --cached",
-                    workdir=workdir,
-                    timeout_seconds=30,
-                ),
-            )
-            diff_text = result.stdout
+            workspace_paths: tuple[tuple[str, str], ...] = state.get("workspace_paths", ())
+            dirs_to_diff: list[tuple[str, str]] = []
+            if workspace_paths and len(workspace_paths) > 1:
+                dirs_to_diff = list(workspace_paths)
+            else:
+                workdir = state.get("workspace_path", "/workspace/repo")
+                dirs_to_diff = [("", workdir)]
+
+            diff_parts: list[str] = []
+            for ws_url, ws_dir in dirs_to_diff:
+                await sandbox_manager.execute(
+                    sandbox_id,
+                    SandboxJob(command="git add -A", workdir=ws_dir, timeout_seconds=10),
+                )
+                result = await sandbox_manager.execute(
+                    sandbox_id,
+                    SandboxJob(
+                        command="git diff --cached",
+                        workdir=ws_dir,
+                        timeout_seconds=30,
+                    ),
+                )
+                if result.stdout.strip():
+                    if len(dirs_to_diff) > 1:
+                        label = ws_url.rstrip("/").rsplit("/", 1)[-1] if ws_url else ws_dir
+                        diff_parts.append(f"# {label}\n{result.stdout}")
+                    else:
+                        diff_parts.append(result.stdout)
+            diff_text = "\n".join(diff_parts)
         except Exception:
             logger.warning("review_diff_collection_failed")
 

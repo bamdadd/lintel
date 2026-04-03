@@ -152,6 +152,17 @@ def _get_claude_code_oauth_token() -> str:
     return ""
 
 
+def _url_basename(repo_url: str) -> str:
+    """Extract a directory-safe basename from a repo URL.
+
+    ``https://github.com/org/my-repo.git`` → ``my-repo``
+    """
+    name = repo_url.rstrip("/").rsplit("/", 1)[-1]
+    if name.endswith(".git"):
+        name = name[:-4]
+    return name or "repo"
+
+
 def _inject_github_token(repo_url: str, token: str) -> str:
     """Inject a GitHub token into a clone URL for authentication."""
     return re.sub(
@@ -324,7 +335,8 @@ async def setup_workspace(
 
     # Each pipeline run gets its own directory so runs don't collide
     workspace_root = f"/workspace/{run_id}" if run_id else "/workspace/default"
-    repo_path = f"{workspace_root}/repo"
+    repo_basename = _url_basename(repo_url) if repo_url else "repo"
+    repo_path = f"{workspace_root}/{repo_basename}"
 
     if not repo_url:
         # Code-producing workflows need a repo to push changes. Fail early
@@ -691,7 +703,7 @@ async def setup_workspace(
         # Track all workspace paths: (repo_url, workspace_dir) pairs
         all_workspace_paths: list[tuple[str, str]] = [(repo_url, repo_path)]
         additional_repos = [u for u in repo_urls[1:] if u] if len(repo_urls) > 1 else []
-        for idx, extra_url in enumerate(additional_repos, start=1):
+        for _idx, extra_url in enumerate(additional_repos, start=1):
             extra_clone_url = extra_url
             if credential_store is not None:
                 extra_clone_url, _ = await resolve_credentials(
@@ -701,10 +713,11 @@ async def setup_workspace(
                     sandbox_id,
                     extra_url,
                 )
-            target = f"{workspace_root}/repo-{idx}"
+            extra_basename = _url_basename(extra_url)
+            target = f"{workspace_root}/{extra_basename}"
             await tracker.append_log(
                 "setup_workspace",
-                f"Cloning additional repo {idx}: {extra_url} (branch: {repo_branch})...",
+                f"Cloning additional repo: {extra_basename} (branch: {repo_branch})...",
             )
             extra_result = await sandbox_manager.execute(
                 sandbox_id,
@@ -720,22 +733,20 @@ async def setup_workspace(
             if extra_result.exit_code != 0:
                 await tracker.append_log(
                     "setup_workspace",
-                    f"Additional repo {idx} clone failed: {extra_result.stderr[:200]}",
+                    f"Clone failed ({extra_basename}): {extra_result.stderr[:200]}",
                 )
                 logger.warning(
                     "additional_repo_clone_failed",
-                    index=idx,
+                    basename=extra_basename,
                     url=extra_url,
                     error=extra_result.stderr[:200],
                 )
             else:
                 all_workspace_paths.append((extra_url, target))
-                await tracker.append_log(
-                    "setup_workspace", f"Additional repo {idx} cloned to {target}"
-                )
+                await tracker.append_log("setup_workspace", f"Cloned {extra_basename} to {target}")
                 logger.info(
-                    "additional_repo_cloned index=%d target=%s url=%s",
-                    idx,
+                    "additional_repo_cloned basename=%s target=%s url=%s",
+                    extra_basename,
                     target,
                     extra_url,
                 )

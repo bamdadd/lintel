@@ -21,7 +21,7 @@ class GitOperations:
     async def rebase_on_upstream(
         self,
         base_branch: str,
-        workdir: str = "/workspace/repo",
+        workdir: str,
     ) -> dict[str, Any]:
         """Attempt to rebase the current branch on *base_branch*.
 
@@ -73,7 +73,7 @@ async def rebase_on_upstream(
     sandbox_manager: SandboxManager,
     sandbox_id: str,
     base_branch: str,
-    workdir: str = "/workspace/repo",
+    workdir: str,
 ) -> dict[str, Any]:
     """Attempt to rebase the current branch on *base_branch*.
 
