@@ -15,11 +15,18 @@ router = APIRouter()
 
 # Fixed credential ID so we always overwrite the same record
 TELEGRAM_CREDENTIAL_ID = "channel:telegram"
+SLACK_CREDENTIAL_ID = "channel:slack"
 
 
 class TelegramConnectionRequest(BaseModel):
     bot_token: str
     webhook_secret: str = ""
+
+
+class SlackConnectionRequest(BaseModel):
+    bot_token: str
+    signing_secret: str = ""
+    app_token: str = ""
 
 
 class ChannelConnectionStatus(BaseModel):
@@ -148,10 +155,13 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
     connections: list[dict[str, Any]] = []
 
     # Check Slack
+    slack_connected = getattr(request.app.state, "slack_connected", False) or hasattr(
+        request.app.state, "slack_app"
+    )
     connections.append(
         {
             "channel_type": "slack",
-            "connected": hasattr(request.app.state, "slack_app"),
+            "connected": slack_connected,
             "bot_username": "",
         }
     )
@@ -167,6 +177,77 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
     )
 
     return connections
+
+
+@router.post("/settings/channels/slack", status_code=201)
+async def connect_slack(
+    body: SlackConnectionRequest,
+    request: Request,
+) -> dict[str, Any]:
+    """Save Slack credentials and mark as connected."""
+    # Persist to credential store if available
+    credential_store = await _get_credential_store(request)
+    if credential_store is not None:
+        combined_secret = f"{body.bot_token}||{body.signing_secret}||{body.app_token}"
+        await credential_store.store(
+            credential_id=SLACK_CREDENTIAL_ID,
+            credential_type="slack_bot_token",
+            name="Slack Bot",
+            secret=combined_secret,
+        )
+
+    # Mark as connected in app state
+    request.app.state.slack_connected = True
+    request.app.state.slack_credentials = {
+        "bot_token": body.bot_token,
+        "signing_secret": body.signing_secret,
+        "app_token": body.app_token,
+    }
+
+    logger.info("slack.connected")
+
+    return {
+        "channel_type": "slack",
+        "connected": True,
+    }
+
+
+@router.get("/settings/channels/slack/status")
+async def slack_status(request: Request) -> dict[str, Any]:
+    """Check Slack connection status."""
+    connected = getattr(request.app.state, "slack_connected", False)
+    if not connected:
+        return {
+            "channel_type": "slack",
+            "connected": False,
+            "message": "Slack not configured",
+        }
+
+    return {
+        "channel_type": "slack",
+        "connected": True,
+        "message": "Connection configured",
+    }
+
+
+@router.delete("/settings/channels/slack", status_code=204)
+async def disconnect_slack(request: Request) -> None:
+    """Disconnect Slack and remove stored credentials."""
+    connected = getattr(request.app.state, "slack_connected", False)
+    if not connected:
+        raise HTTPException(status_code=404, detail="Slack not connected")
+
+    # Remove from credential store
+    credential_store = await _get_credential_store(request)
+    if credential_store is not None:
+        with contextlib.suppress(KeyError):
+            await credential_store.revoke(SLACK_CREDENTIAL_ID)
+
+    # Remove from app state
+    request.app.state.slack_connected = False
+    request.app.state.slack_credentials = None
+
+    logger.info("slack.disconnected")
 
 
 @router.post("/settings/channels/telegram", status_code=201)
