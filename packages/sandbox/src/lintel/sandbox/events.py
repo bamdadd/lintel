@@ -37,6 +37,21 @@ class SandboxDestroyed(EventEnvelope):
     event_type: str = "SandboxDestroyed"
 
 
+@dataclass(frozen=True)
+class SandboxSessionHibernated(EventEnvelope):
+    event_type: str = "SandboxSessionHibernated"
+
+
+@dataclass(frozen=True)
+class SandboxSessionResumed(EventEnvelope):
+    event_type: str = "SandboxSessionResumed"
+
+
+@dataclass(frozen=True)
+class SandboxSessionTerminated(EventEnvelope):
+    event_type: str = "SandboxSessionTerminated"
+
+
 register_events(
     SandboxJobScheduled,
     SandboxCreated,
@@ -44,4 +59,7 @@ register_events(
     SandboxFileWritten,
     SandboxArtifactsCollected,
     SandboxDestroyed,
+    SandboxSessionHibernated,
+    SandboxSessionResumed,
+    SandboxSessionTerminated,
 )
