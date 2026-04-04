@@ -1368,6 +1368,24 @@ class BotRemoved(EventEnvelope):
     event_type: str = "BotRemoved"
 
 
+# --- Frontend Target Events ---
+
+
+@dataclass(frozen=True)
+class FrontendTargetCreated(EventEnvelope):
+    event_type: str = "FrontendTargetCreated"
+
+
+@dataclass(frozen=True)
+class FrontendTargetUpdated(EventEnvelope):
+    event_type: str = "FrontendTargetUpdated"
+
+
+@dataclass(frozen=True)
+class FrontendTargetRemoved(EventEnvelope):
+    event_type: str = "FrontendTargetRemoved"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1601,4 +1619,7 @@ register_events(
     BotCreated,
     BotUpdated,
     BotRemoved,
+    FrontendTargetCreated,
+    FrontendTargetUpdated,
+    FrontendTargetRemoved,
 )

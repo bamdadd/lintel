@@ -144,6 +144,26 @@ class Variable:
     is_secret: bool = False
 
 
+class FrontendPlatform(StrEnum):
+    """Supported frontend target platforms."""
+
+    WEB = "web"
+    IOS = "ios"
+    ANDROID = "android"
+    ELECTRON = "electron"
+
+
+@dataclass(frozen=True)
+class FrontendTarget:
+    """A frontend target platform within a project."""
+
+    target_id: str
+    project_id: str
+    platform: str
+    label: str = ""
+    config: dict[str, object] = field(default_factory=dict)
+
+
 # --- Triggers ---
 
 
