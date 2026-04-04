@@ -90,6 +90,7 @@ testpaths = [
     "packages/context-injection/tests",
     "packages/cve-remediation-api/tests",
     "packages/notion-adapter-api/tests",
+    "packages/secret-rotation-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -169,6 +170,7 @@ mypy_path = [
     "packages/context-injection/src",
     "packages/cve-remediation-api/src",
     "packages/notion-adapter-api/src",
+    "packages/secret-rotation-api/src",
 ]
 
 [[tool.mypy.overrides]]

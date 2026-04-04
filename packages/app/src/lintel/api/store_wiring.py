@@ -217,6 +217,16 @@ from lintel.sandboxes_api.routes import (
 from lintel.sandboxes_api.snapshot_store import InMemorySnapshotStore
 from lintel.scheduled_tasks_api.routes import scheduled_task_store_provider
 from lintel.scheduled_tasks_api.store import InMemoryScheduledTaskStore
+from lintel.secret_rotation_api.routes import (
+    expiry_tracker_provider,
+    rotation_history_store_provider,
+    rotation_policy_store_provider,
+)
+from lintel.secret_rotation_api.store import (
+    InMemoryExpiryTracker,
+    InMemoryRotationHistoryStore,
+    InMemoryRotationPolicyStore,
+)
 from lintel.skills_api.routes import skill_store_provider
 from lintel.skills_api.store import InMemorySkillStore
 from lintel.slack_notifications_api.routes import (
@@ -432,6 +442,10 @@ def create_in_memory_stores() -> dict[str, Any]:
         "retention_policy_store": InMemoryRetentionPolicyStore(),
         # Encryption
         "encryption_store": EncryptionStore(),
+        # Secret Rotation
+        "rotation_policy_store": InMemoryRotationPolicyStore(),
+        "rotation_history_store": InMemoryRotationHistoryStore(),
+        "expiry_tracker": InMemoryExpiryTracker(),
     }
 
 
@@ -855,6 +869,10 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "retention_policy_store": InMemoryRetentionPolicyStore(),
         # Encryption
         "encryption_store": EncryptionStore(),
+        # Secret Rotation: in-memory until Postgres implementation exists
+        "rotation_policy_store": InMemoryRotationPolicyStore(),
+        "rotation_history_store": InMemoryRotationHistoryStore(),
+        "expiry_tracker": InMemoryExpiryTracker(),
     }
 
 
@@ -971,6 +989,9 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     board_sync_mapping_store_provider.override(stores["external_id_mapping_store"])
     github_installation_store_provider.override(stores["github_app_installation_store"])
     retention_policy_store_provider.override(stores["retention_policy_store"])
+    rotation_policy_store_provider.override(stores["rotation_policy_store"])
+    rotation_history_store_provider.override(stores["rotation_history_store"])
+    expiry_tracker_provider.override(stores["expiry_tracker"])
     # Wire httpx client for GitHub App API calls
     import httpx
 
