@@ -35,6 +35,7 @@ class Project:
 
 
 class WorkItemStatus(StrEnum):
+    BACKLOG = "backlog"
     OPEN = "open"
     IN_PROGRESS = "in_progress"
     IN_REVIEW = "in_review"

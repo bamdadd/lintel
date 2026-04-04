@@ -12,6 +12,8 @@ const typeColor: Record<string, string> = {
   task: 'gray',
 };
 
+const DONE_STATUSES = new Set(['merged', 'closed', 'failed', 'cancelled']);
+
 interface WorkItemCardProps {
   item: WorkItem;
   index: number;
@@ -19,7 +21,8 @@ interface WorkItemCardProps {
 }
 
 export function WorkItemCard({ item, index, onClickItem }: WorkItemCardProps) {
-  const { pipeline, stages } = useLatestPipelineWithStages(item.work_item_id);
+  const isDone = DONE_STATUSES.has(item.status);
+  const { pipeline, stages } = useLatestPipelineWithStages(isDone ? undefined : item.work_item_id);
 
   return (
     <Draggable draggableId={item.work_item_id} index={index}>
@@ -61,7 +64,7 @@ export function WorkItemCard({ item, index, onClickItem }: WorkItemCardProps) {
               ))}
             </Group>
           )}
-          {pipeline && stages.length > 0 && (
+          {!isDone && pipeline && stages.length > 0 && (
             <PipelineStageIndicator pipeline={pipeline} stages={stages} />
           )}
         </Paper>

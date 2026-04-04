@@ -32,6 +32,7 @@ interface EditBoardModalProps {
 }
 
 const WORK_ITEM_STATUSES = [
+  { value: 'backlog', label: 'Backlog' },
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'in_review', label: 'In Review' },

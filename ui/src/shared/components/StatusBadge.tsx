@@ -17,6 +17,7 @@ const statusColors: Record<string, string> = {
   rejected: 'red',
 
   // Work item statuses
+  backlog: 'gray',
   open: 'blue',
   in_progress: 'yellow',
   in_review: 'orange',

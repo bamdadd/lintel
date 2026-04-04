@@ -40,6 +40,7 @@ const WORK_TYPES = [
 ];
 
 const STATUSES = [
+  { value: 'backlog', label: 'Backlog' },
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'in_review', label: 'In Review' },

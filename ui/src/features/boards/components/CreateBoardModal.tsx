@@ -33,6 +33,7 @@ interface CreateBoardModalProps {
 }
 
 const WORK_ITEM_STATUSES = [
+  { value: 'backlog', label: 'Backlog' },
   { value: 'open', label: 'Open' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'in_review', label: 'In Review' },
@@ -47,6 +48,7 @@ let nextId = 0;
 
 function defaultColumns(): ColumnDef[] {
   return [
+    { id: `c${++nextId}`, name: 'Backlog', work_item_statuses: ['backlog'] },
     { id: `c${++nextId}`, name: 'To Do', work_item_statuses: ['open'] },
     { id: `c${++nextId}`, name: 'In Progress', work_item_statuses: ['in_progress'] },
     { id: `c${++nextId}`, name: 'Done', work_item_statuses: ['merged', 'closed', 'failed', 'cancelled'] },
