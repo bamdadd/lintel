@@ -245,6 +245,8 @@ from lintel.slack_notifications_api.store import (
     InMemorySlackNotificationRecordStore,
     InMemorySlackNotificationTemplateStore,
 )
+from lintel.slack_review_api.routes import review_store_provider
+from lintel.slack_review_api.store import InMemorySlackReviewStore
 from lintel.slack_workflows_api.routes import invocation_store_provider
 from lintel.slack_workflows_api.store import InMemorySlackInvocationStore
 from lintel.teams.routes import team_store_provider
@@ -404,6 +406,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "attachment_store": InMemoryAttachmentStore(),
         # Slack Workflow Invocations
         "slack_invocation_store": InMemorySlackInvocationStore(),
+        "slack_review_store": InMemorySlackReviewStore(),
         # Coding Rules stores
         "coding_rule_store": InMemoryCodingRuleStore(),
         "violation_store": InMemoryRuleViolationStore(),
@@ -838,6 +841,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "agent_skill_store": _PgAgentSkillStore(pool),
         "agent_skill_binding_store": _PgAgentSkillBindingStore(pool),
         "slack_invocation_store": _PgSlackInvocationStore(pool),
+        "slack_review_store": InMemorySlackReviewStore(),
         "coding_rule_store": _PgCodingRuleStore(pool),
         "violation_store": _PgRuleViolationStore(pool),
         "workflow_blueprint_store": _PgWorkflowBlueprintStore(pool),
@@ -984,6 +988,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
         stores["slack_notification_record_store"],
     )
     invocation_store_provider.override(stores["slack_invocation_store"])
+    review_store_provider.override(stores["slack_review_store"])
     coding_rule_store_provider.override(stores["coding_rule_store"])
     violation_store_provider.override(stores["violation_store"])
     blueprint_store_provider.override(stores["workflow_blueprint_store"])

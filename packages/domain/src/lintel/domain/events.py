@@ -1188,6 +1188,16 @@ class SlackWorkflowCompleted(EventEnvelope):
     event_type: str = "SlackWorkflowCompleted"
 
 
+@dataclass(frozen=True)
+class SlackReviewRequested(EventEnvelope):
+    event_type: str = "SlackReviewRequested"
+
+
+@dataclass(frozen=True)
+class SlackReviewCompleted(EventEnvelope):
+    event_type: str = "SlackReviewCompleted"
+
+
 # --- Sandbox Pool Events ---
 
 

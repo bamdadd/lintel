@@ -64,6 +64,7 @@ dependencies = [
     "lintel-pipelines-api",
     "lintel-chat-api",
     "lintel-slack-notifications-api",
+    "lintel-slack-review-api",
     "lintel-slack-workflows-api",
     "lintel-workflow-blueprints-api",
     "lintel-memory",
@@ -163,6 +164,7 @@ lintel-sandboxes-api = { workspace = true }
 lintel-pipelines-api = { workspace = true }
 lintel-chat-api = { workspace = true }
 lintel-slack-notifications-api = { workspace = true }
+lintel-slack-review-api = { workspace = true }
 lintel-slack-workflows-api = { workspace = true }
 lintel-workflow-blueprints-api = { workspace = true }
 lintel-memory = { workspace = true }
