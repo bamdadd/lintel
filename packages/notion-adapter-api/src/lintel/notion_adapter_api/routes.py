@@ -95,20 +95,20 @@ async def sync_notion(
     if connection is None:
         raise HTTPException(status_code=404, detail="Connection not found")
 
-    client = NotionClient(api_key=connection.api_key)
-    result: dict[str, Any] = {"connection_id": body.connection_id}
+    async with NotionClient(api_key=connection.api_key) as client:
+        result: dict[str, Any] = {"connection_id": body.connection_id}
 
-    if body.direction in ("push", "both"):
-        push_result = await push_work_items(client, connection.database_id, body.work_items)
-        result["pushed"] = push_result.pushed
-        if push_result.errors:
-            result["push_errors"] = push_result.errors
+        if body.direction in ("push", "both"):
+            push_result = await push_work_items(client, connection.database_id, body.work_items)
+            result["pushed"] = push_result.pushed
+            if push_result.errors:
+                result["push_errors"] = push_result.errors
 
-    if body.direction in ("pull", "both"):
-        pull_result = await pull_work_items(client, connection.database_id)
-        result["pulled"] = pull_result.pulled
-        if pull_result.errors:
-            result["pull_errors"] = pull_result.errors
+        if body.direction in ("pull", "both"):
+            pull_result = await pull_work_items(client, connection.database_id)
+            result["pulled"] = pull_result.pulled
+            if pull_result.errors:
+                result["pull_errors"] = pull_result.errors
 
     # Update last_synced_at
     updated = NotionConnection(
