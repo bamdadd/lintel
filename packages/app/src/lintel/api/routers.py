@@ -28,6 +28,7 @@ from lintel.artifacts_api.routes import router as artifacts_router
 from lintel.audit_api.routes import router as audit_router
 from lintel.auth_api.routes import router as auth_router
 from lintel.automations_api.routes import router as automations_router
+from lintel.board_sync_api.routes import router as board_sync_router
 from lintel.boards.routes import router as boards_router
 from lintel.channel_connections_api.routes import router as channel_connections_router
 from lintel.chat_api.routes import router as chat_router_routes
@@ -121,6 +122,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(mcp_servers_router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(boards_router, prefix="/api/v1", tags=["boards"])
+    app.include_router(board_sync_router, prefix="/api/v1", tags=["board-sync"])
     app.include_router(compliance_router, prefix="/api/v1", tags=["compliance"])
     app.include_router(drift_detection_router, prefix="/api/v1", tags=["drift-detection"])
     app.include_router(experimentation_router, prefix="/api/v1", tags=["experimentation"])

@@ -44,6 +44,13 @@ from lintel.audit_api.store import AuditEntryStore
 from lintel.auth_api.routes import auth_user_store_provider, session_store_provider
 from lintel.auth_api.store import InMemoryAuthUserStore, InMemorySessionStore
 from lintel.automations_api.routes import InMemoryAutomationStore, automation_store_provider
+from lintel.board_sync_api.routes import (
+    mapping_store_provider as board_sync_mapping_store_provider,
+)
+from lintel.board_sync_api.routes import (
+    sync_config_store_provider as board_sync_config_store_provider,
+)
+from lintel.board_sync_api.store import BoardSyncConfigStore, ExternalIdMappingStore
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
 from lintel.channel_connections_api.routes import connection_store_provider
@@ -380,6 +387,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "cve_advisory_store": InMemoryCveAdvisoryStore(),
         "remediation_plan_store": InMemoryRemediationPlanStore(),
         "remediation_result_store": InMemoryRemediationResultStore(),
+        # Board Sync stores
+        "board_sync_config_store": BoardSyncConfigStore(),
+        "external_id_mapping_store": ExternalIdMappingStore(),
     }
 
 
@@ -781,6 +791,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "improvement_store": PgCompliance(pool, "improvement", "improvement_id"),
         "mcp_tool_store": _PgMCPToolStore(pool),
         "mcp_tool_allowlist_store": _PgMCPToolAllowlistStore(pool),
+        # Board Sync: in-memory until Postgres implementation exists
+        "board_sync_config_store": BoardSyncConfigStore(),
+        "external_id_mapping_store": ExternalIdMappingStore(),
     }
 
 
@@ -891,6 +904,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     advisory_store_provider.override(stores["cve_advisory_store"])
     plan_store_provider.override(stores["remediation_plan_store"])
     result_store_provider.override(stores["remediation_result_store"])
+    board_sync_config_store_provider.override(stores["board_sync_config_store"])
+    board_sync_mapping_store_provider.override(stores["external_id_mapping_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
