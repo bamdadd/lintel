@@ -14,11 +14,13 @@ from lintel.bot_scope_api.types import AccessDecision, BotScope, ScopeResource
 if TYPE_CHECKING:
     from lintel.bot_scope_api.store import InMemoryBotScopeStore
     from lintel.bots_api.store import InMemoryBotStore
+    from lintel.multi_slack_bot_api.store import InMemorySlackBotStore
 
 router = APIRouter()
 
 bot_scope_store_provider: StoreProvider[InMemoryBotScopeStore] = StoreProvider()
 bot_store_provider: StoreProvider[InMemoryBotStore] = StoreProvider()
+slack_bot_store_provider: StoreProvider[InMemorySlackBotStore] = StoreProvider()
 
 
 class CreateBotScopeRequest(BaseModel):
@@ -116,11 +118,23 @@ class ResolveAccessResponse(BaseModel):
     deny_reason: str = ""
 
 
+def _get_slack_bot_store() -> InMemorySlackBotStore | None:
+    try:
+        return slack_bot_store_provider.get()
+    except RuntimeError:
+        return None
+
+
 def _build_resolver(
     scope_store: InMemoryBotScopeStore,
     b_store: InMemoryBotStore,
+    sb_store: InMemorySlackBotStore | None = None,
 ) -> BotScopeResolver:
-    return BotScopeResolver(bot_store=b_store, scope_store=scope_store)
+    return BotScopeResolver(
+        bot_store=b_store,
+        scope_store=scope_store,
+        slack_bot_store=sb_store,
+    )
 
 
 @router.post("/bot-scopes/resolve")
@@ -129,7 +143,7 @@ async def resolve_access(
     scope_store: InMemoryBotScopeStore = Depends(bot_scope_store_provider),  # noqa: B008
     b_store: InMemoryBotStore = Depends(bot_store_provider),  # noqa: B008
 ) -> ResolveAccessResponse:
-    resolver = _build_resolver(scope_store, b_store)
+    resolver = _build_resolver(scope_store, b_store, _get_slack_bot_store())
     decision = await resolver.resolve_and_check(
         token=body.token,
         project_id=body.project_id,
