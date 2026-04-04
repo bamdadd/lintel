@@ -2490,6 +2490,7 @@ source = { editable = "packages/bot-scope-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },
+    { name = "lintel-bots-api" },
     { name = "lintel-contracts" },
     { name = "lintel-domain" },
     { name = "pydantic" },
@@ -2500,6 +2501,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-bots-api", editable = "packages/bots-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
@@ -2617,6 +2619,8 @@ dependencies = [
     { name = "fastapi" },
     { name = "lintel-agents" },
     { name = "lintel-api-support" },
+    { name = "lintel-bot-scope-api" },
+    { name = "lintel-bots-api" },
     { name = "lintel-contracts" },
     { name = "lintel-domain" },
     { name = "lintel-event-bus" },
@@ -2635,6 +2639,8 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-agents", editable = "packages/agents" },
     { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-bot-scope-api", editable = "packages/bot-scope-api" },
+    { name = "lintel-bots-api", editable = "packages/bots-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-event-bus", editable = "packages/event-bus" },

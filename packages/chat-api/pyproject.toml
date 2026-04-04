@@ -14,6 +14,8 @@ dependencies = [
     "lintel-event-store",
     "lintel-mcp-servers-api",
     "lintel-pipelines-api",
+    "lintel-bot-scope-api",
+    "lintel-bots-api",
     "fastapi>=0.115",
     "pydantic>=2.10",
     "structlog>=24.4",
@@ -31,6 +33,8 @@ lintel-event-bus = { workspace = true }
 lintel-event-store = { workspace = true }
 lintel-mcp-servers-api = { workspace = true }
 lintel-pipelines-api = { workspace = true }
+lintel-bot-scope-api = { workspace = true }
+lintel-bots-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

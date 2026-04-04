@@ -8,14 +8,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from lintel.api_support.provider import StoreProvider
+from lintel.bot_scope_api.resolver import BotScopeResolver
 from lintel.bot_scope_api.types import AccessDecision, BotScope, ScopeResource
 
 if TYPE_CHECKING:
     from lintel.bot_scope_api.store import InMemoryBotScopeStore
+    from lintel.bots_api.store import InMemoryBotStore
 
 router = APIRouter()
 
 bot_scope_store_provider: StoreProvider[InMemoryBotScopeStore] = StoreProvider()
+bot_store_provider: StoreProvider[InMemoryBotStore] = StoreProvider()
 
 
 class CreateBotScopeRequest(BaseModel):
@@ -90,4 +93,59 @@ async def check_bot_scope(
         resource_type=body.resource_type,
         resource_id=body.resource_id,
         decision=AccessDecision.ALLOWED if allowed else AccessDecision.DENIED,
+    )
+
+
+class ResolveAccessRequest(BaseModel):
+    token: str
+    project_id: str | None = None
+    workflow_id: str | None = None
+    agent_id: str | None = None
+
+
+class ScopeCheckDetail(BaseModel):
+    resource_type: ScopeResource
+    resource_id: str
+    allowed: bool
+
+
+class ResolveAccessResponse(BaseModel):
+    bot_id: str
+    allowed: bool
+    checks: list[ScopeCheckDetail] = []
+    deny_reason: str = ""
+
+
+def _build_resolver(
+    scope_store: InMemoryBotScopeStore,
+    b_store: InMemoryBotStore,
+) -> BotScopeResolver:
+    return BotScopeResolver(bot_store=b_store, scope_store=scope_store)
+
+
+@router.post("/bot-scopes/resolve")
+async def resolve_access(
+    body: ResolveAccessRequest,
+    scope_store: InMemoryBotScopeStore = Depends(bot_scope_store_provider),  # noqa: B008
+    b_store: InMemoryBotStore = Depends(bot_store_provider),  # noqa: B008
+) -> ResolveAccessResponse:
+    resolver = _build_resolver(scope_store, b_store)
+    decision = await resolver.resolve_and_check(
+        token=body.token,
+        project_id=body.project_id,
+        workflow_id=body.workflow_id,
+        agent_id=body.agent_id,
+    )
+    return ResolveAccessResponse(
+        bot_id=decision.bot_id,
+        allowed=decision.allowed,
+        checks=[
+            ScopeCheckDetail(
+                resource_type=c.resource_type,
+                resource_id=c.resource_id,
+                allowed=c.allowed,
+            )
+            for c in decision.checks
+        ],
+        deny_reason=decision.deny_reason,
     )
