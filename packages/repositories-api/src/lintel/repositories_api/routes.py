@@ -33,6 +33,7 @@ class RegisterRepoRequest(BaseModel):
     default_branch: str = "main"
     owner: str = ""
     provider: str = "github"
+    project_ids: list[str] = []
 
 
 class UpdateRepoRequest(BaseModel):
@@ -40,6 +41,7 @@ class UpdateRepoRequest(BaseModel):
     default_branch: str | None = None
     owner: str | None = None
     status: RepoStatus | None = None
+    project_ids: list[str] | None = None
 
 
 @router.post("/repositories", status_code=201)
@@ -58,6 +60,7 @@ async def register_repository(
         default_branch=body.default_branch,
         owner=body.owner,
         provider=body.provider,
+        project_ids=tuple(body.project_ids),
     )
     await store.add(repo)
     await dispatch_event(
@@ -72,9 +75,12 @@ async def register_repository(
 
 @router.get("/repositories")
 async def list_repositories(
+    project_id: str | None = None,
     store: InMemoryRepositoryStore = Depends(repository_store_provider),  # noqa: B008
 ) -> list[dict[str, Any]]:
     repos = await store.list_all()
+    if project_id is not None:
+        repos = [r for r in repos if project_id in r.project_ids]
     return [asdict(r) for r in repos]
 
 
@@ -131,6 +137,8 @@ async def update_repository(
     if repo is None:
         raise HTTPException(status_code=404, detail="Repository not found")
     updates = body.model_dump(exclude_none=True)
+    if "project_ids" in updates:
+        updates["project_ids"] = tuple(updates["project_ids"])
     updated = Repository(**{**asdict(repo), **updates})
     await store.update(updated)
     await dispatch_event(
