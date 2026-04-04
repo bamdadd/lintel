@@ -16,6 +16,7 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+import httpx
 import structlog
 
 from lintel.api_support.provider import StoreProvider
@@ -155,8 +156,6 @@ async def bot_slack_oauth_callback(
         )
 
     # Exchange code for token
-    import httpx
-
     token_params: dict[str, str] = {
         "client_id": cfg["client_id"],
         "client_secret": cfg["client_secret"],
