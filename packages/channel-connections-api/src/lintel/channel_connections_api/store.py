@@ -23,6 +23,16 @@ class InMemoryChannelConnectionStore:
     async def list_all(self) -> list[ChannelConnection]:
         return list(self._connections.values())
 
+    async def find_by_channel_type(
+        self, channel_type: str, *, enabled_only: bool = True
+    ) -> list[ChannelConnection]:
+        """Return connections matching the given channel type."""
+        return [
+            c
+            for c in self._connections.values()
+            if c.channel_type == channel_type and (not enabled_only or c.enabled)
+        ]
+
     async def update(self, connection: ChannelConnection) -> None:
         self._connections[connection.id] = connection
 

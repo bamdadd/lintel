@@ -3,17 +3,25 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from dataclasses import asdict
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import structlog
 
+from lintel.channel_connections_api.routes import connection_store_provider
+from lintel.channel_connections_api.types import ChannelConnection
+
+if TYPE_CHECKING:
+    from lintel.channel_connections_api.store import InMemoryChannelConnectionStore
+
 logger = structlog.get_logger()
 
 router = APIRouter()
 
-# Fixed credential ID so we always overwrite the same record
+# Default credential IDs — used as credential_ref in ChannelConnection records
 TELEGRAM_CREDENTIAL_ID = "channel:telegram"
 SLACK_CREDENTIAL_ID = "channel:slack"
 
@@ -21,12 +29,14 @@ SLACK_CREDENTIAL_ID = "channel:slack"
 class TelegramConnectionRequest(BaseModel):
     bot_token: str
     webhook_secret: str = ""
+    connection_id: str = ""
 
 
 class SlackConnectionRequest(BaseModel):
     bot_token: str
     signing_secret: str = ""
     app_token: str = ""
+    connection_id: str = ""
 
 
 class ChannelConnectionStatus(BaseModel):
@@ -38,6 +48,65 @@ class ChannelConnectionStatus(BaseModel):
 
 async def _get_credential_store(request: Request) -> object | None:
     return getattr(request.app.state, "credential_store", None)
+
+
+async def _get_connection_store(
+    request: Request,
+) -> InMemoryChannelConnectionStore | None:
+    """Get connection store, preferring StoreProvider then app state fallback."""
+    try:
+        return connection_store_provider.get()
+    except RuntimeError:
+        return None
+
+
+async def _upsert_connection(
+    request: Request,
+    connection_id: str,
+    channel_type: str,
+    credential_ref: str,
+    *,
+    bot_username: str = "",
+    enabled: bool = True,
+) -> None:
+    """Create or update a ChannelConnection record."""
+    store = await _get_connection_store(request)
+    if store is None:
+        return
+    now = datetime.now(UTC).isoformat()
+    existing = await store.get(connection_id)
+    if existing is not None:
+        updated = ChannelConnection(
+            **{
+                **asdict(existing),
+                "credential_ref": credential_ref,
+                "bot_username": bot_username,
+                "enabled": enabled,
+                "updated_at": now,
+            },
+        )
+        await store.update(updated)
+    else:
+        conn = ChannelConnection(
+            id=connection_id,
+            channel_type=channel_type,
+            credential_ref=credential_ref,
+            bot_username=bot_username,
+            enabled=enabled,
+            created_at=now,
+            updated_at=now,
+        )
+        await store.add(conn)
+
+
+async def _remove_connection(request: Request, connection_id: str) -> None:
+    """Remove a ChannelConnection record if it exists."""
+    store = await _get_connection_store(request)
+    if store is None:
+        return
+    existing = await store.get(connection_id)
+    if existing is not None:
+        await store.remove(connection_id)
 
 
 async def restore_telegram_from_store(app: object) -> None:
@@ -151,14 +220,24 @@ async def stop_telegram_polling(app: object) -> None:
 
 @router.get("/settings/channels")
 async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
-    """List all channel connections with status."""
-    connections: list[dict[str, Any]] = []
+    """List all channel connections with status.
 
-    # Check Slack
+    Returns records from the connection store when available,
+    falling back to app state for backward compatibility.
+    """
+    store = await _get_connection_store(request)
+    if store is not None:
+        connections = await store.list_all()
+        if connections:
+            return [asdict(c) for c in connections]
+
+    # Fallback: build from app state (backward compat)
+    result: list[dict[str, Any]] = []
+
     slack_connected = getattr(request.app.state, "slack_connected", False) or hasattr(
         request.app.state, "slack_app"
     )
-    connections.append(
+    result.append(
         {
             "channel_type": "slack",
             "connected": slack_connected,
@@ -166,9 +245,8 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
         }
     )
 
-    # Check Telegram
     telegram_adapter = getattr(request.app.state, "telegram_adapter", None)
-    connections.append(
+    result.append(
         {
             "channel_type": "telegram",
             "connected": telegram_adapter is not None,
@@ -176,7 +254,7 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
         }
     )
 
-    return connections
+    return result
 
 
 @router.post("/settings/channels/slack", status_code=201)
@@ -185,16 +263,26 @@ async def connect_slack(
     request: Request,
 ) -> dict[str, Any]:
     """Save Slack credentials and mark as connected."""
+    connection_id = body.connection_id or SLACK_CREDENTIAL_ID
+
     # Persist to credential store if available
     credential_store = await _get_credential_store(request)
     if credential_store is not None:
         combined_secret = f"{body.bot_token}||{body.signing_secret}||{body.app_token}"
         await credential_store.store(
-            credential_id=SLACK_CREDENTIAL_ID,
+            credential_id=connection_id,
             credential_type="slack_bot_token",
             name="Slack Bot",
             secret=combined_secret,
         )
+
+    # Track in connection store
+    await _upsert_connection(
+        request,
+        connection_id=connection_id,
+        channel_type="slack",
+        credential_ref=connection_id,
+    )
 
     # Mark as connected in app state
     request.app.state.slack_connected = True
@@ -204,11 +292,12 @@ async def connect_slack(
         "app_token": body.app_token,
     }
 
-    logger.info("slack.connected")
+    logger.info("slack.connected", connection_id=connection_id)
 
     return {
         "channel_type": "slack",
         "connected": True,
+        "connection_id": connection_id,
     }
 
 
@@ -243,6 +332,9 @@ async def disconnect_slack(request: Request) -> None:
         with contextlib.suppress(KeyError):
             await credential_store.revoke(SLACK_CREDENTIAL_ID)
 
+    # Remove from connection store
+    await _remove_connection(request, SLACK_CREDENTIAL_ID)
+
     # Remove from app state
     request.app.state.slack_connected = False
     request.app.state.slack_credentials = None
@@ -258,6 +350,8 @@ async def connect_telegram(
     """Save Telegram bot token and set up webhook."""
     from lintel.contracts.channel_type import ChannelType
     from lintel.telegram.adapter import TelegramChannelAdapter
+
+    connection_id = body.connection_id or TELEGRAM_CREDENTIAL_ID
 
     adapter = TelegramChannelAdapter(
         bot_token=body.bot_token,
@@ -279,11 +373,22 @@ async def connect_telegram(
         # Store token and webhook_secret together, separated by ||
         combined_secret = f"{body.bot_token}||{body.webhook_secret}"
         await credential_store.store(
-            credential_id=TELEGRAM_CREDENTIAL_ID,
+            credential_id=connection_id,
             credential_type="telegram_bot_token",
             name="Telegram Bot",
             secret=combined_secret,
         )
+
+    bot_username = bot_info.get("username", "")
+
+    # Track in connection store
+    await _upsert_connection(
+        request,
+        connection_id=connection_id,
+        channel_type="telegram",
+        credential_ref=connection_id,
+        bot_username=bot_username,
+    )
 
     # Store adapter in app state
     request.app.state.telegram_adapter = adapter
@@ -291,10 +396,9 @@ async def connect_telegram(
     # Register with channel registry if available
     channel_registry = getattr(request.app.state, "channel_registry", None)
     if channel_registry is not None:
-        channel_registry.register(TELEGRAM_CREDENTIAL_ID, ChannelType.TELEGRAM, adapter)
+        channel_registry.register(connection_id, ChannelType.TELEGRAM, adapter)
 
-    bot_username = bot_info.get("username", "")
-    logger.info("telegram.connected", bot_username=bot_username)
+    logger.info("telegram.connected", bot_username=bot_username, connection_id=connection_id)
 
     # Start polling loop for local dev (no webhook needed)
     await start_telegram_polling(request.app, adapter)
@@ -303,6 +407,7 @@ async def connect_telegram(
         "channel_type": "telegram",
         "connected": True,
         "bot_username": bot_username,
+        "connection_id": connection_id,
     }
 
 
@@ -348,6 +453,9 @@ async def disconnect_telegram(request: Request) -> None:
     if credential_store is not None:
         with contextlib.suppress(KeyError):
             await credential_store.revoke(TELEGRAM_CREDENTIAL_ID)
+
+    # Remove from connection store
+    await _remove_connection(request, TELEGRAM_CREDENTIAL_ID)
 
     # Remove from app state
     del request.app.state.telegram_adapter
