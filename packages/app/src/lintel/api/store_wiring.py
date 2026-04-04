@@ -96,6 +96,8 @@ from lintel.credentials_api.routes import credential_store_provider
 from lintel.credentials_api.store import InMemoryCredentialStore
 from lintel.cross_repo_agent_api.routes import cross_repo_plan_store_provider
 from lintel.cross_repo_agent_api.store import InMemoryCrossRepoPlanStore
+from lintel.cross_repo_test_api.routes import test_run_store_provider
+from lintel.cross_repo_test_api.store import InMemoryTestRunStore
 from lintel.cve_remediation_api.routes import (
     advisory_store_provider,
     plan_store_provider,
@@ -379,6 +381,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "prebuild_config_store": InMemoryPrebuildConfigStore(),
         "prebuild_run_store": InMemoryPrebuildRunStore(),
         "trigger_store": InMemoryTriggerStore(),
+        "cross_repo_test_run_store": InMemoryTestRunStore(),
         "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
         "frontend_target_store": InMemoryFrontendTargetStore(),
@@ -852,6 +855,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "prebuild_config_store": InMemoryPrebuildConfigStore(),
         "prebuild_run_store": InMemoryPrebuildRunStore(),
         "trigger_store": PostgresTriggerStore(pool),
+        "cross_repo_test_run_store": InMemoryTestRunStore(),
         "automation_store": PostgresAutomationStore(pool),
         "variable_store": PostgresVariableStore(pool),
         "frontend_target_store": InMemoryFrontendTargetStore(),
@@ -1014,6 +1018,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     tag_store_provider.override(stores["tag_store"])
     board_store_provider.override(stores["board_store"])
     trigger_store_provider.override(stores["trigger_store"])
+    test_run_store_provider.override(stores["cross_repo_test_run_store"])
     code_artifact_store_provider.override(stores["code_artifact_store"])
     artifact_content_store_provider.override(stores["artifact_content_store"])
     test_result_store_provider.override(stores["test_result_store"])

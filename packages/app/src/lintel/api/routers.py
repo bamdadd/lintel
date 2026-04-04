@@ -49,6 +49,7 @@ from lintel.compliance_api.routes import router as compliance_router
 from lintel.context_attachments_api.routes import router as context_attachments_router
 from lintel.credentials_api.routes import router as credentials_router
 from lintel.cross_repo_agent_api.routes import router as cross_repo_agent_router
+from lintel.cross_repo_test_api.routes import router as cross_repo_test_router
 from lintel.cve_remediation_api.routes import router as cve_remediation_router
 from lintel.data_retention_api.routes import router as data_retention_router
 from lintel.digest_api.routes import router as digest_router
@@ -147,6 +148,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(environments_router, prefix="/api/v1", tags=["environments"])
     app.include_router(env_prebuilds_router, prefix="/api/v1", tags=["env-prebuilds"])
     app.include_router(triggers_router, prefix="/api/v1", tags=["triggers"])
+    app.include_router(cross_repo_test_router, prefix="/api/v1", tags=["cross-repo-tests"])
     app.include_router(automations_router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables_router, prefix="/api/v1", tags=["variables"])
     app.include_router(users_router, prefix="/api/v1", tags=["users"])

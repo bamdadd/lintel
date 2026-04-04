@@ -42,6 +42,7 @@ dependencies = [
     "lintel-boards",
     "lintel-bots-api",
     "lintel-triggers-api",
+    "lintel-cross-repo-test-api",
     "lintel-artifacts-api",
     "lintel-projects-api",
     "lintel-work-items-api",
@@ -158,6 +159,7 @@ lintel-approval-requests-api = { workspace = true }
 lintel-boards = { workspace = true }
 lintel-bots-api = { workspace = true }
 lintel-triggers-api = { workspace = true }
+lintel-cross-repo-test-api = { workspace = true }
 lintel-artifacts-api = { workspace = true }
 lintel-projects-api = { workspace = true }
 lintel-work-items-api = { workspace = true }
