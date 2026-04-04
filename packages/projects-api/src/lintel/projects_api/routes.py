@@ -25,6 +25,7 @@ class CreateProjectRequest(BaseModel):
     default_branch: str = "main"
     credential_ids: list[str] = []
     status: ProjectStatus = ProjectStatus.ACTIVE
+    workflow_execution_enabled: bool = True
 
 
 class UpdateProjectRequest(BaseModel):
@@ -34,6 +35,7 @@ class UpdateProjectRequest(BaseModel):
     default_branch: str | None = None
     credential_ids: list[str] | None = None
     status: ProjectStatus | None = None
+    workflow_execution_enabled: bool | None = None
     ai_provider_id: str | None = None
     model_id: str | None = None
     workflow_definition_id: str | None = None
@@ -67,6 +69,7 @@ async def create_project(
         default_branch=body.default_branch,
         credential_ids=tuple(body.credential_ids),
         status=body.status,
+        workflow_execution_enabled=body.workflow_execution_enabled,
     )
     await store.add(project)
     await dispatch_event(

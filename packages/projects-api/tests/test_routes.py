@@ -111,6 +111,42 @@ class TestProjectsAPI:
         assert resp.status_code == 200
         assert resp.json()["description"] == "Updated description for the project."
 
+    def test_create_project_workflow_execution_enabled_default(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/projects",
+            json={"project_id": "p-wf", "name": "WF Project"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["workflow_execution_enabled"] is True
+
+    def test_create_project_workflow_execution_disabled(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/projects",
+            json={
+                "project_id": "p-wf-off",
+                "name": "WF Off",
+                "workflow_execution_enabled": False,
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.json()["workflow_execution_enabled"] is False
+
+    def test_update_project_workflow_execution_enabled(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.patch(
+            "/api/v1/projects/p1",
+            json={"workflow_execution_enabled": False},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["workflow_execution_enabled"] is False
+
+        resp = client.patch(
+            "/api/v1/projects/p1",
+            json={"workflow_execution_enabled": True},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["workflow_execution_enabled"] is True
+
     def test_delete_project(self, client: TestClient) -> None:
         _create_project(client, "p1")
         resp = client.delete("/api/v1/projects/p1")
