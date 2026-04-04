@@ -99,6 +99,7 @@ testpaths = [
     "packages/multi-slack-bot-api/tests",
     "packages/cloud-environments-api/tests",
     "packages/agent-metrics-api/tests",
+    "packages/bot-scope-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -187,6 +188,7 @@ mypy_path = [
     "packages/multi-slack-bot-api/src",
     "packages/cloud-environments-api/src",
     "packages/agent-metrics-api/src",
+    "packages/bot-scope-api/src",
 ]
 
 [[tool.mypy.overrides]]

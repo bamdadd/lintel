@@ -97,6 +97,7 @@ dependencies = [
     "lintel-incidents-api",
     "lintel-proactive-triggers-api",
     "lintel-channel-adapter-registry-api",
+    "lintel-bot-scope-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -205,6 +206,7 @@ lintel-multi-tenancy-api = { workspace = true }
 lintel-incidents-api = { workspace = true }
 lintel-proactive-triggers-api = { workspace = true }
 lintel-channel-adapter-registry-api = { workspace = true }
+lintel-bot-scope-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

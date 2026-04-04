@@ -34,6 +34,7 @@ from lintel.automations_api.routes import router as automations_router
 from lintel.background_agents_api.routes import router as background_agents_router
 from lintel.board_sync_api.routes import router as board_sync_router
 from lintel.boards.routes import router as boards_router
+from lintel.bot_scope_api.routes import router as bot_scope_router
 from lintel.channel_adapter_registry_api.routes import (
     router as channel_adapter_registry_router,
 )
@@ -235,5 +236,6 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["proactive-triggers"],
     )
+    app.include_router(bot_scope_router, prefix="/api/v1", tags=["bot-scopes"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
