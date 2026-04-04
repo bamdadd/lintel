@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -49,11 +50,11 @@ async def create_telegram_bot(
     store: InMemoryTelegramBotStore = Depends(telegram_bot_store_provider),  # noqa: B008
 ) -> dict[str, Any]:
     bot = TelegramBot(
+        bot_id=body.bot_id or uuid4().hex,
         name=body.name,
         bot_token=body.bot_token,
         webhook_secret=body.webhook_secret,
         channel_bindings=body.channel_bindings,
-        **({"bot_id": body.bot_id} if body.bot_id else {}),
     )
     try:
         await store.add(bot)
