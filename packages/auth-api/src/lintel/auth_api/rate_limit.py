@@ -29,8 +29,9 @@ class RateLimitConfig:
     """Rate limit configuration."""
 
     user_requests_per_minute: int = 100
-    ip_requests_per_minute: int = 60
+    ip_requests_per_minute: int = 600
     exclude_paths: tuple[str, ...] = _DEFAULT_EXCLUDE
+    bypass_loopback: bool = True
 
 
 @dataclass
@@ -72,6 +73,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if any(path.startswith(prefix) for prefix in self.config.exclude_paths):
             return await call_next(request)  # type: ignore[return-value]
+
+        if self.config.bypass_loopback:
+            client_host = request.client.host if request.client else ""
+            if client_host in ("127.0.0.1", "::1", "localhost"):
+                return await call_next(request)  # type: ignore[return-value]
 
         now = time.monotonic()
         window_seconds = 60.0
