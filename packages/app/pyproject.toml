@@ -87,6 +87,7 @@ dependencies = [
     "lintel-encryption-api",
     "lintel-secret-rotation-api",
     "lintel-multi-tenancy-api",
+    "lintel-incidents-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -185,6 +186,7 @@ lintel-data-retention-api = { workspace = true }
 lintel-encryption-api = { workspace = true }
 lintel-secret-rotation-api = { workspace = true }
 lintel-multi-tenancy-api = { workspace = true }
+lintel-incidents-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
