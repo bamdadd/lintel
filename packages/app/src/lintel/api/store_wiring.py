@@ -159,6 +159,8 @@ from lintel.jira_adapter_api.routes import (
     work_item_store_provider as jira_work_item_store_provider,
 )
 from lintel.jira_adapter_api.store import InMemoryJiraConnectionStore, InMemorySyncRecordStore
+from lintel.kernel_policy_api.routes import kernel_policy_store_provider
+from lintel.kernel_policy_api.store import InMemoryKernelPolicyStore
 from lintel.mcp_servers_api.routes import (
     mcp_server_store_provider,
     mcp_tool_allowlist_store_provider,
@@ -352,6 +354,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "release_note_store": InMemoryReleaseNoteStore(),
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),
+        "kernel_policy_store": InMemoryKernelPolicyStore(),
         "notification_rule_store": NotificationRuleStore(),
         "audit_entry_store": AuditEntryStore(),
         "code_artifact_store": CodeArtifactStore(),
@@ -799,6 +802,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "user_store": PostgresUserStore(pool),
         "team_store": PostgresTeamStore(pool),
         "policy_store": PostgresPolicyStore(pool),
+        "kernel_policy_store": InMemoryKernelPolicyStore(),
         "notification_rule_store": PostgresNotificationRuleStore(pool),
         "audit_entry_store": PostgresAuditEntryStore(pool),
         "code_artifact_store": PostgresCodeArtifactStore(pool),
@@ -922,6 +926,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     release_notes_repo_provider.override(repo_provider)
     team_store_provider.override(stores["team_store"])
     policy_store_provider.override(stores["policy_store"])
+    kernel_policy_store_provider.override(stores["kernel_policy_store"])
     notification_rule_store_provider.override(stores["notification_rule_store"])
     environment_store_provider.override(stores["environment_store"])
     cloud_environment_store_provider.override(stores["cloud_environment_store"])
