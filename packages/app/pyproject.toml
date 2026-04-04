@@ -105,6 +105,7 @@ dependencies = [
     "lintel-proactive-triggers-api",
     "lintel-channel-adapter-registry-api",
     "lintel-bot-scope-api",
+    "lintel-bot-runtime",
     "lintel-cross-repo-agent-api",
     "lintel-fleet-execution-api",
     "lintel-knowledge-graph-api",
@@ -228,6 +229,7 @@ lintel-incidents-api = { workspace = true }
 lintel-proactive-triggers-api = { workspace = true }
 lintel-channel-adapter-registry-api = { workspace = true }
 lintel-bot-scope-api = { workspace = true }
+lintel-bot-runtime = { workspace = true }
 lintel-cross-repo-agent-api = { workspace = true }
 lintel-fleet-execution-api = { workspace = true }
 lintel-knowledge-graph-api = { workspace = true }

@@ -444,8 +444,44 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
         await start_telegram_polling(app, tg_adapter)
 
+    # --- Bot lifecycle manager ---
+    from lintel.api.bot_adapter_factory import DefaultAdapterFactory
+    from lintel.bot_runtime.manager import BotLifecycleManager
+
+    bot_adapter_factory = DefaultAdapterFactory(
+        credential_store=stores.get("credential_store"),
+    )
+    bot_lifecycle = BotLifecycleManager(
+        bot_store=stores["bot_store"],
+        channel_registry=channel_registry,
+        adapter_factory=bot_adapter_factory,
+    )
+    app.state.bot_lifecycle_manager = bot_lifecycle
+    await bot_lifecycle.start_all()
+
+    # Subscribe to bot CRUD events for hot-reload
+    await event_bus.subscribe(
+        frozenset({"BotCreated"}),
+        type(
+            "_BotCreatedHandler", (), {"handle": staticmethod(bot_lifecycle.handle_bot_created)}
+        )(),
+    )
+    await event_bus.subscribe(
+        frozenset({"BotUpdated"}),
+        type(
+            "_BotUpdatedHandler", (), {"handle": staticmethod(bot_lifecycle.handle_bot_updated)}
+        )(),
+    )
+    await event_bus.subscribe(
+        frozenset({"BotRemoved"}),
+        type(
+            "_BotRemovedHandler", (), {"handle": staticmethod(bot_lifecycle.handle_bot_removed)}
+        )(),
+    )
+
     yield
 
+    await bot_lifecycle.stop_all()
     container.unwire()
     scheduler_task.cancel()
     from lintel.settings_api.channels_router import stop_telegram_polling
