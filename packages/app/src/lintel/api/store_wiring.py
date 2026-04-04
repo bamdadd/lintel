@@ -239,6 +239,8 @@ from lintel.variables_api.routes import variable_store_provider
 from lintel.variables_api.store import InMemoryVariableStore
 from lintel.visual_verification_api.routes import verification_store_provider
 from lintel.visual_verification_api.store import InMemoryVisualVerificationStore
+from lintel.web_ide_api.routes import ide_session_store_provider
+from lintel.web_ide_api.store import InMemoryIDESessionStore
 from lintel.work_items_api.routes import work_item_store_provider
 from lintel.work_items_api.store import WorkItemStore
 from lintel.workflow_blueprints_api.routes import blueprint_store_provider
@@ -420,6 +422,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "jira_sync_record_store": InMemorySyncRecordStore(),
         # Notion Adapter
         "notion_connection_store": InMemoryNotionConnectionStore(),
+        # Web IDE sessions
+        "ide_session_store": InMemoryIDESessionStore(),
     }
 
 
@@ -837,6 +841,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "notion_connection_store": InMemoryNotionConnectionStore(),
         # Background Agent Sessions: in-memory (ephemeral by nature)
         "background_session_store": InMemoryBackgroundSessionStore(),
+        # Web IDE sessions: in-memory until Postgres implementation exists
+        "ide_session_store": InMemoryIDESessionStore(),
     }
 
 
@@ -961,6 +967,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     jira_work_item_store_provider.override(stores["work_item_store"])
     notion_connection_store_provider.override(stores["notion_connection_store"])
     bg_session_store_provider.override(stores["background_session_store"])
+    ide_session_store_provider.override(stores["ide_session_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
