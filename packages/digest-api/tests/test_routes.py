@@ -1,6 +1,13 @@
 """Tests for digest API routes."""
 
-from fastapi.testclient import TestClient
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastapi.testclient import TestClient
+
+    from conftest import FakePipelineStore, FakeWorkItemStore
 
 
 class TestDigestAPI:
@@ -140,3 +147,121 @@ class TestDigestConfigAPI:
         )
         assert resp.status_code == 200
         assert resp.json()["recipients"] == ["x@y.com", "z@w.com"]
+
+
+class TestGenerateDigest:
+    def test_generate_empty_activity(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/digests/generate",
+            json={
+                "project_id": "p-1",
+                "team_id": "t-1",
+                "period_start": "2026-03-24T00:00:00Z",
+                "period_end": "2026-03-31T00:00:00Z",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["project_id"] == "p-1"
+        assert data["team_id"] == "t-1"
+        assert data["metrics"]["work_items_completed"] == 0
+        assert data["metrics"]["pipelines_succeeded"] == 0
+
+    def test_generate_with_work_items(
+        self,
+        client: TestClient,
+        wi_store: FakeWorkItemStore,
+    ) -> None:
+        wi_store.items = [
+            {
+                "project_id": "p-1",
+                "status": "done",
+                "updated_at": "2026-03-25T12:00:00Z",
+                "title": "Fix bug",
+            },
+            {
+                "project_id": "p-1",
+                "status": "in_progress",
+                "updated_at": "2026-03-26T12:00:00Z",
+                "title": "New feature",
+            },
+            {
+                "project_id": "p-1",
+                "status": "done",
+                "updated_at": "2026-03-20T12:00:00Z",
+                "title": "Old item outside period",
+            },
+        ]
+        resp = client.post(
+            "/api/v1/digests/generate",
+            json={
+                "project_id": "p-1",
+                "team_id": "t-1",
+                "period_start": "2026-03-24T00:00:00Z",
+                "period_end": "2026-03-31T00:00:00Z",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["metrics"]["work_items_completed"] == 1
+        assert data["metrics"]["work_items_in_progress"] == 1
+        assert data["metrics"]["total_work_items"] == 2
+        assert "1 work item(s) completed" in data["highlights"]
+
+    def test_generate_with_pipelines(
+        self,
+        client: TestClient,
+        pl_store: FakePipelineStore,
+    ) -> None:
+        pl_store.items = [
+            {
+                "project_id": "p-1",
+                "status": "completed",
+                "updated_at": "2026-03-25T12:00:00Z",
+            },
+            {
+                "project_id": "p-1",
+                "status": "failed",
+                "updated_at": "2026-03-26T12:00:00Z",
+            },
+        ]
+        resp = client.post(
+            "/api/v1/digests/generate",
+            json={
+                "project_id": "p-1",
+                "team_id": "t-1",
+                "period_start": "2026-03-24T00:00:00Z",
+                "period_end": "2026-03-31T00:00:00Z",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["metrics"]["pipelines_succeeded"] == 1
+        assert data["metrics"]["pipelines_failed"] == 1
+        assert "1 pipeline(s) succeeded" in data["highlights"]
+        assert "1 pipeline(s) failed" in data["highlights"]
+
+    def test_generate_defaults_to_last_7_days(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/digests/generate",
+            json={"project_id": "p-1", "team_id": "t-1"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["period_start"] is not None
+        assert data["period_end"] is not None
+
+    def test_generate_stores_digest(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/digests/generate",
+            json={
+                "project_id": "p-1",
+                "team_id": "t-1",
+                "period_start": "2026-03-24T00:00:00Z",
+                "period_end": "2026-03-31T00:00:00Z",
+            },
+        )
+        digest_id = resp.json()["id"]
+        get_resp = client.get(f"/api/v1/digests/{digest_id}")
+        assert get_resp.status_code == 200
+        assert get_resp.json()["id"] == digest_id

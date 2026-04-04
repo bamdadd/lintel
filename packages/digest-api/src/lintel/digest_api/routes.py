@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime  # noqa: TC003
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
+from lintel.digest_api.generator import DigestGenerator
 from lintel.digest_api.types import Digest, DigestConfig
 from lintel.domain.events import DigestConfigCreated, DigestConfigUpdated, DigestCreated
 
@@ -22,9 +23,18 @@ router = APIRouter()
 
 digest_store_provider: StoreProvider = StoreProvider()
 digest_config_store_provider: StoreProvider = StoreProvider()
+work_item_store_provider: StoreProvider = StoreProvider()
+pipeline_store_provider: StoreProvider = StoreProvider()
 
 
 # ---- Request models ----
+
+
+class GenerateDigestRequest(BaseModel):
+    project_id: str
+    team_id: str
+    period_start: datetime | None = None
+    period_end: datetime | None = None
 
 
 class CreateDigestRequest(BaseModel):
@@ -125,6 +135,35 @@ async def delete_digest(
     if digest is None:
         raise HTTPException(status_code=404, detail="Digest not found")
     await store.remove(digest_id)
+
+
+@router.post("/digests/generate", status_code=201)
+async def generate_digest(
+    body: GenerateDigestRequest,
+    request: Request,
+    digest_store: InMemoryDigestStore = Depends(digest_store_provider),  # noqa: B008
+    wi_store: Any = Depends(work_item_store_provider),  # noqa: B008, ANN401
+    pl_store: Any = Depends(pipeline_store_provider),  # noqa: B008, ANN401
+) -> dict[str, Any]:
+    """Generate a weekly digest summarizing project activity."""
+    now = datetime.now(UTC)
+    period_end = body.period_end or now
+    period_start = body.period_start or (period_end - timedelta(days=7))
+
+    generator = DigestGenerator(wi_store, pl_store)
+    digest = await generator.generate(
+        project_id=body.project_id,
+        team_id=body.team_id,
+        period_start=period_start,
+        period_end=period_end,
+    )
+    await digest_store.add(digest)
+    await dispatch_event(
+        request,
+        DigestCreated(payload={"resource_id": digest.id, "project_id": body.project_id}),
+        stream_id=f"digest:{digest.id}",
+    )
+    return _digest_to_dict(digest)
 
 
 # ---- DigestConfig routes ----
