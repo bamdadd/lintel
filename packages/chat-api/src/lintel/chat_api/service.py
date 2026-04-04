@@ -106,6 +106,57 @@ class ChatService:
             )
         return None
 
+    async def _get_bot_id_for_conversation(
+        self,
+        conversation_id: str,
+    ) -> str | None:
+        """Return the bot_id stored on a conversation, if any."""
+        conv = await self._store.get(conversation_id)
+        if conv is None:
+            return None
+        return conv.get("bot_id") or None
+
+    async def check_bot_scope(
+        self,
+        conversation_id: str,
+        *,
+        project_id: str | None = None,
+        workflow_id: str | None = None,
+    ) -> str | None:
+        """Check bot scope for the conversation's bot_id.
+
+        Returns an error message if scope is denied, or None if allowed
+        (including when no bot_id is associated).
+        """
+        bot_id = await self._get_bot_id_for_conversation(conversation_id)
+        if not bot_id:
+            return None
+
+        from lintel.bot_scope_api.routes import (
+            bot_scope_store_provider,
+            bot_store_provider,
+        )
+
+        try:
+            scope_store = bot_scope_store_provider.get()
+            bot_store = bot_store_provider.get()
+        except RuntimeError:
+            return None
+
+        from lintel.bot_scope_api.resolver import BotScopeResolver
+
+        resolver = BotScopeResolver(bot_store=bot_store, scope_store=scope_store)
+        decision = await resolver.check_access(
+            bot_id,
+            project_id=project_id,
+            workflow_id=workflow_id,
+        )
+        if not decision.allowed:
+            return (
+                f"This bot does not have access to the requested resources. {decision.deny_reason}"
+            )
+        return None
+
     async def resolve_model(
         self,
         model_id: str | None,
@@ -495,6 +546,28 @@ class ChatService:
                     content=project_blocked,
                 )
                 return
+
+        # Enforce bot scope (project + workflow dimensions)
+        project_id_for_scope = project.get("project_id", "") if project else None
+        bot_blocked = await self.check_bot_scope(
+            conversation_id,
+            project_id=project_id_for_scope or None,
+            workflow_id=workflow_type,
+        )
+        if bot_blocked:
+            logger.info(
+                "workflow_blocked_by_bot_scope",
+                conversation_id=conversation_id,
+                workflow_type=workflow_type,
+            )
+            await store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=bot_blocked,
+            )
+            return
 
         # If no explicit repo, try auto-classifying from message
         if repo_url is None:
