@@ -76,6 +76,7 @@ from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
 from lintel.multi_slack_bot_api.routes import router as multi_slack_bot_router
 from lintel.multi_tenancy_api.routes import router as multi_tenancy_router
+from lintel.multiplayer_sessions_api.routes import router as multiplayer_sessions_router
 from lintel.notifications_api.routes import router as notifications_router
 from lintel.notion_adapter_api.routes import router as notion_adapter_router
 from lintel.org_security_api.routes import router as org_security_router
@@ -286,4 +287,9 @@ def mount_routers(app: FastAPI) -> None:
         repo_auto_describe_router,
         prefix="/api/v1",
         tags=["repo-auto-describe"],
+    )
+    app.include_router(
+        multiplayer_sessions_router,
+        prefix="/api/v1",
+        tags=["multiplayer-sessions"],
     )
