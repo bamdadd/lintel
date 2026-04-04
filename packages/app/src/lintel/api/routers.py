@@ -34,6 +34,9 @@ from lintel.automations_api.routes import router as automations_router
 from lintel.background_agents_api.routes import router as background_agents_router
 from lintel.board_sync_api.routes import router as board_sync_router
 from lintel.boards.routes import router as boards_router
+from lintel.channel_adapter_registry_api.routes import (
+    router as channel_adapter_registry_router,
+)
 from lintel.channel_connections_api.routes import router as channel_connections_router
 from lintel.chat_api.routes import router as chat_router_routes
 from lintel.chat_api.streaming import streaming_router as chat_streaming_router
@@ -163,6 +166,11 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(debug.router, prefix="/api/v1", tags=["debug"])
     app.include_router(telegram_router, prefix="/api/v1", tags=["telegram"])
     app.include_router(channels_settings_router, prefix="/api/v1", tags=["channels"])
+    app.include_router(
+        channel_adapter_registry_router,
+        prefix="/api/v1",
+        tags=["channel-adapters"],
+    )
     app.include_router(
         channel_connections_router,
         prefix="/api/v1",
