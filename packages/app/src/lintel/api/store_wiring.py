@@ -121,6 +121,11 @@ from lintel.drift_detection_api.store import (
 )
 from lintel.encryption_api.routes import encryption_store_provider
 from lintel.encryption_api.store import EncryptionStore
+from lintel.env_prebuilds_api.routes import (
+    prebuild_config_store_provider,
+    prebuild_run_store_provider,
+)
+from lintel.env_prebuilds_api.store import InMemoryPrebuildConfigStore, InMemoryPrebuildRunStore
 from lintel.environments_api.routes import environment_store_provider
 from lintel.environments_api.store import InMemoryEnvironmentStore
 from lintel.event_store.in_memory import InMemoryEventStore
@@ -345,6 +350,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "pipeline_store": InMemoryPipelineStore(),
         "environment_store": InMemoryEnvironmentStore(),
         "cloud_environment_store": InMemoryCloudEnvironmentStore(),
+        "prebuild_config_store": InMemoryPrebuildConfigStore(),
+        "prebuild_run_store": InMemoryPrebuildRunStore(),
         "trigger_store": InMemoryTriggerStore(),
         "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
@@ -796,6 +803,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "work_item_store": PostgresWorkItemStore(pool),
         "pipeline_store": PostgresPipelineStore(pool),
         "environment_store": PostgresEnvironmentStore(pool),
+        "prebuild_config_store": InMemoryPrebuildConfigStore(),
+        "prebuild_run_store": InMemoryPrebuildRunStore(),
         "trigger_store": PostgresTriggerStore(pool),
         "automation_store": PostgresAutomationStore(pool),
         "variable_store": PostgresVariableStore(pool),
@@ -930,6 +939,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     notification_rule_store_provider.override(stores["notification_rule_store"])
     environment_store_provider.override(stores["environment_store"])
     cloud_environment_store_provider.override(stores["cloud_environment_store"])
+    prebuild_config_store_provider.override(stores["prebuild_config_store"])
+    prebuild_run_store_provider.override(stores["prebuild_run_store"])
     variable_store_provider.override(stores["variable_store"])
     credential_store_provider.override(stores["credential_store"])
     audit_entry_store_provider.override(stores["audit_entry_store"])
