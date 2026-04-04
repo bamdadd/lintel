@@ -61,6 +61,8 @@ from lintel.board_sync_api.routes import (
 from lintel.board_sync_api.store import BoardSyncConfigStore, ExternalIdMappingStore
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
+from lintel.bot_scope_api.routes import bot_scope_store_provider
+from lintel.bot_scope_api.store import InMemoryBotScopeStore
 from lintel.channel_adapter_registry_api.routes import adapter_store_provider
 from lintel.channel_adapter_registry_api.store import InMemoryChannelAdapterStore
 from lintel.channel_connections_api.routes import connection_store_provider
@@ -912,6 +914,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "github_app_installation_store": InMemoryGitHubAppInstallationStore(),
         # Agent Metrics: in-memory until Postgres implementation exists
         "agent_metrics_store": InMemoryAgentMetricsStore(),
+        # Bot Scopes: in-memory until Postgres implementation exists
+        "bot_scope_store": InMemoryBotScopeStore(),
         # CVE Remediation: in-memory until Postgres implementation exists
         "cve_advisory_store": InMemoryCveAdvisoryStore(),
         "remediation_plan_store": InMemoryRemediationPlanStore(),
@@ -1070,6 +1074,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     rotation_history_store_provider.override(stores["rotation_history_store"])
     expiry_tracker_provider.override(stores["expiry_tracker"])
     agent_metrics_store_provider.override(stores["agent_metrics_store"])
+    bot_scope_store_provider.override(stores["bot_scope_store"])
     # Wire httpx client for GitHub App API calls
     import httpx
 

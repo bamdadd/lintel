@@ -11,6 +11,7 @@ resolution-markers = [
 members = [
     "lintel",
     "lintel-agent-definitions-api",
+    "lintel-agent-metrics-api",
     "lintel-agent-skills-api",
     "lintel-agents",
     "lintel-ai-firewall-api",
@@ -24,6 +25,7 @@ members = [
     "lintel-background-agents-api",
     "lintel-board-sync-api",
     "lintel-boards",
+    "lintel-bot-scope-api",
     "lintel-channel-adapter-registry-api",
     "lintel-channel-connections-api",
     "lintel-channels",
@@ -43,6 +45,7 @@ members = [
     "lintel-domain",
     "lintel-drift-detection-api",
     "lintel-encryption-api",
+    "lintel-env-prebuilds-api",
     "lintel-environments-api",
     "lintel-event-bus",
     "lintel-event-store",
@@ -62,6 +65,7 @@ members = [
     "lintel-memory-api",
     "lintel-models",
     "lintel-models-api",
+    "lintel-multi-slack-bot-api",
     "lintel-multi-tenancy-api",
     "lintel-notifications-api",
     "lintel-notion-adapter-api",
@@ -1888,6 +1892,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
     { name = "lintel-agent-definitions-api" },
+    { name = "lintel-agent-metrics-api" },
     { name = "lintel-agent-skills-api" },
     { name = "lintel-agents" },
     { name = "lintel-ai-firewall-api" },
@@ -1901,6 +1906,7 @@ dependencies = [
     { name = "lintel-background-agents-api" },
     { name = "lintel-board-sync-api" },
     { name = "lintel-boards" },
+    { name = "lintel-bot-scope-api" },
     { name = "lintel-channel-adapter-registry-api" },
     { name = "lintel-channel-connections-api" },
     { name = "lintel-channels" },
@@ -1918,6 +1924,7 @@ dependencies = [
     { name = "lintel-domain" },
     { name = "lintel-drift-detection-api" },
     { name = "lintel-encryption-api" },
+    { name = "lintel-env-prebuilds-api" },
     { name = "lintel-environments-api" },
     { name = "lintel-event-bus" },
     { name = "lintel-event-store" },
@@ -1936,6 +1943,7 @@ dependencies = [
     { name = "lintel-memory-api" },
     { name = "lintel-models" },
     { name = "lintel-models-api" },
+    { name = "lintel-multi-slack-bot-api" },
     { name = "lintel-multi-tenancy-api" },
     { name = "lintel-notifications-api" },
     { name = "lintel-notion-adapter-api" },
@@ -1994,6 +2002,7 @@ requires-dist = [
     { name = "langgraph", specifier = ">=0.3" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=2.0" },
     { name = "lintel-agent-definitions-api", editable = "packages/agent-definitions-api" },
+    { name = "lintel-agent-metrics-api", editable = "packages/agent-metrics-api" },
     { name = "lintel-agent-skills-api", editable = "packages/agent-skills-api" },
     { name = "lintel-agents", editable = "packages/agents" },
     { name = "lintel-ai-firewall-api", editable = "packages/ai-firewall-api" },
@@ -2007,6 +2016,7 @@ requires-dist = [
     { name = "lintel-background-agents-api", editable = "packages/background-agents-api" },
     { name = "lintel-board-sync-api", editable = "packages/board-sync-api" },
     { name = "lintel-boards", editable = "packages/boards" },
+    { name = "lintel-bot-scope-api", editable = "packages/bot-scope-api" },
     { name = "lintel-channel-adapter-registry-api", editable = "packages/channel-adapter-registry-api" },
     { name = "lintel-channel-connections-api", editable = "packages/channel-connections-api" },
     { name = "lintel-channels", editable = "packages/channels" },
@@ -2024,6 +2034,7 @@ requires-dist = [
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-drift-detection-api", editable = "packages/drift-detection-api" },
     { name = "lintel-encryption-api", editable = "packages/encryption-api" },
+    { name = "lintel-env-prebuilds-api", editable = "packages/env-prebuilds-api" },
     { name = "lintel-environments-api", editable = "packages/environments-api" },
     { name = "lintel-event-bus", editable = "packages/event-bus" },
     { name = "lintel-event-store", editable = "packages/event-store" },
@@ -2042,6 +2053,7 @@ requires-dist = [
     { name = "lintel-memory-api", editable = "packages/memory-api" },
     { name = "lintel-models", editable = "packages/models" },
     { name = "lintel-models-api", editable = "packages/models-api" },
+    { name = "lintel-multi-slack-bot-api", editable = "packages/multi-slack-bot-api" },
     { name = "lintel-multi-tenancy-api", editable = "packages/multi-tenancy-api" },
     { name = "lintel-notifications-api", editable = "packages/notifications-api" },
     { name = "lintel-notion-adapter-api", editable = "packages/notion-adapter-api" },
@@ -2114,6 +2126,25 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-persistence", editable = "packages/persistence" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-agent-metrics-api"
+version = "0.1.0"
+source = { editable = "packages/agent-metrics-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
@@ -2409,6 +2440,29 @@ requires-dist = [
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-persistence", editable = "packages/persistence" },
     { name = "lintel-work-items-api", editable = "packages/work-items-api" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-bot-scope-api"
+version = "0.1.0"
+source = { editable = "packages/bot-scope-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
@@ -2841,6 +2895,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-env-prebuilds-api"
+version = "0.1.0"
+source = { editable = "packages/env-prebuilds-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-environments-api"
 version = "0.1.0"
 source = { editable = "packages/environments-api" }
@@ -3262,6 +3339,25 @@ requires-dist = [
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-models", editable = "packages/models" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-multi-slack-bot-api"
+version = "0.1.0"
+source = { editable = "packages/multi-slack-bot-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
