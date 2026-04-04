@@ -69,6 +69,8 @@ from lintel.channel_adapter_registry_api.routes import adapter_store_provider
 from lintel.channel_adapter_registry_api.store import InMemoryChannelAdapterStore
 from lintel.channel_connections_api.routes import connection_store_provider
 from lintel.channel_connections_api.store import InMemoryChannelConnectionStore
+from lintel.channel_message_routing_api.routes import routing_rule_store_provider
+from lintel.channel_message_routing_api.store import InMemoryRoutingRuleStore
 from lintel.chat_api.routes import ChatStore, chat_store_provider
 from lintel.chat_api.streaming import chat_stream_store_provider
 from lintel.cloud_environments_api.routes import cloud_environment_store_provider
@@ -532,6 +534,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "pipeline_diagnostic_store": InMemoryPipelineDiagnosticStore(),
         # Repo Descriptions
         "repo_description_store": InMemoryRepoDescriptionStore(),
+        # Channel Message Routing
+        "routing_rule_store": InMemoryRoutingRuleStore(),
     }
 
 
@@ -987,6 +991,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "pipeline_diagnostic_store": InMemoryPipelineDiagnosticStore(),
         # Repo Descriptions: in-memory until Postgres implementation exists
         "repo_description_store": InMemoryRepoDescriptionStore(),
+        # Channel Message Routing: in-memory until Postgres implementation exists
+        "routing_rule_store": InMemoryRoutingRuleStore(),
     }
 
 
@@ -1122,6 +1128,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     bot_scope_store_provider.override(stores["bot_scope_store"])
     cross_repo_plan_store_provider.override(stores["cross_repo_plan_store"])
     fleet_run_store_provider.override(stores["fleet_run_store"])
+    routing_rule_store_provider.override(stores["routing_rule_store"])
     # Wire httpx client for GitHub App API calls
     import httpx
 
