@@ -61,6 +61,8 @@ from lintel.board_sync_api.routes import (
 from lintel.board_sync_api.store import BoardSyncConfigStore, ExternalIdMappingStore
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
+from lintel.channel_adapter_registry_api.routes import adapter_store_provider
+from lintel.channel_adapter_registry_api.store import InMemoryChannelAdapterStore
 from lintel.channel_connections_api.routes import connection_store_provider
 from lintel.channel_connections_api.store import InMemoryChannelConnectionStore
 from lintel.chat_api.routes import ChatStore, chat_store_provider
@@ -446,6 +448,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "snapshot_store": InMemorySnapshotStore(),
         # Sandbox Replica Configs
         "replica_config_store": InMemoryReplicaConfigStore(),
+        # Channel Adapter Registry
+        "channel_adapter_store": InMemoryChannelAdapterStore(),
         # Channel Connections
         "channel_connection_store": InMemoryChannelConnectionStore(),
         # Visual Verification
@@ -890,6 +894,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "digest_store": _PgDigestStore(pool),
         "digest_config_store": _PgDigestConfigStore(pool),
         "release_note_store": _PgReleaseNoteStore(pool),
+        "channel_adapter_store": InMemoryChannelAdapterStore(),
         "channel_connection_store": _PgChannelConnectionStore(pool),
         "visual_verification_store": _PgVisualVerificationStore(pool),
         "scheduled_task_store": _PgScheduledTaskStore(pool),
@@ -1043,6 +1048,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     sandbox_pool_config_store_provider.override(stores["sandbox_pool_config_store"])
     image_rebuild_store_provider.override(stores["image_rebuild_store"])
     snapshot_store_provider.override(stores["snapshot_store"])
+    adapter_store_provider.override(stores["channel_adapter_store"])
     connection_store_provider.override(stores["channel_connection_store"])
     verification_store_provider.override(stores["visual_verification_store"])
     sandbox_credential_store_provider.override(stores["sandbox_credential_store"])
