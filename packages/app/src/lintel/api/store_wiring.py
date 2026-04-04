@@ -61,7 +61,12 @@ from lintel.board_sync_api.routes import (
 from lintel.board_sync_api.store import BoardSyncConfigStore, ExternalIdMappingStore
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
-from lintel.bot_scope_api.routes import bot_scope_store_provider
+from lintel.bot_scope_api.routes import (
+    bot_scope_store_provider,
+)
+from lintel.bot_scope_api.routes import (
+    bot_store_provider as scope_bot_store_provider,
+)
 from lintel.bot_scope_api.store import InMemoryBotScopeStore
 from lintel.bots_api.routes import bot_store_provider
 from lintel.bots_api.store import InMemoryBotStore
@@ -407,6 +412,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "digest_config_store": InMemoryDigestConfigStore(),
         "user_store": InMemoryUserStore(),
         "bot_store": InMemoryBotStore(),
+        "bot_scope_store": InMemoryBotScopeStore(),
         "release_note_store": InMemoryReleaseNoteStore(),
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),
@@ -1158,6 +1164,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     expiry_tracker_provider.override(stores["expiry_tracker"])
     agent_metrics_store_provider.override(stores["agent_metrics_store"])
     bot_scope_store_provider.override(stores["bot_scope_store"])
+    scope_bot_store_provider.override(stores["bot_store"])
     cross_repo_plan_store_provider.override(stores["cross_repo_plan_store"])
     fleet_run_store_provider.override(stores["fleet_run_store"])
     routing_rule_store_provider.override(stores["routing_rule_store"])

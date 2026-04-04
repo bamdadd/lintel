@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lintel.bot_scope_api.types import BotScope, BotScopeSet
+from lintel.bot_scope_api.types import ALL_RESOURCES, BotScope, BotScopeSet
 
 
 class InMemoryBotScopeStore:
@@ -33,7 +33,9 @@ class InMemoryBotScopeStore:
     ) -> bool:
         scopes = self._scopes.get(bot_id, [])
         return any(
-            s.resource_type.value == resource_type and s.resource_id == resource_id for s in scopes
+            s.resource_type.value == resource_type
+            and (s.resource_id == resource_id or s.resource_id == ALL_RESOURCES)
+            for s in scopes
         )
 
     async def remove(self, bot_id: str) -> None:
