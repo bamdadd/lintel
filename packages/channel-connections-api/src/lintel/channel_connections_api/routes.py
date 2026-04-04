@@ -23,21 +23,36 @@ connection_store_provider: StoreProvider[InMemoryChannelConnectionStore] = Store
 
 class CreateChannelConnectionRequest(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
-    provider: str
-    channel_id: str
-    workspace_id: str
+    channel_type: str
+    credential_ref: str = ""
+    workspace_id: str = ""
     config: dict[str, Any] = {}
     allowed_workflows: list[str] = []
+    allowed_agent_roles: list[str] = []
     project_ids: list[str] = []
+    team_id: str = ""
+    org_id: str = ""
+    enabled: bool = True
+    bot_username: str = ""
+    webhook_url: str = ""
 
 
 class UpdateChannelConnectionRequest(BaseModel):
-    provider: str | None = None
-    channel_id: str | None = None
+    channel_type: str | None = None
+    credential_ref: str | None = None
     workspace_id: str | None = None
     config: dict[str, Any] | None = None
     allowed_workflows: list[str] | None = None
+    allowed_agent_roles: list[str] | None = None
     project_ids: list[str] | None = None
+    team_id: str | None = None
+    org_id: str | None = None
+    enabled: bool | None = None
+    bot_username: str | None = None
+    webhook_url: str | None = None
+
+
+_TUPLE_FIELDS = ("allowed_workflows", "allowed_agent_roles", "project_ids")
 
 
 @router.post("/channel-connections", status_code=201)
@@ -51,12 +66,18 @@ async def create_channel_connection(
     now = datetime.now(UTC).isoformat()
     connection = ChannelConnection(
         id=body.id,
-        provider=body.provider,
-        channel_id=body.channel_id,
+        channel_type=body.channel_type,
+        credential_ref=body.credential_ref,
         workspace_id=body.workspace_id,
         config=body.config,
         allowed_workflows=tuple(body.allowed_workflows),
+        allowed_agent_roles=tuple(body.allowed_agent_roles),
         project_ids=tuple(body.project_ids),
+        team_id=body.team_id,
+        org_id=body.org_id,
+        enabled=body.enabled,
+        bot_username=body.bot_username,
+        webhook_url=body.webhook_url,
         created_at=now,
         updated_at=now,
     )
@@ -93,11 +114,9 @@ async def update_channel_connection(
     if connection is None:
         raise HTTPException(status_code=404, detail="Channel connection not found")
     updates = body.model_dump(exclude_none=True)
-    # Convert list fields to tuples for the frozen dataclass
-    if "allowed_workflows" in updates:
-        updates["allowed_workflows"] = tuple(updates["allowed_workflows"])
-    if "project_ids" in updates:
-        updates["project_ids"] = tuple(updates["project_ids"])
+    for f in _TUPLE_FIELDS:
+        if f in updates:
+            updates[f] = tuple(updates[f])
     updated = ChannelConnection(
         **{
             **asdict(connection),
