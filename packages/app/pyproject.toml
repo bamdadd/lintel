@@ -28,6 +28,7 @@ dependencies = [
     "lintel-policies-api",
     "lintel-kernel-policy-api",
     "lintel-notifications-api",
+    "lintel-org-security-api",
     "lintel-environments-api",
     "lintel-env-prebuilds-api",
     "lintel-variables-api",
@@ -133,6 +134,7 @@ lintel-teams = { workspace = true }
 lintel-policies-api = { workspace = true }
 lintel-kernel-policy-api = { workspace = true }
 lintel-notifications-api = { workspace = true }
+lintel-org-security-api = { workspace = true }
 lintel-environments-api = { workspace = true }
 lintel-env-prebuilds-api = { workspace = true }
 lintel-variables-api = { workspace = true }
