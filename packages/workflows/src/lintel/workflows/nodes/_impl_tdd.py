@@ -251,8 +251,12 @@ async def implement_tdd(
         )
         changed_files = [f for f in diff_check.stdout.strip().split("\n") if f.strip()]
         if not changed_files:
-            await tracker.append_log("implement", "No files changed — skipping tests")
-            return "No changes made.", True, [usage]
+            if impl_retry < MAX_TDD_IMPL_RETRIES:
+                await tracker.append_log("implement", "No files changed — will retry TDD session")
+                test_output = "Agent produced no code changes."
+                continue
+            await tracker.append_log("implement", "No files changed after all retries")
+            return "No changes made.", False, [usage]
 
         await tracker.append_log("implement", f"{len(changed_files)} file(s) changed")
 

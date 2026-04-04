@@ -7,11 +7,6 @@ interface BoardSummary {
   project_id: string;
 }
 
-interface ProjectItem {
-  project_id: string;
-  name: string;
-}
-
 interface ListResponse<T> {
   data: T[];
 }
@@ -22,23 +17,10 @@ interface ListResponse<T> {
  * A hard refresh (window reload) will always fetch fresh data.
  */
 export function useCachedBoards() {
-  const { data: projectsResp } = useQuery({
-    queryKey: ['/api/v1/projects', 'nav-cache'],
-    queryFn: () => customInstance<ListResponse<ProjectItem>>('/api/v1/projects'),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-  });
-
-  const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
-  const firstProjectId = projects[0]?.project_id;
-
   const { data: boardsResp } = useQuery({
-    queryKey: ['/api/v1/boards', firstProjectId, 'nav-cache'],
+    queryKey: ['/api/v1/boards', 'all', 'nav-cache'],
     queryFn: () =>
-      customInstance<ListResponse<BoardSummary>>(
-        `/api/v1/projects/${firstProjectId}/boards`,
-      ),
-    enabled: !!firstProjectId,
+      customInstance<ListResponse<BoardSummary>>('/api/v1/boards'),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });

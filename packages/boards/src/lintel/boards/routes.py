@@ -199,6 +199,13 @@ async def create_board(
     return result  # type: ignore[return-value]
 
 
+@router.get("/boards")
+async def list_all_boards(
+    store: BoardStore = Depends(board_store_provider),  # noqa: B008
+) -> list[dict[str, Any]]:
+    return await store.list_all()
+
+
 @router.get("/projects/{project_id}/boards")
 async def list_boards(
     project_id: str,

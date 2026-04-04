@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import structlog
 
-from lintel.models.errors import ClaudeCodeCredentialError
+from lintel.models.errors import ClaudeCodeCredentialError, ClaudeCodeRateLimitError
 from lintel.models.types import TokenStatus
 from lintel.sandbox.types import SandboxJob
 
@@ -388,6 +388,16 @@ class ClaudeCodeProvider:
                 stderr=result.stderr[:500],
             )
 
+        # Detect rate limit even on exit_code 0 — CLI may exit cleanly with a message
+        combined_lower = (result.stdout + result.stderr).lower()
+        if "hit your limit" in combined_lower or "rate limit" in combined_lower:
+            logger.error(
+                "claude_code_rate_limited",
+                sandbox_id=sandbox_id[:12],
+                combined_preview=(result.stdout + result.stderr)[:500],
+            )
+            raise ClaudeCodeRateLimitError((result.stdout + result.stderr)[:200])
+
         # Parse the JSON output
         parsed = self._parse_output(result.stdout)
         parsed["exit_code"] = result.exit_code
@@ -592,6 +602,16 @@ class ClaudeCodeProvider:
                             await on_activity(
                                 "AUTH_EXPIRED: OAuth token expired — re-authenticate in sandbox"
                             )
+                        return
+                    if "hit your limit" in peek_text or "rate limit" in peek_text:
+                        logger.error(
+                            "claude_code_stream_rate_limit",
+                            sandbox_id=sandbox_id[:12],
+                            invocation_id=invocation_id,
+                            output_preview=peek.stdout[:300],
+                        )
+                        if on_activity:
+                            await on_activity("RATE_LIMITED: Claude Code hit rate limit")
                         return
 
                 if total_lines > lines_seen:
