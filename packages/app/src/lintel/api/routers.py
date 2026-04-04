@@ -40,6 +40,7 @@ from lintel.channel_adapter_registry_api.routes import (
     router as channel_adapter_registry_router,
 )
 from lintel.channel_connections_api.routes import router as channel_connections_router
+from lintel.channel_message_routing_api.routes import router as channel_message_routing_router
 from lintel.chat_api.routes import router as chat_router_routes
 from lintel.chat_api.streaming import streaming_router as chat_streaming_router
 from lintel.cloud_environments_api.routes import router as cloud_environments_router
@@ -192,6 +193,11 @@ def mount_routers(app: FastAPI) -> None:
         channel_connections_router,
         prefix="/api/v1",
         tags=["channel-connections"],
+    )
+    app.include_router(
+        channel_message_routing_router,
+        prefix="/api/v1",
+        tags=["channel-routing"],
     )
     app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
     app.include_router(sso_router, prefix="/api/v1", tags=["auth"])
