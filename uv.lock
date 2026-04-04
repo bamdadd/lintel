@@ -36,6 +36,7 @@ members = [
     "lintel-coordination",
     "lintel-credentials-api",
     "lintel-cve-remediation-api",
+    "lintel-data-retention-api",
     "lintel-digest-api",
     "lintel-domain",
     "lintel-drift-detection-api",
@@ -1902,6 +1903,7 @@ dependencies = [
     { name = "lintel-contracts" },
     { name = "lintel-coordination" },
     { name = "lintel-credentials-api" },
+    { name = "lintel-data-retention-api" },
     { name = "lintel-digest-api" },
     { name = "lintel-domain" },
     { name = "lintel-drift-detection-api" },
@@ -1999,6 +2001,7 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-coordination", editable = "packages/coordination" },
     { name = "lintel-credentials-api", editable = "packages/credentials-api" },
+    { name = "lintel-data-retention-api", editable = "packages/data-retention-api" },
     { name = "lintel-digest-api", editable = "packages/digest-api" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-drift-detection-api", editable = "packages/drift-detection-api" },
@@ -2649,6 +2652,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-data-retention-api"
+version = "0.1.0"
+source = { editable = "packages/data-retention-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-digest-api"
 version = "0.1.0"
 source = { editable = "packages/digest-api" }
@@ -2684,6 +2710,7 @@ dependencies = [
     { name = "lintel-observability" },
     { name = "lintel-sandbox" },
     { name = "pyjwt" },
+    { name = "pyotp" },
     { name = "structlog" },
 ]
 
@@ -2697,6 +2724,7 @@ requires-dist = [
     { name = "lintel-observability", editable = "packages/observability" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
     { name = "pyjwt", specifier = ">=2.9" },
+    { name = "pyotp", specifier = ">=2.9" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
@@ -5247,6 +5275,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/08/f1c908c581fd11913da4711ea7ba32c0eee40b0190000996bb863b0c9349/pymdown_extensions-10.21.2.tar.gz", hash = "sha256:c3f55a5b8a1d0edf6699e35dcbea71d978d34ff3fa79f3d807b8a5b3fa90fbdc", size = 853922, upload-time = "2026-03-29T15:01:55.233Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/27/a2fc51a4a122dfd1015e921ae9d22fee3d20b0b8080d9a704578bf9deece/pymdown_extensions-10.21.2-py3-none-any.whl", hash = "sha256:5c0fd2a2bea14eb39af8ff284f1066d898ab2187d81b889b75d46d4348c01638", size = 268901, upload-time = "2026-03-29T15:01:53.244Z" },
+]
+
+[[package]]
+name = "pyotp"
+version = "2.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/b2/1d5994ba2acde054a443bd5e2d384175449c7d2b6d1a0614dbca3a63abfc/pyotp-2.9.0.tar.gz", hash = "sha256:346b6642e0dbdde3b4ff5a930b664ca82abfa116356ed48cc42c7d6590d36f63", size = 17763, upload-time = "2023-07-27T23:41:03.295Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c3/c0/c33c8792c3e50193ef55adb95c1c3c2786fe281123291c2dbf0eaab95a6f/pyotp-2.9.0-py3-none-any.whl", hash = "sha256:81c2e5865b8ac55e825b0358e496e1d9387c811e85bb40e71a3b29b288963612", size = 13376, upload-time = "2023-07-27T23:41:01.685Z" },
 ]
 
 [[package]]
