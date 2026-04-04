@@ -137,6 +137,14 @@ from lintel.improvement_api.routes import improvement_store_provider
 from lintel.improvement_api.store import InMemoryImprovementStore
 from lintel.integration_patterns_api.routes import integration_pattern_store_provider
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
+from lintel.jira_adapter_api.routes import (
+    jira_connection_store_provider,
+    sync_record_store_provider,
+)
+from lintel.jira_adapter_api.routes import (
+    work_item_store_provider as jira_work_item_store_provider,
+)
+from lintel.jira_adapter_api.store import InMemoryJiraConnectionStore, InMemorySyncRecordStore
 from lintel.mcp_servers_api.routes import (
     mcp_server_store_provider,
     mcp_tool_allowlist_store_provider,
@@ -399,6 +407,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "external_id_mapping_store": ExternalIdMappingStore(),
         # GitHub App Installations
         "github_app_installation_store": InMemoryGitHubAppInstallationStore(),
+        # Jira Adapter
+        "jira_connection_store": InMemoryJiraConnectionStore(),
+        "jira_sync_record_store": InMemorySyncRecordStore(),
     }
 
 
@@ -809,6 +820,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "cve_advisory_store": InMemoryCveAdvisoryStore(),
         "remediation_plan_store": InMemoryRemediationPlanStore(),
         "remediation_result_store": InMemoryRemediationResultStore(),
+        # Jira Adapter: in-memory until Postgres implementation exists
+        "jira_connection_store": InMemoryJiraConnectionStore(),
+        "jira_sync_record_store": InMemorySyncRecordStore(),
     }
 
 
@@ -926,6 +940,9 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     import httpx
 
     github_http_client_provider.override(httpx.AsyncClient())
+    jira_connection_store_provider.override(stores["jira_connection_store"])
+    sync_record_store_provider.override(stores["jira_sync_record_store"])
+    jira_work_item_store_provider.override(stores["work_item_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

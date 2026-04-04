@@ -48,6 +48,7 @@ from lintel.github_app_api.routes import router as github_app_router
 from lintel.governance_api.routes import router as governance_router
 from lintel.improvement_api.routes import router as improvement_router
 from lintel.integration_patterns_api import router as integration_patterns_router
+from lintel.jira_adapter_api.routes import router as jira_adapter_router
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
@@ -181,5 +182,6 @@ def mount_routers(app: FastAPI) -> None:
     )
     app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])
     app.include_router(github_app_router, prefix="/api/v1", tags=["github-app"])
+    app.include_router(jira_adapter_router, prefix="/api/v1", tags=["jira-adapter"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
