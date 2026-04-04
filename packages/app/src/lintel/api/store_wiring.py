@@ -805,6 +805,10 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "external_id_mapping_store": ExternalIdMappingStore(),
         # GitHub App Installations: in-memory until Postgres implementation exists
         "github_app_installation_store": InMemoryGitHubAppInstallationStore(),
+        # CVE Remediation: in-memory until Postgres implementation exists
+        "cve_advisory_store": InMemoryCveAdvisoryStore(),
+        "remediation_plan_store": InMemoryRemediationPlanStore(),
+        "remediation_result_store": InMemoryRemediationResultStore(),
     }
 
 
