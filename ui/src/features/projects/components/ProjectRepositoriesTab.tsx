@@ -70,6 +70,18 @@ export function ProjectRepositoriesTab({
     );
   }, [projectId, descriptions, updateMut, qc]);
 
+  const saveButton = dirty.size > 0 ? (
+    <Group justify="flex-end">
+      <Button
+        leftSection={<IconDeviceFloppy size={16} />}
+        onClick={handleSave}
+        loading={updateMut.isPending}
+      >
+        Save Descriptions
+      </Button>
+    </Group>
+  ) : null;
+
   if (linkedRepos.length === 0) {
     return (
       <Center py="xl">
@@ -80,17 +92,7 @@ export function ProjectRepositoriesTab({
 
   return (
     <Stack gap="md">
-      {dirty.size > 0 && (
-        <Group justify="flex-end">
-          <Button
-            leftSection={<IconDeviceFloppy size={16} />}
-            onClick={handleSave}
-            loading={updateMut.isPending}
-          >
-            Save Descriptions
-          </Button>
-        </Group>
-      )}
+      {saveButton}
 
       {linkedRepos.map((repo) => (
         <Paper key={repo.repo_id} withBorder p="md" radius="md">
@@ -119,17 +121,7 @@ export function ProjectRepositoriesTab({
         </Paper>
       ))}
 
-      {dirty.size > 0 && (
-        <Group justify="flex-end">
-          <Button
-            leftSection={<IconDeviceFloppy size={16} />}
-            onClick={handleSave}
-            loading={updateMut.isPending}
-          >
-            Save Descriptions
-          </Button>
-        </Group>
-      )}
+      {saveButton}
     </Stack>
   );
 }
