@@ -59,6 +59,7 @@ from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.feedback_api.routes import router as feedback_router
 from lintel.fleet_execution_api.routes import router as fleet_execution_router
+from lintel.frontend_targets_api.routes import router as frontend_targets_router
 from lintel.github_app_api.routes import router as github_app_router
 from lintel.governance_api.routes import router as governance_router
 from lintel.improvement_api.routes import router as improvement_router
@@ -249,3 +250,8 @@ def mount_routers(app: FastAPI) -> None:
     )
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
+    app.include_router(
+        frontend_targets_router,
+        prefix="/api/v1",
+        tags=["frontend-targets"],
+    )

@@ -151,6 +151,8 @@ from lintel.feedback_api.routes import feedback_store_provider
 from lintel.feedback_api.store import InMemoryFeedbackStore
 from lintel.fleet_execution_api.routes import fleet_run_store_provider
 from lintel.fleet_execution_api.store import InMemoryFleetRunStore
+from lintel.frontend_targets_api.routes import frontend_target_store_provider
+from lintel.frontend_targets_api.store import InMemoryFrontendTargetStore
 from lintel.github_app_api.routes import (
     http_client_provider as github_http_client_provider,
 )
@@ -371,6 +373,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "trigger_store": InMemoryTriggerStore(),
         "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
+        "frontend_target_store": InMemoryFrontendTargetStore(),
         "digest_store": InMemoryDigestStore(),
         "digest_config_store": InMemoryDigestConfigStore(),
         "user_store": InMemoryUserStore(),
@@ -836,6 +839,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "trigger_store": PostgresTriggerStore(pool),
         "automation_store": PostgresAutomationStore(pool),
         "variable_store": PostgresVariableStore(pool),
+        "frontend_target_store": InMemoryFrontendTargetStore(),
         "user_store": PostgresUserStore(pool),
         "team_store": PostgresTeamStore(pool),
         "policy_store": PostgresPolicyStore(pool),
@@ -982,6 +986,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     prebuild_config_store_provider.override(stores["prebuild_config_store"])
     prebuild_run_store_provider.override(stores["prebuild_run_store"])
     variable_store_provider.override(stores["variable_store"])
+    frontend_target_store_provider.override(stores["frontend_target_store"])
     credential_store_provider.override(stores["credential_store"])
     audit_entry_store_provider.override(stores["audit_entry_store"])
     approval_request_store_provider.override(stores["approval_request_store"])
