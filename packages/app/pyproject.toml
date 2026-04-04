@@ -84,6 +84,7 @@ dependencies = [
     "lintel-notion-adapter-api",
     "lintel-web-ide-api",
     "lintel-data-retention-api",
+    "lintel-encryption-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -179,6 +180,7 @@ lintel-jira-adapter-api = { workspace = true }
 lintel-notion-adapter-api = { workspace = true }
 lintel-web-ide-api = { workspace = true }
 lintel-data-retention-api = { workspace = true }
+lintel-encryption-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

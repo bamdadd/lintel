@@ -44,6 +44,7 @@ from lintel.cve_remediation_api.routes import router as cve_remediation_router
 from lintel.data_retention_api.routes import router as data_retention_router
 from lintel.digest_api.routes import router as digest_router
 from lintel.drift_detection_api.routes import router as drift_detection_router
+from lintel.encryption_api.routes import router as encryption_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.feedback_api.routes import router as feedback_router
@@ -193,5 +194,6 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(jira_adapter_router, prefix="/api/v1", tags=["jira-adapter"])
     app.include_router(notion_adapter_router, prefix="/api/v1", tags=["notion-adapter"])
     app.include_router(web_ide_router, prefix="/api/v1", tags=["web-ide"])
+    app.include_router(encryption_router, prefix="/api/v1", tags=["encryption"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])

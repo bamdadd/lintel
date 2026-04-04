@@ -115,6 +115,8 @@ from lintel.drift_detection_api.store import (
     InMemoryDriftRuleStore,
     InMemoryDriftScanStore,
 )
+from lintel.encryption_api.routes import encryption_store_provider
+from lintel.encryption_api.store import EncryptionStore
 from lintel.environments_api.routes import environment_store_provider
 from lintel.environments_api.store import InMemoryEnvironmentStore
 from lintel.event_store.in_memory import InMemoryEventStore
@@ -428,6 +430,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "ide_session_store": InMemoryIDESessionStore(),
         # Data Retention
         "retention_policy_store": InMemoryRetentionPolicyStore(),
+        # Encryption
+        "encryption_store": EncryptionStore(),
     }
 
 
@@ -849,6 +853,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "ide_session_store": InMemoryIDESessionStore(),
         # Data Retention: in-memory until Postgres implementation exists
         "retention_policy_store": InMemoryRetentionPolicyStore(),
+        # Encryption
+        "encryption_store": EncryptionStore(),
     }
 
 
@@ -975,6 +981,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     notion_connection_store_provider.override(stores["notion_connection_store"])
     bg_session_store_provider.override(stores["background_session_store"])
     ide_session_store_provider.override(stores["ide_session_store"])
+    encryption_store_provider.override(stores["encryption_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
