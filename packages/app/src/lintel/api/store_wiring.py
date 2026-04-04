@@ -998,6 +998,14 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "expiry_tracker": InMemoryExpiryTracker(),
         # Multi-tenancy: in-memory until Postgres implementation exists
         "workspace_store": InMemoryWorkspaceStore(),
+        # Bots: in-memory until Postgres implementation exists
+        "bot_store": InMemoryBotStore(),
+        # Cloud Environments: in-memory until Postgres implementation exists
+        "cloud_environment_store": InMemoryCloudEnvironmentStore(),
+        # Cross-Repo Agent: in-memory until Postgres implementation exists
+        "cross_repo_plan_store": InMemoryCrossRepoPlanStore(),
+        # Knowledge Graph: in-memory until Postgres implementation exists
+        "knowledge_graph_store": InMemoryKnowledgeGraphStore(),
         # Multi-Slack-bot: in-memory until Postgres implementation exists
         "slack_bot_store": InMemorySlackBotStore(),
         # Incidents: in-memory until Postgres implementation exists
