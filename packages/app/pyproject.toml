@@ -82,6 +82,7 @@ dependencies = [
     "lintel-github-app-api",
     "lintel-jira-adapter-api",
     "lintel-notion-adapter-api",
+    "lintel-web-ide-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -175,6 +176,7 @@ lintel-board-sync-api = { workspace = true }
 lintel-github-app-api = { workspace = true }
 lintel-jira-adapter-api = { workspace = true }
 lintel-notion-adapter-api = { workspace = true }
+lintel-web-ide-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
