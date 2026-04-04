@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 from lintel.agent_definitions_api.routes import agent_definition_store_provider
 from lintel.agent_definitions_api.store import AgentDefinitionStore
+from lintel.agent_metrics_api.routes import agent_metrics_store_provider
+from lintel.agent_metrics_api.store import InMemoryAgentMetricsStore
 from lintel.agent_skills_api.routes import (
     agent_skill_binding_store_provider,
     agent_skill_store_provider,
@@ -483,6 +485,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         # Proactive Triggers
         "proactive_trigger_store": InMemoryProactiveTriggerStore(),
         "trigger_execution_store": InMemoryTriggerExecutionStore(),
+        # Agent Metrics
+        "agent_metrics_store": InMemoryAgentMetricsStore(),
     }
 
 
@@ -893,6 +897,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "external_id_mapping_store": ExternalIdMappingStore(),
         # GitHub App Installations: in-memory until Postgres implementation exists
         "github_app_installation_store": InMemoryGitHubAppInstallationStore(),
+        # Agent Metrics: in-memory until Postgres implementation exists
+        "agent_metrics_store": InMemoryAgentMetricsStore(),
         # CVE Remediation: in-memory until Postgres implementation exists
         "cve_advisory_store": InMemoryCveAdvisoryStore(),
         "remediation_plan_store": InMemoryRemediationPlanStore(),
@@ -1046,6 +1052,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     rotation_policy_store_provider.override(stores["rotation_policy_store"])
     rotation_history_store_provider.override(stores["rotation_history_store"])
     expiry_tracker_provider.override(stores["expiry_tracker"])
+    agent_metrics_store_provider.override(stores["agent_metrics_store"])
     # Wire httpx client for GitHub App API calls
     import httpx
 

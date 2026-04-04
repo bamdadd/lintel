@@ -22,6 +22,7 @@ dependencies = [
     "lintel-coordination",
     "lintel-projections",
     "lintel-api-support",
+    "lintel-agent-metrics-api",
     "lintel-users",
     "lintel-teams",
     "lintel-policies-api",
@@ -147,6 +148,7 @@ lintel-work-items-api = { workspace = true }
 lintel-skills-api = { workspace = true }
 lintel-background-agents-api = { workspace = true }
 lintel-agent-definitions-api = { workspace = true }
+lintel-agent-metrics-api = { workspace = true }
 lintel-mcp-servers-api = { workspace = true }
 lintel-ai-providers-api = { workspace = true }
 lintel-models-api = { workspace = true }
