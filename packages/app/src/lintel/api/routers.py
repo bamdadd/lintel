@@ -27,6 +27,7 @@ from lintel.approval_requests_api.routes import router as approval_requests_rout
 from lintel.artifacts_api.routes import router as artifacts_router
 from lintel.audit_api.routes import router as audit_router
 from lintel.auth_api.routes import router as auth_router
+from lintel.auth_api.sso_routes import sso_router
 from lintel.automations_api.routes import router as automations_router
 from lintel.board_sync_api.routes import router as board_sync_router
 from lintel.boards.routes import router as boards_router
@@ -144,6 +145,7 @@ def mount_routers(app: FastAPI) -> None:
         tags=["channel-connections"],
     )
     app.include_router(auth_router, prefix="/api/v1", tags=["auth"])
+    app.include_router(sso_router, prefix="/api/v1", tags=["auth"])
     app.include_router(codebase_index_router, prefix="/api/v1", tags=["codebase-index"])
     app.include_router(trust_scores_router, prefix="/api/v1", tags=["trust-scores"])
     app.include_router(privacy_controls_router, prefix="/api/v1", tags=["privacy-controls"])
