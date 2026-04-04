@@ -41,8 +41,8 @@ from lintel.artifacts_api.store import (
 )
 from lintel.audit_api.routes import audit_entry_store_provider
 from lintel.audit_api.store import AuditEntryStore
-from lintel.auth_api.routes import auth_user_store_provider
-from lintel.auth_api.store import InMemoryAuthUserStore
+from lintel.auth_api.routes import auth_user_store_provider, session_store_provider
+from lintel.auth_api.store import InMemoryAuthUserStore, InMemorySessionStore
 from lintel.automations_api.routes import InMemoryAutomationStore, automation_store_provider
 from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
@@ -745,6 +745,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     governance_policy_store_provider.override(stores["governance_policy_store"])
     governance_audit_store_provider.override(stores["governance_audit_store"])
     auth_user_store_provider.override(stores.get("auth_user_store", InMemoryAuthUserStore()))
+    session_store_provider.override(stores.get("session_store", InMemorySessionStore()))
     trust_score_store_provider.override(stores["trust_score_store"])
     attachment_store_provider.override(stores["attachment_store"])
     visibility_store_provider.override(stores["visibility_store"])

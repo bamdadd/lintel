@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import os
 import time
 from typing import Any
+from uuid import uuid4
 
 import jwt
 
@@ -24,9 +25,16 @@ class TokenPayload:
     role: str
     exp: int
     token_type: str  # "access" | "refresh"
+    jti: str = ""  # unique token id (refresh tokens only)
+    sid: str = ""  # session id
 
 
-def create_access_token(user_id: str, role: str) -> str:
+def create_access_token(
+    user_id: str,
+    role: str,
+    *,
+    session_id: str = "",
+) -> str:
     """Create a signed access JWT."""
     now = int(time.time())
     payload: dict[str, Any] = {
@@ -36,20 +44,36 @@ def create_access_token(user_id: str, role: str) -> str:
         "iat": now,
         "token_type": "access",
     }
+    if session_id:
+        payload["sid"] = session_id
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str, role: str) -> str:
-    """Create a signed refresh JWT."""
+def create_refresh_token(
+    user_id: str,
+    role: str,
+    *,
+    session_id: str = "",
+    jti: str = "",
+) -> tuple[str, str]:
+    """Create a signed refresh JWT.
+
+    Returns ``(token, jti)`` — the jti is stored in the session so
+    the token can be revoked.
+    """
     now = int(time.time())
+    token_jti = jti or str(uuid4())
     payload: dict[str, Any] = {
         "sub": user_id,
         "role": role,
         "exp": now + REFRESH_TOKEN_EXPIRES,
         "iat": now,
         "token_type": "refresh",
+        "jti": token_jti,
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    if session_id:
+        payload["sid"] = session_id
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM), token_jti
 
 
 def decode_token(token: str) -> TokenPayload:
@@ -60,4 +84,6 @@ def decode_token(token: str) -> TokenPayload:
         role=data["role"],
         exp=data["exp"],
         token_type=data.get("token_type", "access"),
+        jti=data.get("jti", ""),
+        sid=data.get("sid", ""),
     )

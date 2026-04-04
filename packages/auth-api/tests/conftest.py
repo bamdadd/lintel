@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 import pytest
 
 from lintel.auth_api.middleware import JWTAuthMiddleware
-from lintel.auth_api.routes import auth_user_store_provider, router
-from lintel.auth_api.store import InMemoryAuthUserStore
+from lintel.auth_api.routes import auth_user_store_provider, router, session_store_provider
+from lintel.auth_api.store import InMemoryAuthUserStore, InMemorySessionStore
 from lintel.domain.auth.passwords import hash_password
 from lintel.domain.auth.types import AuthRole, AuthUser
 
@@ -25,14 +25,24 @@ def store() -> InMemoryAuthUserStore:
 
 
 @pytest.fixture()
-def client(store: InMemoryAuthUserStore) -> Generator[TestClient]:
+def session_store() -> InMemorySessionStore:
+    return InMemorySessionStore()
+
+
+@pytest.fixture()
+def client(
+    store: InMemoryAuthUserStore,
+    session_store: InMemorySessionStore,
+) -> Generator[TestClient]:
     auth_user_store_provider.override(store)
+    session_store_provider.override(session_store)
     app = FastAPI()
     app.add_middleware(JWTAuthMiddleware)
     app.include_router(router, prefix="/api/v1")
     with TestClient(app) as c:
         yield c
     auth_user_store_provider.override(None)
+    session_store_provider.override(None)
 
 
 @pytest.fixture()
