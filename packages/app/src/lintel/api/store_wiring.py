@@ -436,6 +436,111 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         PostgresIntegrationPatternStore as _PgIntegrationPatternStore,
     )
     from lintel.persistence.dict_store import PostgresComplianceStore as PgCompliance
+    from lintel.persistence.pg_stores import (
+        PostgresAgentSkillBindingStore as _PgAgentSkillBindingStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresAgentSkillStore as _PgAgentSkillStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresAttachmentStore as _PgAttachmentStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresChannelConnectionStore as _PgChannelConnectionStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresCodebaseIndexStore as _PgCodebaseIndexStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresCodingRuleStore as _PgCodingRuleStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresCoverageMetricStore as _PgCoverageMetricStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresDigestConfigStore as _PgDigestConfigStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresDigestStore as _PgDigestStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresDriftAlertStore as _PgDriftAlertStoreImpl,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresDriftRuleStore as _PgDriftRuleStoreImpl,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresDriftScanStore as _PgDriftScanStoreImpl,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresFirewallLogStore as _PgFirewallLogStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresFirewallRuleStore as _PgFirewallRuleStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresImageRebuildStore as _PgImageRebuildStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresMCPToolAllowlistStore as _PgMCPToolAllowlistStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresMCPToolStore as _PgMCPToolStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresParsedTestResultStore as _PgParsedTestResultStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresPooledSandboxStore as _PgPooledSandboxStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresPreferenceStore as _PgPreferenceStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresQualityGateRuleStore as _PgQualityGateRuleStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresReleaseNoteStore as _PgReleaseNoteStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresRuleViolationStore as _PgRuleViolationStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresSandboxCredentialStore as _PgSandboxCredentialStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresSandboxImageStore as _PgSandboxImageStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresSandboxPoolConfigStore as _PgSandboxPoolConfigStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresScheduledTaskStore as _PgScheduledTaskStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresSlackInvocationStore as _PgSlackInvocationStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresSlackNotificationRecordStore as _PgSlackNotifRecordStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresSlackNotificationTemplateStore as _PgSlackNotifTemplateStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresSnapshotStore as _PgSnapshotStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresTrustScoreStore as _PgTrustScoreStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresVisibilityStore as _PgVisibilityStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresVisualVerificationStore as _PgVisualVerificationStore,
+    )
+    from lintel.persistence.pg_stores import (
+        PostgresWorkflowBlueprintStore as _PgWorkflowBlueprintStore,
+    )
     from lintel.persistence.stores import (
         PostgresAgentDefinitionStore,
         PostgresAIProviderStore,
@@ -603,8 +708,6 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "model_store": PostgresModelStore(pool),
         "model_assignment_store": PostgresModelAssignmentStore(pool),
         "mcp_server_store": PostgresMCPServerStore(pool),
-        "mcp_tool_store": MCPToolStore(),
-        "mcp_tool_allowlist_store": MCPToolAllowlistStore(),
         "sandbox_store": PostgresSandboxStore(pool),
         "tag_store": _TagStoreAdapter(_PgTagStore(pool)),
         "board_store": _BoardStoreAdapter(_PgBoardStore(pool)),
@@ -617,9 +720,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "kpi_store": PgCompliance(pool, "kpi", "kpi_id"),
         "experiment_store": PgCompliance(pool, "experiment", "experiment_id"),
         "compliance_metric_store": PgCompliance(pool, "compliance_metric", "metric_id"),
-        "drift_rule_store": InMemoryDriftRuleStore(),
-        "drift_alert_store": InMemoryDriftAlertStore(),
-        "drift_scan_store": InMemoryDriftScanStore(),
+        "drift_rule_store": _PgDriftRuleStoreImpl(pool),
+        "drift_alert_store": _PgDriftAlertStoreImpl(pool),
+        "drift_scan_store": _PgDriftScanStoreImpl(pool),
         "run_metric_store": PgCompliance(pool, "run_metric", "run_metric_id"),
         "mutation_store": PgCompliance(pool, "strategy_mutation", "mutation_id"),
         "tournament_store": PgCompliance(pool, "tournament", "tournament_id"),
@@ -635,46 +738,40 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "integration_patterns": _PgIntegrationPatternStore(pool),
         "process_mining": _PgProcessMiningStore(pool),
         "workflow_definition_store": PostgresWorkflowDefinitionStore(pool),
-        # REQ-026: in-memory until Postgres implementation exists
-        "codebase_index_store": InMemoryCodebaseIndexStore(),
-        # REQ-027: in-memory until Postgres implementation exists
-        "attachment_store": InMemoryAttachmentStore(),
-        # REQ-010: in-memory until Postgres implementations exist
-        "parsed_result_store": ParsedTestResultStore(),
-        "coverage_metric_store": CoverageMetricStore(),
-        "quality_gate_rule_store": QualityGateRuleStore(),
-        # REQ-F029: in-memory until Postgres implementation exists
-        "trust_score_store": InMemoryTrustScoreStore(),
-        # REQ-008: in-memory until Postgres implementation exists
-        "visibility_store": InMemoryVisibilityStore(),
-        "preference_store": InMemoryPreferenceStore(),
-        # REQ-025: in-memory until Postgres implementation exists
-        "firewall_rule_store": InMemoryFirewallRuleStore(),
-        "firewall_log_store": InMemoryFirewallLogStore(),
-        # Slack Notification stores — in-memory until Postgres implementation exists
-        "slack_notification_template_store": InMemorySlackNotificationTemplateStore(),
-        "slack_notification_record_store": InMemorySlackNotificationRecordStore(),
-        # REQ-F033: in-memory until Postgres implementation exists
-        "agent_skill_store": InMemoryAgentSkillStore(),
-        "agent_skill_binding_store": InMemoryAgentSkillBindingStore(),
-        # Slack Workflow Invocations: in-memory until Postgres implementation exists
-        "slack_invocation_store": InMemorySlackInvocationStore(),
-        # Coding Rules: in-memory until Postgres implementation exists
-        "coding_rule_store": InMemoryCodingRuleStore(),
-        "violation_store": InMemoryRuleViolationStore(),
-        # Workflow Blueprints: in-memory until Postgres implementation exists
-        "workflow_blueprint_store": InMemoryWorkflowBlueprintStore(),
-        # Sandbox Pool: in-memory until Postgres implementation exists
-        "sandbox_image_store": InMemorySandboxImageStore(),
-        "pooled_sandbox_store": InMemoryPooledSandboxStore(),
-        "sandbox_pool_config_store": InMemorySandboxPoolConfigStore(),
-        "image_rebuild_store": InMemoryImageRebuildStore(),
-        # Sandbox Snapshots: in-memory until Postgres implementation exists
-        "snapshot_store": InMemorySnapshotStore(),
-        # Sandbox Replica Configs: in-memory until Postgres implementation exists
+        "codebase_index_store": _PgCodebaseIndexStore(pool),
+        "attachment_store": _PgAttachmentStore(pool),
+        "parsed_result_store": _PgParsedTestResultStore(pool),
+        "coverage_metric_store": _PgCoverageMetricStore(pool),
+        "quality_gate_rule_store": _PgQualityGateRuleStore(pool),
+        "trust_score_store": _PgTrustScoreStore(pool),
+        "visibility_store": _PgVisibilityStore(pool),
+        "preference_store": _PgPreferenceStore(pool),
+        "firewall_rule_store": _PgFirewallRuleStore(pool),
+        "firewall_log_store": _PgFirewallLogStore(pool),
+        "slack_notification_template_store": _PgSlackNotifTemplateStore(pool),
+        "slack_notification_record_store": _PgSlackNotifRecordStore(pool),
+        "agent_skill_store": _PgAgentSkillStore(pool),
+        "agent_skill_binding_store": _PgAgentSkillBindingStore(pool),
+        "slack_invocation_store": _PgSlackInvocationStore(pool),
+        "coding_rule_store": _PgCodingRuleStore(pool),
+        "violation_store": _PgRuleViolationStore(pool),
+        "workflow_blueprint_store": _PgWorkflowBlueprintStore(pool),
+        "sandbox_image_store": _PgSandboxImageStore(pool),
+        "pooled_sandbox_store": _PgPooledSandboxStore(pool),
+        "sandbox_pool_config_store": _PgSandboxPoolConfigStore(pool),
+        "image_rebuild_store": _PgImageRebuildStore(pool),
+        "snapshot_store": _PgSnapshotStore(pool),
         "replica_config_store": InMemoryReplicaConfigStore(),
-        # Sandbox Credentials: in-memory until Postgres implementation exists
-        "sandbox_credential_store": InMemorySandboxCredentialStore(),
+        "sandbox_credential_store": _PgSandboxCredentialStore(pool),
+        "digest_store": _PgDigestStore(pool),
+        "digest_config_store": _PgDigestConfigStore(pool),
+        "release_note_store": _PgReleaseNoteStore(pool),
+        "channel_connection_store": _PgChannelConnectionStore(pool),
+        "visual_verification_store": _PgVisualVerificationStore(pool),
+        "scheduled_task_store": _PgScheduledTaskStore(pool),
+        "improvement_store": PgCompliance(pool, "improvement", "improvement_id"),
+        "mcp_tool_store": _PgMCPToolStore(pool),
+        "mcp_tool_allowlist_store": _PgMCPToolAllowlistStore(pool),
     }
 
 
