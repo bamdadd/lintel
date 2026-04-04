@@ -2,6 +2,8 @@
 
 from fastapi.testclient import TestClient
 
+from lintel.bot_scope_api.routes import bot_scope_resolver_provider
+
 
 class TestBotScopeAPI:
     def test_create_bot_scope_returns_201(self, client: TestClient) -> None:
@@ -83,3 +85,72 @@ class TestBotScopeAPI:
             )
         resp = client.get("/api/v1/bot-scopes/bot-5")
         assert len(resp.json()["scopes"]) == 2
+
+    def test_wildcard_scope_allows_any_resource(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/bot-scopes",
+            json={
+                "bot_id": "bot-6",
+                "resource_type": "project",
+                "resource_id": "*",
+            },
+        )
+        resp = client.post(
+            "/api/v1/bot-scopes/check",
+            json={
+                "bot_id": "bot-6",
+                "resource_type": "project",
+                "resource_id": "any-project-id",
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["decision"] == "allowed"
+
+
+class TestResolveAccessEndpoint:
+    def test_resolve_unmapped_connection(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/bot-scopes/resolve",
+            json={"connection_id": "unknown", "project_id": "proj-1"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["allowed"] is True
+        assert data["bot_id"] == ""
+
+    def test_resolve_mapped_allowed(self, client: TestClient) -> None:
+        # Register scope
+        client.post(
+            "/api/v1/bot-scopes",
+            json={"bot_id": "bot-r", "resource_type": "project", "resource_id": "proj-1"},
+        )
+        # Map connection to bot
+        resolver = bot_scope_resolver_provider.get()
+        resolver.register_connection("conn-r", "bot-r")
+
+        resp = client.post(
+            "/api/v1/bot-scopes/resolve",
+            json={"connection_id": "conn-r", "project_id": "proj-1"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["allowed"] is True
+        assert data["bot_id"] == "bot-r"
+
+    def test_resolve_mapped_denied(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/bot-scopes",
+            json={"bot_id": "bot-d", "resource_type": "project", "resource_id": "proj-1"},
+        )
+        resolver = bot_scope_resolver_provider.get()
+        resolver.register_connection("conn-d", "bot-d")
+
+        resp = client.post(
+            "/api/v1/bot-scopes/resolve",
+            json={"connection_id": "conn-d", "project_id": "proj-other"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["allowed"] is False
+        assert data["bot_id"] == "bot-d"
+        assert "proj-other" in data["reason"]

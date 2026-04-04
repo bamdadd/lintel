@@ -407,6 +407,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "digest_config_store": InMemoryDigestConfigStore(),
         "user_store": InMemoryUserStore(),
         "bot_store": InMemoryBotStore(),
+        "bot_scope_store": InMemoryBotScopeStore(),
         "release_note_store": InMemoryReleaseNoteStore(),
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),

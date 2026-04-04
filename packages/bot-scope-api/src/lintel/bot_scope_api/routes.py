@@ -11,11 +11,13 @@ from lintel.api_support.provider import StoreProvider
 from lintel.bot_scope_api.types import AccessDecision, BotScope, ScopeResource
 
 if TYPE_CHECKING:
+    from lintel.bot_scope_api.resolver import BotScopeResolver
     from lintel.bot_scope_api.store import InMemoryBotScopeStore
 
 router = APIRouter()
 
 bot_scope_store_provider: StoreProvider[InMemoryBotScopeStore] = StoreProvider()
+bot_scope_resolver_provider: StoreProvider[BotScopeResolver] = StoreProvider()
 
 
 class CreateBotScopeRequest(BaseModel):
@@ -90,4 +92,35 @@ async def check_bot_scope(
         resource_type=body.resource_type,
         resource_id=body.resource_id,
         decision=AccessDecision.ALLOWED if allowed else AccessDecision.DENIED,
+    )
+
+
+class ResolveAccessRequest(BaseModel):
+    connection_id: str
+    project_id: str = ""
+    workflow_id: str = ""
+    agent_id: str = ""
+
+
+class ResolveAccessResponse(BaseModel):
+    allowed: bool
+    bot_id: str
+    reason: str = ""
+
+
+@router.post("/bot-scopes/resolve")
+async def resolve_access(
+    body: ResolveAccessRequest,
+    resolver: BotScopeResolver = Depends(bot_scope_resolver_provider),  # noqa: B008
+) -> ResolveAccessResponse:
+    decision = await resolver.check_connection_access(
+        connection_id=body.connection_id,
+        project_id=body.project_id,
+        workflow_id=body.workflow_id,
+        agent_id=body.agent_id,
+    )
+    return ResolveAccessResponse(
+        allowed=decision.allowed,
+        bot_id=decision.bot_id,
+        reason=decision.reason,
     )

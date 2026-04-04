@@ -262,6 +262,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.state.chat_router = chat_router
     app.state.mcp_tool_client = mcp_tool_client
 
+    from lintel.bot_scope_api.resolver import BotScopeResolver
+    from lintel.bot_scope_api.routes import bot_scope_resolver_provider
+
+    bot_scope_resolver = BotScopeResolver(
+        scope_store=stores["bot_scope_store"],
+    )
+    app.state.bot_scope_resolver = bot_scope_resolver
+    bot_scope_resolver_provider.override(bot_scope_resolver)
+
     await _seed_defaults(stores)
     await _seed_guardrail_defaults(stores)
 

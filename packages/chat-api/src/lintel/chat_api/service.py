@@ -14,6 +14,7 @@ from lintel.chat_api.chat_router import ChatRouterResult
 if TYPE_CHECKING:
     from fastapi import Request
 
+    from lintel.bot_scope_api.types import ScopeDecision
     from lintel.channel_connections_api.types import ChannelConnection
     from lintel.chat_api.store import ChatStore
 
@@ -40,6 +41,38 @@ class ChatService:
     def __init__(self, request: Request, store: ChatStore) -> None:
         self._request = request
         self._store = store
+
+    # --- Bot scope authorization ---
+
+    async def _check_bot_scope(
+        self,
+        conversation_id: str,
+        project_id: str = "",
+        workflow_id: str = "",
+        agent_id: str = "",
+    ) -> ScopeDecision:
+        """Check bot scope for the conversation's connection.
+
+        Returns an allowed decision if no resolver is wired or if the
+        connection has no mapped bot.
+        """
+        from lintel.bot_scope_api.types import ScopeDecision
+
+        resolver = getattr(self._request.app.state, "bot_scope_resolver", None)
+        if resolver is None:
+            return ScopeDecision(allowed=True, bot_id="")
+
+        conv = await self._store.get(conversation_id)
+        connection_id = conv.get("connection_id", "") if conv else ""
+        if not connection_id:
+            return ScopeDecision(allowed=True, bot_id="")
+
+        return await resolver.check_connection_access(
+            connection_id=connection_id,
+            project_id=project_id,
+            workflow_id=workflow_id,
+            agent_id=agent_id,
+        )
 
     # --- Connection-scoped routing helpers ---
 
@@ -495,6 +528,28 @@ class ChatService:
                     content=project_blocked,
                 )
                 return
+
+        # Enforce bot scope authorization
+        bot_scope_decision = await self._check_bot_scope(
+            conversation_id,
+            project_id=project.get("project_id", "") if project else "",
+            workflow_id=workflow_type,
+        )
+        if not bot_scope_decision.allowed:
+            logger.info(
+                "workflow_blocked_by_bot_scope",
+                bot_id=bot_scope_decision.bot_id,
+                reason=bot_scope_decision.reason,
+                conversation_id=conversation_id,
+            )
+            await store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=bot_scope_decision.reason,
+            )
+            return
 
         # If no explicit repo, try auto-classifying from message
         if repo_url is None:

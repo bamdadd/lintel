@@ -8,7 +8,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.bot_scope_api.routes import bot_scope_store_provider, router
+from lintel.bot_scope_api.resolver import BotScopeResolver
+from lintel.bot_scope_api.routes import (
+    bot_scope_resolver_provider,
+    bot_scope_store_provider,
+    router,
+)
 from lintel.bot_scope_api.store import InMemoryBotScopeStore
 
 if TYPE_CHECKING:
@@ -18,9 +23,12 @@ if TYPE_CHECKING:
 @pytest.fixture()
 def client() -> Generator[TestClient]:
     store = InMemoryBotScopeStore()
+    resolver = BotScopeResolver(scope_store=store)
     bot_scope_store_provider.override(store)
+    bot_scope_resolver_provider.override(resolver)
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
     with TestClient(app) as c:
         yield c
     bot_scope_store_provider.override(None)
+    bot_scope_resolver_provider.override(None)
