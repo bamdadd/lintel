@@ -66,6 +66,7 @@ from lintel.multi_slack_bot_api.routes import router as multi_slack_bot_router
 from lintel.multi_tenancy_api.routes import router as multi_tenancy_router
 from lintel.notifications_api.routes import router as notifications_router
 from lintel.notion_adapter_api.routes import router as notion_adapter_router
+from lintel.org_security_api.routes import router as org_security_router
 from lintel.pipelines_api.routes import router as pipelines_router
 from lintel.policies_api.routes import router as policies_router
 from lintel.privacy_controls_api.routes import router as privacy_controls_router
@@ -143,6 +144,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(models_router, prefix="/api/v1", tags=["models"])
     app.include_router(mcp_servers_router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
+    app.include_router(org_security_router, prefix="/api/v1", tags=["org-security"])
     app.include_router(boards_router, prefix="/api/v1", tags=["boards"])
     app.include_router(board_sync_router, prefix="/api/v1", tags=["board-sync"])
     app.include_router(cloud_environments_router, prefix="/api/v1", tags=["cloud-environments"])

@@ -190,6 +190,8 @@ from lintel.notifications_api.routes import notification_rule_store_provider
 from lintel.notifications_api.store import NotificationRuleStore
 from lintel.notion_adapter_api.routes import notion_connection_store_provider
 from lintel.notion_adapter_api.store import InMemoryNotionConnectionStore
+from lintel.org_security_api.routes import org_security_policy_store_provider
+from lintel.org_security_api.store import InMemoryOrgSecurityPolicyStore
 from lintel.pipelines_api.routes import InMemoryPipelineStore, pipeline_store_provider
 from lintel.policies_api.routes import policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
@@ -367,6 +369,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "policy_store": InMemoryPolicyStore(),
         "kernel_policy_store": InMemoryKernelPolicyStore(),
         "notification_rule_store": NotificationRuleStore(),
+        "org_security_policy_store": InMemoryOrgSecurityPolicyStore(),
         "audit_entry_store": AuditEntryStore(),
         "code_artifact_store": CodeArtifactStore(),
         "artifact_content_store": _create_fake_artifact_content_store(),
@@ -821,6 +824,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "policy_store": PostgresPolicyStore(pool),
         "kernel_policy_store": InMemoryKernelPolicyStore(),
         "notification_rule_store": PostgresNotificationRuleStore(pool),
+        "org_security_policy_store": InMemoryOrgSecurityPolicyStore(),
         "audit_entry_store": PostgresAuditEntryStore(pool),
         "code_artifact_store": PostgresCodeArtifactStore(pool),
         "artifact_content_store": _create_postgres_artifact_content_store(pool),
@@ -949,6 +953,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     policy_store_provider.override(stores["policy_store"])
     kernel_policy_store_provider.override(stores["kernel_policy_store"])
     notification_rule_store_provider.override(stores["notification_rule_store"])
+    org_security_policy_store_provider.override(stores["org_security_policy_store"])
     environment_store_provider.override(stores["environment_store"])
     cloud_environment_store_provider.override(stores["cloud_environment_store"])
     prebuild_config_store_provider.override(stores["prebuild_config_store"])
