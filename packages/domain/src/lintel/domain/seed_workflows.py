@@ -1208,7 +1208,7 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
             "Re-implement loop from Slack feedback: setup workspace on existing branch, "
             "apply user-requested changes, review, and push to the same PR."
         ),
-        is_template=False,
+        is_template=True,
         stage_names=(
             "setup_workspace",
             "implement",

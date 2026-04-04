@@ -41,6 +41,7 @@ class TestApprovalAPI:
             "channel_id": "C1",
             "thread_ts": "123.456",
             "channel_type": "slack",
+            "bot_id": None,
         }
 
     def test_reject_approval(self, client: TestClient) -> None:
@@ -65,4 +66,5 @@ class TestApprovalAPI:
             "channel_id": "C1",
             "thread_ts": "123.456",
             "channel_type": "slack",
+            "bot_id": None,
         }
