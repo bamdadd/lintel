@@ -91,6 +91,7 @@ testpaths = [
     "packages/cve-remediation-api/tests",
     "packages/notion-adapter-api/tests",
     "packages/secret-rotation-api/tests",
+    "packages/multi-tenancy-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -171,6 +172,7 @@ mypy_path = [
     "packages/cve-remediation-api/src",
     "packages/notion-adapter-api/src",
     "packages/secret-rotation-api/src",
+    "packages/multi-tenancy-api/src",
 ]
 
 [[tool.mypy.overrides]]
