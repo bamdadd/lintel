@@ -36,6 +36,7 @@ members = [
     "lintel-coordination",
     "lintel-credentials-api",
     "lintel-cve-remediation-api",
+    "lintel-data-retention-api",
     "lintel-digest-api",
     "lintel-domain",
     "lintel-drift-detection-api",
@@ -57,6 +58,7 @@ members = [
     "lintel-memory-api",
     "lintel-models",
     "lintel-models-api",
+    "lintel-multi-tenancy-api",
     "lintel-notifications-api",
     "lintel-notion-adapter-api",
     "lintel-observability",
@@ -1902,6 +1904,7 @@ dependencies = [
     { name = "lintel-contracts" },
     { name = "lintel-coordination" },
     { name = "lintel-credentials-api" },
+    { name = "lintel-data-retention-api" },
     { name = "lintel-digest-api" },
     { name = "lintel-domain" },
     { name = "lintel-drift-detection-api" },
@@ -1922,6 +1925,7 @@ dependencies = [
     { name = "lintel-memory-api" },
     { name = "lintel-models" },
     { name = "lintel-models-api" },
+    { name = "lintel-multi-tenancy-api" },
     { name = "lintel-notifications-api" },
     { name = "lintel-notion-adapter-api" },
     { name = "lintel-observability" },
@@ -1999,6 +2003,7 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-coordination", editable = "packages/coordination" },
     { name = "lintel-credentials-api", editable = "packages/credentials-api" },
+    { name = "lintel-data-retention-api", editable = "packages/data-retention-api" },
     { name = "lintel-digest-api", editable = "packages/digest-api" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-drift-detection-api", editable = "packages/drift-detection-api" },
@@ -2019,6 +2024,7 @@ requires-dist = [
     { name = "lintel-memory-api", editable = "packages/memory-api" },
     { name = "lintel-models", editable = "packages/models" },
     { name = "lintel-models-api", editable = "packages/models-api" },
+    { name = "lintel-multi-tenancy-api", editable = "packages/multi-tenancy-api" },
     { name = "lintel-notifications-api", editable = "packages/notifications-api" },
     { name = "lintel-notion-adapter-api", editable = "packages/notion-adapter-api" },
     { name = "lintel-observability", editable = "packages/observability" },
@@ -2649,6 +2655,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-data-retention-api"
+version = "0.1.0"
+source = { editable = "packages/data-retention-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-digest-api"
 version = "0.1.0"
 source = { editable = "packages/digest-api" }
@@ -3116,6 +3145,29 @@ requires-dist = [
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-models", editable = "packages/models" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-multi-tenancy-api"
+version = "0.1.0"
+source = { editable = "packages/multi-tenancy-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]

@@ -167,6 +167,8 @@ from lintel.memory_api.dependencies import memory_service_provider
 from lintel.models_api.routes import ai_provider_store_provider as models_ai_provider_store_provider
 from lintel.models_api.routes import model_assignment_store_provider, model_store_provider
 from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
+from lintel.multi_tenancy_api.routes import workspace_store_provider
+from lintel.multi_tenancy_api.store import InMemoryWorkspaceStore
 from lintel.notifications_api.routes import notification_rule_store_provider
 from lintel.notifications_api.store import NotificationRuleStore
 from lintel.notion_adapter_api.routes import notion_connection_store_provider
@@ -446,6 +448,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "rotation_policy_store": InMemoryRotationPolicyStore(),
         "rotation_history_store": InMemoryRotationHistoryStore(),
         "expiry_tracker": InMemoryExpiryTracker(),
+        # Multi-tenancy
+        "workspace_store": InMemoryWorkspaceStore(),
     }
 
 
@@ -873,6 +877,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "rotation_policy_store": InMemoryRotationPolicyStore(),
         "rotation_history_store": InMemoryRotationHistoryStore(),
         "expiry_tracker": InMemoryExpiryTracker(),
+        # Multi-tenancy: in-memory until Postgres implementation exists
+        "workspace_store": InMemoryWorkspaceStore(),
     }
 
 
@@ -1003,6 +1009,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     bg_session_store_provider.override(stores["background_session_store"])
     ide_session_store_provider.override(stores["ide_session_store"])
     encryption_store_provider.override(stores["encryption_store"])
+    workspace_store_provider.override(stores["workspace_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
