@@ -67,6 +67,7 @@ dependencies = [
     "lintel-process-mining-api",
     "lintel-automations-api",
     "lintel-sandboxes-api",
+    "lintel-pipeline-diagnostics-api",
     "lintel-pipelines-api",
     "lintel-chat-api",
     "lintel-slack-notifications-api",
@@ -181,6 +182,7 @@ lintel-integration-patterns-api = { workspace = true }
 lintel-process-mining-api = { workspace = true }
 lintel-automations-api = { workspace = true }
 lintel-sandboxes-api = { workspace = true }
+lintel-pipeline-diagnostics-api = { workspace = true }
 lintel-pipelines-api = { workspace = true }
 lintel-chat-api = { workspace = true }
 lintel-slack-notifications-api = { workspace = true }

@@ -78,6 +78,7 @@ members = [
     "lintel-org-security-api",
     "lintel-persistence",
     "lintel-pii",
+    "lintel-pipeline-diagnostics-api",
     "lintel-pipelines-api",
     "lintel-policies-api",
     "lintel-privacy-controls-api",
@@ -1961,6 +1962,7 @@ dependencies = [
     { name = "lintel-org-security-api" },
     { name = "lintel-persistence" },
     { name = "lintel-pii" },
+    { name = "lintel-pipeline-diagnostics-api" },
     { name = "lintel-pipelines-api" },
     { name = "lintel-policies-api" },
     { name = "lintel-privacy-controls-api" },
@@ -2076,6 +2078,7 @@ requires-dist = [
     { name = "lintel-org-security-api", editable = "packages/org-security-api" },
     { name = "lintel-persistence", editable = "packages/persistence" },
     { name = "lintel-pii", editable = "packages/pii" },
+    { name = "lintel-pipeline-diagnostics-api", editable = "packages/pipeline-diagnostics-api" },
     { name = "lintel-pipelines-api", editable = "packages/pipelines-api" },
     { name = "lintel-policies-api", editable = "packages/policies-api" },
     { name = "lintel-privacy-controls-api", editable = "packages/privacy-controls-api" },
@@ -3640,6 +3643,25 @@ requires-dist = [
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "presidio-analyzer", specifier = ">=2.2" },
     { name = "presidio-anonymizer", specifier = ">=2.2" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-pipeline-diagnostics-api"
+version = "0.1.0"
+source = { editable = "packages/pipeline-diagnostics-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
