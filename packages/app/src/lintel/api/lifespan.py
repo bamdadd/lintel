@@ -367,7 +367,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     import asyncio
 
-    from lintel.automations_api.scheduler import AutomationScheduler
+    from lintel.automations.scheduler import AutomationScheduler
 
     async def _fire_automation(
         auto: Any,  # noqa: ANN401
@@ -375,7 +375,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     ) -> str:
         from uuid import uuid4
 
-        from lintel.domain.events import AutomationFired
+        from lintel.automations.events import AutomationFired
         from lintel.workflows.types import PipelineRun
 
         run_id = str(uuid4())

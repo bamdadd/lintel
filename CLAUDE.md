@@ -69,7 +69,7 @@ This is a **uv workspace monorepo** with 45+ packages under `packages/`:
 | `packages/settings-api/` | `lintel-settings-api` | `lintel.settings_api` | Settings + connection routes |
 | `packages/compliance-api/` | `lintel-compliance-api` | `lintel.compliance_api` | Compliance policy/regulation/practice routes + stores |
 | `packages/experimentation-api/` | `lintel-experimentation-api` | `lintel.experimentation_api` | KPI + experiment + metric routes |
-| `packages/automations-api/` | `lintel-automations-api` | `lintel.automations_api` | Automation rules, scheduler, webhook hooks |
+| `packages/automations/` | `lintel-automations` | `lintel.automations` | Self-contained automation domain: types, events, routes, store, scheduler, hooks |
 | `packages/sandboxes-api/` | `lintel-sandboxes-api` | `lintel.sandboxes_api` | Sandbox lifecycle routes (proxies to lintel-sandbox) |
 | `packages/pipelines-api/` | `lintel-pipelines-api` | `lintel.pipelines_api` | Pipeline run + stage routes, SSE delivery loop |
 | `packages/chat-api/` | `lintel-chat-api` | `lintel.chat_api` | Chat conversation routes + ChatService |
@@ -168,11 +168,13 @@ Run affected tests only: `make test-affected BASE_REF=origin/main`
 - `lintel.domain.guardrails` — GuardrailEvaluator, condition language, approval bridge
 - `lintel.domain.auth` — JWT utilities, password hashing
 - `lintel.domain.git_events` — GitEventListener, git webhook event types
+- `lintel.automations.types` — Automation types (AutomationDefinition, AutomationTriggerType, ConcurrencyPolicy)
+- `lintel.automations.events` — Automation events (AutomationCreated, AutomationFired, etc.)
 - `lintel.workflows.types` — Workflow types (PipelineRun, Stage, StageStatus, etc.)
 - `lintel.workflows.events` — Workflow events (PipelineRunStarted, WorkflowStarted, etc.)
 - `lintel.workflows.commands` — Workflow commands (StartWorkflow)
 - `lintel.<pkg>.types/events/protocols` — Package-specific contracts (sandbox, models, pii, repos, agents, etc.)
-- **NEVER add new types or events to `lintel-contracts`** — it is a frozen kernel. New domain items go in `lintel-domain`, workflow items in `lintel-workflows`, or the relevant infrastructure package.
+- **NEVER add new types or events to `lintel-contracts`** — it is a frozen kernel. New domain items go in their own domain package (e.g. `lintel-automations`), or `lintel-domain` for cross-cutting types.
 
 ## Dependency Injection
 

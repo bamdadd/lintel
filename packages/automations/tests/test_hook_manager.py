@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
-from lintel.api.domain.hooks.hook_manager import (
+from lintel.automations.hooks.hook_manager import (
     HookManager,
     _conditions_match,
     _pattern_matches,
