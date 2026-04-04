@@ -138,6 +138,7 @@ class ProjectData(BaseModel):
     project_id: str
     name: str = ""
     repo_ids: list[str] = Field(default_factory=list)
+    repo_descriptions: dict[str, str] = Field(default_factory=dict)
     default_branch: str = "main"
     credential_ids: list[str] = Field(default_factory=list)
     status: str = "active"

@@ -147,6 +147,61 @@ class TestProjectsAPI:
         assert resp.status_code == 200
         assert resp.json()["workflow_execution_enabled"] is True
 
+    def test_create_project_with_repo_descriptions(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/projects",
+            json={
+                "project_id": "p-rd",
+                "name": "With Descriptions",
+                "repo_ids": ["repo-1", "repo-2"],
+                "repo_descriptions": {
+                    "repo-1": "Main backend service",
+                    "repo-2": "Frontend SPA",
+                },
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["repo_descriptions"] == {
+            "repo-1": "Main backend service",
+            "repo-2": "Frontend SPA",
+        }
+
+    def test_update_repo_descriptions(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.patch(
+            "/api/v1/projects/p1",
+            json={"repo_descriptions": {"repo-1": "Updated description"}},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["repo_descriptions"] == {"repo-1": "Updated description"}
+
+    def test_repo_descriptions_default_empty(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.get("/api/v1/projects/p1")
+        assert resp.json()["repo_descriptions"] == {}
+
+    def test_list_project_repositories(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/projects",
+            json={
+                "project_id": "p1",
+                "name": "Test",
+                "repo_ids": ["r1", "r2"],
+                "repo_descriptions": {"r1": "Backend API"},
+            },
+        )
+        resp = client.get("/api/v1/projects/p1/repositories")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0] == {"repo_id": "r1", "description": "Backend API"}
+        assert data[1] == {"repo_id": "r2", "description": ""}
+
+    def test_list_project_repositories_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/projects/missing/repositories")
+        assert resp.status_code == 404
+
     def test_delete_project(self, client: TestClient) -> None:
         _create_project(client, "p1")
         resp = client.delete("/api/v1/projects/p1")

@@ -29,6 +29,7 @@ class Project:
     name: str
     description: str = ""
     repo_ids: tuple[str, ...] = ()
+    repo_descriptions: dict[str, str] = field(default_factory=dict)
     default_branch: str = "main"
     credential_ids: tuple[str, ...] = ()
     status: ProjectStatus = ProjectStatus.ACTIVE

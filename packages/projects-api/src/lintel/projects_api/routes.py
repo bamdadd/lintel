@@ -22,6 +22,7 @@ class CreateProjectRequest(BaseModel):
     name: str
     description: str = ""
     repo_ids: list[str] = []
+    repo_descriptions: dict[str, str] = {}
     default_branch: str = "main"
     credential_ids: list[str] = []
     status: ProjectStatus = ProjectStatus.ACTIVE
@@ -32,6 +33,7 @@ class UpdateProjectRequest(BaseModel):
     name: str | None = None
     description: str | None = None
     repo_ids: list[str] | None = None
+    repo_descriptions: dict[str, str] | None = None
     default_branch: str | None = None
     credential_ids: list[str] | None = None
     status: ProjectStatus | None = None
@@ -66,6 +68,7 @@ async def create_project(
         name=body.name,
         description=body.description,
         repo_ids=tuple(body.repo_ids),
+        repo_descriptions=dict(body.repo_descriptions),
         default_branch=body.default_branch,
         credential_ids=tuple(body.credential_ids),
         status=body.status,
@@ -138,9 +141,6 @@ async def remove_project(
     )
 
 
-# --- Principles sub-resource ---
-
-
 async def _get_project_or_404(
     project_id: str,
     store: ProjectStore,
@@ -149,6 +149,24 @@ async def _get_project_or_404(
     if item is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return item
+
+
+# --- Repositories sub-resource ---
+
+
+@router.get("/projects/{project_id}/repositories")
+async def list_project_repositories(
+    project_id: str,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> list[dict[str, str]]:
+    """List repositories linked to this project with their descriptions."""
+    project = await _get_project_or_404(project_id, store)
+    repo_ids: list[str] = project.get("repo_ids", [])  # type: ignore[assignment]
+    descriptions: dict[str, str] = project.get("repo_descriptions", {})  # type: ignore[assignment]
+    return [{"repo_id": rid, "description": descriptions.get(rid, "")} for rid in repo_ids]
+
+
+# --- Principles sub-resource ---
 
 
 @router.get("/projects/{project_id}/principles")
