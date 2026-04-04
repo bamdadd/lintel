@@ -86,6 +86,7 @@ from lintel.proactive_triggers_api.routes import router as proactive_triggers_ro
 from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
 from lintel.release_notes_api.routes import router as release_notes_router
+from lintel.repo_auto_describe_api.routes import router as repo_auto_describe_router
 from lintel.repo_description_api.routes import router as repo_description_router
 from lintel.repositories_api.routes import router as repositories_router
 from lintel.sandbox_credentials_api.routes import router as sandbox_credentials_router
@@ -279,3 +280,8 @@ def mount_routers(app: FastAPI) -> None:
         tags=["frontend-targets"],
     )
     app.include_router(workflow_acl_router, prefix="/api/v1", tags=["workflow-acl"])
+    app.include_router(
+        repo_auto_describe_router,
+        prefix="/api/v1",
+        tags=["repo-auto-describe"],
+    )

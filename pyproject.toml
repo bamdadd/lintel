@@ -109,6 +109,7 @@ testpaths = [
     "packages/knowledge-graph-api/tests",
     "packages/repo-description-api/tests",
     "packages/channel-message-routing-api/tests",
+    "packages/repo-auto-describe-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -207,6 +208,7 @@ mypy_path = [
     "packages/knowledge-graph-api/src",
     "packages/repo-description-api/src",
     "packages/channel-message-routing-api/src",
+    "packages/repo-auto-describe-api/src",
 ]
 
 [[tool.mypy.overrides]]
