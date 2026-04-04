@@ -87,6 +87,7 @@ members = [
     "lintel-projections",
     "lintel-projects-api",
     "lintel-release-notes-api",
+    "lintel-repo-description-api",
     "lintel-repos",
     "lintel-repositories-api",
     "lintel-sandbox",
@@ -113,6 +114,7 @@ members = [
     "lintel-visual-verification-api",
     "lintel-web-ide-api",
     "lintel-work-items-api",
+    "lintel-workflow-acl-api",
     "lintel-workflow-blueprints-api",
     "lintel-workflow-definitions-api",
     "lintel-workflows",
@@ -1971,6 +1973,7 @@ dependencies = [
     { name = "lintel-projections" },
     { name = "lintel-projects-api" },
     { name = "lintel-release-notes-api" },
+    { name = "lintel-repo-description-api" },
     { name = "lintel-repos" },
     { name = "lintel-repositories-api" },
     { name = "lintel-sandbox" },
@@ -1995,6 +1998,7 @@ dependencies = [
     { name = "lintel-visual-verification-api" },
     { name = "lintel-web-ide-api" },
     { name = "lintel-work-items-api" },
+    { name = "lintel-workflow-acl-api" },
     { name = "lintel-workflow-blueprints-api" },
     { name = "lintel-workflow-definitions-api" },
     { name = "lintel-workflows" },
@@ -2087,6 +2091,7 @@ requires-dist = [
     { name = "lintel-projections", editable = "packages/projections" },
     { name = "lintel-projects-api", editable = "packages/projects-api" },
     { name = "lintel-release-notes-api", editable = "packages/release-notes-api" },
+    { name = "lintel-repo-description-api", editable = "packages/repo-description-api" },
     { name = "lintel-repos", editable = "packages/repos" },
     { name = "lintel-repositories-api", editable = "packages/repositories-api" },
     { name = "lintel-sandbox", editable = "packages/sandbox" },
@@ -2111,6 +2116,7 @@ requires-dist = [
     { name = "lintel-visual-verification-api", editable = "packages/visual-verification-api" },
     { name = "lintel-web-ide-api", editable = "packages/web-ide-api" },
     { name = "lintel-work-items-api", editable = "packages/work-items-api" },
+    { name = "lintel-workflow-acl-api", editable = "packages/workflow-acl-api" },
     { name = "lintel-workflow-blueprints-api", editable = "packages/workflow-blueprints-api" },
     { name = "lintel-workflow-definitions-api", editable = "packages/workflow-definitions-api" },
     { name = "lintel-workflows", editable = "packages/workflows" },
@@ -3848,6 +3854,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-repo-description-api"
+version = "0.1.0"
+source = { editable = "packages/repo-description-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-repos"
 version = "0.1.0"
 source = { editable = "packages/repos" }
@@ -4425,6 +4454,27 @@ requires-dist = [
     { name = "lintel-workflows", editable = "packages/workflows" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-workflow-acl-api"
+version = "0.1.0"
+source = { editable = "packages/workflow-acl-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]
