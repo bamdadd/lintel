@@ -52,6 +52,7 @@ from lintel.feedback_api.routes import router as feedback_router
 from lintel.github_app_api.routes import router as github_app_router
 from lintel.governance_api.routes import router as governance_router
 from lintel.improvement_api.routes import router as improvement_router
+from lintel.incidents_api.routes import router as incidents_router
 from lintel.integration_patterns_api import router as integration_patterns_router
 from lintel.jira_adapter_api.routes import router as jira_adapter_router
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
@@ -205,5 +206,6 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(web_ide_router, prefix="/api/v1", tags=["web-ide"])
     app.include_router(encryption_router, prefix="/api/v1", tags=["encryption"])
     app.include_router(multi_tenancy_router, prefix="/api/v1", tags=["multi-tenancy"])
+    app.include_router(incidents_router, prefix="/api/v1", tags=["incidents"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])

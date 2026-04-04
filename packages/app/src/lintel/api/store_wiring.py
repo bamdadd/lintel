@@ -145,6 +145,8 @@ from lintel.governance_api.routes import (
 )
 from lintel.improvement_api.routes import improvement_store_provider
 from lintel.improvement_api.store import InMemoryImprovementStore
+from lintel.incidents_api.routes import incident_store_provider
+from lintel.incidents_api.store import InMemoryIncidentStore
 from lintel.integration_patterns_api.routes import integration_pattern_store_provider
 from lintel.integration_patterns_api.store import InMemoryIntegrationPatternStore
 from lintel.jira_adapter_api.routes import (
@@ -452,6 +454,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "expiry_tracker": InMemoryExpiryTracker(),
         # Multi-tenancy
         "workspace_store": InMemoryWorkspaceStore(),
+        # Incidents
+        "incident_store": InMemoryIncidentStore(),
     }
 
 
@@ -881,6 +885,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "expiry_tracker": InMemoryExpiryTracker(),
         # Multi-tenancy: in-memory until Postgres implementation exists
         "workspace_store": InMemoryWorkspaceStore(),
+        # Incidents: in-memory until Postgres implementation exists
+        "incident_store": InMemoryIncidentStore(),
     }
 
 
@@ -1013,6 +1019,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     ide_session_store_provider.override(stores["ide_session_store"])
     encryption_store_provider.override(stores["encryption_store"])
     workspace_store_provider.override(stores["workspace_store"])
+    incident_store_provider.override(stores["incident_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
