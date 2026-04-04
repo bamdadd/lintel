@@ -26,8 +26,11 @@ class SlackBot:
     name: str = ""
     workspace_id: str = ""
     bot_token: str = ""
+    signing_secret: str = ""
     app_id: str = ""
     scopes: list[str] = dataclasses.field(default_factory=list)
+    project_bindings: list[str] = dataclasses.field(default_factory=list)
+    workflow_bindings: list[str] = dataclasses.field(default_factory=list)
     channel_bindings: list[str] = dataclasses.field(default_factory=list)
     enabled: bool = True
     created_at: str = dataclasses.field(default_factory=lambda: datetime.now(tz=UTC).isoformat())
@@ -61,6 +64,18 @@ class InMemorySlackBotStore:
         updated = dataclasses.replace(bot, **fields)  # type: ignore[arg-type]
         self._bots[bot_id] = updated
         return updated
+
+    async def find_by_signing_secret(self, signing_secret: str) -> SlackBot | None:
+        for bot in self._bots.values():
+            if bot.signing_secret == signing_secret and bot.enabled:
+                return bot
+        return None
+
+    async def find_by_token(self, bot_token: str) -> SlackBot | None:
+        for bot in self._bots.values():
+            if bot.bot_token == bot_token and bot.enabled:
+                return bot
+        return None
 
     async def remove(self, bot_id: str) -> bool:
         if bot_id not in self._bots:
