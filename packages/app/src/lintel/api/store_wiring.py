@@ -142,7 +142,12 @@ from lintel.process_mining_api.routes import process_mining_store_provider
 from lintel.process_mining_api.store import InMemoryProcessMiningStore
 from lintel.projects_api.routes import project_store_provider
 from lintel.projects_api.store import ProjectStore
-from lintel.release_notes_api.routes import release_note_store_provider
+from lintel.release_notes_api.routes import (
+    release_note_store_provider,
+)
+from lintel.release_notes_api.routes import (
+    repo_provider_provider as release_notes_repo_provider,
+)
 from lintel.release_notes_api.store import InMemoryReleaseNoteStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import repo_provider_provider, repository_store_provider
@@ -679,6 +684,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     digest_config_store_provider.override(stores["digest_config_store"])
     user_store_provider.override(stores["user_store"])
     release_note_store_provider.override(stores["release_note_store"])
+    release_notes_repo_provider.override(repo_provider)
     team_store_provider.override(stores["team_store"])
     policy_store_provider.override(stores["policy_store"])
     notification_rule_store_provider.override(stores["notification_rule_store"])
