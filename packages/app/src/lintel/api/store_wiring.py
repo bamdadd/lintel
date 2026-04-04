@@ -75,6 +75,8 @@ from lintel.chat_api.routes import ChatStore, chat_store_provider
 from lintel.chat_api.streaming import chat_stream_store_provider
 from lintel.cloud_environments_api.routes import cloud_environment_store_provider
 from lintel.cloud_environments_api.store import InMemoryCloudEnvironmentStore
+from lintel.cloud_providers_api.routes import cloud_provider_store_provider
+from lintel.cloud_providers_api.store import InMemoryCloudProviderStore
 from lintel.codebase_index_api.routes import index_store_provider as codebase_index_store_provider
 from lintel.codebase_index_api.store import InMemoryCodebaseIndexStore
 from lintel.coding_rules_api.routes import coding_rule_store_provider, violation_store_provider
@@ -544,6 +546,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "routing_rule_store": InMemoryRoutingRuleStore(),
         # Repo Auto-Describe
         "repo_auto_describe_store": InMemoryAutoDescStore(),
+        # Cloud Providers
+        "cloud_provider_store": InMemoryCloudProviderStore(),
     }
 
 
@@ -1003,6 +1007,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "routing_rule_store": InMemoryRoutingRuleStore(),
         # Repo Auto-Describe: in-memory until Postgres implementation exists
         "repo_auto_describe_store": InMemoryAutoDescStore(),
+        # Cloud Providers: in-memory until Postgres implementation exists
+        "cloud_provider_store": InMemoryCloudProviderStore(),
     }
 
 
@@ -1159,6 +1165,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     diagnostic_store_provider.override(stores["pipeline_diagnostic_store"])
     repo_description_store_provider.override(stores["repo_description_store"])
     repo_auto_desc_store_provider.override(stores["repo_auto_describe_store"])
+    cloud_provider_store_provider.override(stores["cloud_provider_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
