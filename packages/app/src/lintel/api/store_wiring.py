@@ -149,6 +149,8 @@ from lintel.experimentation_api.routes import (
 )
 from lintel.feedback_api.routes import feedback_store_provider
 from lintel.feedback_api.store import InMemoryFeedbackStore
+from lintel.fleet_execution_api.routes import fleet_run_store_provider
+from lintel.fleet_execution_api.store import InMemoryFleetRunStore
 from lintel.github_app_api.routes import (
     http_client_provider as github_http_client_provider,
 )
@@ -507,6 +509,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "agent_metrics_store": InMemoryAgentMetricsStore(),
         # Cross-Repo Agent
         "cross_repo_plan_store": InMemoryCrossRepoPlanStore(),
+        # Fleet Execution
+        "fleet_run_store": InMemoryFleetRunStore(),
     }
 
 
@@ -953,6 +957,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         # Proactive Triggers: in-memory until Postgres implementation exists
         "proactive_trigger_store": InMemoryProactiveTriggerStore(),
         "trigger_execution_store": InMemoryTriggerExecutionStore(),
+        # Fleet Execution: in-memory until Postgres implementation exists
+        "fleet_run_store": InMemoryFleetRunStore(),
     }
 
 
@@ -1084,6 +1090,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     agent_metrics_store_provider.override(stores["agent_metrics_store"])
     bot_scope_store_provider.override(stores["bot_scope_store"])
     cross_repo_plan_store_provider.override(stores["cross_repo_plan_store"])
+    fleet_run_store_provider.override(stores["fleet_run_store"])
     # Wire httpx client for GitHub App API calls
     import httpx
 

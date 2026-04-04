@@ -100,6 +100,7 @@ dependencies = [
     "lintel-channel-adapter-registry-api",
     "lintel-bot-scope-api",
     "lintel-cross-repo-agent-api",
+    "lintel-fleet-execution-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -211,6 +212,7 @@ lintel-proactive-triggers-api = { workspace = true }
 lintel-channel-adapter-registry-api = { workspace = true }
 lintel-bot-scope-api = { workspace = true }
 lintel-cross-repo-agent-api = { workspace = true }
+lintel-fleet-execution-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

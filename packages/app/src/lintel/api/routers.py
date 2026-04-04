@@ -58,6 +58,7 @@ from lintel.env_prebuilds_api.routes import router as env_prebuilds_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.feedback_api.routes import router as feedback_router
+from lintel.fleet_execution_api.routes import router as fleet_execution_router
 from lintel.github_app_api.routes import router as github_app_router
 from lintel.governance_api.routes import router as governance_router
 from lintel.improvement_api.routes import router as improvement_router
@@ -241,5 +242,10 @@ def mount_routers(app: FastAPI) -> None:
         tags=["proactive-triggers"],
     )
     app.include_router(bot_scope_router, prefix="/api/v1", tags=["bot-scopes"])
+    app.include_router(
+        fleet_execution_router,
+        prefix="/api/v1",
+        tags=["fleet-execution"],
+    )
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
