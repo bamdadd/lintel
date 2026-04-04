@@ -29,6 +29,7 @@ members = [
     "lintel-bots-api",
     "lintel-channel-adapter-registry-api",
     "lintel-channel-connections-api",
+    "lintel-channel-message-routing-api",
     "lintel-channels",
     "lintel-chat-api",
     "lintel-cloud-environments-api",
@@ -90,6 +91,7 @@ members = [
     "lintel-projections",
     "lintel-projects-api",
     "lintel-release-notes-api",
+    "lintel-repo-auto-describe-api",
     "lintel-repo-description-api",
     "lintel-repos",
     "lintel-repositories-api",
@@ -1921,6 +1923,7 @@ dependencies = [
     { name = "lintel-bots-api" },
     { name = "lintel-channel-adapter-registry-api" },
     { name = "lintel-channel-connections-api" },
+    { name = "lintel-channel-message-routing-api" },
     { name = "lintel-channels" },
     { name = "lintel-chat-api" },
     { name = "lintel-cloud-environments-api" },
@@ -1979,6 +1982,7 @@ dependencies = [
     { name = "lintel-projections" },
     { name = "lintel-projects-api" },
     { name = "lintel-release-notes-api" },
+    { name = "lintel-repo-auto-describe-api" },
     { name = "lintel-repo-description-api" },
     { name = "lintel-repos" },
     { name = "lintel-repositories-api" },
@@ -2042,6 +2046,7 @@ requires-dist = [
     { name = "lintel-bots-api", editable = "packages/bots-api" },
     { name = "lintel-channel-adapter-registry-api", editable = "packages/channel-adapter-registry-api" },
     { name = "lintel-channel-connections-api", editable = "packages/channel-connections-api" },
+    { name = "lintel-channel-message-routing-api", editable = "packages/channel-message-routing-api" },
     { name = "lintel-channels", editable = "packages/channels" },
     { name = "lintel-chat-api", editable = "packages/chat-api" },
     { name = "lintel-cloud-environments-api", editable = "packages/cloud-environments-api" },
@@ -2100,6 +2105,7 @@ requires-dist = [
     { name = "lintel-projections", editable = "packages/projections" },
     { name = "lintel-projects-api", editable = "packages/projects-api" },
     { name = "lintel-release-notes-api", editable = "packages/release-notes-api" },
+    { name = "lintel-repo-auto-describe-api", editable = "packages/repo-auto-describe-api" },
     { name = "lintel-repo-description-api", editable = "packages/repo-description-api" },
     { name = "lintel-repos", editable = "packages/repos" },
     { name = "lintel-repositories-api", editable = "packages/repositories-api" },
@@ -2565,6 +2571,25 @@ requires-dist = [
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-channel-message-routing-api"
+version = "0.1.0"
+source = { editable = "packages/channel-message-routing-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
@@ -3902,6 +3927,29 @@ requires-dist = [
 name = "lintel-release-notes-api"
 version = "0.1.0"
 source = { editable = "packages/release-notes-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-repo-auto-describe-api"
+version = "0.1.0"
+source = { editable = "packages/repo-auto-describe-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },
