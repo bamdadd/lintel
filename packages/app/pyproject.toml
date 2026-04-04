@@ -90,6 +90,7 @@ dependencies = [
     "lintel-data-retention-api",
     "lintel-encryption-api",
     "lintel-secret-rotation-api",
+    "lintel-multi-slack-bot-api",
     "lintel-multi-tenancy-api",
     "lintel-incidents-api",
     "lintel-proactive-triggers-api",
@@ -194,6 +195,7 @@ lintel-web-ide-api = { workspace = true }
 lintel-data-retention-api = { workspace = true }
 lintel-encryption-api = { workspace = true }
 lintel-secret-rotation-api = { workspace = true }
+lintel-multi-slack-bot-api = { workspace = true }
 lintel-multi-tenancy-api = { workspace = true }
 lintel-incidents-api = { workspace = true }
 lintel-proactive-triggers-api = { workspace = true }
