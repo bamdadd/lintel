@@ -26,7 +26,6 @@ members = [
     "lintel-channel-connections-api",
     "lintel-channels",
     "lintel-chat-api",
-    "lintel-cloud-environments-api",
     "lintel-codebase-index-api",
     "lintel-coding-rules-api",
     "lintel-compliance-api",
@@ -39,6 +38,7 @@ members = [
     "lintel-digest-api",
     "lintel-domain",
     "lintel-drift-detection-api",
+    "lintel-env-prebuilds-api",
     "lintel-environments-api",
     "lintel-event-bus",
     "lintel-event-store",
@@ -49,7 +49,6 @@ members = [
     "lintel-improvement-api",
     "lintel-infrastructure",
     "lintel-integration-patterns-api",
-    "lintel-kernel-policy-api",
     "lintel-knowledge-api",
     "lintel-mcp-servers-api",
     "lintel-memory",
@@ -1890,7 +1889,6 @@ dependencies = [
     { name = "lintel-channel-connections-api" },
     { name = "lintel-channels" },
     { name = "lintel-chat-api" },
-    { name = "lintel-cloud-environments-api" },
     { name = "lintel-codebase-index-api" },
     { name = "lintel-coding-rules-api" },
     { name = "lintel-compliance-api" },
@@ -1901,6 +1899,7 @@ dependencies = [
     { name = "lintel-digest-api" },
     { name = "lintel-domain" },
     { name = "lintel-drift-detection-api" },
+    { name = "lintel-env-prebuilds-api" },
     { name = "lintel-environments-api" },
     { name = "lintel-event-bus" },
     { name = "lintel-event-store" },
@@ -1911,7 +1910,6 @@ dependencies = [
     { name = "lintel-improvement-api" },
     { name = "lintel-infrastructure" },
     { name = "lintel-integration-patterns-api" },
-    { name = "lintel-kernel-policy-api" },
     { name = "lintel-mcp-servers-api" },
     { name = "lintel-memory" },
     { name = "lintel-memory-api" },
@@ -1983,7 +1981,6 @@ requires-dist = [
     { name = "lintel-channel-connections-api", editable = "packages/channel-connections-api" },
     { name = "lintel-channels", editable = "packages/channels" },
     { name = "lintel-chat-api", editable = "packages/chat-api" },
-    { name = "lintel-cloud-environments-api", editable = "packages/cloud-environments-api" },
     { name = "lintel-codebase-index-api", editable = "packages/codebase-index-api" },
     { name = "lintel-coding-rules-api", editable = "packages/coding-rules-api" },
     { name = "lintel-compliance-api", editable = "packages/compliance-api" },
@@ -1994,6 +1991,7 @@ requires-dist = [
     { name = "lintel-digest-api", editable = "packages/digest-api" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-drift-detection-api", editable = "packages/drift-detection-api" },
+    { name = "lintel-env-prebuilds-api", editable = "packages/env-prebuilds-api" },
     { name = "lintel-environments-api", editable = "packages/environments-api" },
     { name = "lintel-event-bus", editable = "packages/event-bus" },
     { name = "lintel-event-store", editable = "packages/event-store" },
@@ -2004,7 +2002,6 @@ requires-dist = [
     { name = "lintel-improvement-api", editable = "packages/improvement-api" },
     { name = "lintel-infrastructure", editable = "packages/infrastructure" },
     { name = "lintel-integration-patterns-api", editable = "packages/integration-patterns-api" },
-    { name = "lintel-kernel-policy-api", editable = "packages/kernel-policy-api" },
     { name = "lintel-mcp-servers-api", editable = "packages/mcp-servers-api" },
     { name = "lintel-memory", editable = "packages/memory" },
     { name = "lintel-memory-api", editable = "packages/memory-api" },
@@ -2433,29 +2430,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "lintel-cloud-environments-api"
-version = "0.1.0"
-source = { editable = "packages/cloud-environments-api" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "lintel-api-support" },
-    { name = "lintel-contracts" },
-    { name = "lintel-domain" },
-    { name = "pydantic" },
-    { name = "structlog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "lintel-api-support", editable = "packages/api-support" },
-    { name = "lintel-contracts", editable = "packages/contracts" },
-    { name = "lintel-domain", editable = "packages/domain" },
-    { name = "pydantic", specifier = ">=2.10" },
-    { name = "structlog", specifier = ">=24.4" },
-]
-
-[[package]]
 name = "lintel-codebase-index-api"
 version = "0.1.0"
 source = { editable = "packages/codebase-index-api" }
@@ -2714,6 +2688,29 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-env-prebuilds-api"
+version = "0.1.0"
+source = { editable = "packages/env-prebuilds-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-environments-api"
 version = "0.1.0"
 source = { editable = "packages/environments-api" }
@@ -2911,29 +2908,6 @@ provides-extras = ["s3"]
 name = "lintel-integration-patterns-api"
 version = "0.1.0"
 source = { editable = "packages/integration-patterns-api" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "lintel-api-support" },
-    { name = "lintel-contracts" },
-    { name = "lintel-domain" },
-    { name = "pydantic" },
-    { name = "structlog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "lintel-api-support", editable = "packages/api-support" },
-    { name = "lintel-contracts", editable = "packages/contracts" },
-    { name = "lintel-domain", editable = "packages/domain" },
-    { name = "pydantic", specifier = ">=2.10" },
-    { name = "structlog", specifier = ">=24.4" },
-]
-
-[[package]]
-name = "lintel-kernel-policy-api"
-version = "0.1.0"
-source = { editable = "packages/kernel-policy-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },

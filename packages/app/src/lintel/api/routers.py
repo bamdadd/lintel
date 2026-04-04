@@ -47,6 +47,7 @@ from lintel.data_retention_api.routes import router as data_retention_router
 from lintel.digest_api.routes import router as digest_router
 from lintel.drift_detection_api.routes import router as drift_detection_router
 from lintel.encryption_api.routes import router as encryption_router
+from lintel.env_prebuilds_api.routes import router as env_prebuilds_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.feedback_api.routes import router as feedback_router
@@ -123,6 +124,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(work_items_router, prefix="/api/v1", tags=["work-items"])
     app.include_router(pipelines_router, prefix="/api/v1", tags=["pipelines"])
     app.include_router(environments_router, prefix="/api/v1", tags=["environments"])
+    app.include_router(env_prebuilds_router, prefix="/api/v1", tags=["env-prebuilds"])
     app.include_router(triggers_router, prefix="/api/v1", tags=["triggers"])
     app.include_router(automations_router, prefix="/api/v1", tags=["automations"])
     app.include_router(variables_router, prefix="/api/v1", tags=["variables"])
