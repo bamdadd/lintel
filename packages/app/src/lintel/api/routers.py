@@ -41,6 +41,7 @@ from lintel.compliance_api.routes import router as compliance_router
 from lintel.context_attachments_api.routes import router as context_attachments_router
 from lintel.credentials_api.routes import router as credentials_router
 from lintel.cve_remediation_api.routes import router as cve_remediation_router
+from lintel.data_retention_api.routes import router as data_retention_router
 from lintel.digest_api.routes import router as digest_router
 from lintel.drift_detection_api.routes import router as drift_detection_router
 from lintel.environments_api.routes import router as environments_router
@@ -187,6 +188,7 @@ def mount_routers(app: FastAPI) -> None:
         tags=["visual-verification"],
     )
     app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])
+    app.include_router(data_retention_router, prefix="/api/v1", tags=["data-retention"])
     app.include_router(github_app_router, prefix="/api/v1", tags=["github-app"])
     app.include_router(jira_adapter_router, prefix="/api/v1", tags=["jira-adapter"])
     app.include_router(notion_adapter_router, prefix="/api/v1", tags=["notion-adapter"])

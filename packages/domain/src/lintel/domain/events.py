@@ -1325,6 +1325,21 @@ class CveRemediationCompleted(EventEnvelope):
     event_type: str = "CveRemediationCompleted"
 
 
+@dataclass(frozen=True)
+class RetentionPolicyCreated(EventEnvelope):
+    event_type: str = "RetentionPolicyCreated"
+
+
+@dataclass(frozen=True)
+class RetentionPolicyRemoved(EventEnvelope):
+    event_type: str = "RetentionPolicyRemoved"
+
+
+@dataclass(frozen=True)
+class RetentionRunCompleted(EventEnvelope):
+    event_type: str = "RetentionRunCompleted"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1552,4 +1567,7 @@ register_events(
     CveAdvisoryRemoved,
     CveRemediationStarted,
     CveRemediationCompleted,
+    RetentionPolicyCreated,
+    RetentionPolicyRemoved,
+    RetentionRunCompleted,
 )
