@@ -1521,3 +1521,17 @@ class Bot:
     platform: BotPlatform = BotPlatform.CUSTOM
     scopes: tuple[str, ...] = ()
     status: BotStatus = BotStatus.ACTIVE
+
+
+# --- Workflow ACL ---
+
+
+@dataclass(frozen=True)
+class AclRule:
+    """Access control rule for workflow execution per connection."""
+
+    rule_id: str
+    connection_id: str
+    workflow_types: tuple[str, ...] = ()
+    project_id: str = ""
+    effect: str = "deny"

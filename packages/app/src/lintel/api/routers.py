@@ -106,6 +106,7 @@ from lintel.variables_api.routes import router as variables_router
 from lintel.visual_verification_api.routes import router as visual_verification_router
 from lintel.web_ide_api.routes import router as web_ide_router
 from lintel.work_items_api.routes import router as work_items_router
+from lintel.workflow_acl_api.routes import router as workflow_acl_router
 from lintel.workflow_blueprints_api.routes import router as workflow_blueprints_router
 from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
 
@@ -263,3 +264,4 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["frontend-targets"],
     )
+    app.include_router(workflow_acl_router, prefix="/api/v1", tags=["workflow-acl"])

@@ -33,6 +33,7 @@ dependencies = [
     "lintel-env-prebuilds-api",
     "lintel-variables-api",
     "lintel-frontend-targets-api",
+    "lintel-workflow-acl-api",
     "lintel-credentials-api",
     "lintel-digest-api",
     "lintel-drift-detection-api",
@@ -147,6 +148,7 @@ lintel-environments-api = { workspace = true }
 lintel-env-prebuilds-api = { workspace = true }
 lintel-variables-api = { workspace = true }
 lintel-frontend-targets-api = { workspace = true }
+lintel-workflow-acl-api = { workspace = true }
 lintel-credentials-api = { workspace = true }
 lintel-digest-api = { workspace = true }
 lintel-drift-detection-api = { workspace = true }
