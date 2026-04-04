@@ -31,13 +31,17 @@ class ThreadRef:
     channel_id: str
     thread_ts: str
     channel_type: ChannelType = field(default=ChannelType.SLACK)
+    bot_id: str | None = field(default=None)
 
     @property
     def stream_id(self) -> str:
-        return (
+        base = (
             f"thread:{self.channel_type.value}"
             f":{self.workspace_id}:{self.channel_id}:{self.thread_ts}"
         )
+        if self.bot_id is not None:
+            return f"{base}:bot:{self.bot_id}"
+        return base
 
     def __str__(self) -> str:
         return self.stream_id
@@ -50,6 +54,30 @@ class ThreadRef:
         and legacy format 'thread:{ws}:{ch}:{ts}' (assumes SLACK).
         """
         parts = stream_id.split(":")
+        if len(parts) == 7 and parts[5] == "bot":
+            # New format with bot: thread:ct:ws:ch:ts:bot:bid
+            _, ct, ws, ch, ts, _, bid = parts
+            try:
+                channel_type = ChannelType(ct)
+            except ValueError:
+                channel_type = ChannelType.SLACK
+            return cls(
+                workspace_id=ws,
+                channel_id=ch,
+                thread_ts=ts,
+                channel_type=channel_type,
+                bot_id=bid,
+            )
+        if len(parts) == 6 and parts[4] == "bot":
+            # Legacy format with bot: thread:ws:ch:ts:bot:bid
+            _, ws, ch, ts, _, bid = parts
+            return cls(
+                workspace_id=ws,
+                channel_id=ch,
+                thread_ts=ts,
+                channel_type=ChannelType.SLACK,
+                bot_id=bid,
+            )
         if len(parts) == 5:
             # New format: thread:channel_type:workspace:channel:thread_ts
             _, ct, ws, ch, ts = parts
