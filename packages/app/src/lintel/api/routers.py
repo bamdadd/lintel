@@ -28,6 +28,7 @@ from lintel.artifacts_api.routes import router as artifacts_router
 from lintel.audit_api.routes import router as audit_router
 from lintel.auth_api.routes import router as auth_router
 from lintel.automations_api.routes import router as automations_router
+from lintel.background_agents_api.routes import router as background_agents_router
 from lintel.board_sync_api.routes import router as board_sync_router
 from lintel.boards.routes import router as boards_router
 from lintel.channel_connections_api.routes import router as channel_connections_router
@@ -93,6 +94,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(repositories_router, prefix="/api/v1", tags=["repositories"])
     app.include_router(workflows.router, prefix="/api/v1", tags=["workflows"])
     app.include_router(agent_definitions_router, prefix="/api/v1", tags=["agents"])
+    app.include_router(background_agents_router, prefix="/api/v1", tags=["agents"])
     app.include_router(approvals.router, prefix="/api/v1", tags=["approvals"])
     app.include_router(sandboxes_router, prefix="/api/v1", tags=["sandboxes"])
     app.include_router(skills_router, prefix="/api/v1", tags=["skills"])

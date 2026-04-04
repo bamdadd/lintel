@@ -44,6 +44,8 @@ from lintel.audit_api.store import AuditEntryStore
 from lintel.auth_api.routes import auth_user_store_provider, session_store_provider
 from lintel.auth_api.store import InMemoryAuthUserStore, InMemorySessionStore
 from lintel.automations_api.routes import InMemoryAutomationStore, automation_store_provider
+from lintel.background_agents_api.routes import session_store_provider as bg_session_store_provider
+from lintel.background_agents_api.store import InMemoryBackgroundSessionStore
 from lintel.board_sync_api.routes import (
     mapping_store_provider as board_sync_mapping_store_provider,
 )
@@ -404,6 +406,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "cve_advisory_store": InMemoryCveAdvisoryStore(),
         "remediation_plan_store": InMemoryRemediationPlanStore(),
         "remediation_result_store": InMemoryRemediationResultStore(),
+        # Background Agent Sessions
+        "background_session_store": InMemoryBackgroundSessionStore(),
         # Board Sync stores
         "board_sync_config_store": BoardSyncConfigStore(),
         "external_id_mapping_store": ExternalIdMappingStore(),
@@ -829,6 +833,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "jira_sync_record_store": InMemorySyncRecordStore(),
         # Notion Adapter: in-memory until Postgres implementation exists
         "notion_connection_store": InMemoryNotionConnectionStore(),
+        # Background Agent Sessions: in-memory (ephemeral by nature)
+        "background_session_store": InMemoryBackgroundSessionStore(),
     }
 
 
@@ -950,6 +956,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     sync_record_store_provider.override(stores["jira_sync_record_store"])
     jira_work_item_store_provider.override(stores["work_item_store"])
     notion_connection_store_provider.override(stores["notion_connection_store"])
+    bg_session_store_provider.override(stores["background_session_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
