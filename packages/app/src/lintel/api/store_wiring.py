@@ -235,6 +235,8 @@ from lintel.release_notes_api.routes import (
     repo_provider_provider as release_notes_repo_provider,
 )
 from lintel.release_notes_api.store import InMemoryReleaseNoteStore
+from lintel.repo_description_api.routes import repo_description_store_provider
+from lintel.repo_description_api.store import InMemoryRepoDescriptionStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
 from lintel.repositories_api.routes import repo_provider_provider, repository_store_provider
 from lintel.sandbox_credentials_api.routes import (
@@ -525,6 +527,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "knowledge_graph_store": InMemoryKnowledgeGraphStore(),
         # Pipeline Diagnostics
         "pipeline_diagnostic_store": InMemoryPipelineDiagnosticStore(),
+        # Repo Descriptions
+        "repo_description_store": InMemoryRepoDescriptionStore(),
     }
 
 
@@ -977,6 +981,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "fleet_run_store": InMemoryFleetRunStore(),
         # Pipeline Diagnostics: in-memory until Postgres implementation exists
         "pipeline_diagnostic_store": InMemoryPipelineDiagnosticStore(),
+        # Repo Descriptions: in-memory until Postgres implementation exists
+        "repo_description_store": InMemoryRepoDescriptionStore(),
     }
 
 
@@ -1129,6 +1135,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     trigger_execution_store_provider.override(stores["trigger_execution_store"])
     knowledge_graph_store_provider.override(stores["knowledge_graph_store"])
     diagnostic_store_provider.override(stores["pipeline_diagnostic_store"])
+    repo_description_store_provider.override(stores["repo_description_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

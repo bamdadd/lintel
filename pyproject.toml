@@ -106,6 +106,7 @@ testpaths = [
     "packages/bots-api/tests",
     "packages/fleet-execution-api/tests",
     "packages/knowledge-graph-api/tests",
+    "packages/repo-description-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -201,6 +202,7 @@ mypy_path = [
     "packages/bots-api/src",
     "packages/fleet-execution-api/src",
     "packages/knowledge-graph-api/src",
+    "packages/repo-description-api/src",
 ]
 
 [[tool.mypy.overrides]]
