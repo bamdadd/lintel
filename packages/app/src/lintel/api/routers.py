@@ -69,6 +69,7 @@ from lintel.sandbox_credentials_api.routes import router as sandbox_credentials_
 from lintel.sandbox_pool_api.routes import router as sandbox_pool_router
 from lintel.sandboxes_api.routes import router as sandboxes_router
 from lintel.scheduled_tasks_api.routes import router as scheduled_tasks_router
+from lintel.secret_rotation_api.routes import router as secret_rotation_router
 from lintel.settings_api.channels_router import router as channels_settings_router
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
@@ -190,6 +191,11 @@ def mount_routers(app: FastAPI) -> None:
     )
     app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])
     app.include_router(data_retention_router, prefix="/api/v1", tags=["data-retention"])
+    app.include_router(
+        secret_rotation_router,
+        prefix="/api/v1",
+        tags=["secret-rotation"],
+    )
     app.include_router(github_app_router, prefix="/api/v1", tags=["github-app"])
     app.include_router(jira_adapter_router, prefix="/api/v1", tags=["jira-adapter"])
     app.include_router(notion_adapter_router, prefix="/api/v1", tags=["notion-adapter"])
