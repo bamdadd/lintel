@@ -64,6 +64,7 @@ from lintel.notion_adapter_api.routes import router as notion_adapter_router
 from lintel.pipelines_api.routes import router as pipelines_router
 from lintel.policies_api.routes import router as policies_router
 from lintel.privacy_controls_api.routes import router as privacy_controls_router
+from lintel.proactive_triggers_api.routes import router as proactive_triggers_router
 from lintel.process_mining_api import router as process_mining_router
 from lintel.projects_api.routes import router as projects_router
 from lintel.release_notes_api.routes import router as release_notes_router
@@ -207,5 +208,10 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(encryption_router, prefix="/api/v1", tags=["encryption"])
     app.include_router(multi_tenancy_router, prefix="/api/v1", tags=["multi-tenancy"])
     app.include_router(incidents_router, prefix="/api/v1", tags=["incidents"])
+    app.include_router(
+        proactive_triggers_router,
+        prefix="/api/v1",
+        tags=["proactive-triggers"],
+    )
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
