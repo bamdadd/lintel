@@ -21,7 +21,7 @@ members = [
     "lintel-audit-api",
     "lintel-auth-api",
     "lintel-automations-api",
-    "lintel-board-sync-api",
+    "lintel-background-agents-api",
     "lintel-boards",
     "lintel-channel-connections-api",
     "lintel-channels",
@@ -43,12 +43,10 @@ members = [
     "lintel-event-store",
     "lintel-experimentation-api",
     "lintel-feedback-api",
-    "lintel-github-app-api",
     "lintel-governance-api",
     "lintel-improvement-api",
     "lintel-infrastructure",
     "lintel-integration-patterns-api",
-    "lintel-jira-adapter-api",
     "lintel-knowledge-api",
     "lintel-mcp-servers-api",
     "lintel-memory",
@@ -1884,7 +1882,7 @@ dependencies = [
     { name = "lintel-audit-api" },
     { name = "lintel-auth-api" },
     { name = "lintel-automations-api" },
-    { name = "lintel-board-sync-api" },
+    { name = "lintel-background-agents-api" },
     { name = "lintel-boards" },
     { name = "lintel-channel-connections-api" },
     { name = "lintel-channels" },
@@ -1904,12 +1902,10 @@ dependencies = [
     { name = "lintel-event-store" },
     { name = "lintel-experimentation-api" },
     { name = "lintel-feedback-api" },
-    { name = "lintel-github-app-api" },
     { name = "lintel-governance-api" },
     { name = "lintel-improvement-api" },
     { name = "lintel-infrastructure" },
     { name = "lintel-integration-patterns-api" },
-    { name = "lintel-jira-adapter-api" },
     { name = "lintel-mcp-servers-api" },
     { name = "lintel-memory" },
     { name = "lintel-memory-api" },
@@ -1976,7 +1972,7 @@ requires-dist = [
     { name = "lintel-audit-api", editable = "packages/audit-api" },
     { name = "lintel-auth-api", editable = "packages/auth-api" },
     { name = "lintel-automations-api", editable = "packages/automations-api" },
-    { name = "lintel-board-sync-api", editable = "packages/board-sync-api" },
+    { name = "lintel-background-agents-api", editable = "packages/background-agents-api" },
     { name = "lintel-boards", editable = "packages/boards" },
     { name = "lintel-channel-connections-api", editable = "packages/channel-connections-api" },
     { name = "lintel-channels", editable = "packages/channels" },
@@ -1996,12 +1992,10 @@ requires-dist = [
     { name = "lintel-event-store", editable = "packages/event-store" },
     { name = "lintel-experimentation-api", editable = "packages/experimentation-api" },
     { name = "lintel-feedback-api", editable = "packages/feedback-api" },
-    { name = "lintel-github-app-api", editable = "packages/github-app-api" },
     { name = "lintel-governance-api", editable = "packages/governance-api" },
     { name = "lintel-improvement-api", editable = "packages/improvement-api" },
     { name = "lintel-infrastructure", editable = "packages/infrastructure" },
     { name = "lintel-integration-patterns-api", editable = "packages/integration-patterns-api" },
-    { name = "lintel-jira-adapter-api", editable = "packages/jira-adapter-api" },
     { name = "lintel-mcp-servers-api", editable = "packages/mcp-servers-api" },
     { name = "lintel-memory", editable = "packages/memory" },
     { name = "lintel-memory-api", editable = "packages/memory-api" },
@@ -2303,14 +2297,12 @@ requires-dist = [
 ]
 
 [[package]]
-name = "lintel-board-sync-api"
+name = "lintel-background-agents-api"
 version = "0.1.0"
-source = { editable = "packages/board-sync-api" }
+source = { editable = "packages/background-agents-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },
-    { name = "lintel-contracts" },
-    { name = "lintel-domain" },
     { name = "pydantic" },
     { name = "structlog" },
 ]
@@ -2319,8 +2311,6 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
-    { name = "lintel-contracts", editable = "packages/contracts" },
-    { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
@@ -2787,31 +2777,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "lintel-github-app-api"
-version = "0.1.0"
-source = { editable = "packages/github-app-api" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "lintel-api-support" },
-    { name = "lintel-contracts" },
-    { name = "lintel-domain" },
-    { name = "pydantic" },
-    { name = "structlog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "lintel-api-support", editable = "packages/api-support" },
-    { name = "lintel-contracts", editable = "packages/contracts" },
-    { name = "lintel-domain", editable = "packages/domain" },
-    { name = "pydantic", specifier = ">=2.10" },
-    { name = "structlog", specifier = ">=24.4" },
-]
-
-[[package]]
 name = "lintel-governance-api"
 version = "0.1.0"
 source = { editable = "packages/governance-api" }
@@ -2897,31 +2862,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "lintel-api-support", editable = "packages/api-support" },
-    { name = "lintel-contracts", editable = "packages/contracts" },
-    { name = "lintel-domain", editable = "packages/domain" },
-    { name = "pydantic", specifier = ">=2.10" },
-    { name = "structlog", specifier = ">=24.4" },
-]
-
-[[package]]
-name = "lintel-jira-adapter-api"
-version = "0.1.0"
-source = { editable = "packages/jira-adapter-api" }
-dependencies = [
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "lintel-api-support" },
-    { name = "lintel-contracts" },
-    { name = "lintel-domain" },
-    { name = "pydantic" },
-    { name = "structlog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "httpx", specifier = ">=0.27" },
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
@@ -3469,7 +3409,6 @@ version = "0.1.0"
 source = { editable = "packages/settings-api" }
 dependencies = [
     { name = "fastapi" },
-    { name = "httpx" },
     { name = "lintel-api-support" },
     { name = "lintel-channel-connections-api" },
     { name = "lintel-contracts" },
@@ -3482,7 +3421,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "httpx", specifier = ">=0.27" },
     { name = "lintel-api-support", editable = "packages/api-support" },
     { name = "lintel-channel-connections-api", editable = "packages/channel-connections-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
