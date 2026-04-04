@@ -32,6 +32,7 @@ members = [
     "lintel-channels",
     "lintel-chat-api",
     "lintel-cloud-environments-api",
+    "lintel-cloud-providers-api",
     "lintel-codebase-index-api",
     "lintel-coding-rules-api",
     "lintel-compliance-api",
@@ -41,6 +42,7 @@ members = [
     "lintel-coordination",
     "lintel-credentials-api",
     "lintel-cross-repo-agent-api",
+    "lintel-cross-repo-test-api",
     "lintel-cve-remediation-api",
     "lintel-data-retention-api",
     "lintel-digest-api",
@@ -1921,6 +1923,7 @@ dependencies = [
     { name = "lintel-channels" },
     { name = "lintel-chat-api" },
     { name = "lintel-cloud-environments-api" },
+    { name = "lintel-cloud-providers-api" },
     { name = "lintel-codebase-index-api" },
     { name = "lintel-coding-rules-api" },
     { name = "lintel-compliance-api" },
@@ -1929,6 +1932,7 @@ dependencies = [
     { name = "lintel-coordination" },
     { name = "lintel-credentials-api" },
     { name = "lintel-cross-repo-agent-api" },
+    { name = "lintel-cross-repo-test-api" },
     { name = "lintel-data-retention-api" },
     { name = "lintel-digest-api" },
     { name = "lintel-domain" },
@@ -2039,6 +2043,7 @@ requires-dist = [
     { name = "lintel-channels", editable = "packages/channels" },
     { name = "lintel-chat-api", editable = "packages/chat-api" },
     { name = "lintel-cloud-environments-api", editable = "packages/cloud-environments-api" },
+    { name = "lintel-cloud-providers-api", editable = "packages/cloud-providers-api" },
     { name = "lintel-codebase-index-api", editable = "packages/codebase-index-api" },
     { name = "lintel-coding-rules-api", editable = "packages/coding-rules-api" },
     { name = "lintel-compliance-api", editable = "packages/compliance-api" },
@@ -2047,6 +2052,7 @@ requires-dist = [
     { name = "lintel-coordination", editable = "packages/coordination" },
     { name = "lintel-credentials-api", editable = "packages/credentials-api" },
     { name = "lintel-cross-repo-agent-api", editable = "packages/cross-repo-agent-api" },
+    { name = "lintel-cross-repo-test-api", editable = "packages/cross-repo-test-api" },
     { name = "lintel-data-retention-api", editable = "packages/data-retention-api" },
     { name = "lintel-digest-api", editable = "packages/digest-api" },
     { name = "lintel-domain", editable = "packages/domain" },
@@ -2638,6 +2644,25 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-cloud-providers-api"
+version = "0.1.0"
+source = { editable = "packages/cloud-providers-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+]
+
+[[package]]
 name = "lintel-codebase-index-api"
 version = "0.1.0"
 source = { editable = "packages/codebase-index-api" }
@@ -2803,6 +2828,25 @@ requires-dist = [
 name = "lintel-cross-repo-agent-api"
 version = "0.1.0"
 source = { editable = "packages/cross-repo-agent-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-cross-repo-test-api"
+version = "0.1.0"
+source = { editable = "packages/cross-repo-test-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },

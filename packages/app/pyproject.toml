@@ -109,6 +109,7 @@ dependencies = [
     "lintel-knowledge-graph-api",
     "lintel-repo-description-api",
     "lintel-repo-auto-describe-api",
+    "lintel-cloud-providers-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -229,6 +230,7 @@ lintel-fleet-execution-api = { workspace = true }
 lintel-knowledge-graph-api = { workspace = true }
 lintel-repo-description-api = { workspace = true }
 lintel-repo-auto-describe-api = { workspace = true }
+lintel-cloud-providers-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
