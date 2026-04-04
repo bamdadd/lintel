@@ -185,6 +185,14 @@ from lintel.privacy_controls_api.routes import (
     visibility_store_provider,
 )
 from lintel.privacy_controls_api.store import InMemoryPreferenceStore, InMemoryVisibilityStore
+from lintel.proactive_triggers_api.routes import (
+    proactive_trigger_store_provider,
+    trigger_execution_store_provider,
+)
+from lintel.proactive_triggers_api.store import (
+    InMemoryProactiveTriggerStore,
+    InMemoryTriggerExecutionStore,
+)
 from lintel.process_mining_api.routes import process_mining_store_provider
 from lintel.process_mining_api.store import InMemoryProcessMiningStore
 from lintel.projects_api.routes import project_store_provider
@@ -459,6 +467,9 @@ def create_in_memory_stores() -> dict[str, Any]:
         "workspace_store": InMemoryWorkspaceStore(),
         # Incidents
         "incident_store": InMemoryIncidentStore(),
+        # Proactive Triggers
+        "proactive_trigger_store": InMemoryProactiveTriggerStore(),
+        "trigger_execution_store": InMemoryTriggerExecutionStore(),
     }
 
 
@@ -891,6 +902,9 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "workspace_store": InMemoryWorkspaceStore(),
         # Incidents: in-memory until Postgres implementation exists
         "incident_store": InMemoryIncidentStore(),
+        # Proactive Triggers: in-memory until Postgres implementation exists
+        "proactive_trigger_store": InMemoryProactiveTriggerStore(),
+        "trigger_execution_store": InMemoryTriggerExecutionStore(),
     }
 
 
@@ -1025,6 +1039,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     encryption_store_provider.override(stores["encryption_store"])
     workspace_store_provider.override(stores["workspace_store"])
     incident_store_provider.override(stores["incident_store"])
+    proactive_trigger_store_provider.override(stores["proactive_trigger_store"])
+    trigger_execution_store_provider.override(stores["trigger_execution_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
