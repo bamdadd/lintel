@@ -319,3 +319,85 @@ class TestClassifyEndpoint:
         data = resp.json()
         if data["results"]:
             assert data["needs_clarification"] == (data["results"][0]["confidence"] < 0.4)
+
+
+class TestProjectAssociation:
+    def test_register_repo_with_project_ids(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r1",
+                "name": "my-repo",
+                "url": "https://github.com/org/my-repo",
+                "project_ids": ["proj-1", "proj-2"],
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.json()["project_ids"] == ["proj-1", "proj-2"]
+
+    def test_register_repo_default_empty_project_ids(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "repo", "url": "https://github.com/org/r"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["project_ids"] == []
+
+    def test_update_repo_project_ids(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/repositories",
+            json={"repo_id": "r1", "name": "repo", "url": "https://github.com/org/r"},
+        )
+        resp = client.patch(
+            "/api/v1/repositories/r1",
+            json={"project_ids": ["proj-a"]},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["project_ids"] == ["proj-a"]
+
+    def test_filter_repositories_by_project_id(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r1",
+                "name": "a",
+                "url": "https://github.com/org/a",
+                "project_ids": ["proj-1"],
+            },
+        )
+        client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r2",
+                "name": "b",
+                "url": "https://github.com/org/b",
+                "project_ids": ["proj-2"],
+            },
+        )
+        client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r3",
+                "name": "c",
+                "url": "https://github.com/org/c",
+                "project_ids": ["proj-1", "proj-2"],
+            },
+        )
+        resp = client.get("/api/v1/repositories?project_id=proj-1")
+        assert resp.status_code == 200
+        ids = [r["repo_id"] for r in resp.json()]
+        assert sorted(ids) == ["r1", "r3"]
+
+    def test_filter_no_match_returns_empty(self, client: TestClient) -> None:
+        client.post(
+            "/api/v1/repositories",
+            json={
+                "repo_id": "r1",
+                "name": "a",
+                "url": "https://github.com/org/a",
+                "project_ids": ["proj-1"],
+            },
+        )
+        resp = client.get("/api/v1/repositories?project_id=proj-99")
+        assert resp.status_code == 200
+        assert resp.json() == []

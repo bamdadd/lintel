@@ -116,3 +116,55 @@ class TestProjectsAPI:
         resp = client.delete("/api/v1/projects/p1")
         assert resp.status_code == 204
         assert client.get("/api/v1/projects/p1").status_code == 404
+
+
+class TestProjectReposSubResource:
+    def test_list_project_repos(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.get("/api/v1/projects/p1/repos")
+        assert resp.status_code == 200
+        assert resp.json() == ["repo-1"]
+
+    def test_add_repo_to_project(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.post(
+            "/api/v1/projects/p1/repos",
+            json={"repo_id": "repo-2"},
+        )
+        assert resp.status_code == 201
+        assert resp.json() == ["repo-1", "repo-2"]
+        # Verify persisted
+        proj = client.get("/api/v1/projects/p1").json()
+        assert proj["repo_ids"] == ["repo-1", "repo-2"]
+
+    def test_add_duplicate_repo_returns_409(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.post(
+            "/api/v1/projects/p1/repos",
+            json={"repo_id": "repo-1"},
+        )
+        assert resp.status_code == 409
+
+    def test_remove_repo_from_project(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.delete("/api/v1/projects/p1/repos/repo-1")
+        assert resp.status_code == 200
+        assert resp.json() == []
+        proj = client.get("/api/v1/projects/p1").json()
+        assert proj["repo_ids"] == []
+
+    def test_remove_repo_not_attached_returns_404(self, client: TestClient) -> None:
+        _create_project(client, "p1")
+        resp = client.delete("/api/v1/projects/p1/repos/nonexistent")
+        assert resp.status_code == 404
+
+    def test_add_repo_project_not_found(self, client: TestClient) -> None:
+        resp = client.post(
+            "/api/v1/projects/missing/repos",
+            json={"repo_id": "repo-1"},
+        )
+        assert resp.status_code == 404
+
+    def test_list_repos_project_not_found(self, client: TestClient) -> None:
+        resp = client.get("/api/v1/projects/missing/repos")
+        assert resp.status_code == 404

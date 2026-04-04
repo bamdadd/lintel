@@ -36,6 +36,7 @@ class Repository:
     owner: str = ""
     provider: str = "github"
     status: RepoStatus = RepoStatus.ACTIVE
+    project_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -248,3 +248,69 @@ async def delete_principle(
         ),
         stream_id=f"project:{project_id}",
     )
+
+
+# --- Repos sub-resource ---
+
+
+class AddRepoRequest(BaseModel):
+    """Request body for adding a repository to a project."""
+
+    repo_id: str
+
+
+@router.get("/projects/{project_id}/repos")
+async def list_project_repos(
+    project_id: str,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> list[str]:
+    project = await _get_project_or_404(project_id, store)
+    return list(project.get("repo_ids", []))
+
+
+@router.post("/projects/{project_id}/repos", status_code=201)
+async def add_project_repo(
+    request: Request,
+    project_id: str,
+    body: AddRepoRequest,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> list[str]:
+    project = await _get_project_or_404(project_id, store)
+    repo_ids: list[str] = list(project.get("repo_ids", []))
+    if body.repo_id in repo_ids:
+        raise HTTPException(status_code=409, detail="Repository already attached")
+    repo_ids.append(body.repo_id)
+    project["repo_ids"] = repo_ids
+    await store.update(project_id, project)
+    await dispatch_event(
+        request,
+        ProjectUpdated(
+            payload={"resource_id": project_id, "fields": ["repo_ids"]},
+        ),
+        stream_id=f"project:{project_id}",
+    )
+    return repo_ids
+
+
+@router.delete("/projects/{project_id}/repos/{repo_id}", status_code=200)
+async def remove_project_repo(
+    request: Request,
+    project_id: str,
+    repo_id: str,
+    store: ProjectStore = Depends(project_store_provider),  # noqa: B008
+) -> list[str]:
+    project = await _get_project_or_404(project_id, store)
+    repo_ids: list[str] = list(project.get("repo_ids", []))
+    if repo_id not in repo_ids:
+        raise HTTPException(status_code=404, detail="Repository not attached to project")
+    repo_ids.remove(repo_id)
+    project["repo_ids"] = repo_ids
+    await store.update(project_id, project)
+    await dispatch_event(
+        request,
+        ProjectUpdated(
+            payload={"resource_id": project_id, "fields": ["repo_ids"]},
+        ),
+        stream_id=f"project:{project_id}",
+    )
+    return repo_ids
