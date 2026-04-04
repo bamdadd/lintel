@@ -66,6 +66,7 @@ from lintel.incidents_api.routes import router as incidents_router
 from lintel.integration_patterns_api import router as integration_patterns_router
 from lintel.jira_adapter_api.routes import router as jira_adapter_router
 from lintel.kernel_policy_api.routes import router as kernel_policy_router
+from lintel.knowledge_graph_api.routes import router as knowledge_graph_router
 from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
@@ -247,5 +248,6 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["fleet-execution"],
     )
+    app.include_router(knowledge_graph_router, prefix="/api/v1", tags=["knowledge-graph"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])

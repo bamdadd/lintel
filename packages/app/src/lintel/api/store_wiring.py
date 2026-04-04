@@ -178,6 +178,8 @@ from lintel.jira_adapter_api.routes import (
 from lintel.jira_adapter_api.store import InMemoryJiraConnectionStore, InMemorySyncRecordStore
 from lintel.kernel_policy_api.routes import kernel_policy_store_provider
 from lintel.kernel_policy_api.store import InMemoryKernelPolicyStore
+from lintel.knowledge_graph_api.routes import knowledge_graph_store_provider
+from lintel.knowledge_graph_api.store import InMemoryKnowledgeGraphStore
 from lintel.mcp_servers_api.routes import (
     mcp_server_store_provider,
     mcp_tool_allowlist_store_provider,
@@ -511,6 +513,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "cross_repo_plan_store": InMemoryCrossRepoPlanStore(),
         # Fleet Execution
         "fleet_run_store": InMemoryFleetRunStore(),
+        # Knowledge Graph
+        "knowledge_graph_store": InMemoryKnowledgeGraphStore(),
     }
 
 
@@ -1107,6 +1111,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     incident_store_provider.override(stores["incident_store"])
     proactive_trigger_store_provider.override(stores["proactive_trigger_store"])
     trigger_execution_store_provider.override(stores["trigger_execution_store"])
+    knowledge_graph_store_provider.override(stores["knowledge_graph_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

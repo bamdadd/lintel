@@ -63,6 +63,7 @@ members = [
     "lintel-jira-adapter-api",
     "lintel-kernel-policy-api",
     "lintel-knowledge-api",
+    "lintel-knowledge-graph-api",
     "lintel-mcp-servers-api",
     "lintel-memory",
     "lintel-memory-api",
@@ -1944,6 +1945,7 @@ dependencies = [
     { name = "lintel-integration-patterns-api" },
     { name = "lintel-jira-adapter-api" },
     { name = "lintel-kernel-policy-api" },
+    { name = "lintel-knowledge-graph-api" },
     { name = "lintel-mcp-servers-api" },
     { name = "lintel-memory" },
     { name = "lintel-memory-api" },
@@ -2057,6 +2059,7 @@ requires-dist = [
     { name = "lintel-integration-patterns-api", editable = "packages/integration-patterns-api" },
     { name = "lintel-jira-adapter-api", editable = "packages/jira-adapter-api" },
     { name = "lintel-kernel-policy-api", editable = "packages/kernel-policy-api" },
+    { name = "lintel-knowledge-graph-api", editable = "packages/knowledge-graph-api" },
     { name = "lintel-mcp-servers-api", editable = "packages/mcp-servers-api" },
     { name = "lintel-memory", editable = "packages/memory" },
     { name = "lintel-memory-api", editable = "packages/memory-api" },
@@ -3285,6 +3288,29 @@ requires-dist = [
 name = "lintel-knowledge-api"
 version = "0.1.0"
 source = { editable = "packages/knowledge-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-knowledge-graph-api"
+version = "0.1.0"
+source = { editable = "packages/knowledge-graph-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },
