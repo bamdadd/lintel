@@ -121,7 +121,9 @@ class TestChannelTypeAPI:
     def test_list_by_type_empty(self, registry: ChannelRegistry) -> None:
         assert registry.list_by_type(ChannelType.SLACK) == []
 
-    def test_get_for_message(self, registry: ChannelRegistry, mock_adapter: AsyncMock) -> None:
+    def test_get_for_message_falls_back_to_type(
+        self, registry: ChannelRegistry, mock_adapter: AsyncMock
+    ) -> None:
         registry.register("conn-1", ChannelType.SLACK, mock_adapter)
         msg = InboundMessage(
             channel_type=ChannelType.SLACK,
@@ -130,6 +132,37 @@ class TestChannelTypeAPI:
             sender_id="U1",
             text="hello",
         )
+        assert registry.get_for_message(msg) is mock_adapter
+
+    def test_get_for_message_prefers_connection_id(
+        self, registry: ChannelRegistry, mock_adapter: AsyncMock
+    ) -> None:
+        fallback = AsyncMock()
+        registry.register("conn-1", ChannelType.SLACK, fallback)
+        registry.register("conn-2", ChannelType.SLACK, mock_adapter)
+        msg = InboundMessage(
+            channel_type=ChannelType.SLACK,
+            channel_id="C123",
+            thread_id="ts123",
+            sender_id="U1",
+            text="hello",
+            connection_id="conn-2",
+        )
+        assert registry.get_for_message(msg) is mock_adapter
+
+    def test_get_for_message_ignores_unknown_connection_id(
+        self, registry: ChannelRegistry, mock_adapter: AsyncMock
+    ) -> None:
+        registry.register("conn-1", ChannelType.SLACK, mock_adapter)
+        msg = InboundMessage(
+            channel_type=ChannelType.SLACK,
+            channel_id="C123",
+            thread_id="ts123",
+            sender_id="U1",
+            text="hello",
+            connection_id="nonexistent",
+        )
+        # Falls back to type-based lookup
         assert registry.get_for_message(msg) is mock_adapter
 
 

@@ -44,6 +44,7 @@ async def notify_interrupt(
     for channel_config in channels:
         channel_type_str = channel_config.get("channel_type", "")
         channel_id = channel_config.get("channel_id", "")
+        connection_id = channel_config.get("connection_id", "")
 
         if not channel_type_str or not channel_id:
             logger.debug(
@@ -52,6 +53,28 @@ async def notify_interrupt(
             )
             continue
 
+        # Prefer connection_id-based routing when available
+        if connection_id and channel_registry.is_connection_registered(connection_id):
+            try:
+                adapter = channel_registry.get(connection_id)
+                await _send_for_channel(
+                    adapter,
+                    None,
+                    channel_config,
+                    request,
+                    resume_url,
+                )
+            except Exception:
+                logger.warning(
+                    "interrupt_notify_failed",
+                    connection_id=connection_id,
+                    channel_id=channel_id,
+                    run_id=request.run_id,
+                    exc_info=True,
+                )
+            continue
+
+        # Fall back to channel-type routing
         try:
             from lintel.contracts.channel_type import ChannelType
 
@@ -92,7 +115,7 @@ async def notify_interrupt(
 
 async def _send_for_channel(
     adapter: Any,  # noqa: ANN401
-    channel_type: ChannelType,
+    channel_type: ChannelType | None,
     channel_config: dict[str, Any],
     request: InterruptRequest,
     resume_url: str,

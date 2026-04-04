@@ -34,10 +34,9 @@ async def send_interrupt_notification(
     configurable:
         LangGraph configurable dict (used to locate the channel registry).
     """
-    from lintel.contracts.channel_type import ChannelType
-
     channel_type_str = channel_config.get("channel_type", "slack")
     channel_id = channel_config.get("channel_id", "")
+    connection_id = channel_config.get("connection_id", "")
     if not channel_id:
         logger.debug("interrupt_notification_skipped", reason="no channel_id")
         return
@@ -57,21 +56,28 @@ async def send_interrupt_notification(
         logger.debug("interrupt_notification_skipped", reason="no channel_registry")
         return
 
-    try:
-        channel_type = ChannelType(channel_type_str)
-    except ValueError:
-        logger.warning("interrupt_notification_unknown_channel", channel_type=channel_type_str)
-        return
+    # Prefer connection_id-based routing when available
+    adapter = None
+    if connection_id and channel_registry.is_connection_registered(connection_id):
+        adapter = channel_registry.get(connection_id)
+    else:
+        from lintel.contracts.channel_type import ChannelType
 
-    if not channel_registry.is_registered(channel_type):
-        logger.debug(
-            "interrupt_notification_skipped",
-            reason="channel_not_registered",
-            channel_type=channel_type_str,
-        )
-        return
+        try:
+            channel_type = ChannelType(channel_type_str)
+        except ValueError:
+            logger.warning("interrupt_notification_unknown_channel", channel_type=channel_type_str)
+            return
 
-    adapter = channel_registry.get_by_type(channel_type)
+        if not channel_registry.is_registered(channel_type):
+            logger.debug(
+                "interrupt_notification_skipped",
+                reason="channel_not_registered",
+                channel_type=channel_type_str,
+            )
+            return
+
+        adapter = channel_registry.get_by_type(channel_type)
 
     # Build message
     deadline_str = request.deadline.isoformat() if request.deadline else "none"
