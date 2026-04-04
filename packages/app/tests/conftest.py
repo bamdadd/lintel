@@ -32,6 +32,7 @@ def container() -> Generator[AppContainerType]:
     from lintel.artifacts_api.store import CodeArtifactStore, TestResultStore
     from lintel.audit_api.store import AuditEntryStore
     from lintel.boards.store import BoardStore, TagStore
+    from lintel.bots_api.store import InMemoryBotStore
     from lintel.chat_api.routes import ChatStore
     from lintel.compliance_api.store import ComplianceStore
     from lintel.credentials_api.store import InMemoryCredentialStore
@@ -66,6 +67,7 @@ def container() -> Generator[AppContainerType]:
         "trigger_store": InMemoryTriggerStore(),
         "variable_store": InMemoryVariableStore(),
         "user_store": InMemoryUserStore(),
+        "bot_store": InMemoryBotStore(),
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),
         "notification_rule_store": NotificationRuleStore(),

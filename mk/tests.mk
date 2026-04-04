@@ -244,5 +244,8 @@ test-integration: migrate ## Run integration tests (requires postgres + migratio
 test-e2e: ## Run e2e tests
 	uv run pytest tests/e2e -v
 
+test-bots-api: ## Run bots-api package tests
+	uv run pytest packages/bots-api/tests/ -v
+
 test-sandbox: ## Sandbox smoke + stage tests (requires Docker + sandbox image)
 	uv run pytest tests/integration/sandbox -v --run-sandbox
