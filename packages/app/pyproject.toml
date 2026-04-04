@@ -67,7 +67,7 @@ dependencies = [
     "lintel-context-attachments-api",
     "lintel-integration-patterns-api",
     "lintel-process-mining-api",
-    "lintel-automations-api",
+    "lintel-automations",
     "lintel-sandboxes-api",
     "lintel-pipeline-diagnostics-api",
     "lintel-pipelines-api",
@@ -189,7 +189,7 @@ lintel-ai-firewall-api = { workspace = true }
 lintel-context-attachments-api = { workspace = true }
 lintel-integration-patterns-api = { workspace = true }
 lintel-process-mining-api = { workspace = true }
-lintel-automations-api = { workspace = true }
+lintel-automations = { workspace = true }
 lintel-sandboxes-api = { workspace = true }
 lintel-pipeline-diagnostics-api = { workspace = true }
 lintel-pipelines-api = { workspace = true }

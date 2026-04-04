@@ -6,13 +6,13 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import UUID
 
-from lintel.automations_api.scheduler import AutomationScheduler
-from lintel.contracts.events import EventEnvelope
-from lintel.domain.types import (
+from lintel.automations.scheduler import AutomationScheduler
+from lintel.automations.types import (
     AutomationDefinition,
     AutomationTriggerType,
     ConcurrencyPolicy,
 )
+from lintel.contracts.events import EventEnvelope
 
 
 def _cron_automation(

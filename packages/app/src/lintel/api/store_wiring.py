@@ -49,7 +49,8 @@ from lintel.auth_api.routes import auth_user_store_provider, session_store_provi
 from lintel.auth_api.sso_routes import sso_config_store_provider, sso_state_store_provider
 from lintel.auth_api.sso_store import InMemorySSOConfigStore, InMemorySSOStateStore
 from lintel.auth_api.store import InMemoryAuthUserStore, InMemorySessionStore
-from lintel.automations_api.routes import InMemoryAutomationStore, automation_store_provider
+from lintel.automations.routes import automation_store_provider
+from lintel.automations.store import InMemoryAutomationStore
 from lintel.background_agents_api.routes import session_store_provider as bg_session_store_provider
 from lintel.background_agents_api.store import InMemoryBackgroundSessionStore
 from lintel.board_sync_api.routes import (

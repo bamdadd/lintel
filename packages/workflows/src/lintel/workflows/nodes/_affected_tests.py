@@ -236,7 +236,7 @@ _PKG_MAP: dict[str, str] = {
     "packages/settings-api": "lintel-settings-api",
     "packages/compliance-api": "lintel-compliance-api",
     "packages/experimentation-api": "lintel-experimentation-api",
-    "packages/automations-api": "lintel-automations-api",
+    "packages/automations": "lintel-automations",
     "packages/sandboxes-api": "lintel-sandboxes-api",
     "packages/pipelines-api": "lintel-pipelines-api",
     "packages/chat-api": "lintel-chat-api",

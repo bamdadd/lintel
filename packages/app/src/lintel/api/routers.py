@@ -30,7 +30,7 @@ from lintel.audit_api.routes import router as audit_router
 from lintel.auth_api.mfa_routes import router as mfa_router
 from lintel.auth_api.routes import router as auth_router
 from lintel.auth_api.sso_routes import sso_router
-from lintel.automations_api.routes import router as automations_router
+from lintel.automations.routes import router as automations_router
 from lintel.background_agents_api.routes import router as background_agents_router
 from lintel.board_sync_api.routes import router as board_sync_router
 from lintel.boards.routes import router as boards_router

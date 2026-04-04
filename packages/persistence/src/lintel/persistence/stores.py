@@ -200,7 +200,7 @@ class PostgresTriggerStore(PostgresCrudStore):
 
 class PostgresAutomationStore(PostgresCrudStore):
     def __init__(self, pool: asyncpg.Pool) -> None:
-        from lintel.domain.types import AutomationDefinition
+        from lintel.automations.types import AutomationDefinition
 
         super().__init__(pool, "automation", "automation_id", AutomationDefinition)
 

@@ -99,48 +99,15 @@ class TriggerFired(EventEnvelope):
     event_type: str = "TriggerFired"
 
 
-# --- Automation Events ---
-
-
-@dataclass(frozen=True)
-class AutomationCreated(EventEnvelope):
-    event_type: str = "AutomationCreated"
-
-
-@dataclass(frozen=True)
-class AutomationUpdated(EventEnvelope):
-    event_type: str = "AutomationUpdated"
-
-
-@dataclass(frozen=True)
-class AutomationRemoved(EventEnvelope):
-    event_type: str = "AutomationRemoved"
-
-
-@dataclass(frozen=True)
-class AutomationEnabled(EventEnvelope):
-    event_type: str = "AutomationEnabled"
-
-
-@dataclass(frozen=True)
-class AutomationDisabled(EventEnvelope):
-    event_type: str = "AutomationDisabled"
-
-
-@dataclass(frozen=True)
-class AutomationFired(EventEnvelope):
-    event_type: str = "AutomationFired"
-
-
-@dataclass(frozen=True)
-class AutomationSkipped(EventEnvelope):
-    event_type: str = "AutomationSkipped"
-
-
-@dataclass(frozen=True)
-class AutomationCancelled(EventEnvelope):
-    event_type: str = "AutomationCancelled"
-
+# Backward-compat re-exports — canonical definitions live in lintel.automations.events
+from lintel.automations.events import AutomationCancelled as AutomationCancelled  # noqa: E402
+from lintel.automations.events import AutomationCreated as AutomationCreated  # noqa: E402
+from lintel.automations.events import AutomationDisabled as AutomationDisabled  # noqa: E402
+from lintel.automations.events import AutomationEnabled as AutomationEnabled  # noqa: E402
+from lintel.automations.events import AutomationFired as AutomationFired  # noqa: E402
+from lintel.automations.events import AutomationRemoved as AutomationRemoved  # noqa: E402
+from lintel.automations.events import AutomationSkipped as AutomationSkipped  # noqa: E402
+from lintel.automations.events import AutomationUpdated as AutomationUpdated  # noqa: E402
 
 # --- Artifact & Test Events ---
 
