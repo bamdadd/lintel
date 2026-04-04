@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Title, Stack, Loader, Center, Text, Paper, Badge, Group,
-  TextInput, Accordion, Code, Table, ThemeIcon, Anchor,
+  TextInput, Accordion, Code, Table, ThemeIcon, Anchor, TypographyStylesProvider,
 } from '@mantine/core';
 import { IconSearch, IconTool, IconServer } from '@tabler/icons-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Link } from 'react-router';
 
@@ -161,7 +163,11 @@ export function Component() {
                           <IconTool size={14} />
                           <Badge variant="outline" size="sm">{tool.name}</Badge>
                         </Group>
-                        <Text size="sm" mb="xs">{tool.description}</Text>
+                        <TypographyStylesProvider fz="sm" mb="xs">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {tool.description}
+                          </ReactMarkdown>
+                        </TypographyStylesProvider>
                         {tool.input_schema &&
                           typeof tool.input_schema === 'object' &&
                           'properties' in tool.input_schema && (
