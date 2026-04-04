@@ -49,3 +49,25 @@ class AuthSession:
     revoked: bool = False
     revoked_at: str = ""
     metadata: dict[str, str] = field(default_factory=dict)
+
+
+class MFAMethod(StrEnum):
+    """Supported MFA methods."""
+
+    TOTP = "totp"
+    WEBAUTHN = "webauthn"
+
+
+@dataclass(frozen=True)
+class MFAConfig:
+    """MFA configuration for a user.
+
+    Each user may have multiple MFA methods configured.
+    """
+
+    user_id: str
+    method: MFAMethod
+    enabled: bool = False
+    totp_secret: str = ""
+    webauthn_credential_id: str = ""
+    created_at: str = ""
