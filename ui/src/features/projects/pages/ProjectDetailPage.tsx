@@ -15,6 +15,7 @@ import {
   IconGitBranch, IconExternalLink, IconPlug,
 } from '@tabler/icons-react';
 import { ProjectChannelsTab } from '@/features/projects/components/ProjectChannelsTab';
+import { ProjectRepositoriesTab } from '@/features/projects/components/ProjectRepositoriesTab';
 import {
   useProjectsGetProject,
   useProjectsUpdateProject,
@@ -35,6 +36,7 @@ interface ProjectData {
   project_id: string;
   name: string;
   repo_ids: string[];
+  repo_descriptions: Record<string, string>;
   channel_id: string;
   workspace_id: string;
   workflow_definition_id: string;
@@ -43,7 +45,7 @@ interface ProjectData {
   status: string;
 }
 
-interface RepoItem { repo_id: string; name: string; }
+interface RepoItem { repo_id: string; name: string; url: string; }
 interface ProviderItem { provider_id: string; name: string; }
 
 const riskColors: Record<string, string> = { low: 'green', medium: 'yellow', high: 'orange', critical: 'red' };
@@ -153,6 +155,12 @@ export function Component() {
       <Tabs defaultValue="details">
         <Tabs.List>
           <Tabs.Tab value="details">Details</Tabs.Tab>
+          <Tabs.Tab value="repositories" leftSection={<IconGitBranch size={14} />}>
+            Repositories
+            {(project.repo_ids ?? []).length > 0 && (
+              <Badge size="xs" ml={4} variant="light">{(project.repo_ids ?? []).length}</Badge>
+            )}
+          </Tabs.Tab>
           <Tabs.Tab value="resources">
             Resources
           </Tabs.Tab>
@@ -192,6 +200,15 @@ export function Component() {
               <Button color="red" variant="light" onClick={handleDelete} loading={deleteMut.isPending}>Delete</Button>
             </Group>
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="repositories" pt="md">
+          <ProjectRepositoriesTab
+            projectId={project.project_id}
+            repoIds={project.repo_ids ?? []}
+            repoDescriptions={project.repo_descriptions ?? {}}
+            allRepos={repos}
+          />
         </Tabs.Panel>
 
         <Tabs.Panel value="resources" pt="md">
