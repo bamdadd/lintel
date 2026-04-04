@@ -122,6 +122,13 @@ from lintel.experimentation_api.routes import (
 )
 from lintel.feedback_api.routes import feedback_store_provider
 from lintel.feedback_api.store import InMemoryFeedbackStore
+from lintel.github_app_api.routes import (
+    http_client_provider as github_http_client_provider,
+)
+from lintel.github_app_api.routes import (
+    installation_store_provider as github_installation_store_provider,
+)
+from lintel.github_app_api.store import InMemoryGitHubAppInstallationStore
 from lintel.governance_api.routes import (
     governance_audit_store_provider,
     governance_policy_store_provider,
@@ -390,6 +397,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         # Board Sync stores
         "board_sync_config_store": BoardSyncConfigStore(),
         "external_id_mapping_store": ExternalIdMappingStore(),
+        # GitHub App Installations
+        "github_app_installation_store": InMemoryGitHubAppInstallationStore(),
     }
 
 
@@ -794,6 +803,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         # Board Sync: in-memory until Postgres implementation exists
         "board_sync_config_store": BoardSyncConfigStore(),
         "external_id_mapping_store": ExternalIdMappingStore(),
+        # GitHub App Installations: in-memory until Postgres implementation exists
+        "github_app_installation_store": InMemoryGitHubAppInstallationStore(),
     }
 
 
@@ -906,6 +917,11 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     result_store_provider.override(stores["remediation_result_store"])
     board_sync_config_store_provider.override(stores["board_sync_config_store"])
     board_sync_mapping_store_provider.override(stores["external_id_mapping_store"])
+    github_installation_store_provider.override(stores["github_app_installation_store"])
+    # Wire httpx client for GitHub App API calls
+    import httpx
+
+    github_http_client_provider.override(httpx.AsyncClient())
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

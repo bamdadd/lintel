@@ -78,6 +78,7 @@ dependencies = [
     "lintel-sandbox-credentials-api",
     "lintel-improvement-api",
     "lintel-board-sync-api",
+    "lintel-github-app-api",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "langgraph>=0.3",
@@ -167,6 +168,7 @@ lintel-visual-verification-api = { workspace = true }
 lintel-sandbox-credentials-api = { workspace = true }
 lintel-improvement-api = { workspace = true }
 lintel-board-sync-api = { workspace = true }
+lintel-github-app-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
