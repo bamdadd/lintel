@@ -36,3 +36,16 @@ class RejectApproval:
     rejector_id: str
     reason: str
     correlation_id: UUID = field(default_factory=uuid4)
+
+
+@dataclass(frozen=True)
+class RequestChangeFromSlack:
+    """A user replied to a completed workflow thread with change requests."""
+
+    thread_ref: ThreadRef
+    feedback_text: str
+    sender_id: str
+    sender_name: str
+    original_run_id: str = ""
+    correlation_id: UUID = field(default_factory=uuid4)
+    connection_id: str = ""

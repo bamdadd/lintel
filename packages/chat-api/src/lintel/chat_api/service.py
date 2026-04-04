@@ -865,3 +865,177 @@ class ChatService:
             content=reply,
         )
         return reply
+
+    async def dispatch_change_request(
+        self,
+        conversation_id: str,
+        feedback_text: str,
+        original_run_id: str,
+    ) -> None:
+        """Dispatch a change_request workflow reusing the original run's context.
+
+        Looks up the original pipeline run to recover branch, project, repo, and
+        work item context, then dispatches a new ``change_request`` workflow on the
+        same feature branch.
+        """
+        request = self._request
+        store = self._store
+
+        pipeline_store = getattr(request.app.state, "pipeline_store", None)
+        if pipeline_store is None:
+            await store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content="Pipeline store unavailable — cannot process change request.",
+            )
+            return
+
+        original_run = await pipeline_store.get(original_run_id)
+        if original_run is None:
+            await store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=f"Original pipeline run `{original_run_id[:12]}` not found.",
+            )
+            return
+
+        # Extract context from original run
+        project_id = (
+            original_run.project_id
+            if hasattr(original_run, "project_id")
+            else original_run.get("project_id", "")
+        )
+        work_item_id = (
+            original_run.work_item_id
+            if hasattr(original_run, "work_item_id")
+            else original_run.get("work_item_id", "")
+        )
+
+        # Recover repo URL and branch from project
+        project, repo_url, repo_branch = await self.resolve_project_context(conversation_id)
+        cmd_repo_url = repo_url or ""
+        cmd_repo_urls = project.get("_repo_urls", ()) if project else ()
+        cmd_repo_branch = repo_branch or "main"
+        cmd_credential_ids = tuple(project.get("credential_ids", ())) if project else ()
+
+        # Get feature branch from work item
+        work_item_store = getattr(request.app.state, "work_item_store", None)
+        feature_branch = ""
+        if work_item_store and work_item_id:
+            item = await work_item_store.get(work_item_id)
+            if item is not None:
+                feature_branch = (
+                    item.get("branch_name", "")
+                    if isinstance(item, dict)
+                    else getattr(item, "branch_name", "")
+                )
+
+        thread_ref = self.thread_ref_from_conversation(conversation_id)
+        dispatcher = request.app.state.command_dispatcher
+
+        run_id = uuid4().hex
+
+        # Create pipeline run for the change request
+        from lintel.pipelines_api._helpers import _stage_names_for_workflow
+
+        stage_names = _stage_names_for_workflow("change_request")
+        stages = tuple(
+            Stage(stage_id=uuid4().hex, name=name, stage_type=name) for name in stage_names
+        )
+        pipeline_run = PipelineRun(
+            run_id=run_id,
+            project_id=project_id,
+            work_item_id=work_item_id,
+            workflow_definition_id="change_request",
+            status=PipelineStatus.RUNNING,
+            trigger_type=f"change_request:{original_run_id}",
+            stages=stages,
+            created_at=datetime.now(UTC).isoformat(),
+        )
+        try:
+            await pipeline_store.add(pipeline_run)
+        except Exception:
+            logger.warning("change_request_pipeline_creation_failed", run_id=run_id)
+
+        # Update conversation tracking
+        await store.update_fields(conversation_id, run_id=run_id)
+
+        # Build trigger context with the user's feedback and original run reference
+        import json
+
+        trigger_context = json.dumps(
+            {
+                "feedback": feedback_text,
+                "original_run_id": original_run_id,
+                "feature_branch": feature_branch,
+            }
+        )
+
+        command = StartWorkflow(
+            thread_ref=thread_ref,
+            workflow_type="change_request",
+            sanitized_messages=(feedback_text,),
+            project_id=project_id,
+            work_item_id=work_item_id,
+            run_id=run_id,
+            repo_url=cmd_repo_url,
+            repo_urls=(cmd_repo_urls if isinstance(cmd_repo_urls, tuple) else tuple(cmd_repo_urls)),
+            repo_branch=cmd_repo_branch,
+            credential_ids=cmd_credential_ids,
+            trigger_context=trigger_context,
+        )
+
+        # Status message
+        project_name = project.get("name", "unknown") if project else "unknown"
+        status_lines = [
+            f"🔄 **Applying change request** on existing branch `{feature_branch}`...",
+            "",
+            f"**Project:** {project_name}",
+            f"**Branch:** {feature_branch or cmd_repo_branch}",
+            "",
+            "**Workflow stages:**",
+        ]
+        for stage_name in stage_names:
+            status_lines.append(f"  ⏳ {stage_name}")
+        status_lines.append("")
+        status_lines.append(f"[View pipeline →](/pipelines/{run_id})")
+        status_lines.append("")
+        status_lines.append("I'll update you as each stage completes.")
+
+        await store.add_message(
+            conversation_id,
+            user_id="system",
+            display_name="Lintel",
+            role="agent",
+            content="\n".join(status_lines),
+        )
+        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+
+        # Emit event
+        from lintel.workflows.events import ChangeRequestTriggered
+
+        await dispatch_event(
+            request,
+            ChangeRequestTriggered(
+                payload={
+                    "original_run_id": original_run_id,
+                    "new_run_id": run_id,
+                    "conversation_id": conversation_id,
+                    "project_id": project_id,
+                    "feedback": feedback_text[:500],
+                }
+            ),
+            stream_id=f"conversation:{conversation_id}",
+        )
+
+        logger.info(
+            "change_request_dispatched",
+            conversation_id=conversation_id,
+            original_run_id=original_run_id,
+            new_run_id=run_id,
+            project_id=project_id,
+        )
