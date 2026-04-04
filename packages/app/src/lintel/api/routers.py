@@ -76,6 +76,7 @@ from lintel.multi_tenancy_api.routes import router as multi_tenancy_router
 from lintel.notifications_api.routes import router as notifications_router
 from lintel.notion_adapter_api.routes import router as notion_adapter_router
 from lintel.org_security_api.routes import router as org_security_router
+from lintel.pipeline_diagnostics_api.routes import router as pipeline_diagnostics_router
 from lintel.pipelines_api.routes import router as pipelines_router
 from lintel.policies_api.routes import router as policies_router
 from lintel.privacy_controls_api.routes import router as privacy_controls_router
@@ -135,6 +136,11 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(ai_providers_router, prefix="/api/v1", tags=["ai-providers"])
     app.include_router(projects_router, prefix="/api/v1", tags=["projects"])
     app.include_router(work_items_router, prefix="/api/v1", tags=["work-items"])
+    app.include_router(
+        pipeline_diagnostics_router,
+        prefix="/api/v1",
+        tags=["pipeline-diagnostics"],
+    )
     app.include_router(pipelines_router, prefix="/api/v1", tags=["pipelines"])
     app.include_router(environments_router, prefix="/api/v1", tags=["environments"])
     app.include_router(env_prebuilds_router, prefix="/api/v1", tags=["env-prebuilds"])

@@ -206,6 +206,8 @@ from lintel.notion_adapter_api.routes import notion_connection_store_provider
 from lintel.notion_adapter_api.store import InMemoryNotionConnectionStore
 from lintel.org_security_api.routes import org_security_policy_store_provider
 from lintel.org_security_api.store import InMemoryOrgSecurityPolicyStore
+from lintel.pipeline_diagnostics_api.routes import diagnostic_store_provider
+from lintel.pipeline_diagnostics_api.store import InMemoryPipelineDiagnosticStore
 from lintel.pipelines_api.routes import InMemoryPipelineStore, pipeline_store_provider
 from lintel.policies_api.routes import policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
@@ -518,6 +520,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "fleet_run_store": InMemoryFleetRunStore(),
         # Knowledge Graph
         "knowledge_graph_store": InMemoryKnowledgeGraphStore(),
+        # Pipeline Diagnostics
+        "pipeline_diagnostic_store": InMemoryPipelineDiagnosticStore(),
     }
 
 
@@ -967,6 +971,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "trigger_execution_store": InMemoryTriggerExecutionStore(),
         # Fleet Execution: in-memory until Postgres implementation exists
         "fleet_run_store": InMemoryFleetRunStore(),
+        # Pipeline Diagnostics: in-memory until Postgres implementation exists
+        "pipeline_diagnostic_store": InMemoryPipelineDiagnosticStore(),
     }
 
 
@@ -1117,6 +1123,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     proactive_trigger_store_provider.override(stores["proactive_trigger_store"])
     trigger_execution_store_provider.override(stores["trigger_execution_store"])
     knowledge_graph_store_provider.override(stores["knowledge_graph_store"])
+    diagnostic_store_provider.override(stores["pipeline_diagnostic_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
