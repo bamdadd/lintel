@@ -149,5 +149,10 @@ class ChannelRegistry:
         return [self._by_connection[cid] for cid in conn_ids]
 
     def get_for_message(self, message: InboundMessage) -> ChannelAdapter:
-        """Get the appropriate adapter for an inbound message."""
+        """Get the appropriate adapter for an inbound message.
+
+        Prefers ``connection_id`` when present; falls back to channel-type lookup.
+        """
+        if message.connection_id and self.is_connection_registered(message.connection_id):
+            return self.get(message.connection_id)
         return self.get_by_type(message.channel_type)
