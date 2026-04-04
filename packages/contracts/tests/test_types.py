@@ -80,6 +80,42 @@ class TestThreadRef:
         parsed = ThreadRef.parse_stream_id(ref.stream_id)
         assert parsed == ref
 
+    def test_bot_id_default_none(self) -> None:
+        ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0")
+        assert ref.bot_id is None
+
+    def test_bot_id_in_stream_id(self) -> None:
+        ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0", bot_id="mybot")
+        assert ref.stream_id.endswith(":bot:mybot")
+        assert ref.stream_id == "thread:slack:W1:C1:1.0:bot:mybot"
+
+    def test_bot_id_none_stream_id_unchanged(self) -> None:
+        ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0")
+        assert ref.stream_id == "thread:slack:W1:C1:1.0"
+        assert ":bot:" not in ref.stream_id
+
+    def test_parse_stream_id_with_bot_id(self) -> None:
+        ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0", bot_id="mybot")
+        parsed = ThreadRef.parse_stream_id(ref.stream_id)
+        assert parsed == ref
+        assert parsed.bot_id == "mybot"
+
+    def test_parse_stream_id_without_bot_id_still_works(self) -> None:
+        ref = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0")
+        parsed = ThreadRef.parse_stream_id(ref.stream_id)
+        assert parsed == ref
+        assert parsed.bot_id is None
+
+    def test_equality_different_bot_id(self) -> None:
+        ref1 = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0", bot_id="bot1")
+        ref2 = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0", bot_id="bot2")
+        assert ref1 != ref2
+
+    def test_equality_same_bot_id(self) -> None:
+        ref1 = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0", bot_id="bot1")
+        ref2 = ThreadRef(workspace_id="W1", channel_id="C1", thread_ts="1.0", bot_id="bot1")
+        assert ref1 == ref2
+
 
 class TestEnums:
     def test_actor_type_values(self) -> None:
