@@ -302,6 +302,8 @@ from lintel.web_ide_api.routes import ide_session_store_provider
 from lintel.web_ide_api.store import InMemoryIDESessionStore
 from lintel.work_items_api.routes import work_item_store_provider
 from lintel.work_items_api.store import WorkItemStore
+from lintel.workflow_acl_api.routes import acl_rule_store_provider
+from lintel.workflow_acl_api.store import InMemoryAclRuleStore
 from lintel.workflow_blueprints_api.routes import blueprint_store_provider
 from lintel.workflow_blueprints_api.store import InMemoryWorkflowBlueprintStore
 from lintel.workflow_definitions_api.routes import workflow_definition_store_provider
@@ -376,6 +378,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
         "frontend_target_store": InMemoryFrontendTargetStore(),
+        "acl_rule_store": InMemoryAclRuleStore(),
         "digest_store": InMemoryDigestStore(),
         "digest_config_store": InMemoryDigestConfigStore(),
         "user_store": InMemoryUserStore(),
@@ -844,6 +847,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "automation_store": PostgresAutomationStore(pool),
         "variable_store": PostgresVariableStore(pool),
         "frontend_target_store": InMemoryFrontendTargetStore(),
+        "acl_rule_store": InMemoryAclRuleStore(),
         "user_store": PostgresUserStore(pool),
         "team_store": PostgresTeamStore(pool),
         "policy_store": PostgresPolicyStore(pool),
@@ -991,6 +995,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     prebuild_run_store_provider.override(stores["prebuild_run_store"])
     variable_store_provider.override(stores["variable_store"])
     frontend_target_store_provider.override(stores["frontend_target_store"])
+    acl_rule_store_provider.override(stores["acl_rule_store"])
     credential_store_provider.override(stores["credential_store"])
     audit_entry_store_provider.override(stores["audit_entry_store"])
     approval_request_store_provider.override(stores["approval_request_store"])
