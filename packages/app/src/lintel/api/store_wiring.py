@@ -206,6 +206,12 @@ from lintel.multi_slack_bot_api.routes import slack_bot_store_provider
 from lintel.multi_slack_bot_api.store import InMemorySlackBotStore
 from lintel.multi_tenancy_api.routes import workspace_store_provider
 from lintel.multi_tenancy_api.store import InMemoryWorkspaceStore
+from lintel.multiplayer_sessions_api.routes import (
+    session_store_provider as mp_session_store_provider,
+)
+from lintel.multiplayer_sessions_api.store import (
+    InMemorySessionStore as InMemoryMPSessionStore,
+)
 from lintel.notifications_api.routes import notification_rule_store_provider
 from lintel.notifications_api.store import NotificationRuleStore
 from lintel.notion_adapter_api.routes import notion_connection_store_provider
@@ -396,6 +402,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "variable_store": InMemoryVariableStore(),
         "frontend_target_store": InMemoryFrontendTargetStore(),
         "acl_rule_store": InMemoryAclRuleStore(),
+        "multiplayer_session_store": InMemoryMPSessionStore(),
         "digest_store": InMemoryDigestStore(),
         "digest_config_store": InMemoryDigestConfigStore(),
         "user_store": InMemoryUserStore(),
@@ -876,6 +883,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "variable_store": PostgresVariableStore(pool),
         "frontend_target_store": InMemoryFrontendTargetStore(),
         "acl_rule_store": InMemoryAclRuleStore(),
+        "multiplayer_session_store": InMemoryMPSessionStore(),
         "user_store": PostgresUserStore(pool),
         "team_store": PostgresTeamStore(pool),
         "policy_store": PostgresPolicyStore(pool),
@@ -1166,6 +1174,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     repo_description_store_provider.override(stores["repo_description_store"])
     repo_auto_desc_store_provider.override(stores["repo_auto_describe_store"])
     cloud_provider_store_provider.override(stores["cloud_provider_store"])
+    mp_session_store_provider.override(stores["multiplayer_session_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

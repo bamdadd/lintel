@@ -74,6 +74,7 @@ members = [
     "lintel-models-api",
     "lintel-multi-slack-bot-api",
     "lintel-multi-tenancy-api",
+    "lintel-multiplayer-sessions-api",
     "lintel-notifications-api",
     "lintel-notion-adapter-api",
     "lintel-observability",
@@ -1962,6 +1963,7 @@ dependencies = [
     { name = "lintel-models-api" },
     { name = "lintel-multi-slack-bot-api" },
     { name = "lintel-multi-tenancy-api" },
+    { name = "lintel-multiplayer-sessions-api" },
     { name = "lintel-notifications-api" },
     { name = "lintel-notion-adapter-api" },
     { name = "lintel-observability" },
@@ -2082,6 +2084,7 @@ requires-dist = [
     { name = "lintel-models-api", editable = "packages/models-api" },
     { name = "lintel-multi-slack-bot-api", editable = "packages/multi-slack-bot-api" },
     { name = "lintel-multi-tenancy-api", editable = "packages/multi-tenancy-api" },
+    { name = "lintel-multiplayer-sessions-api", editable = "packages/multiplayer-sessions-api" },
     { name = "lintel-notifications-api", editable = "packages/notifications-api" },
     { name = "lintel-notion-adapter-api", editable = "packages/notion-adapter-api" },
     { name = "lintel-observability", editable = "packages/observability" },
@@ -3562,6 +3565,27 @@ requires-dist = [
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "lintel-multiplayer-sessions-api"
+version = "0.1.0"
+source = { editable = "packages/multiplayer-sessions-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "pydantic", specifier = ">=2.10" },
 ]
 
 [[package]]

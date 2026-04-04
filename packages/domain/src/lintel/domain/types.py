@@ -1535,3 +1535,34 @@ class AclRule:
     workflow_types: tuple[str, ...] = ()
     project_id: str = ""
     effect: str = "deny"
+
+
+# --- Multiplayer Sessions ---
+
+
+class SessionStatus(StrEnum):
+    """Status of a multiplayer agent session."""
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+@dataclass(frozen=True)
+class Participant:
+    """A participant in a multiplayer session."""
+
+    user_id: str
+    role: str = "member"
+    joined_at: str = ""
+
+
+@dataclass(frozen=True)
+class Session:
+    """A multiplayer agent session."""
+
+    session_id: str
+    name: str
+    created_by: str
+    participants: tuple[Participant, ...] = ()
+    status: str = "active"
