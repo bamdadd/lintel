@@ -32,6 +32,7 @@ class Project:
     default_branch: str = "main"
     credential_ids: tuple[str, ...] = ()
     status: ProjectStatus = ProjectStatus.ACTIVE
+    workflow_execution_enabled: bool = True
 
 
 class WorkItemStatus(StrEnum):

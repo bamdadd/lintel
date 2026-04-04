@@ -307,13 +307,26 @@ async def _trigger_workflow_for_work_item(
         "task": "feature_to_pr",
     }.get(work_type, "feature_to_pr")
 
-    # Check if the workflow is enabled
+    # Check if the workflow is enabled (global toggle)
     defs_store = getattr(request.app.state, "workflow_definitions", None)
     if defs_store is not None:
         wf = defs_store.get(workflow_type)
         if wf is not None and not wf.get("enabled", True):
             logger.info("workflow_disabled_skipping_trigger: %s", workflow_type)
             return
+
+    # Check project-level workflow execution toggle
+    project_store = getattr(request.app.state, "project_store", None)
+    if project_store is not None:
+        try:
+            project_data = await project_store.get(project_id)
+            if project_data is not None and not project_data.get(
+                "workflow_execution_enabled", True
+            ):
+                logger.info("project_workflow_execution_disabled: %s", project_id)
+                return
+        except Exception:
+            logger.warning("project_lookup_failed_for_wf_toggle", exc_info=True)
 
     run_id = uuid4().hex
     trigger_id = uuid4().hex
