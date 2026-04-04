@@ -161,6 +161,8 @@ from lintel.models_api.routes import model_assignment_store_provider, model_stor
 from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.notifications_api.routes import notification_rule_store_provider
 from lintel.notifications_api.store import NotificationRuleStore
+from lintel.notion_adapter_api.routes import notion_connection_store_provider
+from lintel.notion_adapter_api.store import InMemoryNotionConnectionStore
 from lintel.pipelines_api.routes import InMemoryPipelineStore, pipeline_store_provider
 from lintel.policies_api.routes import policy_store_provider
 from lintel.policies_api.store import InMemoryPolicyStore
@@ -410,6 +412,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         # Jira Adapter
         "jira_connection_store": InMemoryJiraConnectionStore(),
         "jira_sync_record_store": InMemorySyncRecordStore(),
+        # Notion Adapter
+        "notion_connection_store": InMemoryNotionConnectionStore(),
     }
 
 
@@ -823,6 +827,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         # Jira Adapter: in-memory until Postgres implementation exists
         "jira_connection_store": InMemoryJiraConnectionStore(),
         "jira_sync_record_store": InMemorySyncRecordStore(),
+        # Notion Adapter: in-memory until Postgres implementation exists
+        "notion_connection_store": InMemoryNotionConnectionStore(),
     }
 
 
@@ -943,6 +949,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     jira_connection_store_provider.override(stores["jira_connection_store"])
     sync_record_store_provider.override(stores["jira_sync_record_store"])
     jira_work_item_store_provider.override(stores["work_item_store"])
+    notion_connection_store_provider.override(stores["notion_connection_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401

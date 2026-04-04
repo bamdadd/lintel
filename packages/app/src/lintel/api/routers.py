@@ -53,6 +53,7 @@ from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
 from lintel.notifications_api.routes import router as notifications_router
+from lintel.notion_adapter_api.routes import router as notion_adapter_router
 from lintel.pipelines_api.routes import router as pipelines_router
 from lintel.policies_api.routes import router as policies_router
 from lintel.privacy_controls_api.routes import router as privacy_controls_router
@@ -183,5 +184,6 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])
     app.include_router(github_app_router, prefix="/api/v1", tags=["github-app"])
     app.include_router(jira_adapter_router, prefix="/api/v1", tags=["jira-adapter"])
+    app.include_router(notion_adapter_router, prefix="/api/v1", tags=["notion-adapter"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
