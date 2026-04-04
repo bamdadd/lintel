@@ -1,20 +1,26 @@
 """Release notes CRUD endpoints."""
 
+from __future__ import annotations
+
 from dataclasses import asdict
 from datetime import UTC, datetime
-from typing import Any
+import re
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from lintel.api_support.provider import StoreProvider
-from lintel.release_notes_api.store import InMemoryReleaseNoteStore
 from lintel.release_notes_api.types import ReleaseEntry, ReleaseNote
+
+if TYPE_CHECKING:
+    from lintel.release_notes_api.store import InMemoryReleaseNoteStore
 
 router = APIRouter()
 
 release_note_store_provider: StoreProvider[InMemoryReleaseNoteStore] = StoreProvider()
+repo_provider_provider: StoreProvider[Any] = StoreProvider()
 
 
 class ReleaseEntryRequest(BaseModel):
@@ -136,3 +142,76 @@ async def delete_release_note(
     if note is None:
         raise HTTPException(status_code=404, detail="Release note not found")
     await store.remove(note_id)
+
+
+# ---------------------------------------------------------------------------
+# Generate release notes from merged PRs
+# ---------------------------------------------------------------------------
+
+_CATEGORY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    ("feature", re.compile(r"^feat[\(:]", re.IGNORECASE)),
+    ("bugfix", re.compile(r"^fix[\(:]", re.IGNORECASE)),
+    ("chore", re.compile(r"^chore[\(:]", re.IGNORECASE)),
+    ("docs", re.compile(r"^docs[\(:]", re.IGNORECASE)),
+    ("refactor", re.compile(r"^refactor[\(:]", re.IGNORECASE)),
+    ("test", re.compile(r"^test[\(:]", re.IGNORECASE)),
+    ("ci", re.compile(r"^ci[\(:]", re.IGNORECASE)),
+    ("perf", re.compile(r"^perf[\(:]", re.IGNORECASE)),
+]
+
+
+def _categorise_pr(title: str) -> str:
+    for category, pattern in _CATEGORY_PATTERNS:
+        if pattern.search(title):
+            return category
+    return "other"
+
+
+class GenerateReleaseNoteRequest(BaseModel):
+    project_id: str
+    repo_url: str
+    version: str
+    title: str | None = None
+    limit: int = Field(default=50, ge=1, le=200)
+
+
+@router.post("/release-notes/generate", status_code=201)
+async def generate_release_note(
+    body: GenerateReleaseNoteRequest,
+    store: InMemoryReleaseNoteStore = Depends(release_note_store_provider),  # noqa: B008
+    provider: Any = Depends(repo_provider_provider),  # noqa: B008, ANN401
+) -> dict[str, Any]:
+    prs: list[dict[str, Any]] = await provider.list_pull_requests(
+        body.repo_url, state="closed", limit=body.limit
+    )
+    if not prs:
+        raise HTTPException(status_code=422, detail="No closed PRs found for repository")
+
+    entries = tuple(
+        ReleaseEntry(
+            pr_number=pr["number"],
+            title=pr["title"],
+            category=_categorise_pr(pr["title"]),
+            description=pr["title"],
+        )
+        for pr in prs
+    )
+
+    categories = {e.category for e in entries}
+    summary_parts: list[str] = []
+    for cat in sorted(categories):
+        count = sum(1 for e in entries if e.category == cat)
+        summary_parts.append(f"{count} {cat}")
+    summary = ", ".join(summary_parts)
+
+    note = ReleaseNote(
+        id=str(uuid4()),
+        project_id=body.project_id,
+        version=body.version,
+        title=body.title or f"Release {body.version}",
+        summary=summary,
+        entries=entries,
+        generated_at=datetime.now(UTC).isoformat(),
+    )
+    await store.add(note)
+    return _note_to_dict(note)
