@@ -63,6 +63,8 @@ from lintel.channel_connections_api.routes import connection_store_provider
 from lintel.channel_connections_api.store import InMemoryChannelConnectionStore
 from lintel.chat_api.routes import ChatStore, chat_store_provider
 from lintel.chat_api.streaming import chat_stream_store_provider
+from lintel.cloud_environments_api.routes import cloud_environment_store_provider
+from lintel.cloud_environments_api.store import InMemoryCloudEnvironmentStore
 from lintel.codebase_index_api.routes import index_store_provider as codebase_index_store_provider
 from lintel.codebase_index_api.store import InMemoryCodebaseIndexStore
 from lintel.coding_rules_api.routes import coding_rule_store_provider, violation_store_provider
@@ -340,6 +342,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "work_item_store": WorkItemStore(),
         "pipeline_store": InMemoryPipelineStore(),
         "environment_store": InMemoryEnvironmentStore(),
+        "cloud_environment_store": InMemoryCloudEnvironmentStore(),
         "trigger_store": InMemoryTriggerStore(),
         "automation_store": InMemoryAutomationStore(),
         "variable_store": InMemoryVariableStore(),
@@ -921,6 +924,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     policy_store_provider.override(stores["policy_store"])
     notification_rule_store_provider.override(stores["notification_rule_store"])
     environment_store_provider.override(stores["environment_store"])
+    cloud_environment_store_provider.override(stores["cloud_environment_store"])
     variable_store_provider.override(stores["variable_store"])
     credential_store_provider.override(stores["credential_store"])
     audit_entry_store_provider.override(stores["audit_entry_store"])
