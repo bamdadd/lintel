@@ -77,6 +77,7 @@ from lintel.settings_api.channels_router import router as channels_settings_rout
 from lintel.settings_api.routes import router as settings_router
 from lintel.skills_api.routes import router as skills_router
 from lintel.slack_notifications_api.routes import router as slack_notifications_router
+from lintel.slack_review_api.routes import router as slack_review_router
 from lintel.slack_workflows_api.routes import router as slack_workflows_router
 from lintel.stage_catalogue_api.routes import router as stage_catalogue_router
 from lintel.teams.routes import router as teams_router
@@ -173,6 +174,7 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["slack-notifications"],
     )
+    app.include_router(slack_review_router, prefix="/api/v1", tags=["slack-review"])
     app.include_router(slack_workflows_router, prefix="/api/v1", tags=["slack-workflows"])
     app.include_router(coding_rules_router, prefix="/api/v1", tags=["coding-rules"])
     app.include_router(sandbox_pool_router, prefix="/api/v1", tags=["sandbox-pool"])
