@@ -75,6 +75,7 @@ from lintel.mcp_servers_api.routes import router as mcp_servers_router
 from lintel.memory_api.routes import router as memory_router
 from lintel.models_api.routes import router as models_router
 from lintel.multi_slack_bot_api.routes import router as multi_slack_bot_router
+from lintel.multi_telegram_bot_api.routes import router as multi_telegram_bot_router
 from lintel.multi_tenancy_api.routes import router as multi_tenancy_router
 from lintel.multiplayer_sessions_api.routes import router as multiplayer_sessions_router
 from lintel.notifications_api.routes import router as notifications_router
@@ -256,6 +257,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(web_ide_router, prefix="/api/v1", tags=["web-ide"])
     app.include_router(encryption_router, prefix="/api/v1", tags=["encryption"])
     app.include_router(multi_slack_bot_router, prefix="/api/v1", tags=["slack-bots"])
+    app.include_router(multi_telegram_bot_router, prefix="/api/v1", tags=["telegram-bots"])
     app.include_router(multi_tenancy_router, prefix="/api/v1", tags=["multi-tenancy"])
     app.include_router(incidents_router, prefix="/api/v1", tags=["incidents"])
     app.include_router(

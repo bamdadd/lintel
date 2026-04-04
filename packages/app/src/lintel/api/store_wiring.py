@@ -209,6 +209,8 @@ from lintel.models_api.routes import model_assignment_store_provider, model_stor
 from lintel.models_api.store import InMemoryModelAssignmentStore, InMemoryModelStore
 from lintel.multi_slack_bot_api.routes import slack_bot_store_provider
 from lintel.multi_slack_bot_api.store import InMemorySlackBotStore
+from lintel.multi_telegram_bot_api.routes import telegram_bot_store_provider
+from lintel.multi_telegram_bot_api.store import InMemoryTelegramBotStore
 from lintel.multi_tenancy_api.routes import workspace_store_provider
 from lintel.multi_tenancy_api.store import InMemoryWorkspaceStore
 from lintel.multiplayer_sessions_api.routes import (
@@ -538,6 +540,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "workspace_store": InMemoryWorkspaceStore(),
         # Multi-Slack-bot
         "slack_bot_store": InMemorySlackBotStore(),
+        # Multi-Telegram-bot
+        "telegram_bot_store": InMemoryTelegramBotStore(),
         # Incidents
         "incident_store": InMemoryIncidentStore(),
         # Proactive Triggers
@@ -1014,6 +1018,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "knowledge_graph_store": InMemoryKnowledgeGraphStore(),
         # Multi-Slack-bot: in-memory until Postgres implementation exists
         "slack_bot_store": InMemorySlackBotStore(),
+        # Multi-Telegram-bot: in-memory until Postgres implementation exists
+        "telegram_bot_store": InMemoryTelegramBotStore(),
         # Incidents: in-memory until Postgres implementation exists
         "incident_store": InMemoryIncidentStore(),
         # Proactive Triggers: in-memory until Postgres implementation exists
@@ -1181,6 +1187,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     encryption_store_provider.override(stores["encryption_store"])
     workspace_store_provider.override(stores["workspace_store"])
     slack_bot_store_provider.override(stores["slack_bot_store"])
+    telegram_bot_store_provider.override(stores["telegram_bot_store"])
     incident_store_provider.override(stores["incident_store"])
     proactive_trigger_store_provider.override(stores["proactive_trigger_store"])
     trigger_execution_store_provider.override(stores["trigger_execution_store"])
