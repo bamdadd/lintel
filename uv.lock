@@ -25,6 +25,7 @@ members = [
     "lintel-background-agents-api",
     "lintel-board-sync-api",
     "lintel-boards",
+    "lintel-bot-runtime",
     "lintel-bot-scope-api",
     "lintel-bots-api",
     "lintel-channel-adapter-registry-api",
@@ -1920,6 +1921,7 @@ dependencies = [
     { name = "lintel-background-agents-api" },
     { name = "lintel-board-sync-api" },
     { name = "lintel-boards" },
+    { name = "lintel-bot-runtime" },
     { name = "lintel-bot-scope-api" },
     { name = "lintel-bots-api" },
     { name = "lintel-channel-adapter-registry-api" },
@@ -2044,6 +2046,7 @@ requires-dist = [
     { name = "lintel-background-agents-api", editable = "packages/background-agents-api" },
     { name = "lintel-board-sync-api", editable = "packages/board-sync-api" },
     { name = "lintel-boards", editable = "packages/boards" },
+    { name = "lintel-bot-runtime", editable = "packages/bot-runtime" },
     { name = "lintel-bot-scope-api", editable = "packages/bot-scope-api" },
     { name = "lintel-bots-api", editable = "packages/bots-api" },
     { name = "lintel-channel-adapter-registry-api", editable = "packages/channel-adapter-registry-api" },
@@ -2487,6 +2490,27 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-bot-runtime"
+version = "0.1.0"
+source = { editable = "packages/bot-runtime" }
+dependencies = [
+    { name = "lintel-bots-api" },
+    { name = "lintel-channels" },
+    { name = "lintel-contracts" },
+    { name = "lintel-domain" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lintel-bots-api", editable = "packages/bots-api" },
+    { name = "lintel-channels", editable = "packages/channels" },
+    { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-domain", editable = "packages/domain" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-bot-scope-api"
 version = "0.1.0"
 source = { editable = "packages/bot-scope-api" }
@@ -2496,6 +2520,7 @@ dependencies = [
     { name = "lintel-bots-api" },
     { name = "lintel-contracts" },
     { name = "lintel-domain" },
+    { name = "lintel-multi-slack-bot-api" },
     { name = "pydantic" },
     { name = "structlog" },
 ]
@@ -2507,6 +2532,7 @@ requires-dist = [
     { name = "lintel-bots-api", editable = "packages/bots-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
+    { name = "lintel-multi-slack-bot-api", editable = "packages/multi-slack-bot-api" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "structlog", specifier = ">=24.4" },
 ]
