@@ -93,6 +93,7 @@ testpaths = [
     "packages/notion-adapter-api/tests",
     "packages/secret-rotation-api/tests",
     "packages/multi-tenancy-api/tests",
+    "packages/cloud-environments-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -175,6 +176,7 @@ mypy_path = [
     "packages/notion-adapter-api/src",
     "packages/secret-rotation-api/src",
     "packages/multi-tenancy-api/src",
+    "packages/cloud-environments-api/src",
 ]
 
 [[tool.mypy.overrides]]

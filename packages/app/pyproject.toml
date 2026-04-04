@@ -80,6 +80,7 @@ dependencies = [
     "lintel-sandbox-credentials-api",
     "lintel-improvement-api",
     "lintel-board-sync-api",
+    "lintel-cloud-environments-api",
     "lintel-github-app-api",
     "lintel-jira-adapter-api",
     "lintel-notion-adapter-api",
@@ -181,6 +182,7 @@ lintel-visual-verification-api = { workspace = true }
 lintel-sandbox-credentials-api = { workspace = true }
 lintel-improvement-api = { workspace = true }
 lintel-board-sync-api = { workspace = true }
+lintel-cloud-environments-api = { workspace = true }
 lintel-github-app-api = { workspace = true }
 lintel-jira-adapter-api = { workspace = true }
 lintel-notion-adapter-api = { workspace = true }
