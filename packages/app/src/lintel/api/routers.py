@@ -44,6 +44,7 @@ from lintel.drift_detection_api.routes import router as drift_detection_router
 from lintel.environments_api.routes import router as environments_router
 from lintel.experimentation_api.routes import router as experimentation_router
 from lintel.feedback_api.routes import router as feedback_router
+from lintel.github_app_api.routes import router as github_app_router
 from lintel.governance_api.routes import router as governance_router
 from lintel.improvement_api.routes import router as improvement_router
 from lintel.integration_patterns_api import router as integration_patterns_router
@@ -179,5 +180,6 @@ def mount_routers(app: FastAPI) -> None:
         tags=["visual-verification"],
     )
     app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])
+    app.include_router(github_app_router, prefix="/api/v1", tags=["github-app"])
     app.include_router(sub_sessions.router, prefix="/api/v1", tags=["sub-sessions"])
     app.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
