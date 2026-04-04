@@ -6,8 +6,9 @@ Steps: workspace → slack → repo → project → team → ai_model → compli
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -37,7 +38,7 @@ class StepStatus(StrEnum):
 class StepPayload(BaseModel):
     """Payload for completing or skipping an onboarding step."""
 
-    action: str = "complete"  # "complete" or "skip"
+    action: Literal["complete", "skip"] = "complete"
     data: dict[str, Any] = {}
 
 
@@ -49,10 +50,6 @@ def _get_onboarding_state(request: Request) -> dict[str, Any]:
             "steps": {s: StepStatus.pending.value for s in ONBOARDING_STEPS},
         }
     return request.app.state.onboarding  # type: ignore[no-any-return]
-
-
-def _step_index(step: str) -> int:
-    return ONBOARDING_STEPS.index(step)
 
 
 def _advance_current_step(state: dict[str, Any]) -> None:
@@ -76,13 +73,8 @@ async def _validate_workspace(data: dict[str, Any], request: Request) -> None:
 
 
 async def _validate_slack(data: dict[str, Any], request: Request) -> None:
-    # Slack connection is validated by the connections subsystem; just check presence
-    if not hasattr(request.app.state, "connections"):
-        return
-    connections = request.app.state.connections
-    has_slack = any(c.get("connection_type") == "slack" for c in connections.values())
-    if not has_slack and not data.get("oauth_code"):
-        pass  # optional — no validation needed
+    # Optional step — no strict validation. Slack is connected via the connections API.
+    pass
 
 
 async def _validate_repo(data: dict[str, Any], request: Request) -> None:
@@ -119,15 +111,15 @@ async def _validate_compliance(data: dict[str, Any], request: Request) -> None:
         raise HTTPException(status_code=422, detail="level must be one of: none, soc2, hipaa")
 
 
-_VALIDATORS: dict[str, Any] = {
+_StepValidator = Callable[[dict[str, Any], Request], Awaitable[None]]
+
+_VALIDATORS: dict[str, _StepValidator] = {
     "workspace": _validate_workspace,
     "slack": _validate_slack,
     "repo": _validate_repo,
     "project": _validate_project,
-    "team": lambda d, r: None,
     "ai_model": _validate_ai_model,
     "compliance": _validate_compliance,
-    "done": lambda d, r: None,
 }
 
 
@@ -199,9 +191,7 @@ async def complete_onboarding_step(
     # Validate step data
     validator = _VALIDATORS.get(step)
     if validator:
-        result = validator(body.data, request)
-        if hasattr(result, "__await__"):
-            await result
+        await validator(body.data, request)
 
     state["steps"][step] = StepStatus.completed.value
 
