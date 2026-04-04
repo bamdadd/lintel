@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict
 import hashlib
 import hmac
+import json
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -179,8 +180,6 @@ async def slack_bot_webhook(
     signature = request.headers.get("X-Slack-Signature", "")
 
     # Handle Slack URL verification challenge (no signature check needed)
-    import json
-
     try:
         payload = json.loads(body)
     except (json.JSONDecodeError, UnicodeDecodeError):

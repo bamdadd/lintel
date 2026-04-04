@@ -72,6 +72,7 @@ from lintel.bot_scope_api.routes import (
     slack_bot_store_provider as scope_slack_bot_store_provider,
 )
 from lintel.bot_scope_api.store import InMemoryBotScopeStore
+from lintel.bots_api.oauth_routes import oauth_slack_bot_store_provider
 from lintel.bots_api.routes import bot_store_provider
 from lintel.bots_api.store import InMemoryBotStore
 from lintel.channel_adapter_registry_api.routes import adapter_store_provider
@@ -1197,6 +1198,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     workspace_store_provider.override(stores["workspace_store"])
     slack_bot_store_provider.override(stores["slack_bot_store"])
     telegram_bot_store_provider.override(stores["telegram_bot_store"])
+    oauth_slack_bot_store_provider.override(stores["slack_bot_store"])
     incident_store_provider.override(stores["incident_store"])
     proactive_trigger_store_provider.override(stores["proactive_trigger_store"])
     trigger_execution_store_provider.override(stores["trigger_execution_store"])
