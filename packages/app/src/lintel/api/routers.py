@@ -114,6 +114,7 @@ from lintel.work_items_api.routes import router as work_items_router
 from lintel.workflow_acl_api.routes import router as workflow_acl_router
 from lintel.workflow_blueprints_api.routes import router as workflow_blueprints_router
 from lintel.workflow_definitions_api.routes import router as workflow_definitions_router
+from lintel.workflow_repo_selector_api.routes import router as workflow_repo_selector_router
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -286,4 +287,9 @@ def mount_routers(app: FastAPI) -> None:
         repo_auto_describe_router,
         prefix="/api/v1",
         tags=["repo-auto-describe"],
+    )
+    app.include_router(
+        workflow_repo_selector_router,
+        prefix="/api/v1",
+        tags=["workflow-repo-selector"],
     )

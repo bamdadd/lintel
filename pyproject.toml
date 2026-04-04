@@ -111,6 +111,7 @@ testpaths = [
     "packages/channel-message-routing-api/tests",
     "packages/repo-auto-describe-api/tests",
     "packages/cloud-providers-api/tests",
+    "packages/workflow-repo-selector-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -211,6 +212,7 @@ mypy_path = [
     "packages/channel-message-routing-api/src",
     "packages/repo-auto-describe-api/src",
     "packages/cloud-providers-api/src",
+    "packages/workflow-repo-selector-api/src",
 ]
 
 [[tool.mypy.overrides]]

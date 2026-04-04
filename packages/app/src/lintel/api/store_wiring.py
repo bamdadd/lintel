@@ -324,6 +324,12 @@ from lintel.workflow_blueprints_api.routes import blueprint_store_provider
 from lintel.workflow_blueprints_api.store import InMemoryWorkflowBlueprintStore
 from lintel.workflow_definitions_api.routes import workflow_definition_store_provider
 from lintel.workflow_definitions_api.store import InMemoryWorkflowDefinitionStore
+from lintel.workflow_repo_selector_api.routes import (
+    repo_description_store_provider as workflow_repo_selector_store_provider,
+)
+from lintel.workflow_repo_selector_api.store import (
+    InMemoryRepoDescriptionStore as InMemoryWorkflowRepoSelectorStore,
+)
 
 
 def _dc_to_dict(obj: Any) -> dict[str, Any]:  # noqa: ANN401
@@ -548,6 +554,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "repo_auto_describe_store": InMemoryAutoDescStore(),
         # Cloud Providers
         "cloud_provider_store": InMemoryCloudProviderStore(),
+        # Workflow Repo Selector
+        "workflow_repo_selector_store": InMemoryWorkflowRepoSelectorStore(),
     }
 
 
@@ -1009,6 +1017,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "repo_auto_describe_store": InMemoryAutoDescStore(),
         # Cloud Providers: in-memory until Postgres implementation exists
         "cloud_provider_store": InMemoryCloudProviderStore(),
+        # Workflow Repo Selector: in-memory until Postgres implementation exists
+        "workflow_repo_selector_store": InMemoryWorkflowRepoSelectorStore(),
     }
 
 
@@ -1166,6 +1176,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     repo_description_store_provider.override(stores["repo_description_store"])
     repo_auto_desc_store_provider.override(stores["repo_auto_describe_store"])
     cloud_provider_store_provider.override(stores["cloud_provider_store"])
+    workflow_repo_selector_store_provider.override(stores["workflow_repo_selector_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
