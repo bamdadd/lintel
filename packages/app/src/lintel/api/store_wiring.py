@@ -239,6 +239,12 @@ from lintel.release_notes_api.routes import (
     repo_provider_provider as release_notes_repo_provider,
 )
 from lintel.release_notes_api.store import InMemoryReleaseNoteStore
+from lintel.repo_auto_describe_api.routes import (
+    repo_description_store_provider as repo_auto_desc_store_provider,
+)
+from lintel.repo_auto_describe_api.store import (
+    InMemoryRepoDescriptionStore as InMemoryAutoDescStore,
+)
 from lintel.repo_description_api.routes import repo_description_store_provider
 from lintel.repo_description_api.store import InMemoryRepoDescriptionStore
 from lintel.repos.repository_store import InMemoryRepositoryStore
@@ -536,6 +542,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "repo_description_store": InMemoryRepoDescriptionStore(),
         # Channel Message Routing
         "routing_rule_store": InMemoryRoutingRuleStore(),
+        # Repo Auto-Describe
+        "repo_auto_describe_store": InMemoryAutoDescStore(),
     }
 
 
@@ -993,6 +1001,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "repo_description_store": InMemoryRepoDescriptionStore(),
         # Channel Message Routing: in-memory until Postgres implementation exists
         "routing_rule_store": InMemoryRoutingRuleStore(),
+        # Repo Auto-Describe: in-memory until Postgres implementation exists
+        "repo_auto_describe_store": InMemoryAutoDescStore(),
     }
 
 
@@ -1148,6 +1158,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     knowledge_graph_store_provider.override(stores["knowledge_graph_store"])
     diagnostic_store_provider.override(stores["pipeline_diagnostic_store"])
     repo_description_store_provider.override(stores["repo_description_store"])
+    repo_auto_desc_store_provider.override(stores["repo_auto_describe_store"])
 
 
 def wire_memory_service(memory_service: Any) -> None:  # noqa: ANN401
