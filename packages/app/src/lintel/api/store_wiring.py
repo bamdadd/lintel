@@ -81,7 +81,16 @@ from lintel.cve_remediation_api.store import (
     InMemoryRemediationPlanStore,
     InMemoryRemediationResultStore,
 )
-from lintel.digest_api.routes import digest_config_store_provider, digest_store_provider
+from lintel.digest_api.routes import (
+    digest_config_store_provider,
+    digest_store_provider,
+)
+from lintel.digest_api.routes import (
+    pipeline_store_provider as digest_pipeline_store_provider,
+)
+from lintel.digest_api.routes import (
+    work_item_store_provider as digest_work_item_store_provider,
+)
 from lintel.digest_api.store import InMemoryDigestConfigStore, InMemoryDigestStore
 from lintel.drift_detection_api.routes import (
     drift_alert_store_provider,
@@ -779,6 +788,8 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     """Wire all StoreProvider instances with their backing stores."""
     digest_store_provider.override(stores["digest_store"])
     digest_config_store_provider.override(stores["digest_config_store"])
+    digest_work_item_store_provider.override(stores["work_item_store"])
+    digest_pipeline_store_provider.override(stores["pipeline_store"])
     user_store_provider.override(stores["user_store"])
     release_note_store_provider.override(stores["release_note_store"])
     release_notes_repo_provider.override(repo_provider)
