@@ -48,6 +48,7 @@ from lintel.coding_rules_api.routes import router as coding_rules_router
 from lintel.compliance_api.routes import router as compliance_router
 from lintel.context_attachments_api.routes import router as context_attachments_router
 from lintel.credentials_api.routes import router as credentials_router
+from lintel.cross_repo_agent_api.routes import router as cross_repo_agent_router
 from lintel.cve_remediation_api.routes import router as cve_remediation_router
 from lintel.data_retention_api.routes import router as data_retention_router
 from lintel.digest_api.routes import router as digest_router
@@ -218,6 +219,7 @@ def mount_routers(app: FastAPI) -> None:
         prefix="/api/v1",
         tags=["visual-verification"],
     )
+    app.include_router(cross_repo_agent_router, prefix="/api/v1", tags=["cross-repo"])
     app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])
     app.include_router(data_retention_router, prefix="/api/v1", tags=["data-retention"])
     app.include_router(

@@ -94,6 +94,8 @@ from lintel.context_attachments_api.routes import attachment_store_provider
 from lintel.context_attachments_api.store import InMemoryAttachmentStore
 from lintel.credentials_api.routes import credential_store_provider
 from lintel.credentials_api.store import InMemoryCredentialStore
+from lintel.cross_repo_agent_api.routes import cross_repo_plan_store_provider
+from lintel.cross_repo_agent_api.store import InMemoryCrossRepoPlanStore
 from lintel.cve_remediation_api.routes import (
     advisory_store_provider,
     plan_store_provider,
@@ -503,6 +505,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "trigger_execution_store": InMemoryTriggerExecutionStore(),
         # Agent Metrics
         "agent_metrics_store": InMemoryAgentMetricsStore(),
+        # Cross-Repo Agent
+        "cross_repo_plan_store": InMemoryCrossRepoPlanStore(),
     }
 
 
@@ -1079,6 +1083,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     expiry_tracker_provider.override(stores["expiry_tracker"])
     agent_metrics_store_provider.override(stores["agent_metrics_store"])
     bot_scope_store_provider.override(stores["bot_scope_store"])
+    cross_repo_plan_store_provider.override(stores["cross_repo_plan_store"])
     # Wire httpx client for GitHub App API calls
     import httpx
 
