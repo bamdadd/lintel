@@ -92,6 +92,8 @@ from lintel.cve_remediation_api.store import (
     InMemoryRemediationPlanStore,
     InMemoryRemediationResultStore,
 )
+from lintel.data_retention_api.routes import retention_policy_store_provider
+from lintel.data_retention_api.store import InMemoryRetentionPolicyStore
 from lintel.digest_api.routes import (
     digest_config_store_provider,
     digest_store_provider,
@@ -424,6 +426,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "notion_connection_store": InMemoryNotionConnectionStore(),
         # Web IDE sessions
         "ide_session_store": InMemoryIDESessionStore(),
+        # Data Retention
+        "retention_policy_store": InMemoryRetentionPolicyStore(),
     }
 
 
@@ -843,6 +847,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "background_session_store": InMemoryBackgroundSessionStore(),
         # Web IDE sessions: in-memory until Postgres implementation exists
         "ide_session_store": InMemoryIDESessionStore(),
+        # Data Retention: in-memory until Postgres implementation exists
+        "retention_policy_store": InMemoryRetentionPolicyStore(),
     }
 
 
@@ -958,6 +964,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     board_sync_config_store_provider.override(stores["board_sync_config_store"])
     board_sync_mapping_store_provider.override(stores["external_id_mapping_store"])
     github_installation_store_provider.override(stores["github_app_installation_store"])
+    retention_policy_store_provider.override(stores["retention_policy_store"])
     # Wire httpx client for GitHub App API calls
     import httpx
 
