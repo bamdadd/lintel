@@ -13,6 +13,7 @@ from lintel.bot_scope_api.types import (
 if TYPE_CHECKING:
     from lintel.bot_scope_api.store import InMemoryBotScopeStore
     from lintel.bots_api.store import InMemoryBotStore
+    from lintel.multi_slack_bot_api.store import InMemorySlackBotStore
 
 
 class BotScopeResolver:
@@ -22,21 +23,28 @@ class BotScopeResolver:
         self,
         bot_store: InMemoryBotStore,
         scope_store: InMemoryBotScopeStore,
+        slack_bot_store: InMemorySlackBotStore | None = None,
     ) -> None:
         self._bot_store = bot_store
         self._scope_store = scope_store
+        self._slack_bot_store = slack_bot_store
 
     async def resolve_bot_by_token(self, token: str) -> str | None:
         """Find the bot_id that owns the given token/credential.
 
-        Matches against the bot's ``bot_id`` field since the simple Bot
-        dataclass does not carry a separate token.  In a production system
-        this would look up a credential store.
+        Checks generic Bot store first (by bot_id), then falls back
+        to the Slack bot store (by actual bot_token).
         """
         bots = await self._bot_store.list_all()
         for bot in bots:
             if bot.bot_id == token:
                 return bot.bot_id
+
+        if self._slack_bot_store is not None:
+            slack_bot = await self._slack_bot_store.find_by_token(token)
+            if slack_bot is not None:
+                return slack_bot.bot_id
+
         return None
 
     async def check_access(

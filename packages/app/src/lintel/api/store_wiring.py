@@ -67,6 +67,9 @@ from lintel.bot_scope_api.routes import (
 from lintel.bot_scope_api.routes import (
     bot_store_provider as scope_bot_store_provider,
 )
+from lintel.bot_scope_api.routes import (
+    slack_bot_store_provider as scope_slack_bot_store_provider,
+)
 from lintel.bot_scope_api.store import InMemoryBotScopeStore
 from lintel.bots_api.routes import bot_store_provider
 from lintel.bots_api.store import InMemoryBotStore
@@ -1171,6 +1174,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     agent_metrics_store_provider.override(stores["agent_metrics_store"])
     bot_scope_store_provider.override(stores["bot_scope_store"])
     scope_bot_store_provider.override(stores["bot_store"])
+    scope_slack_bot_store_provider.override(stores["slack_bot_store"])
     cross_repo_plan_store_provider.override(stores["cross_repo_plan_store"])
     fleet_run_store_provider.override(stores["fleet_run_store"])
     routing_rule_store_provider.override(stores["routing_rule_store"])

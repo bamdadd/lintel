@@ -9,6 +9,7 @@ from lintel.bot_scope_api.store import InMemoryBotScopeStore
 from lintel.bot_scope_api.types import BotScope, ScopeResource
 from lintel.bots_api.store import InMemoryBotStore
 from lintel.domain.types import Bot
+from lintel.multi_slack_bot_api.store import InMemorySlackBotStore, SlackBot
 
 
 @pytest.fixture()
@@ -153,3 +154,62 @@ class TestResolveAndCheck:
         decision = await resolver.resolve_and_check("bot-1", project_id="proj-1")
         assert decision.allowed is False
         assert decision.bot_id == "bot-1"
+
+
+class TestSlackBotTokenResolution:
+    async def test_resolves_slack_bot_by_token(self) -> None:
+        bot_store = InMemoryBotStore()
+        scope_store = InMemoryBotScopeStore()
+        slack_bot_store = InMemorySlackBotStore()
+        await slack_bot_store.add(
+            SlackBot(bot_id="slack-1", name="Dev Bot", bot_token="xoxb-dev-token")
+        )
+        resolver = BotScopeResolver(
+            bot_store=bot_store,
+            scope_store=scope_store,
+            slack_bot_store=slack_bot_store,
+        )
+        result = await resolver.resolve_bot_by_token("xoxb-dev-token")
+        assert result == "slack-1"
+
+    async def test_generic_bot_takes_precedence(self) -> None:
+        bot_store = InMemoryBotStore()
+        scope_store = InMemoryBotScopeStore()
+        slack_bot_store = InMemorySlackBotStore()
+        await bot_store.add(Bot(bot_id="xoxb-shared", name="Generic"))
+        await slack_bot_store.add(
+            SlackBot(bot_id="slack-bot", name="Slack", bot_token="xoxb-shared")
+        )
+        resolver = BotScopeResolver(
+            bot_store=bot_store,
+            scope_store=scope_store,
+            slack_bot_store=slack_bot_store,
+        )
+        # Generic bot store matched by bot_id first
+        result = await resolver.resolve_bot_by_token("xoxb-shared")
+        assert result == "xoxb-shared"
+
+    async def test_slack_bot_fallback_when_no_generic_match(self) -> None:
+        bot_store = InMemoryBotStore()
+        scope_store = InMemoryBotScopeStore()
+        slack_bot_store = InMemorySlackBotStore()
+        await bot_store.add(Bot(bot_id="other-bot", name="Other"))
+        await slack_bot_store.add(SlackBot(bot_id="sb-1", name="SB", bot_token="xoxb-only-slack"))
+        resolver = BotScopeResolver(
+            bot_store=bot_store,
+            scope_store=scope_store,
+            slack_bot_store=slack_bot_store,
+        )
+        result = await resolver.resolve_bot_by_token("xoxb-only-slack")
+        assert result == "sb-1"
+
+    async def test_no_slack_store_still_works(self) -> None:
+        bot_store = InMemoryBotStore()
+        scope_store = InMemoryBotScopeStore()
+        resolver = BotScopeResolver(
+            bot_store=bot_store,
+            scope_store=scope_store,
+            slack_bot_store=None,
+        )
+        result = await resolver.resolve_bot_by_token("nope")
+        assert result is None
