@@ -100,6 +100,7 @@ testpaths = [
     "packages/cloud-environments-api/tests",
     "packages/agent-metrics-api/tests",
     "packages/bot-scope-api/tests",
+    "packages/bots-api/tests",
     "tests",
 ]
 norecursedirs = ["tests/fixtures"]
@@ -189,6 +190,7 @@ mypy_path = [
     "packages/cloud-environments-api/src",
     "packages/agent-metrics-api/src",
     "packages/bot-scope-api/src",
+    "packages/bots-api/src",
 ]
 
 [[tool.mypy.overrides]]

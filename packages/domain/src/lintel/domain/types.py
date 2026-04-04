@@ -1474,3 +1474,28 @@ class TechSpec:
     status: TechSpecStatus = TechSpecStatus.DRAFT
     created_at: str = ""
     updated_at: str = ""
+
+
+# --- Bot ---
+
+
+class BotPlatform(StrEnum):
+    SLACK = "slack"
+    TELEGRAM = "telegram"
+    DISCORD = "discord"
+    CUSTOM = "custom"
+
+
+class BotStatus(StrEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+
+
+@dataclass(frozen=True)
+class Bot:
+    bot_id: str
+    name: str
+    platform: BotPlatform = BotPlatform.CUSTOM
+    scopes: tuple[str, ...] = ()
+    status: BotStatus = BotStatus.ACTIVE

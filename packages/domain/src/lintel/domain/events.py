@@ -1350,6 +1350,24 @@ class RetentionRunCompleted(EventEnvelope):
     event_type: str = "RetentionRunCompleted"
 
 
+# --- Bot Events ---
+
+
+@dataclass(frozen=True)
+class BotCreated(EventEnvelope):
+    event_type: str = "BotCreated"
+
+
+@dataclass(frozen=True)
+class BotUpdated(EventEnvelope):
+    event_type: str = "BotUpdated"
+
+
+@dataclass(frozen=True)
+class BotRemoved(EventEnvelope):
+    event_type: str = "BotRemoved"
+
+
 register_events(
     ProjectCreated,
     ProjectUpdated,
@@ -1580,4 +1598,7 @@ register_events(
     RetentionPolicyCreated,
     RetentionPolicyRemoved,
     RetentionRunCompleted,
+    BotCreated,
+    BotUpdated,
+    BotRemoved,
 )

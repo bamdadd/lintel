@@ -35,6 +35,7 @@ from lintel.background_agents_api.routes import router as background_agents_rout
 from lintel.board_sync_api.routes import router as board_sync_router
 from lintel.boards.routes import router as boards_router
 from lintel.bot_scope_api.routes import router as bot_scope_router
+from lintel.bots_api.routes import router as bots_router
 from lintel.channel_adapter_registry_api.routes import (
     router as channel_adapter_registry_router,
 )
@@ -150,6 +151,7 @@ def mount_routers(app: FastAPI) -> None:
     app.include_router(onboarding.router, prefix="/api/v1", tags=["onboarding"])
     app.include_router(org_security_router, prefix="/api/v1", tags=["org-security"])
     app.include_router(boards_router, prefix="/api/v1", tags=["boards"])
+    app.include_router(bots_router, prefix="/api/v1", tags=["bots"])
     app.include_router(board_sync_router, prefix="/api/v1", tags=["board-sync"])
     app.include_router(cloud_environments_router, prefix="/api/v1", tags=["cloud-environments"])
     app.include_router(compliance_router, prefix="/api/v1", tags=["compliance"])

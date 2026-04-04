@@ -63,6 +63,8 @@ from lintel.boards.routes import board_store_provider, tag_store_provider
 from lintel.boards.store import BoardStore, TagStore
 from lintel.bot_scope_api.routes import bot_scope_store_provider
 from lintel.bot_scope_api.store import InMemoryBotScopeStore
+from lintel.bots_api.routes import bot_store_provider
+from lintel.bots_api.store import InMemoryBotStore
 from lintel.channel_adapter_registry_api.routes import adapter_store_provider
 from lintel.channel_adapter_registry_api.store import InMemoryChannelAdapterStore
 from lintel.channel_connections_api.routes import connection_store_provider
@@ -368,6 +370,7 @@ def create_in_memory_stores() -> dict[str, Any]:
         "digest_store": InMemoryDigestStore(),
         "digest_config_store": InMemoryDigestConfigStore(),
         "user_store": InMemoryUserStore(),
+        "bot_store": InMemoryBotStore(),
         "release_note_store": InMemoryReleaseNoteStore(),
         "team_store": InMemoryTeamStore(),
         "policy_store": InMemoryPolicyStore(),
@@ -956,6 +959,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     digest_work_item_store_provider.override(stores["work_item_store"])
     digest_pipeline_store_provider.override(stores["pipeline_store"])
     user_store_provider.override(stores["user_store"])
+    bot_store_provider.override(stores["bot_store"])
     release_note_store_provider.override(stores["release_note_store"])
     release_notes_repo_provider.override(repo_provider)
     team_store_provider.override(stores["team_store"])
