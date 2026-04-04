@@ -40,6 +40,13 @@ class WorkflowQueued(EventEnvelope):
     event_type: str = "WorkflowQueued"
 
 
+@dataclass(frozen=True)
+class ChangeRequestTriggered(EventEnvelope):
+    """A user requested changes on a completed workflow via Slack thread reply."""
+
+    event_type: str = "ChangeRequestTriggered"
+
+
 # --- Pipeline Events ---
 
 
@@ -183,5 +190,6 @@ register_events(
     HumanInterruptResumed,
     HumanInterruptTimedOut,
     GuardrailApprovalRequested,
+    ChangeRequestTriggered,
     WorkflowQueued,
 )

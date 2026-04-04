@@ -3388,6 +3388,7 @@ source = { editable = "packages/settings-api" }
 dependencies = [
     { name = "fastapi" },
     { name = "lintel-api-support" },
+    { name = "lintel-channel-connections-api" },
     { name = "lintel-contracts" },
     { name = "lintel-domain" },
     { name = "lintel-persistence" },
@@ -3399,6 +3400,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "lintel-channel-connections-api", editable = "packages/channel-connections-api" },
     { name = "lintel-contracts", editable = "packages/contracts" },
     { name = "lintel-domain", editable = "packages/domain" },
     { name = "lintel-persistence", editable = "packages/persistence" },

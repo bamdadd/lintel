@@ -1201,4 +1201,78 @@ DEFAULT_WORKFLOW_DEFINITIONS: tuple[WorkflowDefinitionRecord, ...] = (
         tags=("compliance", "regulation", "policy-generation"),
         is_builtin=True,
     ),
+    WorkflowDefinitionRecord(
+        definition_id="change_request",
+        name="Change Request",
+        description=(
+            "Re-implement loop from Slack feedback: setup workspace on existing branch, "
+            "apply user-requested changes, review, and push to the same PR."
+        ),
+        is_template=False,
+        stage_names=(
+            "setup_workspace",
+            "implement",
+            "review",
+            "raise_pr",
+        ),
+        graph_nodes=(
+            "setup_workspace",
+            "implement",
+            "review",
+            "close",
+        ),
+        graph_edges=(("setup_workspace", "implement"),),
+        conditional_edges=(
+            {
+                "source": "implement",
+                "targets": {"continue": "review", "close": "close"},
+            },
+            {
+                "source": "review",
+                "targets": {"close": "close", "revise": "implement"},
+            },
+        ),
+        entry_point="setup_workspace",
+        node_metadata=(
+            {
+                "node": "setup_workspace",
+                "label": "Setup Workspace",
+                "agent": "system",
+                "description": (
+                    "Clones the repository and checks out the existing feature branch."
+                ),
+            },
+            {
+                "node": "implement",
+                "label": "Implement Changes",
+                "agent": "coder",
+                "agent_id": "agent_coder",
+                "description": (
+                    "Applies the user's requested changes on the existing feature branch."
+                ),
+            },
+            {
+                "node": "review",
+                "label": "Review",
+                "agent": "reviewer",
+                "agent_id": "agent_reviewer",
+                "description": "Reviews the change request diff for correctness and quality.",
+            },
+            {
+                "node": "close",
+                "label": "Push & Update PR",
+                "agent": "system",
+                "description": (
+                    "Commits changes, pushes to the existing feature branch, "
+                    "and updates the pull request."
+                ),
+            },
+        ),
+        step_configs=(
+            WorkflowStepConfig(node_name="implement", retry_policy=RetryPolicy()),
+            WorkflowStepConfig(node_name="review", retry_policy=RetryPolicy()),
+        ),
+        tags=("change-request", "iteration"),
+        is_builtin=True,
+    ),
 )
