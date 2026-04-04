@@ -6,6 +6,7 @@ dependencies = [
     "lintel-contracts",
     "lintel-domain",
     "lintel-api-support",
+    "lintel-multi-slack-bot-api",
     "fastapi>=0.115",
     "pydantic>=2.10",
     "structlog>=24.4",
@@ -15,6 +16,7 @@ dependencies = [
 lintel-contracts = { workspace = true }
 lintel-domain = { workspace = true }
 lintel-api-support = { workspace = true }
+lintel-multi-slack-bot-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
