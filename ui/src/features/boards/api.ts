@@ -48,14 +48,13 @@ interface SingleResponse<T> {
 
 export function useBoardsListBoards(projectId?: string) {
   return useQuery({
-    queryKey: ['/api/v1/boards', projectId],
+    queryKey: ['/api/v1/boards', projectId ?? 'all'],
     queryFn: () =>
       customInstance<ListResponse<Board>>(
         projectId
           ? `/api/v1/projects/${projectId}/boards`
-          : '/api/v1/projects/_/boards',
+          : '/api/v1/boards',
       ),
-    enabled: !!projectId,
   });
 }
 

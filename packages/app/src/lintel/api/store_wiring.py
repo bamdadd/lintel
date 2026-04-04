@@ -810,6 +810,10 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
                 return None
             return _dc_to_dict(result)
 
+        async def list_all(self) -> list[dict[str, Any]]:
+            items = await self._pg.list_all()
+            return [_dc_to_dict(i) for i in items]
+
         async def list_by_project(self, project_id: str) -> list[dict[str, Any]]:
             items = await self._pg.list_by_project(project_id)
             return [_dc_to_dict(i) for i in items]

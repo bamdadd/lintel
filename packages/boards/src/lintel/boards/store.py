@@ -44,6 +44,9 @@ class BoardStore:
     async def get(self, board_id: str) -> dict[str, Any] | None:
         return self._data.get(board_id)
 
+    async def list_all(self) -> list[dict[str, Any]]:
+        return list(self._data.values())
+
     async def list_by_project(self, project_id: str) -> list[dict[str, Any]]:
         return [b for b in self._data.values() if b.get("project_id") == project_id]
 

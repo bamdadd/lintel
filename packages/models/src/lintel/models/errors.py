@@ -24,3 +24,13 @@ class ClaudeCodeCredentialError(Exception):
         super().__init__(messages.get(status, f"Claude Code credential error: {status}"))
         self.status = status
         self.user_id = user_id
+
+
+class ClaudeCodeRateLimitError(Exception):
+    """Raised when Claude Code hits its usage rate limit."""
+
+    def __init__(self, detail: str = "") -> None:
+        msg = "Claude Code rate limit reached."
+        if detail:
+            msg += f" {detail}"
+        super().__init__(msg)

@@ -18,9 +18,8 @@ interface ProjectItem {
 export function Component() {
   const { data: projectsResp } = useProjectsListProjects();
   const projects = (projectsResp?.data ?? []) as unknown as ProjectItem[];
-  const firstProjectId = projects[0]?.project_id;
 
-  const { data: resp, isLoading } = useBoardsListBoards(firstProjectId);
+  const { data: resp, isLoading } = useBoardsListBoards();
   const navigate = useNavigate();
   const [createOpened, { open: openCreate, close: closeCreate }] = useDisclosure(false);
   const qc = useQueryClient();
