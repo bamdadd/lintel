@@ -13,6 +13,29 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+async def _resolve_adapter_for_bot(request: Request, bot_id: str) -> object:
+    """Resolve TelegramChannelAdapter for a registered bot.
+
+    Looks up the bot in the multi-telegram-bot store and creates an adapter
+    instance using its stored token and webhook secret.
+    """
+    from lintel.multi_telegram_bot_api.routes import telegram_bot_store_provider
+
+    store = telegram_bot_store_provider.get()
+    bot = await store.get(bot_id)
+    if bot is None:
+        raise HTTPException(status_code=404, detail=f"Telegram bot {bot_id} not found")
+    if not bot.enabled:
+        raise HTTPException(status_code=403, detail=f"Telegram bot {bot_id} is disabled")
+
+    from lintel.telegram.adapter import TelegramChannelAdapter
+
+    return TelegramChannelAdapter(
+        bot_token=bot.bot_token,
+        webhook_secret=bot.webhook_secret,
+    )
+
+
 async def _dispatch_inbound_message(
     request: Request,
     inbound: object,
@@ -172,5 +195,89 @@ async def telegram_webhook(
         await _dispatch_inbound_message(request, inbound, adapter)
     except Exception:
         logger.exception("telegram.dispatch_failed", chat_id=inbound.channel_id)
+
+    return {"ok": True}
+
+
+@router.post("/channels/telegram/webhook/{bot_id}")
+async def telegram_bot_webhook(
+    request: Request,
+    bot_id: str,
+    x_telegram_bot_api_secret_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Handle incoming Telegram webhook updates for a specific registered bot.
+
+    Each bot registers its own webhook URL at
+    ``/api/v1/channels/telegram/webhook/{bot_id}``.
+    The adapter is resolved from the multi-telegram-bot store.
+    """
+    adapter = await _resolve_adapter_for_bot(request, bot_id)
+
+    # Verify webhook secret
+    expected_secret = adapter.webhook_secret
+    if expected_secret and x_telegram_bot_api_secret_token != expected_secret:
+        logger.warning("telegram.webhook.invalid_secret", bot_id=bot_id)
+        raise HTTPException(status_code=403, detail="Invalid secret token")
+
+    try:
+        update: dict[str, Any] = await request.json()
+    except Exception:
+        raise HTTPException(status_code=422, detail="Invalid JSON body")  # noqa: B904
+
+    # Handle callback queries (approval responses)
+    from lintel.telegram.translator import translate_callback_query
+
+    callback_result = translate_callback_query(update)
+    if callback_result is not None:
+        callback_data, callback_query = callback_result
+
+        from lintel.telegram.keyboards import parse_callback_data
+
+        try:
+            action, approval_request_id = parse_callback_data(callback_data)
+        except ValueError:
+            logger.warning("telegram.callback.invalid_data", data=callback_data, bot_id=bot_id)
+            return {"ok": True}
+
+        callback_query_id = callback_query.get("id", "")
+        if callback_query_id:
+            try:
+                await adapter.answer_callback_query(callback_query_id, text=f"Decision: {action}")
+            except Exception:
+                logger.exception(
+                    "telegram.answer_callback_failed",
+                    callback_query_id=callback_query_id,
+                    bot_id=bot_id,
+                )
+
+        logger.info(
+            "telegram.approval_callback",
+            action=action,
+            approval_request_id=approval_request_id,
+            bot_id=bot_id,
+        )
+        return {"ok": True}
+
+    # Handle regular messages
+    from lintel.telegram.translator import translate_message_update
+
+    bot_username = adapter.bot_username
+    inbound = translate_message_update(update, bot_username=bot_username)
+    if inbound is None:
+        return {"ok": True}
+
+    logger.info(
+        "telegram.message.received",
+        chat_id=inbound.channel_id,
+        thread_id=inbound.thread_id,
+        sender_id=inbound.sender_id,
+        bot_id=bot_id,
+        text=inbound.text[:100],
+    )
+
+    try:
+        await _dispatch_inbound_message(request, inbound, adapter)
+    except Exception:
+        logger.exception("telegram.dispatch_failed", chat_id=inbound.channel_id, bot_id=bot_id)
 
     return {"ok": True}

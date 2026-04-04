@@ -74,6 +74,7 @@ members = [
     "lintel-models",
     "lintel-models-api",
     "lintel-multi-slack-bot-api",
+    "lintel-multi-telegram-bot-api",
     "lintel-multi-tenancy-api",
     "lintel-multiplayer-sessions-api",
     "lintel-notifications-api",
@@ -1965,6 +1966,7 @@ dependencies = [
     { name = "lintel-models" },
     { name = "lintel-models-api" },
     { name = "lintel-multi-slack-bot-api" },
+    { name = "lintel-multi-telegram-bot-api" },
     { name = "lintel-multi-tenancy-api" },
     { name = "lintel-multiplayer-sessions-api" },
     { name = "lintel-notifications-api" },
@@ -2088,6 +2090,7 @@ requires-dist = [
     { name = "lintel-models", editable = "packages/models" },
     { name = "lintel-models-api", editable = "packages/models-api" },
     { name = "lintel-multi-slack-bot-api", editable = "packages/multi-slack-bot-api" },
+    { name = "lintel-multi-telegram-bot-api", editable = "packages/multi-telegram-bot-api" },
     { name = "lintel-multi-tenancy-api", editable = "packages/multi-tenancy-api" },
     { name = "lintel-multiplayer-sessions-api", editable = "packages/multiplayer-sessions-api" },
     { name = "lintel-notifications-api", editable = "packages/notifications-api" },
@@ -3576,6 +3579,25 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lintel-multi-telegram-bot-api"
+version = "0.1.0"
+source = { editable = "packages/multi-telegram-bot-api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "lintel-api-support" },
+    { name = "pydantic" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "lintel-api-support", editable = "packages/api-support" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
 name = "lintel-multi-tenancy-api"
 version = "0.1.0"
 source = { editable = "packages/multi-tenancy-api" }
@@ -4388,6 +4410,7 @@ dependencies = [
     { name = "httpx" },
     { name = "lintel-channels" },
     { name = "lintel-contracts" },
+    { name = "lintel-multi-telegram-bot-api" },
     { name = "structlog" },
 ]
 
@@ -4397,6 +4420,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "lintel-channels", editable = "packages/channels" },
     { name = "lintel-contracts", editable = "packages/contracts" },
+    { name = "lintel-multi-telegram-bot-api", editable = "packages/multi-telegram-bot-api" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 
