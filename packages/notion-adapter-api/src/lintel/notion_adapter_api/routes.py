@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import UTC, datetime
+import json
 from typing import Any
 from uuid import uuid4
 
@@ -16,12 +17,14 @@ from lintel.api_support.provider import StoreProvider
 from lintel.notion_adapter_api.client import NotionClient
 from lintel.notion_adapter_api.store import InMemoryNotionConnectionStore, NotionConnection
 from lintel.notion_adapter_api.sync_engine import pull_work_items, push_work_items
+from lintel.notion_adapter_api.webhook import parse_webhook_event, verify_signature
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
 notion_connection_store_provider: StoreProvider[InMemoryNotionConnectionStore] = StoreProvider()
+webhook_secret_provider: StoreProvider[str] = StoreProvider()
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -131,14 +134,93 @@ async def sync_notion(
 
 @router.post("/integrations/notion/webhook")
 async def notion_webhook(
-    body: NotionWebhookPayload,
     request: Request,
+    store: InMemoryNotionConnectionStore = Depends(notion_connection_store_provider),  # noqa: B008
 ) -> dict[str, str]:
-    """Handle incoming Notion webhook notifications."""
-    logger.info("notion_webhook_received", event_type=body.type)
+    """Handle incoming Notion webhook notifications.
+
+    Verifies the webhook signature (when a secret is configured), parses the
+    payload to identify the affected database, looks up the matching connection,
+    and triggers an incremental pull sync.
+    """
+    raw_body = await request.body()
+
+    # Signature verification — skip when no secret is configured
+    try:
+        secret: str | None = webhook_secret_provider.get()
+    except RuntimeError:
+        secret = None
+    if secret:
+        sig = request.headers.get("x-notion-signature", "")
+        if not sig or not verify_signature(raw_body, sig, secret):
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        payload: dict[str, Any] = json.loads(raw_body)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload") from exc
+
+    event = parse_webhook_event(payload)
+    event_type = event["event_type"]
+    database_id = event["database_id"]
+    page_id = event["page_id"]
+
+    logger.info(
+        "notion_webhook_received",
+        event_type=event_type,
+        page_id=page_id,
+        database_id=database_id,
+    )
+
     await dispatch_event(
         request,
-        {"type": "NotionWebhookReceived", "payload": {"event_type": body.type, **body.data}},
+        {
+            "type": "NotionWebhookReceived",
+            "payload": {
+                "event_type": event_type,
+                "page_id": page_id,
+                "database_id": database_id,
+            },
+        },
         stream_id="notion_webhook",
     )
-    return {"status": "ok"}
+
+    # Look up connection by database_id and trigger incremental pull
+    if not database_id:
+        return {"status": "ignored", "reason": "no database_id in payload"}
+
+    connection = await store.find_by_database_id(database_id)
+    if connection is None:
+        return {"status": "ignored", "reason": "no matching connection"}
+
+    async with NotionClient(api_key=connection.api_key) as client:
+        pull_result = await pull_work_items(client, connection.database_id)
+
+    # Update last_synced_at
+    updated = NotionConnection(
+        connection_id=connection.connection_id,
+        project_id=connection.project_id,
+        database_id=connection.database_id,
+        api_key=connection.api_key,
+        created_at=connection.created_at,
+        last_synced_at=datetime.now(tz=UTC).isoformat(),
+    )
+    await store.update(updated)
+
+    await dispatch_event(
+        request,
+        {
+            "type": "NotionSyncCompleted",
+            "payload": {"resource_id": connection.connection_id, "trigger": "webhook"},
+        },
+        stream_id=f"notion_connection:{connection.connection_id}",
+    )
+
+    result: dict[str, str] = {
+        "status": "synced",
+        "connection_id": connection.connection_id,
+        "pulled": str(pull_result.pulled),
+    }
+    if pull_result.errors:
+        result["errors"] = "; ".join(pull_result.errors)
+    return result
