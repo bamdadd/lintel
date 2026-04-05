@@ -498,6 +498,60 @@ class ChatService:
         )
         return None  # type: ignore[return-value]
 
+    async def handle_decompose_idea(
+        self,
+        conversation_id: str,
+        message: str,
+        model_policy: object | None = None,
+        api_base: str | None = None,
+    ) -> str:
+        """Handle the decompose_idea intent: break an idea into work items."""
+        from lintel.chat_api.decomposer import IdeaDecomposer
+
+        model_router = getattr(self._request.app.state, "model_router", None)
+        if model_router is None:
+            return (
+                "AI provider not configured. "
+                "Please set up an AI provider to use idea decomposition."
+            )
+
+        # Resolve project context
+        project, repo_url, branch = await self.resolve_project_context(conversation_id)
+        if project is None:
+            # Need project selection first
+            prompt_msg = await self.prompt_project_selection(conversation_id)
+            await self._store.update_fields(
+                conversation_id,
+                _pending_decompose={"message": message},
+            )
+            return prompt_msg
+
+        project_context = self.build_project_context(project, repo_url, branch)
+        project_id = project.get("project_id", "")
+
+        decomposer = IdeaDecomposer(model_router=model_router)
+        try:
+            items = await decomposer.decompose(
+                idea=message,
+                model_policy=model_policy,  # type: ignore[arg-type]
+                api_base=api_base,
+                project_context=project_context,
+            )
+        except Exception:
+            logger.exception("idea_decomposition_failed")
+            return "Sorry, I couldn't decompose that idea. Please try again."
+
+        if not items:
+            return IdeaDecomposer.format_reply([], 0)
+
+        work_item_store = getattr(self._request.app.state, "work_item_store", None)
+        if work_item_store is None:
+            return "Work item store is not available."
+
+        created_ids = await IdeaDecomposer.create_work_items(items, project_id, work_item_store)
+
+        return IdeaDecomposer.format_reply(items, len(created_ids))
+
     @staticmethod
     def _work_type_to_workflow(work_type: str) -> str:
         """Map work item type to workflow type."""
@@ -844,6 +898,22 @@ class ChatService:
                     role="agent",
                     content=reply,
                 )
+            return None
+
+        if result.action == "decompose_idea":
+            reply = await self.handle_decompose_idea(
+                conversation_id,
+                message,
+                model_policy=model_policy,
+                api_base=api_base,
+            )
+            await self._store.add_message(
+                conversation_id,
+                user_id="system",
+                display_name="Lintel",
+                role="agent",
+                content=reply,
+            )
             return None
 
         if result.action == "start_workflow" and len(message.split()) < 4:
