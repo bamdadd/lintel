@@ -18,6 +18,24 @@ class RepoProviderType(StrEnum):
     GITLAB = "gitlab"
 
 
+class RepoTemplate(StrEnum):
+    """Scaffold templates for new repositories."""
+
+    REACT_VITE = "react-vite"
+    PYTHON_FASTAPI = "python-fastapi"
+    MONOREPO = "monorepo"
+
+
+@dataclass(frozen=True)
+class CreateRepoResult:
+    """Result of creating a new GitHub repository."""
+
+    repo_url: str
+    default_branch: str
+    owner: str
+    name: str
+
+
 class WebhookEventKind(StrEnum):
     PUSH = "push"
     PULL_REQUEST_OPENED = "pull_request_opened"

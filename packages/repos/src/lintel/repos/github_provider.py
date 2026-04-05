@@ -9,7 +9,14 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
-    from lintel.repos.types import CheckRunConclusion, InlineComment, PRFile, ReviewVerdict
+    from lintel.repos.types import (
+        CheckRunConclusion,
+        CreateRepoResult,
+        InlineComment,
+        PRFile,
+        RepoTemplate,
+        ReviewVerdict,
+    )
 
 logger = structlog.get_logger()
 
@@ -41,6 +48,80 @@ class GitHubRepoProvider:
             msg = f"git {args[0]} failed: {stderr.decode()}"
             raise RuntimeError(msg)
         return stdout.decode().strip()
+
+    async def create_repo(
+        self,
+        owner: str,
+        name: str,
+        *,
+        private: bool = True,
+        description: str = "",
+        template: RepoTemplate | None = None,
+    ) -> CreateRepoResult:
+        """Create a new GitHub repository and optionally push scaffold template files."""
+        import tempfile
+
+        import httpx
+
+        from lintel.repos.types import CreateRepoResult
+
+        # Create the repo via GitHub API
+        url = f"{self._api_base}/orgs/{owner}/repos"
+        payload: dict[str, Any] = {
+            "name": name,
+            "private": private,
+            "auto_init": template is None,
+        }
+        if description:
+            payload["description"] = description
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, headers=self._headers(), json=payload)
+            if resp.status_code == 404:
+                # Not an org — try user endpoint
+                url = f"{self._api_base}/user/repos"
+                resp = await client.post(url, headers=self._headers(), json=payload)
+            resp.raise_for_status()
+
+        data: dict[str, Any] = resp.json()
+        repo_url: str = data["html_url"]
+        default_branch: str = data.get("default_branch", "main")
+        actual_owner: str = data.get("owner", {}).get("login", owner)
+
+        logger.info("repo_created", repo_url=repo_url, owner=actual_owner, name=name)
+
+        # Push scaffold template if requested
+        if template is not None:
+            from lintel.repos.templates import get_template_files
+
+            files = get_template_files(template, name)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                await self._run_git("init", "-b", default_branch, cwd=tmpdir)
+                await self._run_git(
+                    "remote", "add", "origin", self._inject_token(repo_url), cwd=tmpdir
+                )
+                # Write template files
+                import os
+
+                for filepath, content in files.items():
+                    full_path = os.path.join(tmpdir, filepath)
+                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                    with open(full_path, "w") as f:
+                        f.write(content)
+
+                await self._run_git("add", "-A", cwd=tmpdir)
+                await self._run_git(
+                    "commit", "-m", f"chore: bootstrap {template.value} template", cwd=tmpdir
+                )
+                await self._run_git("push", "-u", "origin", default_branch, cwd=tmpdir)
+            logger.info("template_pushed", template=template.value, repo_url=repo_url)
+
+        return CreateRepoResult(
+            repo_url=repo_url,
+            default_branch=default_branch,
+            owner=actual_owner,
+            name=name,
+        )
 
     async def clone_repo(self, repo_url: str, branch: str, target_dir: str) -> None:
         auth_url = self._inject_token(repo_url)

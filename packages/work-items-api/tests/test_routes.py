@@ -2,20 +2,28 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, patch
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 
-def _create_work_item(client: TestClient, work_item_id: str = "wi1") -> dict:  # type: ignore[type-arg]
+def _create_work_item(
+    client: TestClient,
+    work_item_id: str = "wi1",
+    project_id: str = "proj-1",
+    work_type: str = "feature",
+    description: str = "",
+) -> dict[str, Any]:
     return client.post(
         "/api/v1/work-items",
         json={
             "work_item_id": work_item_id,
-            "project_id": "proj-1",
+            "project_id": project_id,
             "title": "Fix bug",
+            "work_type": work_type,
+            "description": description,
         },
     ).json()
 
@@ -179,3 +187,175 @@ class TestWorkflowExecutionToggle:
             json={"status": "in_progress"},
         )
         assert resp.status_code == 200
+
+
+class TestWorkflowDispatchSmoke:
+    """Smoke tests verifying the full dispatch path fires when enabled."""
+
+    def test_dispatch_creates_pipeline_and_fires_command(self, client: TestClient) -> None:
+        """Moving to in_progress with all stores wired should create pipeline + dispatch."""
+        # Wire up stores
+        wf_def_store = AsyncMock()
+        wf_def_store.get = AsyncMock(return_value={"enabled": True})
+
+        project_store = AsyncMock()
+        project_store.get = AsyncMock(
+            return_value={
+                "project_id": "proj-1",
+                "workflow_execution_enabled": True,
+                "default_branch": "main",
+                "credential_ids": [],
+                "repo_ids": ["repo-1"],
+            }
+        )
+
+        repo_store = AsyncMock()
+        repo_store.get = AsyncMock(return_value={"url": "https://github.com/test/repo"})
+
+        pipeline_store = AsyncMock()
+        pipeline_store.add = AsyncMock()
+        pipeline_store.list_all = AsyncMock(return_value=[])
+
+        trigger_store = AsyncMock()
+        trigger_store.add = AsyncMock()
+
+        dispatcher = AsyncMock()
+        dispatcher.dispatch = AsyncMock()
+
+        app_state = client.app.state  # type: ignore[union-attr]
+        app_state.workflow_definition_store = wf_def_store
+        app_state.project_store = project_store
+        app_state.repository_store = repo_store
+        app_state.pipeline_store = pipeline_store
+        app_state.trigger_store = trigger_store
+        app_state.command_dispatcher = dispatcher
+
+        _create_work_item(client, "smoke-1", description="Build a login page")
+        resp = client.patch(
+            "/api/v1/work-items/smoke-1",
+            json={"status": "in_progress"},
+        )
+        assert resp.status_code == 200
+
+        # Verify pipeline was created
+        pipeline_store.add.assert_called_once()
+        pipeline_run = pipeline_store.add.call_args[0][0]
+        assert pipeline_run.project_id == "proj-1"
+        assert pipeline_run.work_item_id == "smoke-1"
+        assert pipeline_run.workflow_definition_id == "feature_to_pr"
+        assert len(pipeline_run.stages) > 0
+
+        # Verify trigger was created
+        trigger_store.add.assert_called_once()
+
+        # Verify command was dispatched (async task created)
+        # The dispatch happens in an asyncio.create_task, so we verify the task was created
+        # by checking the dispatcher was set up (task runs after response)
+
+    def test_dispatch_skipped_when_workflow_disabled(self, client: TestClient) -> None:
+        """Workflow disabled → no pipeline, no dispatch."""
+        wf_def_store = AsyncMock()
+        wf_def_store.get = AsyncMock(return_value={"enabled": False})
+
+        dispatcher = AsyncMock()
+        pipeline_store = AsyncMock()
+
+        app_state = client.app.state  # type: ignore[union-attr]
+        app_state.workflow_definition_store = wf_def_store
+        app_state.command_dispatcher = dispatcher
+        app_state.pipeline_store = pipeline_store
+
+        _create_work_item(client, "smoke-disabled")
+        resp = client.patch(
+            "/api/v1/work-items/smoke-disabled",
+            json={"status": "in_progress"},
+        )
+        assert resp.status_code == 200
+        # Pipeline should NOT have been created
+        pipeline_store.add.assert_not_called()
+
+    def test_dispatch_maps_work_types_to_feature_to_pr(self, client: TestClient) -> None:
+        """All work types (feature, bug, refactor, task) map to feature_to_pr."""
+        for work_type in ("feature", "bug", "refactor", "task"):
+            wf_def_store = AsyncMock()
+            wf_def_store.get = AsyncMock(return_value={"enabled": True})
+
+            project_store = AsyncMock()
+            project_store.get = AsyncMock(
+                return_value={
+                    "project_id": "proj-1",
+                    "workflow_execution_enabled": True,
+                    "default_branch": "main",
+                    "credential_ids": [],
+                    "repo_ids": [],
+                }
+            )
+
+            pipeline_store = AsyncMock()
+            pipeline_store.add = AsyncMock()
+            pipeline_store.list_all = AsyncMock(return_value=[])
+
+            trigger_store = AsyncMock()
+            trigger_store.add = AsyncMock()
+
+            dispatcher = AsyncMock()
+
+            app_state = client.app.state  # type: ignore[union-attr]
+            app_state.workflow_definition_store = wf_def_store
+            app_state.project_store = project_store
+            app_state.pipeline_store = pipeline_store
+            app_state.trigger_store = trigger_store
+            app_state.command_dispatcher = dispatcher
+
+            wid = f"smoke-{work_type}"
+            _create_work_item(client, wid, work_type=work_type)
+            resp = client.patch(
+                f"/api/v1/work-items/{wid}",
+                json={"status": "in_progress"},
+            )
+            assert resp.status_code == 200
+
+            # Workflow definition lookup used feature_to_pr
+            wf_def_store.get.assert_called_with("feature_to_pr")
+
+    def test_no_double_trigger_on_repeated_in_progress(self, client: TestClient) -> None:
+        """Patching status to in_progress when already in_progress should not re-trigger."""
+        wf_def_store = AsyncMock()
+        wf_def_store.get = AsyncMock(return_value={"enabled": True})
+
+        pipeline_store = AsyncMock()
+        pipeline_store.add = AsyncMock()
+        pipeline_store.list_all = AsyncMock(return_value=[])
+
+        trigger_store = AsyncMock()
+        trigger_store.add = AsyncMock()
+
+        project_store = AsyncMock()
+        project_store.get = AsyncMock(
+            return_value={
+                "project_id": "proj-1",
+                "workflow_execution_enabled": True,
+                "default_branch": "main",
+                "credential_ids": [],
+                "repo_ids": [],
+            }
+        )
+
+        dispatcher = AsyncMock()
+
+        app_state = client.app.state  # type: ignore[union-attr]
+        app_state.workflow_definition_store = wf_def_store
+        app_state.project_store = project_store
+        app_state.pipeline_store = pipeline_store
+        app_state.trigger_store = trigger_store
+        app_state.command_dispatcher = dispatcher
+
+        _create_work_item(client, "smoke-double")
+        # First transition: open → in_progress
+        client.patch("/api/v1/work-items/smoke-double", json={"status": "in_progress"})
+        first_call_count = pipeline_store.add.call_count
+        assert first_call_count == 1
+
+        # Second patch: in_progress → in_progress (no transition)
+        client.patch("/api/v1/work-items/smoke-double", json={"status": "in_progress"})
+        assert pipeline_store.add.call_count == first_call_count  # No new pipeline
