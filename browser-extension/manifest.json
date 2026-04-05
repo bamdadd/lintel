@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Lintel — Visual Component Modifier",
+  "version": "0.1.0",
+  "description": "Select UI elements in the browser and request AI-driven modifications via Lintel.",
+  "permissions": ["activeTab", "storage"],
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

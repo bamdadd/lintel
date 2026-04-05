@@ -75,6 +75,8 @@ from lintel.bot_scope_api.store import InMemoryBotScopeStore
 from lintel.bots_api.oauth_routes import oauth_slack_bot_store_provider
 from lintel.bots_api.routes import bot_store_provider
 from lintel.bots_api.store import InMemoryBotStore
+from lintel.browser_extension_api.routes import modification_store_provider
+from lintel.browser_extension_api.store import InMemoryComponentModificationStore
 from lintel.channel_adapter_registry_api.routes import adapter_store_provider
 from lintel.channel_adapter_registry_api.store import InMemoryChannelAdapterStore
 from lintel.channel_connections_api.routes import connection_store_provider
@@ -511,6 +513,8 @@ def create_in_memory_stores() -> dict[str, Any]:
         "channel_connection_store": InMemoryChannelConnectionStore(),
         # Visual Verification
         "visual_verification_store": InMemoryVisualVerificationStore(),
+        # Browser Extension
+        "component_modification_store": InMemoryComponentModificationStore(),
         # Sandbox Credentials
         "sandbox_credential_store": InMemorySandboxCredentialStore(),
         # Scheduled Tasks
@@ -981,6 +985,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "channel_adapter_store": InMemoryChannelAdapterStore(),
         "channel_connection_store": _PgChannelConnectionStore(pool),
         "visual_verification_store": _PgVisualVerificationStore(pool),
+        "component_modification_store": InMemoryComponentModificationStore(),
         "scheduled_task_store": _PgScheduledTaskStore(pool),
         "improvement_store": PgCompliance(pool, "improvement", "improvement_id"),
         "mcp_tool_store": _PgMCPToolStore(pool),
@@ -1164,6 +1169,7 @@ def wire_stores(stores: dict[str, Any], repo_provider: Any) -> None:  # noqa: AN
     adapter_store_provider.override(stores["channel_adapter_store"])
     connection_store_provider.override(stores["channel_connection_store"])
     verification_store_provider.override(stores["visual_verification_store"])
+    modification_store_provider.override(stores["component_modification_store"])
     sandbox_credential_store_provider.override(stores["sandbox_credential_store"])
     replica_config_store_provider.override(stores["replica_config_store"])
     scheduled_task_store_provider.override(stores["scheduled_task_store"])

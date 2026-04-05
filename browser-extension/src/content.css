@@ -1,0 +1,7 @@
+/* Lintel element selection highlight */
+.lintel-highlight {
+  outline: 2px solid #6c5ce7 !important;
+  outline-offset: 2px !important;
+  background-color: rgba(108, 92, 231, 0.08) !important;
+  transition: outline 0.1s ease, background-color 0.1s ease;
+}
