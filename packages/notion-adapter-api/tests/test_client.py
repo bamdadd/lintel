@@ -96,6 +96,14 @@ ARCHIVE_PAGE_RESPONSE: dict[str, Any] = {
     "archived": True,
 }
 
+BOT_USER_RESPONSE: dict[str, Any] = {
+    "object": "user",
+    "id": "bot-user-001",
+    "type": "bot",
+    "name": "Lintel Integration",
+    "bot": {"owner": {"type": "workspace", "workspace": True}},
+}
+
 SEARCH_RESPONSE: dict[str, Any] = {
     "object": "list",
     "results": [
@@ -268,6 +276,16 @@ class TestPages:
 
         body = json.loads(requests_seen[0].content)
         assert body["archived"] is True
+        await client.aclose()
+
+
+class TestGetBotUser:
+    async def test_get_bot_user(self) -> None:
+        client = _make_client(lambda _req: _json_response(BOT_USER_RESPONSE))
+        result = await client.get_bot_user()
+        assert result["object"] == "user"
+        assert result["type"] == "bot"
+        assert result["name"] == "Lintel Integration"
         await client.aclose()
 
 
