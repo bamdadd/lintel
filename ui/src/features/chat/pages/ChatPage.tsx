@@ -20,7 +20,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import '../chat-markdown.css';
 import { notifications } from '@mantine/notifications';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useChatSSE } from '../hooks/useChatSSE';
 import {
   useChatListConversations,
@@ -30,6 +30,7 @@ import {
 } from '@/generated/api/chat/chat';
 import { useModelsListModels } from '@/generated/api/models/models';
 import { useProjectsListProjects } from '@/generated/api/projects/projects';
+import { customInstance } from '@/shared/api/client';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { TimeAgo } from '@/shared/components/TimeAgo';
 
@@ -97,6 +98,7 @@ export function Component() {
   const [newMessage, setNewMessage] = useState('');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
@@ -116,6 +118,12 @@ export function Component() {
 
   const { data: projectsResp } = useProjectsListProjects();
   const projects = (projectsResp?.data ?? []) as Array<{ project_id: string; name: string; repo_ids: string[] }>;
+
+  const { data: botsResp } = useQuery({
+    queryKey: ['/api/v1/bots'],
+    queryFn: () => customInstance<{ data: Array<{ bot_id: string; name: string; platform: string; status: string }> }>('/api/v1/bots', { method: 'GET' }),
+  });
+  const bots = botsResp?.data ?? [];
 
   // Auto-select default model
   useEffect(() => {
@@ -349,6 +357,22 @@ export function Component() {
               data={projects.map((p) => ({
                 value: p.project_id,
                 label: p.name,
+              }))}
+            />
+          )}
+
+          {/* Bot selector */}
+          {bots.length > 0 && (
+            <Select
+              size="xs"
+              mb="xs"
+              placeholder="Select bot (optional)"
+              value={selectedBotId}
+              onChange={setSelectedBotId}
+              clearable
+              data={bots.map((b) => ({
+                value: b.bot_id,
+                label: `${b.name} (${b.platform})`,
               }))}
             />
           )}
