@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
     from lintel.contracts.types import ThreadRef
     from lintel.sandbox.types import (
+        PreviewInfo,
         SandboxConfig,
         SandboxJob,
         SandboxResult,
@@ -117,6 +118,24 @@ class SandboxManager(Protocol):
         self,
         sandbox_id: str,
     ) -> None: ...
+
+    async def start_preview(
+        self,
+        sandbox_id: str,
+        *,
+        command: str = "",
+        port: int = 0,
+    ) -> PreviewInfo: ...
+
+    async def stop_preview(
+        self,
+        sandbox_id: str,
+    ) -> None: ...
+
+    async def get_preview(
+        self,
+        sandbox_id: str,
+    ) -> PreviewInfo: ...
 
     async def destroy(
         self,
