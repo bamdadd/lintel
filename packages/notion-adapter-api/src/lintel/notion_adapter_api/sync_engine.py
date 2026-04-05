@@ -110,16 +110,25 @@ async def push_work_items(
 async def pull_work_items(
     client: NotionClient,
     database_id: str,
+    *,
+    last_synced: str | None = None,
 ) -> SyncResult:
     """Pull work items from a Notion database.
 
     Auto-paginates through all pages and returns parsed work item dicts.
-    The caller is responsible for upserting into the Lintel store.
+    When *last_synced* is provided, only pages edited after that timestamp are fetched
+    (incremental sync).  The caller is responsible for upserting into the Lintel store.
     """
     errors: list[str] = []
     items: list[dict[str, Any]] = []
     try:
-        pages = await client.query_database_all(database_id)
+        filter_obj: dict[str, Any] | None = None
+        if last_synced:
+            filter_obj = {
+                "timestamp": "last_edited_time",
+                "last_edited_time": {"after": last_synced},
+            }
+        pages = await client.query_database_all(database_id, filter_obj=filter_obj)
         for page in pages:
             try:
                 items.append(_notion_page_to_work_item(page))
