@@ -300,6 +300,10 @@ export const router = createBrowserRouter([
         path: 'settings/channels',
         lazy: () => import('@/features/channels/ChannelsPage'),
       },
+      {
+        path: 'settings/board-sync',
+        lazy: () => import('@/features/board-sync/BoardSyncPage'),
+      },
     ],
   },
   {
