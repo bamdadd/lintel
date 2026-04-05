@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -19,7 +19,8 @@ class SyncResult:
 
     pushed: int = 0
     pulled: int = 0
-    errors: list[str] | None = None
+    items: list[dict[str, Any]] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 def _work_item_to_notion_properties(item: dict[str, Any]) -> dict[str, Any]:
@@ -98,8 +99,12 @@ async def push_work_items(
             pushed += 1
         except Exception as exc:
             errors.append(f"Failed to push {item.get('work_item_id', '?')}: {exc}")
-            logger.warning("notion_push_error", item_id=item.get("work_item_id"), error=str(exc))
-    return SyncResult(pushed=pushed, errors=errors or None)
+            logger.warning(
+                "notion_push_error",
+                item_id=item.get("work_item_id"),
+                error=str(exc),
+            )
+    return SyncResult(pushed=pushed, errors=errors)
 
 
 async def pull_work_items(
@@ -108,17 +113,25 @@ async def pull_work_items(
 ) -> SyncResult:
     """Pull work items from a Notion database.
 
-    Returns parsed items; the caller is responsible for upserting into the Lintel store.
+    Auto-paginates through all pages and returns parsed work item dicts.
+    The caller is responsible for upserting into the Lintel store.
     """
-    pulled = 0
     errors: list[str] = []
+    items: list[dict[str, Any]] = []
     try:
-        result = await client.query_database(database_id)
-        pages = result.get("results", [])
-        pulled = len(pages)
+        pages = await client.query_database_all(database_id)
         for page in pages:
-            _notion_page_to_work_item(page)  # validate parsing
+            try:
+                items.append(_notion_page_to_work_item(page))
+            except Exception as exc:
+                page_id = page.get("id", "?")
+                errors.append(f"Failed to parse page {page_id}: {exc}")
+                logger.warning(
+                    "notion_page_parse_error",
+                    page_id=page_id,
+                    error=str(exc),
+                )
     except Exception as exc:
         errors.append(f"Pull failed: {exc}")
         logger.warning("notion_pull_error", error=str(exc))
-    return SyncResult(pulled=pulled, errors=errors or None)
+    return SyncResult(pulled=len(items), items=items, errors=errors)

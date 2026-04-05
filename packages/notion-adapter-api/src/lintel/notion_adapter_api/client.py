@@ -161,6 +161,15 @@ class NotionClient:
             json={"archived": True},
         )
 
+    # -- users ----------------------------------------------------------------
+
+    async def get_bot_user(self) -> dict[str, Any]:
+        """Retrieve the bot user associated with the integration token.
+
+        Useful for validating that the API key is working.
+        """
+        return await self._request("GET", "/users/me")
+
     # -- search ---------------------------------------------------------------
 
     async def search(
