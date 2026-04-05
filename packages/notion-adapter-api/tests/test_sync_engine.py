@@ -257,7 +257,6 @@ class TestPullWorkItems:
         client = _make_client(lambda _req: _json_response(QUERY_DB_RESPONSE))
         result = await pull_work_items(client, "db-123")
         assert result.pulled == 2
-        assert result.items is not None
         assert len(result.items) == 2
         assert result.items[0]["notion_page_id"] == "page-001"
         assert result.items[0]["title"] == "Fix login bug"
@@ -280,9 +279,22 @@ class TestPullWorkItems:
         result = await pull_work_items(client, "db-123")
         assert result.pulled == 2
         assert call_count == 2
-        assert result.items is not None
         assert result.items[0]["title"] == "Item 1"
         assert result.items[1]["title"] == "Item 2"
+        await client.aclose()
+
+    async def test_pull_incremental_sends_filter(self) -> None:
+        requests_seen: list[httpx.Request] = []
+
+        def handler(req: httpx.Request) -> httpx.Response:
+            requests_seen.append(req)
+            return _json_response(QUERY_DB_RESPONSE)
+
+        client = _make_client(handler)
+        await pull_work_items(client, "db-123", last_synced="2025-01-01T00:00:00+00:00")
+        body = json.loads(requests_seen[0].content)
+        assert body["filter"]["timestamp"] == "last_edited_time"
+        assert body["filter"]["last_edited_time"]["after"] == "2025-01-01T00:00:00+00:00"
         await client.aclose()
 
     async def test_pull_handles_api_error(self) -> None:

@@ -171,7 +171,11 @@ async def sync_notion(
                     result["push_errors"] = push_result.errors
 
             if body.direction in ("pull", "both"):
-                pull_result = await pull_work_items(client, connection.database_id)
+                pull_result = await pull_work_items(
+                    client,
+                    connection.database_id,
+                    last_synced=connection.last_synced_at,
+                )
                 result["pulled"] = pull_result.pulled
                 result["items"] = pull_result.items
                 if pull_result.errors:
