@@ -44,6 +44,17 @@ INTENT_KEYWORDS: dict[str, list[str]] = {
     "review_pr": ["review pr", "review pull request"],
     "assign_item": ["assign work", "assign item", "assign to"],
     "change_priority": ["change priority", "set priority", "make it p0", "make it p1"],
+    "decompose_idea": [
+        "break down",
+        "break this into",
+        "decompose",
+        "split into stories",
+        "split into tasks",
+        "plan out",
+        "break into work items",
+        "create stories for",
+        "decompose this idea",
+    ],
 }
 
 # Regex patterns for extracting entity references from messages

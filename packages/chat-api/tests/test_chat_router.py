@@ -251,6 +251,22 @@ class TestIntentClassification:
         result = await self.router.classify("what's in progress right now")
         assert result.action == "show_board"
 
+    async def test_decompose_idea_break_down(self) -> None:
+        result = await self.router.classify("break down this idea into stories please")
+        assert result.action == "decompose_idea"
+
+    async def test_decompose_idea_decompose(self) -> None:
+        result = await self.router.classify("decompose this feature into work items")
+        assert result.action == "decompose_idea"
+
+    async def test_decompose_idea_split_into_stories(self) -> None:
+        result = await self.router.classify("split into stories the user management feature")
+        assert result.action == "decompose_idea"
+
+    async def test_decompose_idea_plan_out(self) -> None:
+        result = await self.router.classify("plan out the authentication system")
+        assert result.action == "decompose_idea"
+
 
 class TestExtractEntityRef:
     """Tests for _extract_entity_ref helper."""
