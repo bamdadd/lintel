@@ -41,6 +41,13 @@ class InMemoryNotionConnectionStore:
             items = [c for c in items if c.project_id == project_id]
         return items
 
+    async def find_by_database_id(self, database_id: str) -> NotionConnection | None:
+        """Return the first connection matching the given Notion database ID."""
+        for conn in self._connections.values():
+            if conn.database_id == database_id:
+                return conn
+        return None
+
     async def update(self, connection: NotionConnection) -> None:
         if connection.connection_id not in self._connections:
             msg = f"Connection {connection.connection_id} not found"

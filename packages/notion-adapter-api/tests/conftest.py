@@ -9,7 +9,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from lintel.notion_adapter_api.routes import notion_connection_store_provider, router
+from lintel.notion_adapter_api.routes import (
+    notion_connection_store_provider,
+    router,
+    webhook_secret_provider,
+)
 from lintel.notion_adapter_api.store import InMemoryNotionConnectionStore
 
 if TYPE_CHECKING:
@@ -24,6 +28,9 @@ def client() -> Generator[TestClient]:
     # Provide a mock event bus so dispatch_event doesn't fail
     app.state.event_bus = AsyncMock()
     app.include_router(router, prefix="/api/v1")
+    # Ensure no webhook secret is configured by default (skip sig verification)
+    webhook_secret_provider.override(None)
     with TestClient(app) as c:
         yield c
     notion_connection_store_provider.override(None)
+    webhook_secret_provider.override(None)
