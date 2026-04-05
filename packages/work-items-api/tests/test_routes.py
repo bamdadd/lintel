@@ -90,11 +90,32 @@ class TestWorkItemsAPI:
 
 
 class TestWorkflowExecutionToggle:
-    """Tests for project-level workflow_execution_enabled check."""
+    """Tests for workflow-level and project-level enabled checks."""
+
+    def test_trigger_skipped_when_workflow_disabled(self, client: TestClient) -> None:
+        """Moving to in_progress should NOT trigger workflow when definition disabled."""
+        wf_def_store = AsyncMock()
+        wf_def_store.get = AsyncMock(return_value={"enabled": False})
+        client.app.state.workflow_definition_store = wf_def_store  # type: ignore[union-attr]
+
+        _create_work_item(client, "wi-disabled")
+        with patch(
+            "lintel.work_items_api.routes._trigger_workflow_for_work_item",
+            wraps=__import__(
+                "lintel.work_items_api.routes", fromlist=["_trigger_workflow_for_work_item"]
+            )._trigger_workflow_for_work_item,
+        ) as mock_trigger:
+            resp = client.patch(
+                "/api/v1/work-items/wi-disabled",
+                json={"status": "in_progress"},
+            )
+            assert resp.status_code == 200
+            # Trigger was called but returned early — no dispatcher on app.state
+            if mock_trigger.called:
+                assert not hasattr(client.app.state, "command_dispatcher")  # type: ignore[union-attr]
 
     def test_trigger_skipped_when_project_workflow_disabled(self, client: TestClient) -> None:
         """Moving to in_progress should NOT trigger workflow when project disables it."""
-        # Set up a project store on app.state with workflow disabled
         project_store = AsyncMock()
         project_store.get = AsyncMock(
             return_value={
@@ -116,11 +137,7 @@ class TestWorkflowExecutionToggle:
                 json={"status": "in_progress"},
             )
             assert resp.status_code == 200
-            # The trigger function is called, but it should return early
-            # due to workflow_execution_enabled=False — verify no dispatcher call
             if mock_trigger.called:
-                # The function was called but should have returned early
-                # before dispatching (no command_dispatcher on app.state)
                 assert not hasattr(client.app.state, "command_dispatcher")  # type: ignore[union-attr]
 
     def test_trigger_proceeds_when_project_workflow_enabled(self, client: TestClient) -> None:
@@ -137,6 +154,28 @@ class TestWorkflowExecutionToggle:
         _create_work_item(client, "wi-enabled")
         resp = client.patch(
             "/api/v1/work-items/wi-enabled",
+            json={"status": "in_progress"},
+        )
+        assert resp.status_code == 200
+
+    def test_trigger_proceeds_when_workflow_enabled(self, client: TestClient) -> None:
+        """Moving to in_progress should proceed when workflow definition is enabled."""
+        wf_def_store = AsyncMock()
+        wf_def_store.get = AsyncMock(return_value={"enabled": True})
+        client.app.state.workflow_definition_store = wf_def_store  # type: ignore[union-attr]
+
+        _create_work_item(client, "wi-wf-enabled")
+        resp = client.patch(
+            "/api/v1/work-items/wi-wf-enabled",
+            json={"status": "in_progress"},
+        )
+        assert resp.status_code == 200
+
+    def test_trigger_proceeds_when_no_wf_def_store(self, client: TestClient) -> None:
+        """When no workflow_definition_store exists, enabled check is skipped."""
+        _create_work_item(client, "wi-no-store")
+        resp = client.patch(
+            "/api/v1/work-items/wi-no-store",
             json={"status": "in_progress"},
         )
         assert resp.status_code == 200
