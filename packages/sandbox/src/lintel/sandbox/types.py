@@ -31,6 +31,15 @@ class SessionState(StrEnum):
     TERMINATED = "terminated"
 
 
+class PreviewStatus(StrEnum):
+    """Status of a sandbox preview server."""
+
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPED = "stopped"
+    FAILED = "failed"
+
+
 @dataclass(frozen=True)
 class StorageLimits:
     """Configurable storage limits and cleanup thresholds for sandboxes.
@@ -224,3 +233,26 @@ class SessionLifecycle:
     hibernated_at: datetime | None = None
     resumed_at: datetime | None = None
     terminated_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class PreviewDetection:
+    """Result of detecting a runnable app inside a sandbox."""
+
+    detected: bool = False
+    command: str = ""
+    port: int = 0
+    framework: str = ""
+
+
+@dataclass(frozen=True)
+class PreviewInfo:
+    """Describes an active preview server running inside a sandbox."""
+
+    sandbox_id: str = ""
+    status: PreviewStatus = PreviewStatus.STOPPED
+    preview_url: str = ""
+    container_port: int = 0
+    host_port: int = 0
+    framework: str = ""
+    started_at: datetime | None = None

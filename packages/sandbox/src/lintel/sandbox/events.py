@@ -52,6 +52,16 @@ class SandboxSessionTerminated(EventEnvelope):
     event_type: str = "SandboxSessionTerminated"
 
 
+@dataclass(frozen=True)
+class SandboxPreviewStarted(EventEnvelope):
+    event_type: str = "SandboxPreviewStarted"
+
+
+@dataclass(frozen=True)
+class SandboxPreviewStopped(EventEnvelope):
+    event_type: str = "SandboxPreviewStopped"
+
+
 register_events(
     SandboxJobScheduled,
     SandboxCreated,
@@ -62,4 +72,6 @@ register_events(
     SandboxSessionHibernated,
     SandboxSessionResumed,
     SandboxSessionTerminated,
+    SandboxPreviewStarted,
+    SandboxPreviewStopped,
 )

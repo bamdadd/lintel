@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
     from lintel.contracts.types import ThreadRef
     from lintel.sandbox.types import (
+        PreviewDetection,
+        PreviewInfo,
         SandboxConfig,
         SandboxJob,
         SandboxResult,
@@ -45,6 +47,7 @@ class DockerSandboxManager:
         self._guards: dict[str, ResourceGuard] = {}
         self._configs: dict[str, SandboxConfig] = {}
         self._networks: dict[str, str] = {}  # sandbox_id → Docker network name
+        self._previews: dict[str, PreviewInfo] = {}  # sandbox_id → active preview
 
     def _get_client(self) -> Any:  # noqa: ANN401
         if self._client is None:
@@ -579,9 +582,201 @@ class DockerSandboxManager:
             network = await asyncio.to_thread(client.networks.get, net_name)
             await asyncio.to_thread(network.disconnect, container)
 
+    async def _detect_preview(self, sandbox_id: str) -> PreviewDetection:
+        """Detect a runnable app inside the sandbox workspace."""
+        from lintel.sandbox.types import PreviewDetection, SandboxJob
+
+        # Check for package.json start script
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "cat /workspace/package.json 2>/dev/null"
+                    " | python3 -c 'import sys,json;"
+                    "d=json.load(sys.stdin);"
+                    's=d.get("scripts",{});'
+                    'print(s.get("dev","") or s.get("start",""))\''
+                    " 2>/dev/null || echo ''"
+                ),
+                timeout_seconds=10,
+            ),
+        )
+        if result.exit_code == 0 and result.stdout.strip():
+            script = result.stdout.strip()
+            # Detect common ports from scripts
+            port = 3000
+            if "vite" in script or "next" in script or "react-scripts" in script:
+                port = 3000
+            elif ":8080" in script:
+                port = 8080
+            elif ":5173" in script:
+                port = 5173
+            framework = "node"
+            if "next" in script:
+                framework = "nextjs"
+            elif "vite" in script:
+                framework = "vite"
+            elif "react-scripts" in script:
+                framework = "react"
+            return PreviewDetection(
+                detected=True,
+                command="npm run dev" if "dev" in script else "npm start",
+                port=port,
+                framework=framework,
+            )
+
+        # Check for Python web frameworks (uvicorn, flask, etc.)
+        result = await self.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    "grep -rl 'uvicorn\\|flask\\|FastAPI\\|Django' "
+                    "/workspace/*.py /workspace/**/*.py 2>/dev/null | head -1"
+                ),
+                timeout_seconds=10,
+            ),
+        )
+        if result.exit_code == 0 and result.stdout.strip():
+            return PreviewDetection(
+                detected=True,
+                command="python -m uvicorn main:app --host 0.0.0.0 --port 8000",
+                port=8000,
+                framework="python",
+            )
+
+        return PreviewDetection(detected=False)
+
+    async def start_preview(
+        self,
+        sandbox_id: str,
+        *,
+        command: str = "",
+        port: int = 0,
+    ) -> PreviewInfo:
+        """Start a preview server inside the sandbox and expose the port.
+
+        If no command/port is given, auto-detect the app framework.
+        Returns a PreviewInfo with the host-accessible URL.
+        """
+        from datetime import UTC, datetime
+
+        from lintel.sandbox.types import PreviewInfo, PreviewStatus, SandboxJob
+
+        # If already running, return existing info
+        existing = self._previews.get(sandbox_id)
+        if existing is not None and existing.status == PreviewStatus.RUNNING:
+            return existing
+
+        # Auto-detect if not specified
+        if not command or port == 0:
+            detection = await self._detect_preview(sandbox_id)
+            if not detection.detected:
+                return PreviewInfo(
+                    sandbox_id=sandbox_id,
+                    status=PreviewStatus.FAILED,
+                    framework="unknown",
+                )
+            if not command:
+                command = detection.command
+            if port == 0:
+                port = detection.port
+            framework = detection.framework
+        else:
+            framework = "custom"
+
+        # Start the app in the background inside the container
+        container = self._get_container(sandbox_id)
+        api = container.client.api
+        exec_id = await asyncio.to_thread(
+            api.exec_create,
+            container.id,
+            ["/bin/sh", "-c", f"cd /workspace && {command}"],
+            workdir="/workspace",
+        )
+        await asyncio.to_thread(api.exec_start, exec_id, detach=True)
+
+        # Health check: poll the port for up to 15 seconds
+        healthy = False
+        for _ in range(15):
+            await asyncio.sleep(1.0)
+            check = await self.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=f"curl -sf http://localhost:{port}/ -o /dev/null -w '%{{http_code}}'",
+                    timeout_seconds=5,
+                ),
+            )
+            if check.exit_code == 0:
+                healthy = True
+                break
+
+        if not healthy:
+            info = PreviewInfo(
+                sandbox_id=sandbox_id,
+                status=PreviewStatus.FAILED,
+                container_port=port,
+                framework=framework,
+            )
+            self._previews[sandbox_id] = info
+            return info
+
+        # Determine host port — read from container port bindings if available,
+        # otherwise construct a proxy URL via the API server.
+        # For Docker sandboxes without published ports, we route through the
+        # sandbox execute endpoint as a reverse proxy.
+        await asyncio.to_thread(container.reload)
+        ports = container.attrs.get("NetworkSettings", {}).get("Ports", {}) or {}
+        host_port = 0
+        port_key = f"{port}/tcp"
+        if ports.get(port_key):
+            host_port = int(ports[port_key][0].get("HostPort", 0))
+
+        preview_url = (
+            f"http://localhost:{host_port}"
+            if host_port
+            else f"/api/v1/sandboxes/{sandbox_id}/preview"
+        )
+
+        info = PreviewInfo(
+            sandbox_id=sandbox_id,
+            status=PreviewStatus.RUNNING,
+            preview_url=preview_url,
+            container_port=port,
+            host_port=host_port,
+            framework=framework,
+            started_at=datetime.now(UTC),
+        )
+        self._previews[sandbox_id] = info
+        return info
+
+    async def stop_preview(self, sandbox_id: str) -> None:
+        """Stop the preview server running inside the sandbox."""
+        from lintel.sandbox.types import SandboxJob
+
+        info = self._previews.pop(sandbox_id, None)
+        if info is not None and info.container_port > 0:
+            # Kill the process listening on the preview port
+            await self.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=f"kill $(lsof -t -i:{info.container_port}) 2>/dev/null || true",
+                    timeout_seconds=10,
+                ),
+            )
+
+    async def get_preview(self, sandbox_id: str) -> PreviewInfo:
+        """Return current preview info for a sandbox."""
+        from lintel.sandbox.types import PreviewInfo, PreviewStatus
+
+        info = self._previews.get(sandbox_id)
+        if info is None:
+            return PreviewInfo(sandbox_id=sandbox_id, status=PreviewStatus.STOPPED)
+        return info
+
     async def destroy(self, sandbox_id: str) -> None:
         self._guards.pop(sandbox_id, None)
         self._configs.pop(sandbox_id, None)
+        self._previews.pop(sandbox_id, None)
         network_name = self._networks.pop(sandbox_id, None)
         container = self._containers.pop(sandbox_id, None)
         if container is None:

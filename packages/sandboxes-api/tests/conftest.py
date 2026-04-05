@@ -9,7 +9,14 @@ import pytest
 
 from lintel.contracts.types import ThreadRef  # noqa: TC001
 from lintel.sandbox.errors import SandboxNotFoundError
-from lintel.sandbox.types import SandboxConfig, SandboxJob, SandboxResult, SandboxStatus
+from lintel.sandbox.types import (
+    PreviewInfo,
+    PreviewStatus,
+    SandboxConfig,
+    SandboxJob,
+    SandboxResult,
+    SandboxStatus,
+)
 
 
 class DummySandboxManager:
@@ -17,6 +24,7 @@ class DummySandboxManager:
 
     def __init__(self) -> None:
         self._sandboxes: dict[str, dict[str, str]] = {}
+        self._previews: dict[str, PreviewInfo] = {}
 
     async def create(self, config: SandboxConfig, thread_ref: ThreadRef) -> str:
         sandbox_id = str(uuid4())
@@ -64,9 +72,46 @@ class DummySandboxManager:
             raise SandboxNotFoundError(sandbox_id)
         return {"type": "diff", "content": ""}
 
+    async def start_preview(
+        self,
+        sandbox_id: str,
+        *,
+        command: str = "",
+        port: int = 0,
+    ) -> PreviewInfo:
+        if sandbox_id not in self._sandboxes:
+            raise SandboxNotFoundError(sandbox_id)
+        from datetime import UTC, datetime
+
+        info = PreviewInfo(
+            sandbox_id=sandbox_id,
+            status=PreviewStatus.RUNNING,
+            preview_url="http://localhost:9999",
+            container_port=port or 3000,
+            host_port=9999,
+            framework="node",
+            started_at=datetime.now(UTC),
+        )
+        self._previews[sandbox_id] = info
+        return info
+
+    async def stop_preview(self, sandbox_id: str) -> None:
+        if sandbox_id not in self._sandboxes:
+            raise SandboxNotFoundError(sandbox_id)
+        self._previews.pop(sandbox_id, None)
+
+    async def get_preview(self, sandbox_id: str) -> PreviewInfo:
+        if sandbox_id not in self._sandboxes:
+            raise SandboxNotFoundError(sandbox_id)
+        return self._previews.get(
+            sandbox_id,
+            PreviewInfo(sandbox_id=sandbox_id, status=PreviewStatus.STOPPED),
+        )
+
     async def destroy(self, sandbox_id: str) -> None:
         if sandbox_id not in self._sandboxes:
             raise SandboxNotFoundError(sandbox_id)
+        self._previews.pop(sandbox_id, None)
         del self._sandboxes[sandbox_id]
 
 
