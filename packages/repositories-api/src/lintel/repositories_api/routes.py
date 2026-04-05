@@ -10,9 +10,15 @@ from pydantic import BaseModel, Field
 from lintel.api_support.event_dispatcher import dispatch_event
 from lintel.api_support.provider import StoreProvider
 from lintel.repos.classifier import RepoClassifier
-from lintel.repos.events import RepositoryRegistered, RepositoryRemoved, RepositoryUpdated
+from lintel.repos.events import (
+    RepositoryCreated,
+    RepositoryRegistered,
+    RepositoryRemoved,
+    RepositoryUpdated,
+)
 from lintel.repos.repository_store import InMemoryRepositoryStore
-from lintel.repos.types import Repository, RepoStatus
+from lintel.repos.templates import list_templates
+from lintel.repos.types import Repository, RepoStatus, RepoTemplate
 
 router = APIRouter()
 
@@ -33,6 +39,17 @@ class RegisterRepoRequest(BaseModel):
     default_branch: str = "main"
     owner: str = ""
     provider: str = "github"
+    project_ids: list[str] = []
+
+
+class CreateRepoRequest(BaseModel):
+    """Request to create a new GitHub repo from a scaffold template."""
+
+    name: str
+    owner: str
+    template: RepoTemplate | None = None
+    private: bool = True
+    description: str = ""
     project_ids: list[str] = []
 
 
@@ -82,6 +99,58 @@ async def list_repositories(
     if project_id is not None:
         repos = [r for r in repos if project_id in r.project_ids]
     return [asdict(r) for r in repos]
+
+
+@router.get("/repositories/templates")
+async def list_repository_templates() -> dict[str, Any]:
+    """List available scaffold templates for new repositories."""
+    return {"templates": list_templates()}
+
+
+@router.post("/repositories/create", status_code=201)
+async def create_repository(
+    body: CreateRepoRequest,
+    request: Request,
+    store: InMemoryRepositoryStore = Depends(repository_store_provider),  # noqa: B008
+    repo_provider: Any = Depends(repo_provider_provider),  # noqa: B008, ANN401
+) -> dict[str, Any]:
+    """Create a new GitHub repository from a scaffold template and register it."""
+    if repo_provider is None:
+        raise HTTPException(status_code=503, detail="Repository provider not configured")
+
+    result = await repo_provider.create_repo(
+        body.owner,
+        body.name,
+        private=body.private,
+        description=body.description,
+        template=body.template,
+    )
+
+    repo_id = _gen_id()
+    repo = Repository(
+        repo_id=repo_id,
+        name=result.name,
+        url=result.repo_url,
+        default_branch=result.default_branch,
+        owner=result.owner,
+        provider="github",
+        project_ids=tuple(body.project_ids),
+    )
+    await store.add(repo)
+
+    await dispatch_event(
+        request,
+        RepositoryCreated(
+            payload={
+                "resource_id": repo_id,
+                "name": result.name,
+                "url": result.repo_url,
+                "template": body.template.value if body.template else None,
+            }
+        ),
+        stream_id=f"repository:{repo_id}",
+    )
+    return asdict(repo)
 
 
 class ClassifyRequest(BaseModel):
