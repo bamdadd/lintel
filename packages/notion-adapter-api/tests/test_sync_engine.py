@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -15,6 +15,9 @@ from lintel.notion_adapter_api.sync_engine import (
     pull_work_items,
     push_work_items,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # Recorded response fixtures
