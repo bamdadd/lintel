@@ -307,13 +307,16 @@ async def _trigger_workflow_for_work_item(
         "task": "feature_to_pr",
     }.get(work_type, "feature_to_pr")
 
-    # Check if the workflow is enabled (global toggle)
-    defs_store = getattr(request.app.state, "workflow_definitions", None)
-    if defs_store is not None:
-        wf = defs_store.get(workflow_type)
-        if wf is not None and not wf.get("enabled", True):
-            logger.info("workflow_disabled_skipping_trigger: %s", workflow_type)
-            return
+    # Check if the workflow is enabled (global toggle) — use the extracted store
+    wf_def_store = getattr(request.app.state, "workflow_definition_store", None)
+    if wf_def_store is not None:
+        try:
+            wf = await wf_def_store.get(workflow_type)
+            if wf is not None and not wf.get("enabled", True):
+                logger.info("workflow_disabled_skipping_trigger: %s", workflow_type)
+                return
+        except Exception:
+            logger.warning("workflow_definition_lookup_failed", exc_info=True)
 
     # Check project-level workflow execution toggle
     project_store = getattr(request.app.state, "project_store", None)
@@ -353,9 +356,7 @@ async def _trigger_workflow_for_work_item(
     # Create pipeline run
     pipeline_store = getattr(request.app.state, "pipeline_store", None)
     if pipeline_store:
-        from lintel.api.routes.pipelines import (
-            _stage_names_for_workflow,  # type: ignore[attr-defined]
-        )
+        from lintel.pipelines_api._helpers import _stage_names_for_workflow
 
         stage_names = _stage_names_for_workflow(workflow_type)
         stages = tuple(
@@ -466,7 +467,33 @@ async def _trigger_workflow_for_work_item(
 
     dispatcher = getattr(request.app.state, "command_dispatcher", None)
     if dispatcher:
-        asyncio.create_task(dispatcher.dispatch(command))  # noqa: RUF006
+
+        async def _dispatch_with_error_handling() -> None:
+            try:
+                await dispatcher.dispatch(command)
+            except Exception:
+                logger.exception(
+                    "workflow_dispatch_failed",
+                    extra={
+                        "work_item_id": work_item_id,
+                        "run_id": run_id,
+                        "workflow_type": workflow_type,
+                    },
+                )
+                # Mark pipeline as failed so it doesn't appear stuck
+                ps = getattr(request.app.state, "pipeline_store", None)
+                if ps is not None:
+                    try:
+                        run = await ps.get(run_id)
+                        if run is not None:
+                            from dataclasses import replace as _replace
+
+                            updated = _replace(run, status=PipelineStatus.FAILED)
+                            await ps.update(run_id, updated)
+                    except Exception:
+                        logger.warning("pipeline_status_update_failed", exc_info=True)
+
+        asyncio.create_task(_dispatch_with_error_handling())  # noqa: RUF006
         logger.info(
             "workflow_triggered_from_board",
             extra={
