@@ -37,6 +37,7 @@ from lintel.boards.routes import router as boards_router
 from lintel.bot_scope_api.routes import router as bot_scope_router
 from lintel.bots_api.oauth_routes import router as bots_oauth_router
 from lintel.bots_api.routes import router as bots_router
+from lintel.browser_extension_api.routes import router as browser_extension_router
 from lintel.channel_adapter_registry_api.routes import (
     router as channel_adapter_registry_router,
 )
@@ -244,6 +245,11 @@ def mount_routers(app: FastAPI) -> None:
         visual_verification_router,
         prefix="/api/v1",
         tags=["visual-verification"],
+    )
+    app.include_router(
+        browser_extension_router,
+        prefix="/api/v1",
+        tags=["browser-extension"],
     )
     app.include_router(cross_repo_agent_router, prefix="/api/v1", tags=["cross-repo"])
     app.include_router(cve_remediation_router, prefix="/api/v1", tags=["cve-remediation"])

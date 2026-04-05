@@ -87,6 +87,7 @@ dependencies = [
     "lintel-channel-message-routing-api",
     "lintel-release-notes-api",
     "lintel-visual-verification-api",
+    "lintel-browser-extension-api",
     "lintel-sandbox-credentials-api",
     "lintel-improvement-api",
     "lintel-board-sync-api",
@@ -211,6 +212,7 @@ lintel-channel-connections-api = { workspace = true }
 lintel-channel-message-routing-api = { workspace = true }
 lintel-release-notes-api = { workspace = true }
 lintel-visual-verification-api = { workspace = true }
+lintel-browser-extension-api = { workspace = true }
 lintel-sandbox-credentials-api = { workspace = true }
 lintel-improvement-api = { workspace = true }
 lintel-board-sync-api = { workspace = true }

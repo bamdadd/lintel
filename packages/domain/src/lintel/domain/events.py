@@ -1238,6 +1238,19 @@ class DigestConfigUpdated(EventEnvelope):
     event_type: str = "DigestConfigUpdated"
 
 
+# --- Browser Extension Events ---
+
+
+@dataclass(frozen=True)
+class ComponentModificationRequested(EventEnvelope):
+    event_type: str = "ComponentModificationRequested"
+
+
+@dataclass(frozen=True)
+class ComponentModificationCompleted(EventEnvelope):
+    event_type: str = "ComponentModificationCompleted"
+
+
 # --- Visual Verification Events ---
 
 
@@ -1589,4 +1602,6 @@ register_events(
     FrontendTargetCreated,
     FrontendTargetUpdated,
     FrontendTargetRemoved,
+    ComponentModificationRequested,
+    ComponentModificationCompleted,
 )

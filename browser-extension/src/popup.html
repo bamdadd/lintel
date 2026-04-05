@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lintel Component Modifier</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Lintel</h1>
+      <p class="subtitle">Visual Component Modifier</p>
+    </header>
+
+    <section id="config-section">
+      <label for="api-url">API URL</label>
+      <input id="api-url" type="url" placeholder="http://localhost:8000" />
+      <label for="project-id">Project ID</label>
+      <input id="project-id" type="text" placeholder="project-uuid" />
+      <button id="save-config" type="button">Save</button>
+    </section>
+
+    <section id="select-section" class="hidden">
+      <button id="start-select" type="button">Select Element</button>
+      <p id="selected-info" class="hidden"></p>
+    </section>
+
+    <section id="modify-section" class="hidden">
+      <label for="instructions">Modification Instructions</label>
+      <textarea id="instructions" rows="4" placeholder="Describe what you want to change..."></textarea>
+      <button id="submit-modification" type="button">Submit</button>
+    </section>
+
+    <section id="status-section" class="hidden">
+      <div id="status-badge"></div>
+      <p id="status-message"></p>
+      <div id="diff-view" class="hidden"></div>
+      <div id="preview-link" class="hidden"></div>
+    </section>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
