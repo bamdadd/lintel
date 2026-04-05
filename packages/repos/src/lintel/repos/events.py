@@ -8,6 +8,11 @@ from lintel.contracts.events import EventEnvelope, register_events
 
 
 @dataclass(frozen=True)
+class RepositoryCreated(EventEnvelope):
+    event_type: str = "RepositoryCreated"
+
+
+@dataclass(frozen=True)
 class RepositoryRegistered(EventEnvelope):
     event_type: str = "RepositoryRegistered"
 
@@ -53,6 +58,7 @@ class WebhookReceived(EventEnvelope):
 
 
 register_events(
+    RepositoryCreated,
     RepositoryRegistered,
     RepositoryUpdated,
     RepositoryRemoved,

@@ -80,10 +80,53 @@ async def _validate_slack(data: dict[str, Any], request: Request) -> None:
 async def _validate_repo(data: dict[str, Any], request: Request) -> None:
     repo_store = request.app.state.repository_store
     repos = await repo_store.list_all()
+    mode = data.get("mode", "register")
+
+    if mode == "create":
+        # Create a new repo via GitHub API
+        repo_provider = getattr(request.app.state, "repo_provider", None)
+        if repo_provider is None:
+            raise HTTPException(status_code=503, detail="Repository provider not configured")
+        name = data.get("name", "").strip()
+        owner = data.get("owner", "").strip()
+        if not name or not owner:
+            raise HTTPException(
+                status_code=422,
+                detail="'name' and 'owner' are required when mode=create",
+            )
+        template_str = data.get("template")
+        template = None
+        if template_str:
+            from lintel.repos.types import RepoTemplate
+
+            try:
+                template = RepoTemplate(template_str)
+            except ValueError:
+                raise HTTPException(  # noqa: B904
+                    status_code=422,
+                    detail=f"Unknown template: {template_str}",
+                )
+        result = await repo_provider.create_repo(
+            owner, name, private=data.get("private", True), template=template
+        )
+        from lintel.repos.types import Repository
+
+        repo = Repository(
+            repo_id=str(__import__("uuid").uuid4()),
+            name=result.name,
+            url=result.repo_url,
+            default_branch=result.default_branch,
+            owner=result.owner,
+            provider="github",
+        )
+        await repo_store.add(repo)
+        return
+
     if not repos and not data.get("url"):
         raise HTTPException(
             status_code=422,
-            detail="At least one repository is required. Provide 'url' or register a repo first.",
+            detail="At least one repository is required. "
+            "Provide 'url', or use mode=create to create a new repo.",
         )
     if data.get("url"):
         await repo_store.add({"name": data.get("name", "default"), "url": data["url"]})
