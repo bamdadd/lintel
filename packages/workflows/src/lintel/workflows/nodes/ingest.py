@@ -81,9 +81,28 @@ async def ingest_message(
         display = prompt[:500] + "..." if len(prompt) > 500 else prompt
         await tracker.append_log("ingest", f"Request: {display}")
 
+    # Resolve work item title for PR/commit naming
+    work_item_title = ""
+    if work_item_id:
+        work_item_store = _configurable.get("work_item_store")
+        if work_item_store is None:
+            app_state = _configurable.get("app_state")
+            if app_state is not None:
+                work_item_store = getattr(app_state, "work_item_store", None)
+        if work_item_store is not None:
+            try:
+                wi = await work_item_store.get(work_item_id)
+                if wi is not None:
+                    work_item_title = wi.title if hasattr(wi, "title") else wi.get("title", "")
+            except Exception:
+                pass
+
     await tracker.mark_completed("ingest")
 
-    return {
+    result: dict[str, Any] = {
         "current_phase": "ingesting",
         "sanitized_messages": messages,
     }
+    if work_item_title:
+        result["work_item_title"] = work_item_title
+    return result

@@ -31,6 +31,7 @@ class ThreadWorkflowState(TypedDict):
     # Project & repo context (set by setup_workspace)
     project_id: str
     work_item_id: str
+    work_item_title: str
     repo_url: str
     repo_urls: tuple[str, ...]
     repo_branch: str

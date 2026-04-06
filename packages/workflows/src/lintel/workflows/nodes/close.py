@@ -109,8 +109,16 @@ async def close_workflow(
 
     # Commit any uncommitted changes across all repos
     await tracker.append_log("close", "Committing changes...")
+
+    # Build commit/PR title from work item title (preferred) or first message
+    work_item_title = state.get("work_item_title", "")
     messages = state.get("sanitized_messages", [])
-    commit_msg = messages[0][:72] if messages else "lintel: implement feature"
+    if work_item_title:
+        commit_msg = work_item_title[:72]
+    elif messages:
+        commit_msg = messages[0][:72]
+    else:
+        commit_msg = "lintel: implement feature"
     # Escape double quotes in commit message for shell safety
     safe_msg = commit_msg.replace('"', '\\"')
 
