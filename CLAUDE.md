@@ -318,3 +318,31 @@ This gives visibility into the full request lifecycle: HTTP status, chat routing
   - Or use `make test-affected BASE_REF=main` to auto-detect affected packages
   - Only run `make test-unit` or `make all` as a final check before committing
 - **Do NOT add `__init__.py` to test directories** — pytest uses `--import-mode=importlib` and `__init__.py` in tests causes namespace collisions across packages.
+
+## Adding New Features — Standard Workflow
+
+Follow this contracts-first approach when implementing new features:
+
+1. **Define types in the domain package** — Add dataclasses, enums, and Pydantic models to `packages/domain/src/lintel/domain/types.py` (or a sub-package). NEVER add new types to `lintel-contracts` — it is a frozen kernel.
+
+2. **Define events** — Add domain events (frozen dataclasses) to `packages/domain/src/lintel/domain/events.py` and register them with `register_events()`. For self-contained domains, events go in their own package (e.g. `lintel.automations.events`).
+
+3. **Create or extend an API route package** — Follow the `packages/<domain>-api/` pattern:
+   - Create `pyproject.toml` with `lintel-api-support` dependency
+   - Add `src/lintel/<domain>_api/routes.py` exposing a `router = APIRouter()`
+   - Add `src/lintel/<domain>_api/store.py` with an in-memory store
+   - Use `StoreProvider[T]` from `lintel.api_support.provider` for DI
+   - Use `dispatch_event()` from `lintel.api_support.event_dispatcher` for events
+
+4. **Mount the router** — In `packages/app/src/lintel/api/routers.py`, import and `app.include_router()` the new router with `/api/v1` prefix.
+
+5. **Wire the store** — In `packages/app/src/lintel/api/store_wiring.py`, create the concrete store instance and call `provider.override()`.
+
+6. **Register in workspace config** — Add the new package to:
+   - `pyproject.toml` → `[tool.pytest.ini_options].testpaths`
+   - `pyproject.toml` → `[tool.mypy].mypy_path`
+   - `packages/app/pyproject.toml` → `[project].dependencies` and `[tool.uv.sources]`
+
+7. **Add tests** — Create `packages/<domain>-api/tests/` with route tests. Do NOT add `__init__.py` to the tests directory.
+
+8. **Validate** — Run `make lint && make typecheck && make test-<domain>-api` before committing.

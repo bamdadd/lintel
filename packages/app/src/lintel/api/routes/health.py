@@ -13,3 +13,9 @@ router = APIRouter()
 async def healthz() -> dict[str, str]:
     """Liveness probe."""
     return {"status": "ok"}
+
+
+@router.get("/health", response_model=HealthResponse)
+async def health() -> dict[str, str]:
+    """Liveness probe (alias)."""
+    return {"status": "ok"}
