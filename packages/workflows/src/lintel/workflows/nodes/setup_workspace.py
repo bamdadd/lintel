@@ -884,13 +884,27 @@ async def _install_project_deps(
                 )
                 return
 
+        # Detect uv workspace — needs --all-packages to install all workspace members
+        ws_check = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=(
+                    f"grep -c 'tool.uv.workspace' {workdir}/pyproject.toml 2>/dev/null || echo 0"
+                ),
+                workdir=workdir,
+                timeout_seconds=5,
+            ),
+        )
+        is_workspace = ws_check.stdout.strip() not in ("0", "")
+        sync_flags = "--all-extras --all-packages" if is_workspace else "--all-extras"
+
         # Deps are pre-cached in the sandbox image (~/.cache/uv), so uv sync
         # links from cache instead of downloading — typically completes in <10s.
         sync = await sandbox_manager.execute(
             sandbox_id,
             SandboxJob(
                 command=(
-                    'export PATH="$HOME/.local/bin:$PATH" && uv sync --all-extras 2>&1 | tail -5'
+                    f'export PATH="$HOME/.local/bin:$PATH" && uv sync {sync_flags} 2>&1 | tail -5'
                 ),
                 workdir=workdir,
                 timeout_seconds=300,

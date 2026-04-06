@@ -237,17 +237,53 @@ async def _python_setup_commands(
 
     path_prefix = 'export PATH="$HOME/.local/bin:$PATH"'
 
-    # Check if deps already installed (setup_workspace already ran)
-    probe = await sandbox_manager.execute(
+    # Check if deps already installed (setup_workspace already ran).
+    # For workspace projects, also verify that workspace packages are importable —
+    # a partial `uv sync` (without --all-packages) may install pytest but leave
+    # workspace members unresolved, causing mypy to fail with 1000+ import errors.
+    ws_check = await sandbox_manager.execute(
         sandbox_id,
         SandboxJob(
-            command=(
-                "test -f .venv/bin/python && .venv/bin/python -c 'import pytest' "
-                "2>/dev/null && echo INSTALLED || echo MISSING"
-            ),
+            command=(f"grep -c 'tool.uv.workspace' {workdir}/pyproject.toml 2>/dev/null || echo 0"),
             workdir=workdir,
-            timeout_seconds=10,
+            timeout_seconds=5,
         ),
+    )
+    is_ws = ws_check.stdout.strip() not in ("0", "")
+
+    if is_ws:
+        # For workspaces, verify a workspace package is importable (not just pytest)
+        # Find the first workspace member's importable name
+        probe_cmd = (
+            "test -f .venv/bin/python"
+            " && .venv/bin/python -c 'import pytest' 2>/dev/null"
+            " && .venv/bin/python -c '"
+            "import importlib, pathlib, tomllib\n"
+            'root = tomllib.loads(pathlib.Path("pyproject.toml").read_text())\n'
+            'ws = root.get("tool",{}).get("uv",{}).get("workspace",{})\n'
+            'members = ws.get("members",[])\n'
+            "if not members: exit(0)\n"
+            "for m in members[:3]:\n"
+            "    import glob\n"
+            "    for p in glob.glob(m):\n"
+            '        src = pathlib.Path(p) / "src"\n'
+            "        if src.is_dir():\n"
+            "            for pkg in src.iterdir():\n"
+            '                if pkg.is_dir() and not pkg.name.startswith("_"):\n'
+            "                    importlib.import_module(pkg.name); exit(0)\n"
+            "exit(1)\n"
+            "' 2>/dev/null"
+            " && echo INSTALLED || echo MISSING"
+        )
+    else:
+        probe_cmd = (
+            "test -f .venv/bin/python && .venv/bin/python -c 'import pytest' "
+            "2>/dev/null && echo INSTALLED || echo MISSING"
+        )
+
+    probe = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(command=probe_cmd, workdir=workdir, timeout_seconds=10),
     )
     if "INSTALLED" in probe.stdout:
         logger.info("test_discovery: project already installed, skipping setup")

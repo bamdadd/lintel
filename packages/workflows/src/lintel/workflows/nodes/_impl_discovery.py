@@ -439,7 +439,12 @@ async def run_tests(
     test_command = discovery["test_command"]
     setup_commands: list[str] = discovery.get("setup_commands", [])
 
-    # Run setup (dep install)
+    # Run setup (dep install) — also reconnect network since deps may need downloading
+    if setup_commands:
+        try:
+            await sandbox_manager.reconnect_network(sandbox_id)
+        except Exception:
+            logger.warning("run_tests_reconnect_network_failed")
     for cmd in setup_commands:
         await tracker.append_log("implement", f"Setup: {cmd[:60]}")
         await sandbox_manager.execute(

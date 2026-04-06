@@ -31,6 +31,8 @@ class TestDiscoverTestCommand:
             (0, "0", ""),
             # detect capabilities (postgres available)
             (0, "HAS_POSTGRES\nHAS_UV", ""),
+            # _python_setup: workspace check for probe
+            (0, "0", ""),
             # _python_setup: probe installed
             (0, "MISSING", ""),
             # _python_setup: which uv
@@ -55,6 +57,7 @@ class TestDiscoverTestCommand:
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
             (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
+            (0, "0", ""),  # _python_setup: workspace check for probe
             # probe installed
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
@@ -75,6 +78,7 @@ class TestDiscoverTestCommand:
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
             (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
+            (0, "0", ""),  # _python_setup: workspace check for probe
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
             (0, "0", ""),  # workspace check for sync
@@ -95,6 +99,7 @@ class TestDiscoverTestCommand:
             (0, "/w/pyproject.toml", ""),
             (0, "0", ""),  # workspace check
             (0, "HAS_UV\nHAS_POSTGRES", ""),
+            (0, "0", ""),  # _python_setup: workspace check for probe
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
             (0, "0", ""),  # workspace check for sync
@@ -111,6 +116,7 @@ class TestDiscoverTestCommand:
             (0, "/w/pyproject.toml", ""),
             (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
+            (0, "0", ""),  # _python_setup: workspace check for probe
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
             (0, "0", ""),  # workspace check for sync
@@ -126,6 +132,7 @@ class TestDiscoverTestCommand:
             (0, "/w/pyproject.toml", ""),
             (0, "0", ""),  # workspace check
             (0, "", ""),
+            (0, "0", ""),  # _python_setup: workspace check for probe
             (0, "MISSING", ""),  # probe
             (0, "MISSING", ""),  # which uv
             (0, "0", ""),  # workspace check for sync
@@ -142,6 +149,7 @@ class TestDiscoverTestCommand:
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
             (0, "0", ""),  # workspace check
             (0, "HAS_UV", ""),
+            (0, "0", ""),  # _python_setup: workspace check for probe
             # probe: already installed
             (0, "INSTALLED", ""),
             # _python_test_command: make help
@@ -160,7 +168,8 @@ class TestDiscoverTestCommand:
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
             (0, "1", ""),  # workspace check → is workspace
             (0, "HAS_UV", ""),
-            # probe: already installed
+            (0, "1", ""),  # _python_setup: workspace check for probe (is workspace)
+            # probe: already installed (workspace package importable)
             (0, "INSTALLED", ""),
             # _find_make_affected_target: grep Makefile
             (0, "test\ntest-unit\ntest-affected\nlint\n", ""),
@@ -175,7 +184,8 @@ class TestDiscoverTestCommand:
             (0, "/w/pyproject.toml", ""),
             (0, "1", ""),  # workspace check
             (0, "HAS_UV", ""),
-            (0, "MISSING", ""),  # probe
+            (0, "1", ""),  # _python_setup: workspace check for probe (is workspace)
+            (0, "MISSING", ""),  # probe — workspace import failed
             (0, "/root/.local/bin/uv", ""),  # which uv
             (0, "1", ""),  # workspace check for sync
             (0, "", ""),  # extras
