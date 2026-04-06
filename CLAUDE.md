@@ -18,7 +18,7 @@ This is a **uv workspace monorepo** with 45+ packages under `packages/`:
 
 | Package | Name | Dependencies | Description |
 |---------|------|-------------|-------------|
-| `packages/contracts/` | `lintel-contracts` | (none) | Pure domain contracts: types, commands, events, Protocol interfaces |
+| `packages/contracts/` | `lintel-contracts` | pydantic, structlog | Pure domain contracts: types, commands, events, Protocol interfaces |
 | `packages/agents/` | `lintel-agents` | contracts | AI agent runtime (roles: planner, coder, reviewer, pm, designer, summarizer) |
 | `packages/workflows/` | `lintel-workflows` | contracts, agents | LangGraph workflow orchestration and graph nodes |
 | `packages/app/` | `lintel` | all below | Thin composition root: lifespan wiring, middleware, router mounting |
@@ -306,6 +306,17 @@ This gives visibility into the full request lifecycle: HTTP status, chat routing
 - **Entities:** `docs/requirements/entities.md` — all domain entities, enums, and planned modifications with line numbers. When the user says "entities" or "update entities", this is the file.
 - **Agents:** `docs/requirements/agents.md` — agent roles, categories, runtime architecture, sandbox tools, and workflow integration.
 - Related docs: `docs/architecture.md`, `docs/events.md`, `docs/local-dev.md`
+
+## Standard Workflow for Adding New Features
+
+Follow the **contracts-first** approach when adding new domain features:
+
+1. **Define types/events in the domain package** — add types to `packages/domain/src/lintel/domain/types.py` (or a sub-module) and events to `packages/domain/src/lintel/domain/events.py`. NEVER add to `packages/contracts/` — it is a frozen kernel.
+2. **Create the API route package** — create `packages/<domain>-api/` with `pyproject.toml`, `src/lintel/<domain>_api/routes.py`, `src/lintel/<domain>_api/store.py`, and `tests/`. Depend on `lintel-api-support` for `StoreProvider`, `EntityStore`/`DictStore` protocols.
+3. **Wire in the composition root** — add the package to `packages/app/pyproject.toml` dependencies, import its router in `packages/app/src/lintel/api/routers.py`, and wire its `StoreProvider` in `packages/app/src/lintel/api/store_wiring.py`.
+4. **Register in workspace config** — add testpath to `pyproject.toml` `[tool.pytest.ini_options].testpaths` and mypy path to `[tool.mypy].mypy_path`.
+5. **Event sourcing** — emit events via `dispatch_event()` from `lintel.api_support.event_dispatcher`. Build read models in `packages/projections/` if needed.
+6. **Run validation** — `make test-<package>` for fast feedback, then `make lint && make typecheck` before committing.
 
 ## Feature Implementation Rules
 
