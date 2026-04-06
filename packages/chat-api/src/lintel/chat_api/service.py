@@ -323,6 +323,9 @@ class ChatService:
             f"  Project name: {project.get('name', 'unknown')}",
             f"  Project ID: {project.get('project_id', 'unknown')}",
         ]
+        description = project.get("description", "")
+        if description:
+            parts.append(f"  Description: {description}")
         if repo_url:
             parts.append(f"  Repository: {repo_url}")
         repo_urls = project.get("_repo_urls")
@@ -333,6 +336,15 @@ class ChatService:
         status = project.get("status", "")
         if status:
             parts.append(f"  Status: {status}")
+        # Include repo descriptions if available
+        repo_descriptions = project.get("repo_descriptions")
+        if repo_descriptions:
+            parts.append("  Repository descriptions:")
+            for repo_id, desc in repo_descriptions.items():
+                parts.append(f"    - {repo_id}: {desc}")
+        # Workflow execution status
+        if project.get("workflow_execution_enabled"):
+            parts.append("  Workflows: enabled (work items trigger feature_to_pr pipeline)")
         parts.append(
             "\nUse this project context when answering questions. "
             "You know which project the user is working on."
@@ -539,10 +551,18 @@ class ChatService:
             )
         except Exception:
             logger.exception("idea_decomposition_failed")
-            return "Sorry, I couldn't decompose that idea. Please try again."
+            return (
+                "Sorry, idea decomposition failed. Check server logs for details. "
+                "This may be an AI provider connectivity issue — verify your provider "
+                "is configured and reachable at Settings > AI Providers."
+            )
 
         if not items:
-            return IdeaDecomposer.format_reply([], 0)
+            return (
+                "The AI returned a response but I couldn't parse it into work items. "
+                "This usually means the response format was unexpected. "
+                "Try rephrasing your idea with numbered requirements."
+            )
 
         work_item_store = getattr(self._request.app.state, "work_item_store", None)
         if work_item_store is None:

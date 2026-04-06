@@ -19,6 +19,52 @@ from lintel.domain.types import WorkItem, WorkItemStatus, WorkItemType
 
 logger = structlog.get_logger()
 
+
+def _try_salvage_partial_json(text: str) -> list[dict[str, Any]] | None:
+    """Attempt to recover complete items from truncated JSON array.
+
+    When the LLM output is cut off mid-response, we try to find the last
+    complete JSON object in the array and parse everything up to that point.
+    """
+    # Find the last complete object boundary: "},\n  {" or "}\n]"
+    last_complete = -1
+    brace_depth = 0
+    in_string = False
+    escape_next = False
+
+    for i, ch in enumerate(text):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == "\\":
+            escape_next = True
+            continue
+        if ch == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            brace_depth += 1
+        elif ch == "}":
+            brace_depth -= 1
+            if brace_depth == 0:
+                last_complete = i
+
+    if last_complete <= 0:
+        return None
+
+    # Truncate at the last complete object and close the array
+    truncated = text[: last_complete + 1].rstrip().rstrip(",") + "\n]"
+    try:
+        parsed = json.loads(truncated)
+        if isinstance(parsed, list) and len(parsed) > 0:
+            return parsed  # type: ignore[no-any-return]
+    except json.JSONDecodeError:
+        pass
+    return None
+
+
 _WORK_TYPE_MAP: dict[str, WorkItemType] = {
     "feature": WorkItemType.FEATURE,
     "bug": WorkItemType.BUG,
@@ -27,36 +73,56 @@ _WORK_TYPE_MAP: dict[str, WorkItemType] = {
 }
 
 DECOMPOSE_SYSTEM_PROMPT = """\
-You are a software project planner. Given an idea description and optional project \
-context, decompose the idea into 3-10 concrete, right-sized work items suitable for \
-an AI coding agent to implement one at a time.
+You are a software project planner decomposing ideas into work items for an \
+autonomous AI coding agent. The agent will implement each work item independently \
+via a feature_to_pr pipeline (research → plan → implement → review → PR) with NO \
+human clarification available.
 
-Each work item should be small enough for a single feature branch / pull request.
+## Sizing constraints
+
+Each work item MUST be implementable in a single pull request:
+- Touches at most 3-5 files substantially
+- One cohesive concern — never bundle unrelated changes
+- If a concept needs both an interface/protocol AND an implementation, split them \
+into separate work items (interface first)
+
+## Requirement traceability
+
+Every numbered point, feature, or distinct capability mentioned in the user's idea \
+MUST map to at least one work item. Do NOT silently drop requirements. If the idea \
+lists 9 things, produce at least 9 work items.
+
+## Dependency ordering
+
+- Foundation first: project scaffold, shared types/protocols, configuration
+- Abstractions before implementations: define interfaces before concrete adapters
+- Data layer before API layer before UI layer
+- Cross-cutting concerns (multi-tenancy, auth, event sourcing) early
+
+## Agent-ready descriptions
+
+Each description MUST include ALL of the following so the agent can implement \
+without asking questions:
+1. What package/directory to create or modify
+2. Key types, classes, or functions to implement (with field names where relevant)
+3. API routes with HTTP methods and paths (if applicable)
+4. Events to emit (if the project uses event sourcing)
+5. How to test: specific acceptance criteria an agent can verify
+6. What is explicitly OUT OF SCOPE for this work item
+
+## Output format
 
 Respond with a JSON array. Each element must have:
 - "title": short imperative title (max 100 chars)
-- "description": 2-4 sentence description with acceptance criteria
+- "description": detailed description following the agent-ready rules above
 - "work_type": one of "feature", "bug", "refactor", "task"
-- "order": integer 1..N indicating suggested implementation order
-
-Example response:
-```json
-[
-  {
-    "title": "Add FooBar data model and store",
-    "description": "Create the FooBar dataclass in domain/types.py with fields x, y, z. \\
-Add an in-memory store. Acceptance: unit tests pass for CRUD operations.",
-    "work_type": "feature",
-    "order": 1
-  }
-]
-```
+- "order": integer 1..N indicating implementation order respecting dependencies
 
 IMPORTANT:
 - Output ONLY the JSON array, no other text.
 - Keep titles action-oriented and concise.
-- Descriptions should include enough context for an implementer.
 - Order items so dependencies come first.
+- Prefer more smaller items over fewer large ones.
 """
 
 
@@ -96,6 +162,14 @@ class IdeaDecomposer:
         if project_context:
             user_content = f"Project context:\n{project_context}\n\n{user_content}"
 
+        # Decomposition produces detailed JSON — ensure enough output tokens.
+        # Override policy max_tokens if it's too low for structured output.
+        from dataclasses import replace as dc_replace
+
+        min_decompose_tokens = 8192
+        if model_policy.max_tokens < min_decompose_tokens:
+            model_policy = dc_replace(model_policy, max_tokens=min_decompose_tokens)
+
         result = await self._model_router.call_model(
             model_policy,
             messages=[
@@ -116,12 +190,29 @@ class IdeaDecomposer:
 
         try:
             items_raw: list[dict[str, Any]] = json.loads(cleaned)
-        except json.JSONDecodeError:
-            logger.warning("decompose_parse_failed", content=content[:500])
-            return []
+        except json.JSONDecodeError as exc:
+            # Try to salvage partial JSON (truncated LLM response)
+            items_raw = _try_salvage_partial_json(cleaned)
+            if items_raw is None:
+                logger.warning(
+                    "decompose_parse_failed",
+                    error=str(exc),
+                    content_length=len(content),
+                    content_preview=content[:500],
+                )
+                return []
+            logger.info(
+                "decompose_salvaged_partial_json",
+                salvaged_items=len(items_raw),
+                content_length=len(content),
+            )
 
         if not isinstance(items_raw, list):
-            logger.warning("decompose_response_not_list", content=content[:500])
+            logger.warning(
+                "decompose_response_not_list",
+                actual_type=type(items_raw).__name__,
+                content_preview=content[:500],
+            )
             return []
 
         items: list[DecomposedItem] = []
