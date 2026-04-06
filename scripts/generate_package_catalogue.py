@@ -7,8 +7,8 @@ with a table of every workspace package, its description, and dependencies.
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
+import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 PACKAGES_DIR = ROOT / "packages"
@@ -102,7 +102,7 @@ def main() -> None:
         f"Lintel is a uv workspace monorepo with **{len(packages)} packages** under `packages/`.",
         "This page is auto-generated from `pyproject.toml` files.",
         "",
-        "!!! info \"Regenerate this page\"",
+        '!!! info "Regenerate this page"',
         "    Run `python scripts/generate_package_catalogue.py` to update.",
         "",
         f"## Core packages ({len(core)})",

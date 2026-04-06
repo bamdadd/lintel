@@ -81,13 +81,17 @@ async def migrate(
                 # Try raw content field
                 raw_content = data.get("content", "")
                 content = (
-                    raw_content.encode("utf-8") if isinstance(raw_content, str) else bytes(raw_content)
+                    raw_content.encode("utf-8")
+                    if isinstance(raw_content, str)
+                    else bytes(raw_content)
                 )
             else:
                 content = base64.b64decode(encoded)
 
             if len(content) <= threshold_bytes:
-                logger.debug("Skipping %s — content %d bytes below threshold", artifact_id, len(content))
+                logger.debug(
+                    "Skipping %s — content %d bytes below threshold", artifact_id, len(content)
+                )
                 continue
 
             key = f"artifacts/{artifact_id}"
@@ -95,7 +99,9 @@ async def migrate(
             content_type = data.get("content_type", "application/octet-stream")
 
             if dry_run:
-                logger.info("[DRY RUN] Would migrate %s (%d bytes) -> %s", artifact_id, len(content), s3_uri)
+                logger.info(
+                    "[DRY RUN] Would migrate %s (%d bytes) -> %s", artifact_id, len(content), s3_uri
+                )
                 migrated += 1
                 continue
 
@@ -136,8 +142,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Migrate large artifacts to object storage")
     parser.add_argument("--database-url", required=True, help="PostgreSQL connection URL")
     parser.add_argument("--bucket", required=True, help="S3/MinIO bucket name")
-    parser.add_argument("--endpoint-url", default=None, help="S3-compatible endpoint URL (for MinIO)")
-    parser.add_argument("--threshold-bytes", type=int, default=1_048_576, help="Size threshold in bytes (default: 1MB)")
+    parser.add_argument(
+        "--endpoint-url", default=None, help="S3-compatible endpoint URL (for MinIO)"
+    )
+    parser.add_argument(
+        "--threshold-bytes",
+        type=int,
+        default=1_048_576,
+        help="Size threshold in bytes (default: 1MB)",
+    )
     parser.add_argument("--batch-size", type=int, default=50, help="Number of artifacts per batch")
     parser.add_argument("--dry-run", action="store_true", help="Preview without making changes")
     args = parser.parse_args()
