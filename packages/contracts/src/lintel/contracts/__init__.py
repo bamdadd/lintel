@@ -7,8 +7,18 @@ from lintel.contracts.concurrency import (
     SlotAcquiredEvent,
     SlotReleasedEvent,
 )
+from lintel.contracts.events import (
+    EVENT_TYPE_MAP,
+    EventEnvelope,
+    deserialize_event,
+    register_events,
+)
 from lintel.contracts.inbound_message import InboundMessage
 from lintel.contracts.protocols import (
+    CommandDispatcher,
+    EventBus,
+    EventHandler,
+    EventStore,
     EventSubscription,
     SubscriptionHandler,
     SubscriptionToken,
@@ -20,6 +30,7 @@ from lintel.contracts.step_models import (
     StepModelOverrideRequest,
     StepModelOverrideResponse,
 )
+from lintel.contracts.types import ActorType, CorrelationId, EventId, ThreadRef
 from lintel.contracts.work_queue import (
     AgentQueuedEvent,
     WorkQueueEntry,
@@ -27,12 +38,21 @@ from lintel.contracts.work_queue import (
 )
 
 __all__ = [
+    "EVENT_TYPE_MAP",
+    "ActorType",
     "AgentQueuedEvent",
     "ArtifactRef",
     "ArtifactStore",
     "ChannelAdapter",
     "ChannelType",
+    "CommandDispatcher",
     "ConcurrencyState",
+    "CorrelationId",
+    "EventBus",
+    "EventEnvelope",
+    "EventHandler",
+    "EventId",
+    "EventStore",
     "EventSubscription",
     "InboundMessage",
     "NodeType",
@@ -43,6 +63,9 @@ __all__ = [
     "StepModelOverrideResponse",
     "SubscriptionHandler",
     "SubscriptionToken",
+    "ThreadRef",
     "WorkQueueEntry",
     "WorkQueueStatus",
+    "deserialize_event",
+    "register_events",
 ]

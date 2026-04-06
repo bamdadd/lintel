@@ -318,3 +318,31 @@ This gives visibility into the full request lifecycle: HTTP status, chat routing
   - Or use `make test-affected BASE_REF=main` to auto-detect affected packages
   - Only run `make test-unit` or `make all` as a final check before committing
 - **Do NOT add `__init__.py` to test directories** — pytest uses `--import-mode=importlib` and `__init__.py` in tests causes namespace collisions across packages.
+
+## Adding a New Feature (contracts-first workflow)
+
+Follow this sequence when adding a new domain feature:
+
+1. **Define contracts first** — add types, events, and Protocol interfaces in the relevant domain package (e.g. `lintel.domain.types`, `lintel.domain.events`, or a new `packages/<feature>/` package). **Never** add new types to `lintel-contracts` — it is a frozen kernel.
+
+2. **Create the API package** — follow the `packages/<name>-api/` pattern:
+   - Create `packages/<feature>-api/pyproject.toml` depending on `lintel-api-support` and `lintel-contracts`
+   - Create `src/lintel/<feature>_api/routes.py` with a `router = APIRouter()` and `StoreProvider` instances
+   - Create `src/lintel/<feature>_api/store.py` with an in-memory store implementing `EntityStore[T]` or `DictStore`
+   - Create `tests/` directory (no `__init__.py`) with route and store tests
+
+3. **Wire into the composition root** — in `packages/app/`:
+   - Add the package to `packages/app/pyproject.toml` dependencies and `[tool.uv.sources]`
+   - Import and mount the router in `src/lintel/api/routers.py`
+   - Wire the `StoreProvider` in `src/lintel/api/store_wiring.py`
+
+4. **Register in workspace config** — in root `pyproject.toml`:
+   - Add `packages/<feature>-api/tests` to `[tool.pytest.ini_options].testpaths`
+   - Add `packages/<feature>-api/src` to `[tool.mypy].mypy_path`
+
+5. **Add Make target** — in `mk/tests.mk`:
+   - Add `test-<feature>-api` target following the existing pattern
+
+6. **Emit events** — use `dispatch_event(request, event, stream_id=...)` from `lintel.api_support` for state changes that other subsystems should react to.
+
+7. **Run validation** — `make lint && make typecheck && make test-<feature>-api`
