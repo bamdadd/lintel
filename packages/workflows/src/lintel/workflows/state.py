@@ -55,6 +55,10 @@ class ThreadWorkflowState(TypedDict):
     # Review cycle counter (implement ↔ review loop)
     review_cycles: int
 
+    # Review output fields (populated by the review node)
+    review_decision: str  # "approve" or "request_changes"
+    review_findings: list[str]
+
     # Pipeline continuation — populated when rehydrating from a previous failed run
     previous_error: str
     previous_failed_stage: str

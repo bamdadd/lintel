@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-import logging
+import re
 from typing import TYPE_CHECKING, Any
+
+import structlog
 
 if TYPE_CHECKING:
     from langchain_core.runnables import RunnableConfig
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
     from lintel.sandbox.protocols import SandboxManager
     from lintel.workflows.state import ThreadWorkflowState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 REVIEW_SYSTEM_PROMPT = """\
 You are a pragmatic senior code reviewer. Review the following git diff for:
@@ -34,6 +36,21 @@ Provide a concise review with:
 
 Default to APPROVE unless there is a real problem.
 """
+
+
+def _parse_findings(review_text: str) -> list[str]:
+    """Extract individual findings from review text.
+
+    Looks for numbered or bulleted items that describe issues.
+    """
+    findings: list[str] = []
+    for line in review_text.splitlines():
+        stripped = line.strip()
+        # Match numbered items (1. ..., 2. ...) or bullet points (- ..., * ...)
+        # Skip the verdict line itself
+        if re.match(r"^(\d+[\.\)]\s+|[-*]\s+)", stripped) and "VERDICT" not in stripped.upper():
+            findings.append(stripped)
+    return findings
 
 
 async def review_output(
@@ -66,6 +83,7 @@ async def review_output(
             agent_runtime = get_runtime(run_id)
 
     await tracker.mark_running("review")
+    logger.info("review_started", run_id=run_id)
 
     sandbox_id = state.get("sandbox_id")
     diff_text = ""
@@ -103,7 +121,7 @@ async def review_output(
                         diff_parts.append(result.stdout)
             diff_text = "\n".join(diff_parts)
         except Exception:
-            logger.warning("review_diff_collection_failed")
+            logger.warning("review_diff_collection_failed", run_id=run_id, exc_info=True)
 
     # Fall back to collected artifacts
     if not diff_text:
@@ -113,6 +131,7 @@ async def review_output(
                 break
 
     if not diff_text:
+        logger.info("review_skipped_no_diff", run_id=run_id)
         await tracker.mark_completed("review")
         return {
             "current_phase": "awaiting_pr_approval",
@@ -120,6 +139,8 @@ async def review_output(
             "agent_outputs": [
                 {"node": "review", "verdict": "approve", "output": "No changes to review."}
             ],
+            "review_decision": "approve",
+            "review_findings": [],
         }
 
     # Truncate very large diffs for the review prompt
@@ -133,7 +154,7 @@ async def review_output(
         try:
             await sandbox_manager.reconnect_network(sandbox_id)
         except Exception:
-            logger.warning("review_reconnect_network_failed")
+            logger.warning("review_reconnect_network_failed", run_id=run_id, exc_info=True)
 
     review_output_text = ""
     usage: dict[str, Any] | None = None
@@ -185,9 +206,10 @@ async def review_output(
             review_output_text = agent_result.get("content", "Review complete.")
             usage = StageTracker.extract_token_usage(agent_result)
         except Exception:
-            logger.exception("agent_review_failed")
+            logger.exception("agent_review_failed", run_id=run_id)
             review_output_text = "Agent review failed — defaulting to manual review."
     else:
+        logger.warning("review_no_agent_runtime", run_id=run_id)
         review_output_text = "No agent runtime configured — manual review required."
 
     # Parse verdict from review output — look for explicit VERDICT line first,
@@ -195,23 +217,37 @@ async def review_output(
     verdict = "approve"
     upper_text = review_output_text.upper()
 
-    import re
-
     verdict_match = re.search(r"VERDICT\s*:\s*(APPROVE|REQUEST_CHANGES)", upper_text)
     if verdict_match:
         verdict = "approve" if verdict_match.group(1) == "APPROVE" else "request_changes"
     elif "REQUEST_CHANGES" in upper_text and "APPROVE" not in upper_text:
         verdict = "request_changes"
 
-    logger.info("review_verdict_parsed verdict=%s", verdict)
+    # Extract individual findings from the review text
+    findings = _parse_findings(review_output_text)
+
+    logger.info(
+        "review_completed",
+        run_id=run_id,
+        verdict=verdict,
+        finding_count=len(findings),
+        review_length=len(review_output_text),
+    )
 
     stage_outputs: dict[str, object] = {"verdict": verdict, "review": review_output_text}
     if usage:
         stage_outputs["token_usage"] = usage
+    if findings:
+        stage_outputs["findings"] = findings
     if verdict == "approve":
         await tracker.mark_completed("review", outputs=stage_outputs)
     else:
         await tracker.mark_completed("review", outputs=stage_outputs, error="Changes requested")
+
+    # Emit audit entry for the review trail
+    await _emit_review_audit(
+        _configurable, run_id=run_id, verdict=verdict, finding_count=len(findings)
+    )
 
     # Disconnect network again after review
     if sandbox_id and sandbox_manager is not None:
@@ -227,7 +263,41 @@ async def review_output(
         "pending_approvals": ["pr_approval"] if verdict == "approve" else [],
         "agent_outputs": [{"node": "review", "verdict": verdict, "output": review_output_text}],
         "review_cycles": review_cycles,
+        "review_decision": verdict,
+        "review_findings": findings,
     }
     if usage:
         result_dict["token_usage"] = [usage]
     return result_dict
+
+
+async def _emit_review_audit(
+    configurable: dict[str, Any],
+    *,
+    run_id: str,
+    verdict: str,
+    finding_count: int,
+) -> None:
+    """Emit an audit entry recording the review outcome."""
+    app_state = configurable.get("app_state")
+    if app_state is None and run_id:
+        try:
+            from lintel.workflows.nodes._runtime_registry import get_app_state
+
+            app_state = get_app_state(run_id)
+        except Exception:
+            return
+
+    audit_store = getattr(app_state, "audit_entry_store", None) if app_state else None
+    if audit_store is not None:
+        from lintel.workflows.nodes._event_helpers import AuditEmitter
+
+        await AuditEmitter.emit(
+            audit_store,
+            actor_id="reviewer-agent",
+            actor_type="agent",
+            action="review_completed",
+            resource_type="pipeline_run",
+            resource_id=run_id,
+            details={"verdict": verdict, "finding_count": finding_count},
+        )

@@ -161,6 +161,16 @@ class GuardrailApprovalRequested(EventEnvelope):
     event_type: str = "GuardrailApprovalRequested"
 
 
+# --- Review Events ---
+
+
+@dataclass(frozen=True)
+class ReviewCompleted(EventEnvelope):
+    """Emitted when the review node finishes evaluating implementation artifacts."""
+
+    event_type: str = "ReviewCompleted"
+
+
 # --- Concurrency / Backpressure Events (REQ-034.1) ---
 
 
@@ -192,4 +202,5 @@ register_events(
     GuardrailApprovalRequested,
     ChangeRequestTriggered,
     WorkflowQueued,
+    ReviewCompleted,
 )

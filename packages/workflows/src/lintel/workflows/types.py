@@ -286,3 +286,10 @@ class ApprovalDecision:
     approver: str = ""
     corrections: str = ""
     feedback: str = ""
+
+
+class ReviewVerdict(StrEnum):
+    """Verdict produced by the code review node."""
+
+    APPROVE = "approve"
+    REQUEST_CHANGES = "request_changes"
