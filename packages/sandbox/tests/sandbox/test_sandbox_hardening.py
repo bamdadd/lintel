@@ -38,15 +38,15 @@ class TestResourceLimitsApplied:
         kwargs = mock_client.containers.create.call_args[1]
         assert kwargs["pids_limit"] == 32
 
-    async def test_pids_limit_capped_at_256(self) -> None:
+    async def test_pids_limit_capped_at_512(self) -> None:
         manager, mock_client = _make_manager_with_mock()
-        config = SandboxConfig(resource_limits=ResourceLimits(max_processes=512))
+        config = SandboxConfig(resource_limits=ResourceLimits(max_processes=1024))
         thread_ref = ThreadRef("W1", "C1", "t1")
 
         await manager.create(config, thread_ref)
 
         kwargs = mock_client.containers.create.call_args[1]
-        assert kwargs["pids_limit"] == 256
+        assert kwargs["pids_limit"] == 512
 
     async def test_storage_opt_set(self) -> None:
         manager, mock_client = _make_manager_with_mock()

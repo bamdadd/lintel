@@ -86,7 +86,7 @@ class ResourceLimits:
     """Configurable resource limits for sandbox containers."""
 
     max_disk_mb: int = 1024
-    max_processes: int = 64
+    max_processes: int = 256
     seccomp_profile: str = "default"
 
 

@@ -131,7 +131,7 @@ class DockerSandboxManager:
             "mem_limit": config.memory_limit,
             "nano_cpus": config.cpu_quota * 10000,
             "cpuset_cpus": f"0-{max(0, config.cpu_quota // 100000 - 1)}",
-            "pids_limit": min(config.resource_limits.max_processes, 256),
+            "pids_limit": min(config.resource_limits.max_processes, 512),
             "storage_opt": {"size": f"{config.resource_limits.max_disk_mb}m"},
             "tmpfs": {
                 "/tmp": "size=200m,exec,uid=1000,gid=1000",

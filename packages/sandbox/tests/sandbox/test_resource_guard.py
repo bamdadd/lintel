@@ -98,7 +98,7 @@ class TestSandboxConfigDefaults:
 
         config = SandboxConfig()
         assert config.resource_limits.max_disk_mb == 1024
-        assert config.resource_limits.max_processes == 64
+        assert config.resource_limits.max_processes == 256
         assert config.resource_limits.seccomp_profile == "default"
         assert config.network_egress.allowed_domains == ()
         assert config.tool_limits.max_tool_calls_per_step == 50
