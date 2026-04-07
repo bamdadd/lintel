@@ -648,6 +648,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
     from lintel.persistence.pg_stores import (
         PostgresAttachmentStore as _PgAttachmentStore,
     )
+    from lintel.persistence.pg_stores import PostgresBotStore
     from lintel.persistence.pg_stores import (
         PostgresChannelConnectionStore as _PgChannelConnectionStore,
     )
@@ -1022,8 +1023,8 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "expiry_tracker": InMemoryExpiryTracker(),
         # Multi-tenancy: in-memory until Postgres implementation exists
         "workspace_store": InMemoryWorkspaceStore(),
-        # Bots: in-memory until Postgres implementation exists
-        "bot_store": InMemoryBotStore(),
+        # Bots: Postgres-backed
+        "bot_store": PostgresBotStore(pool),
         # Cloud Environments: in-memory until Postgres implementation exists
         "cloud_environment_store": InMemoryCloudEnvironmentStore(),
         # Cross-Repo Agent: in-memory until Postgres implementation exists

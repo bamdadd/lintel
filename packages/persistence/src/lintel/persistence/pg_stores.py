@@ -840,3 +840,38 @@ class PostgresMCPToolAllowlistStore:
 
     async def remove(self, allowlist_id: str) -> bool:
         return await self._store.remove(allowlist_id)
+
+
+# ---------------------------------------------------------------------------
+# Bots
+# ---------------------------------------------------------------------------
+
+
+class PostgresBotStore:
+    """Postgres-backed bot store (matches InMemoryBotStore interface)."""
+
+    def __init__(self, pool: asyncpg.Pool) -> None:
+        self._store = PostgresDictStore(pool, "bot")
+
+    async def add(self, bot: Any) -> None:  # noqa: ANN401
+        data = asdict(bot) if hasattr(bot, "__dataclass_fields__") else dict(bot)
+        for k, v in data.items():
+            if isinstance(v, tuple | frozenset):
+                data[k] = list(v)
+        await self._store.put(data["bot_id"], data)
+
+    async def get(self, bot_id: str) -> Any:  # noqa: ANN401
+        return await self._store.get(bot_id)
+
+    async def list_all(self) -> list[Any]:
+        return await self._store.list_all()
+
+    async def update(self, bot: Any) -> None:  # noqa: ANN401
+        data = asdict(bot) if hasattr(bot, "__dataclass_fields__") else dict(bot)
+        for k, v in data.items():
+            if isinstance(v, tuple | frozenset):
+                data[k] = list(v)
+        await self._store.put(data["bot_id"], data)
+
+    async def remove(self, bot_id: str) -> None:
+        await self._store.remove(bot_id)

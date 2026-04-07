@@ -39,12 +39,11 @@ class UpdateBotRequest(BaseModel):
     agent_ids: list[str] | None = None
 
 
-def _bot_to_dict(bot: Bot) -> dict[str, Any]:
-    data = asdict(bot)
-    data["scopes"] = list(bot.scopes)
-    data["project_ids"] = list(bot.project_ids)
-    data["workflow_ids"] = list(bot.workflow_ids)
-    data["agent_ids"] = list(bot.agent_ids)
+def _bot_to_dict(bot: Bot | dict[str, Any]) -> dict[str, Any]:
+    data = dict(bot) if isinstance(bot, dict) else asdict(bot)
+    for field in ("scopes", "project_ids", "workflow_ids", "agent_ids"):
+        val = data.get(field, ())
+        data[field] = list(val) if not isinstance(val, list) else val
     return data
 
 
@@ -155,7 +154,8 @@ async def update_bot(
     for field in ("scopes", "project_ids", "workflow_ids", "agent_ids"):
         if field in updates:
             updates[field] = tuple(updates[field])
-    updated = Bot(**{**asdict(bot), **updates})
+    base = dict(bot) if isinstance(bot, dict) else asdict(bot)
+    updated = Bot(**{**base, **updates})
     await store.update(updated)
     await dispatch_event(
         request,
@@ -177,6 +177,11 @@ async def delete_bot(
     await store.remove(bot_id)
     await dispatch_event(
         request,
-        BotRemoved(payload={"resource_id": bot_id, "name": bot.name}),
+        BotRemoved(
+            payload={
+                "resource_id": bot_id,
+                "name": bot["name"] if isinstance(bot, dict) else bot.name,
+            }
+        ),
         stream_id=f"bot:{bot_id}",
     )

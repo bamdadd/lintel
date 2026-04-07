@@ -197,7 +197,6 @@ const navSections: NavSection[] = [
       { label: 'PII Stats', path: '/pii-stats', icon: IconFingerprint },
       { label: 'Events', path: '/events', icon: IconTimeline },
       { label: 'Audit', path: '/audit', icon: IconHistory },
-      { label: 'Bots', path: '/settings/bots', icon: IconRobot },
       { label: 'Channels', path: '/settings/channels', icon: IconPlug },
       { label: 'Board Sync', path: '/settings/board-sync', icon: IconArrowsExchange },
       { label: 'Settings', path: '/settings', icon: IconSettings },
