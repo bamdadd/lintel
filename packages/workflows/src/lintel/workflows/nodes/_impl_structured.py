@@ -200,6 +200,17 @@ async def implement_structured(
 
         await tracker.append_log("implement", f"Pushing branch {feature_branch}...")
         try:
+            # Ensure .gitignore excludes Python bytecode before staging to prevent
+            # __pycache__/ and *.pyc files from being committed.
+            from lintel.workflows.nodes._git_helpers import ensure_gitignore_excludes_bytecode
+
+            try:
+                await ensure_gitignore_excludes_bytecode(
+                    sandbox_manager, sandbox_id, workspace_path
+                )
+            except Exception:
+                logger.warning("implement_gitignore_sanitize_failed")
+
             commit_cmd = (
                 "git add -A && git diff --cached --quiet"
                 " || git commit -m 'wip: implement stage progress'"

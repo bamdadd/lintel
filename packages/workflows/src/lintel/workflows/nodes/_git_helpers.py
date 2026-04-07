@@ -10,6 +10,77 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Bytecode patterns that should never be committed to a repository.
+_BYTECODE_GITIGNORE_ENTRIES: tuple[str, ...] = (
+    "__pycache__/",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+)
+
+
+async def ensure_gitignore_excludes_bytecode(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workdir: str,
+) -> None:
+    """Ensure .gitignore in *workdir* contains bytecode exclusion patterns.
+
+    This helper must be called **before** ``git add -A`` to prevent Python
+    bytecode files (``__pycache__/``, ``*.pyc``, etc.) from being staged and
+    committed by the implement/close workflow nodes.
+
+    The function performs three steps:
+
+    1. Reads the current ``.gitignore`` (empty string if absent).
+    2. Appends any missing bytecode patterns.
+    3. If any patterns were appended, removes already-tracked bytecode files
+       from the git index with ``git rm -r --cached`` so they are not
+       re-committed after the ``.gitignore`` update.
+    """
+    from lintel.sandbox.types import SandboxJob
+
+    # Read current .gitignore content (ignore errors if file does not exist)
+    read_result = await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(
+            command=f"cat {workdir}/.gitignore 2>/dev/null || true",
+            timeout_seconds=10,
+        ),
+    )
+    current_content: str = read_result.stdout or ""
+
+    missing_entries = [
+        entry for entry in _BYTECODE_GITIGNORE_ENTRIES if entry not in current_content
+    ]
+
+    if not missing_entries:
+        # All required patterns already present — nothing to do.
+        return
+
+    # Append missing entries to .gitignore
+    additions = "\n".join(missing_entries)
+    append_cmd = (
+        f"printf '\\n# Python bytecode (added by lintel)\\n{additions}\\n' >> {workdir}/.gitignore"
+    )
+    await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(command=append_cmd, timeout_seconds=10),
+    )
+
+    # Remove already-tracked bytecode files from the index so they are not
+    # re-staged by the subsequent ``git add -A``.
+    untrack_cmd = (
+        f"cd {workdir} && "
+        "git rm -r --cached __pycache__ '*.pyc' '*.pyo' '*.pyd' 2>/dev/null || true"
+    )
+    await sandbox_manager.execute(
+        sandbox_id,
+        SandboxJob(command=untrack_cmd, timeout_seconds=30),
+    )
+
+    logger.info("gitignore_bytecode_sanitized workdir=%s added=%s", workdir, missing_entries)
+
 
 class GitOperations:
     """Encapsulates git operations executed inside a sandbox."""
