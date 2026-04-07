@@ -123,6 +123,14 @@ class SlackSocketListener:
 
         cmd = translate_message_event(event, connection_id=self._connection_id)
         if cmd is None:
+            logger.debug(
+                "slack.socket.message_skipped",
+                has_bot_id=bool(event.get("bot_id")),
+                subtype=event.get("subtype", ""),
+                has_team=bool(event.get("team")),
+                has_channel=bool(event.get("channel")),
+                event_keys=list(event.keys()),
+            )
             return
 
         logger.info(
