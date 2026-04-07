@@ -184,6 +184,14 @@ async def spawn_implementation(
     research_section = f"\n\n## Research Context\n{research_context}" if research_context else ""
     guidelines_section = f"\n\n## Project Guidelines\n{guidelines}" if guidelines else ""
 
+    # Inject CLAUDE.md conventions from the target repository
+    project_conventions = state.get("project_conventions", "")
+    conventions_section = (
+        f"\n\n## Project Conventions (from CLAUDE.md)\n{project_conventions}"
+        if project_conventions
+        else ""
+    )
+
     # Check for review feedback from a previous cycle
     review_feedback = ""
     review_cycles = state.get("review_cycles", 0)
@@ -231,6 +239,7 @@ async def spawn_implementation(
         f"## Plan\n{plan_summary}\n\n## Tasks\n{task_text}\n\n"
         f"## Original request\n{chr(10).join(messages)}"
         f"{file_context}{research_section}{guidelines_section}"
+        f"{conventions_section}"
         f"{guided_context_section}"
         f"{multi_repo_section}{review_section}{failure_section}"
     )

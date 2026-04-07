@@ -755,6 +755,20 @@ async def setup_workspace(
         for _ws_url, ws_path in all_workspace_paths:
             await _install_project_deps(sandbox_manager, sandbox_id, ws_path, config, state)
 
+        # Collect project conventions from CLAUDE.md files in each repo
+        conventions_parts: list[str] = []
+        for _ws_url, ws_path in all_workspace_paths:
+            conventions = await collect_project_conventions(sandbox_manager, sandbox_id, ws_path)
+            if conventions:
+                label = _url_basename(_ws_url) if _ws_url else ws_path.rsplit("/", 1)[-1]
+                conventions_parts.append(f"## {label}\n{conventions}")
+        project_conventions = "\n\n".join(conventions_parts)
+        if project_conventions:
+            await tracker.append_log(
+                "setup_workspace",
+                f"Collected project conventions ({len(project_conventions):,} chars)",
+            )
+
         # Disconnect network now that clone and deps are complete
         # Keep network active when Claude Code is the provider (needs Anthropic API)
         if not oauth_token:
@@ -826,12 +840,85 @@ async def setup_workspace(
             "feature_branch": feature_branch,
             "workspace_path": repo_path,
             "workspace_paths": workspace_paths_tuple,
+            "project_conventions": project_conventions,
             "current_phase": "planning",
         }
     except Exception:
         logger.exception("workspace_setup_failed")
         await tracker.mark_completed("setup_workspace", error="Workspace setup failed")
         raise
+
+
+_MAX_CONVENTIONS_CHARS = 16000  # ~4 000 tokens at ~4 chars/token
+
+
+async def collect_project_conventions(
+    sandbox_manager: SandboxManager,
+    sandbox_id: str,
+    workspace_path: str,
+) -> str:
+    """Scan for CLAUDE.md files in the repo and return their concatenated content.
+
+    Searches the repo root and up to two levels of subdirectories. Files are
+    sorted so the root CLAUDE.md always comes first.  The result is capped at
+    ``_MAX_CONVENTIONS_CHARS`` characters to avoid bloating agent prompts.
+    """
+    from lintel.sandbox.types import SandboxJob
+
+    try:
+        find_result = await sandbox_manager.execute(
+            sandbox_id,
+            SandboxJob(
+                command=("find . -maxdepth 3 -name 'CLAUDE.md' -not -path '*/.git/*' | sort"),
+                workdir=workspace_path,
+                timeout_seconds=10,
+            ),
+        )
+    except Exception:
+        logger.warning("collect_project_conventions_find_failed", exc_info=True)
+        return ""
+
+    paths = [p.strip() for p in find_result.stdout.strip().splitlines() if p.strip()]
+    if not paths:
+        return ""
+
+    # Root CLAUDE.md first, then alphabetical
+    paths.sort(key=lambda p: (0 if p in ("./CLAUDE.md", "CLAUDE.md") else 1, p))
+
+    parts: list[str] = []
+    total = 0
+    for rel_path in paths:
+        try:
+            read_result = await sandbox_manager.execute(
+                sandbox_id,
+                SandboxJob(
+                    command=f"cat {rel_path}",
+                    workdir=workspace_path,
+                    timeout_seconds=10,
+                ),
+            )
+        except Exception:
+            logger.warning("collect_project_conventions_read_failed", path=rel_path, exc_info=True)
+            continue
+
+        content = read_result.stdout
+        if not content.strip():
+            continue
+
+        header = f"# {rel_path}\n"
+        chunk = header + content + "\n"
+        if total + len(chunk) > _MAX_CONVENTIONS_CHARS:
+            remaining = _MAX_CONVENTIONS_CHARS - total
+            if remaining > len(header) + 100:
+                chunk = chunk[:remaining] + "\n... (truncated)"
+            else:
+                break
+        parts.append(chunk)
+        total += len(chunk)
+        if total >= _MAX_CONVENTIONS_CHARS:
+            break
+
+    return "\n".join(parts)
 
 
 async def _install_project_deps(

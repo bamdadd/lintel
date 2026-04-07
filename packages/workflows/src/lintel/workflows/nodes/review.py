@@ -134,6 +134,15 @@ async def review_output(
     if len(diff_text) > 50000:
         diff_text = diff_text[:50000] + "\n... (diff truncated)"
 
+    # Build conventions section from CLAUDE.md files collected during setup_workspace
+    project_conventions = state.get("project_conventions", "")
+    review_system_prompt = REVIEW_SYSTEM_PROMPT
+    if project_conventions:
+        review_system_prompt = (
+            REVIEW_SYSTEM_PROMPT
+            + f"\n\n## Project Conventions (from CLAUDE.md)\n{project_conventions}"
+        )
+
     await tracker.log_llm_context("review", "reviewer", "review")
 
     # Reconnect network — implement disconnects it, but review needs API access
@@ -178,7 +187,7 @@ async def review_output(
                 agent_role=AgentRole.REVIEWER,
                 step_name="review",
                 messages=[
-                    {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+                    {"role": "system", "content": review_system_prompt},
                     {"role": "user", "content": f"```diff\n{diff_text}\n```"},
                 ],
                 on_chunk=_on_chunk,
