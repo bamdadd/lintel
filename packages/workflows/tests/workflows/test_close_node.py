@@ -5,10 +5,14 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from lintel.repos.types import PrAlreadyExistsError, PrAuthError, PrTransientError
 from lintel.sandbox.types import SandboxResult
 from lintel.workflows.nodes.close import (
     _create_pr_with_retry,
+    _is_generic_title,
+    _sanitize_pr_title,
     close_workflow,
 )
 
@@ -776,3 +780,212 @@ async def test_close_revert_failure_does_not_crash() -> None:
     # Should not raise
     result = await close_workflow(state, config)
     assert result["current_phase"] == "closed"
+
+
+# ---------------------------------------------------------------------------
+# PR title validation tests
+# ---------------------------------------------------------------------------
+
+
+class TestIsGenericTitle:
+    """Unit tests for _is_generic_title."""
+
+    def test_empty_string_is_generic(self) -> None:
+        assert _is_generic_title("") is True
+
+    def test_whitespace_only_is_generic(self) -> None:
+        assert _is_generic_title("   ") is True
+
+    def test_exact_generic_patterns_are_generic(self) -> None:
+        generic_titles = [
+            "lintel: implement feature",
+            "implement feature",
+            "lintel: implement",
+            "implement",
+            "lintel: feature",
+            "feature",
+            "lintel: fix",
+            "fix",
+            "lintel: task",
+            "task",
+            "wip",
+            "lintel: wip",
+        ]
+        for title in generic_titles:
+            assert _is_generic_title(title) is True, f"Expected '{title}' to be generic"
+
+    def test_generic_patterns_are_case_insensitive(self) -> None:
+        assert _is_generic_title("IMPLEMENT FEATURE") is True
+        assert _is_generic_title("Lintel: Implement Feature") is True
+        assert _is_generic_title("WIP") is True
+
+    def test_meaningful_titles_are_not_generic(self) -> None:
+        meaningful_titles = [
+            "add dark mode toggle to settings panel",
+            "fix: null pointer in user authentication flow",
+            "refactor: extract notification service",
+            "implement login page with OAuth support",
+        ]
+        for title in meaningful_titles:
+            assert _is_generic_title(title) is False, f"Expected '{title}' to NOT be generic"
+
+    def test_short_but_specific_title_is_not_generic(self) -> None:
+        assert _is_generic_title("fix login bug") is False
+
+    def test_title_with_extra_whitespace_still_detected(self) -> None:
+        assert _is_generic_title("  lintel:  implement  feature  ") is True
+
+
+class TestSanitizePrTitle:
+    """Unit tests for _sanitize_pr_title."""
+
+    def test_uses_work_item_title_when_meaningful(self) -> None:
+        result = _sanitize_pr_title("Add dark mode toggle", ["add feature"])
+        assert result == "Add dark mode toggle"
+
+    def test_skips_generic_work_item_title_and_uses_message(self) -> None:
+        result = _sanitize_pr_title("implement feature", ["fix login bug via OAuth"])
+        assert result == "fix login bug via OAuth"
+
+    def test_skips_generic_work_item_and_empty_messages_uses_fallback(self) -> None:
+        # The built-in fallback "lintel: implement feature" is also generic, so
+        # providing a non-generic explicit fallback should be used instead.
+        result = _sanitize_pr_title(
+            "lintel: implement feature", [], fallback="automated changes from pipeline"
+        )
+        assert result == "automated changes from pipeline"
+
+    def test_raises_when_all_candidates_are_generic(self) -> None:
+        with pytest.raises(ValueError, match="too generic"):
+            _sanitize_pr_title(
+                "implement feature",
+                ["feature"],
+                fallback="lintel: implement",
+            )
+
+    def test_truncates_title_to_72_chars(self) -> None:
+        long_title = "a" * 100
+        result = _sanitize_pr_title(long_title, [])
+        assert len(result) == 72
+
+    def test_messages_list_tried_in_order(self) -> None:
+        result = _sanitize_pr_title("", ["feature", "fix null pointer in auth"])
+        assert result == "fix null pointer in auth"
+
+    def test_empty_work_item_and_empty_messages_raises(self) -> None:
+        with pytest.raises(ValueError, match="too generic"):
+            _sanitize_pr_title("", [], fallback="fix")
+
+
+class TestClosePrTitleGuard:
+    """Integration-style tests: verify close_workflow uses meaningful PR titles."""
+
+    async def test_work_item_title_used_as_pr_title(self) -> None:
+        """Work item title is used when it is meaningful."""
+        sandbox = AsyncMock()
+        sandbox.execute = AsyncMock(return_value=_success_result())
+        sandbox.reconnect_network = AsyncMock()
+        sandbox.disconnect_network = AsyncMock()
+
+        repo_provider = AsyncMock()
+        repo_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/10")
+        repo_provider.add_comment = AsyncMock()
+
+        config: dict[str, Any] = {
+            "configurable": {
+                "sandbox_manager": sandbox,
+                "repo_provider": repo_provider,
+            }
+        }
+        state = _make_state(
+            work_item_title="Add OAuth2 login flow",
+            sanitized_messages=["implement feature"],
+        )
+        await close_workflow(state, config)
+
+        call_kwargs = repo_provider.create_pr.call_args.kwargs
+        assert call_kwargs["title"] == "Add OAuth2 login flow"
+
+    async def test_message_used_when_work_item_title_is_generic(self) -> None:
+        """Falls back to sanitized_messages when work_item_title is generic."""
+        sandbox = AsyncMock()
+        sandbox.execute = AsyncMock(return_value=_success_result())
+        sandbox.reconnect_network = AsyncMock()
+        sandbox.disconnect_network = AsyncMock()
+
+        repo_provider = AsyncMock()
+        repo_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/11")
+        repo_provider.add_comment = AsyncMock()
+
+        config: dict[str, Any] = {
+            "configurable": {
+                "sandbox_manager": sandbox,
+                "repo_provider": repo_provider,
+            }
+        }
+        state = _make_state(
+            work_item_title="implement feature",
+            sanitized_messages=["fix the broken authentication middleware"],
+        )
+        await close_workflow(state, config)
+
+        call_kwargs = repo_provider.create_pr.call_args.kwargs
+        assert call_kwargs["title"] == "fix the broken authentication middleware"
+
+    async def test_generic_fallback_does_not_produce_generic_pr_title(self) -> None:
+        """When all candidates are generic, title falls back to 'implement changes'."""
+        sandbox = AsyncMock()
+        sandbox.execute = AsyncMock(return_value=_success_result())
+        sandbox.reconnect_network = AsyncMock()
+        sandbox.disconnect_network = AsyncMock()
+
+        repo_provider = AsyncMock()
+        repo_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/12")
+        repo_provider.add_comment = AsyncMock()
+
+        config: dict[str, Any] = {
+            "configurable": {
+                "sandbox_manager": sandbox,
+                "repo_provider": repo_provider,
+            }
+        }
+        # Both work_item_title and messages are generic
+        state = _make_state(
+            work_item_title="",
+            sanitized_messages=[],
+        )
+        await close_workflow(state, config)
+
+        call_kwargs = repo_provider.create_pr.call_args.kwargs
+        # Should not be the old generic placeholder
+        assert call_kwargs["title"] != "lintel: implement feature"
+        # Should not be empty
+        assert call_kwargs["title"].strip() != ""
+
+    async def test_draft_pr_title_prefixes_meaningful_title(self) -> None:
+        """Draft PR title prepends [WIP] to the meaningful work item title."""
+        sandbox = AsyncMock()
+        sandbox.execute = AsyncMock(return_value=_success_result())
+        sandbox.reconnect_network = AsyncMock()
+        sandbox.disconnect_network = AsyncMock()
+
+        repo_provider = AsyncMock()
+        repo_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/13")
+        repo_provider.add_comment = AsyncMock()
+
+        config: dict[str, Any] = {
+            "configurable": {
+                "sandbox_manager": sandbox,
+                "repo_provider": repo_provider,
+            }
+        }
+        # Pipeline with failure triggers draft PR
+        state = _make_state(
+            work_item_title="Migrate user table to Postgres",
+            agent_outputs=[{"verdict": "failed", "node": "test"}],
+        )
+        await close_workflow(state, config)
+
+        call_kwargs = repo_provider.create_pr.call_args.kwargs
+        assert call_kwargs["title"] == "[WIP] Migrate user table to Postgres"
+        assert call_kwargs["draft"] is True

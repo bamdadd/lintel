@@ -22,6 +22,66 @@ logger = structlog.get_logger()
 _PR_MAX_RETRIES = 3
 _PR_BACKOFF_BASE = 2.0
 
+# Patterns considered too generic to use as a PR title.  The check is
+# case-insensitive and matches the full normalised string (leading/trailing
+# whitespace stripped and collapsed).
+_GENERIC_TITLE_PATTERNS: frozenset[str] = frozenset(
+    {
+        "lintel: implement feature",
+        "implement feature",
+        "lintel: implement",
+        "implement",
+        "lintel: feature",
+        "feature",
+        "lintel: fix",
+        "fix",
+        "lintel: task",
+        "task",
+        "wip",
+        "lintel: wip",
+    }
+)
+
+
+def _is_generic_title(title: str) -> bool:
+    """Return True if *title* is considered too generic to use as a PR title.
+
+    A title is considered generic when it matches one of the known placeholder
+    strings (case-insensitive, whitespace-normalised) or when it is empty /
+    blank.
+    """
+    normalised = " ".join(title.strip().lower().split())
+    return not normalised or normalised in _GENERIC_TITLE_PATTERNS
+
+
+def _sanitize_pr_title(
+    work_item_title: str,
+    sanitized_messages: list[str],
+    fallback: str = "lintel: implement feature",
+) -> str:
+    """Return the best available non-generic PR title.
+
+    Priority:
+    1. ``work_item_title`` — if set and not generic.
+    2. First entry of ``sanitized_messages`` — if set and not generic.
+    3. ``fallback`` — raised as a ``ValueError`` when it is also generic so
+       callers can decide how to surface the problem.
+
+    The title is truncated to 72 characters.
+
+    Raises:
+        ValueError: If every candidate (including *fallback*) is generic,
+            indicating that the calling code has no meaningful title to offer.
+    """
+    candidates = [work_item_title, *sanitized_messages, fallback]
+    for candidate in candidates:
+        if not _is_generic_title(candidate):
+            return candidate[:72]
+    raise ValueError(
+        "PR title is too generic and no meaningful alternative is available. "
+        f"Candidates tried: {candidates!r}"
+    )
+
 
 async def close_workflow(
     state: ThreadWorkflowState,
@@ -110,15 +170,20 @@ async def close_workflow(
     # Commit any uncommitted changes across all repos
     await tracker.append_log("close", "Committing changes...")
 
-    # Build commit/PR title from work item title (preferred) or first message
+    # Build commit/PR title from work item title (preferred) or first message.
+    # Reject generic placeholder titles and fall back through the priority chain.
     work_item_title = state.get("work_item_title", "")
     messages = state.get("sanitized_messages", [])
-    if work_item_title:
-        commit_msg = work_item_title[:72]
-    elif messages:
-        commit_msg = messages[0][:72]
-    else:
-        commit_msg = "lintel: implement feature"
+    try:
+        commit_msg = _sanitize_pr_title(work_item_title, messages)
+    except ValueError:
+        # All candidates were generic — use the safe placeholder but log a warning
+        logger.warning(
+            "close_generic_pr_title",
+            work_item_title=work_item_title,
+            first_message=messages[0] if messages else "",
+        )
+        commit_msg = "implement changes"
     # Escape double quotes in commit message for shell safety
     safe_msg = commit_msg.replace('"', '\\"')
 
