@@ -769,5 +769,20 @@ def _build_pr_body(
         if test_verdict == "passed":
             lines.append("## Tests\n\n:white_check_mark: All tests passing.\n")
 
+    # Circuit breaker warning — added when the review loop hit the max cycle limit
+    cb_review_outputs = [
+        o
+        for o in state.get("agent_outputs", [])
+        if isinstance(o, dict) and o.get("node") == "review" and o.get("circuit_breaker_tripped")
+    ]
+    if state.get("review_circuit_breaker_tripped") or cb_review_outputs:
+        review_cycles = state.get("review_cycles", 0)
+        lines.append(
+            f"## :warning: Review Circuit Breaker\n\n"
+            f"The automated review loop reached the maximum of **{review_cycles}** cycles "
+            f"without the reviewer approving. This PR was force-approved by the circuit "
+            f"breaker and **requires manual human review** before merging.\n"
+        )
+
     lines.append("---\n*Raised by [Lintel](https://github.com/bamdadd/lintel)* :robot:")
     return "\n".join(lines)

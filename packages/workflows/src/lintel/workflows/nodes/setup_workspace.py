@@ -835,7 +835,26 @@ async def setup_workspace(
                 "workspace_paths": workspace_paths_tuple,
             },
         )
-        return {
+        # Resolve per-project max_review_cycles
+        max_review_cycles = None
+        project_id = state.get("project_id", "")
+        if project_id and app_state:
+            project_store = getattr(app_state, "project_store", None)
+            if project_store is not None:
+                try:
+                    project = await project_store.get(project_id)
+                    if project is not None:
+                        mrc = (
+                            project.get("max_review_cycles")
+                            if isinstance(project, dict)
+                            else getattr(project, "max_review_cycles", None)
+                        )
+                        if mrc is not None:
+                            max_review_cycles = int(mrc)
+                except Exception:
+                    logger.warning("setup_workspace_project_config_failed", exc_info=True)
+
+        result: dict[str, Any] = {
             "sandbox_id": sandbox_id,
             "feature_branch": feature_branch,
             "workspace_path": repo_path,
@@ -843,6 +862,9 @@ async def setup_workspace(
             "project_conventions": project_conventions,
             "current_phase": "planning",
         }
+        if max_review_cycles is not None:
+            result["max_review_cycles"] = max_review_cycles
+        return result
     except Exception:
         logger.exception("workspace_setup_failed")
         await tracker.mark_completed("setup_workspace", error="Workspace setup failed")

@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from lintel.workflows.feature_to_pr import (
+    DEFAULT_MAX_REVIEW_CYCLES,
     MAX_REVIEW_CYCLES,
     _check_phase,
+    _resolve_max_review_cycles,
     _review_decision,
     _route_decision,
     build_feature_to_pr_graph,
@@ -177,14 +179,38 @@ class TestReviewDecision:
         }
         assert _review_decision(state) == "revise"  # type: ignore[arg-type]
 
-    def test_request_changes_closes_at_limit(self) -> None:
+    def test_circuit_breaker_force_approves_at_limit(self) -> None:
+        """When max cycles reached, circuit breaker force-approves instead of closing."""
         state: dict[str, Any] = {
             "agent_outputs": [
                 {"node": "review", "verdict": "request_changes", "output": "Fix X"},
             ],
             "review_cycles": MAX_REVIEW_CYCLES,
         }
-        assert _review_decision(state) == "close"  # type: ignore[arg-type]
+        assert _review_decision(state) == "continue"  # type: ignore[arg-type]
+
+    def test_circuit_breaker_respects_per_project_max(self) -> None:
+        """Per-project max_review_cycles overrides the default."""
+        state: dict[str, Any] = {
+            "agent_outputs": [
+                {"node": "review", "verdict": "request_changes", "output": "Fix X"},
+            ],
+            "review_cycles": 2,
+            "max_review_cycles": 2,
+        }
+        # At limit → force-approve
+        assert _review_decision(state) == "continue"  # type: ignore[arg-type]
+
+    def test_revises_when_under_per_project_max(self) -> None:
+        """Per-project max_review_cycles allows more cycles when configured higher."""
+        state: dict[str, Any] = {
+            "agent_outputs": [
+                {"node": "review", "verdict": "request_changes", "output": "Fix X"},
+            ],
+            "review_cycles": 4,
+            "max_review_cycles": 10,
+        }
+        assert _review_decision(state) == "revise"  # type: ignore[arg-type]
 
     def test_error_closes(self) -> None:
         state: dict[str, Any] = {
@@ -200,6 +226,57 @@ class TestReviewDecision:
             "review_cycles": 0,
         }
         assert _review_decision(state) == "continue"  # type: ignore[arg-type]
+
+
+class TestResolveMaxReviewCycles:
+    """Tests for _resolve_max_review_cycles helper."""
+
+    def test_returns_default_when_not_set(self) -> None:
+        state: dict[str, Any] = {}
+        assert _resolve_max_review_cycles(state) == DEFAULT_MAX_REVIEW_CYCLES  # type: ignore[arg-type]
+
+    def test_returns_state_value_when_set(self) -> None:
+        state: dict[str, Any] = {"max_review_cycles": 7}
+        assert _resolve_max_review_cycles(state) == 7  # type: ignore[arg-type]
+
+    def test_coerces_string_to_int(self) -> None:
+        state: dict[str, Any] = {"max_review_cycles": "5"}
+        assert _resolve_max_review_cycles(state) == 5  # type: ignore[arg-type]
+
+
+class TestPRBodyCircuitBreakerWarning:
+    """Tests for circuit breaker warning in PR body."""
+
+    def test_includes_warning_when_tripped(self) -> None:
+        from lintel.workflows.nodes.close import _build_pr_body
+
+        state: dict[str, Any] = {
+            "sanitized_messages": ["add feature"],
+            "agent_outputs": [
+                {
+                    "node": "review",
+                    "verdict": "request_changes",
+                    "circuit_breaker_tripped": True,
+                }
+            ],
+            "review_cycles": 3,
+            "review_circuit_breaker_tripped": True,
+        }
+        body = _build_pr_body(state, {})  # type: ignore[arg-type]
+        assert "Review Circuit Breaker" in body
+        assert "3" in body
+        assert "requires manual human review" in body
+
+    def test_no_warning_when_not_tripped(self) -> None:
+        from lintel.workflows.nodes.close import _build_pr_body
+
+        state: dict[str, Any] = {
+            "sanitized_messages": ["add feature"],
+            "agent_outputs": [{"node": "review", "verdict": "approve", "output": "LGTM"}],
+            "review_cycles": 1,
+        }
+        body = _build_pr_body(state, {})  # type: ignore[arg-type]
+        assert "Review Circuit Breaker" not in body
 
 
 class TestNodeFunctions:

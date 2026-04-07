@@ -239,12 +239,72 @@ async def review_output(
 
     review_cycles = state.get("review_cycles", 0) + 1
 
+    # Detect circuit breaker condition: reviewer is requesting changes but we've
+    # hit the configured max.  _review_decision will force-approve, so we mark
+    # the state so the close node can annotate the PR.
+    from lintel.workflows.feature_to_pr import _resolve_max_review_cycles
+
+    max_cycles = _resolve_max_review_cycles(state)
+    circuit_breaker_tripped = verdict == "request_changes" and review_cycles >= max_cycles
+
+    if circuit_breaker_tripped:
+        logger.warning(
+            "review_circuit_breaker_tripped cycles=%d max=%d",
+            review_cycles,
+            max_cycles,
+        )
+        # Emit guardrail event for notification rules
+        await _emit_circuit_breaker_event(state, _config, review_cycles, max_cycles)
+
     result_dict: dict[str, Any] = {
         "current_phase": "awaiting_pr_approval" if verdict == "approve" else "implementing",
         "pending_approvals": ["pr_approval"] if verdict == "approve" else [],
-        "agent_outputs": [{"node": "review", "verdict": verdict, "output": review_output_text}],
+        "agent_outputs": [
+            {
+                "node": "review",
+                "verdict": verdict,
+                "output": review_output_text,
+                **({"circuit_breaker_tripped": True} if circuit_breaker_tripped else {}),
+            }
+        ],
         "review_cycles": review_cycles,
+        **({"review_circuit_breaker_tripped": True} if circuit_breaker_tripped else {}),
     }
     if usage:
         result_dict["token_usage"] = [usage]
     return result_dict
+
+
+async def _emit_circuit_breaker_event(
+    state: ThreadWorkflowState,
+    config: RunnableConfig | None,
+    review_cycles: int,
+    max_cycles: int,
+) -> None:
+    """Emit a GuardrailTriggered event when the review circuit breaker trips."""
+    from lintel.workflows.nodes._event_helpers import AuditEmitter
+
+    _configurable = (config or {}).get("configurable", {})
+    run_id = state.get("run_id", "")
+
+    app_state = _configurable.get("app_state")
+    if app_state is None and run_id:
+        from lintel.workflows.nodes._runtime_registry import get_app_state
+
+        app_state = get_app_state(run_id)
+
+    audit_store = getattr(app_state, "audit_entry_store", None) if app_state else None
+    await AuditEmitter.emit(
+        audit_store,
+        actor_id="lintel-workflow",
+        actor_type="system",
+        action="review_circuit_breaker_tripped",
+        resource_type="pipeline_run",
+        resource_id=run_id,
+        details={
+            "review_cycles": review_cycles,
+            "max_review_cycles": max_cycles,
+            "work_item_id": state.get("work_item_id", ""),
+            "project_id": state.get("project_id", ""),
+        },
+    )
