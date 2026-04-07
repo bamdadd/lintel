@@ -359,3 +359,116 @@ class TestWorkflowDispatchSmoke:
         # Second patch: in_progress → in_progress (no transition)
         client.patch("/api/v1/work-items/smoke-double", json={"status": "in_progress"})
         assert pipeline_store.add.call_count == first_call_count  # No new pipeline
+
+
+class TestPrUrlPersistence:
+    """Tests for pr_url field persistence and partial update semantics."""
+
+    def test_patch_with_pr_url_and_in_review_persists(self, client: TestClient) -> None:
+        """PATCH with pr_url and status=in_review persists both fields."""
+        _create_work_item(client, "wi-pr")
+        # Move to in_progress first
+        client.patch("/api/v1/work-items/wi-pr", json={"status": "in_progress"})
+        # Then to in_review with pr_url
+        resp = client.patch(
+            "/api/v1/work-items/wi-pr",
+            json={"status": "in_review", "pr_url": "https://github.com/test/repo/pull/42"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "in_review"
+        assert data["pr_url"] == "https://github.com/test/repo/pull/42"
+
+        # GET confirms persistence
+        get_resp = client.get("/api/v1/work-items/wi-pr")
+        assert get_resp.status_code == 200
+        assert get_resp.json()["pr_url"] == "https://github.com/test/repo/pull/42"
+        assert get_resp.json()["status"] == "in_review"
+
+    def test_partial_update_does_not_clear_pr_url(self, client: TestClient) -> None:
+        """PATCH with only status does not clear an existing pr_url."""
+        _create_work_item(client, "wi-partial")
+        # Set pr_url and in_review
+        client.patch("/api/v1/work-items/wi-partial", json={"status": "in_progress"})
+        client.patch(
+            "/api/v1/work-items/wi-partial",
+            json={"status": "in_review", "pr_url": "https://github.com/test/repo/pull/10"},
+        )
+        # Now update only status (forward to approved) — pr_url should remain
+        resp = client.patch(
+            "/api/v1/work-items/wi-partial",
+            json={"status": "approved"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "approved"
+        assert data["pr_url"] == "https://github.com/test/repo/pull/10"
+
+    def test_create_work_item_with_pr_url(self, client: TestClient) -> None:
+        """Creating a work item with pr_url set persists it."""
+        resp = client.post(
+            "/api/v1/work-items",
+            json={
+                "work_item_id": "wi-create-pr",
+                "project_id": "proj-1",
+                "title": "Pre-existing PR",
+                "pr_url": "https://github.com/test/repo/pull/99",
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.json()["pr_url"] == "https://github.com/test/repo/pull/99"
+
+
+class TestStatusPrecedenceGuard:
+    """Tests for forward-only status transition enforcement."""
+
+    def test_cannot_regress_from_in_review_to_in_progress(self, client: TestClient) -> None:
+        """Regression from in_review to in_progress is blocked."""
+        _create_work_item(client, "wi-guard")
+        client.patch("/api/v1/work-items/wi-guard", json={"status": "in_progress"})
+        client.patch("/api/v1/work-items/wi-guard", json={"status": "in_review"})
+
+        resp = client.patch(
+            "/api/v1/work-items/wi-guard",
+            json={"status": "in_progress"},
+        )
+        assert resp.status_code == 409
+        assert "regress" in resp.json()["detail"].lower()
+
+    def test_can_advance_from_in_review_to_approved(self, client: TestClient) -> None:
+        """Forward transition from in_review to approved is allowed."""
+        _create_work_item(client, "wi-fwd")
+        client.patch("/api/v1/work-items/wi-fwd", json={"status": "in_progress"})
+        client.patch("/api/v1/work-items/wi-fwd", json={"status": "in_review"})
+
+        resp = client.patch(
+            "/api/v1/work-items/wi-fwd",
+            json={"status": "approved"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "approved"
+
+    def test_failed_status_allowed_as_reset(self, client: TestClient) -> None:
+        """Failed status is allowed from any state (it's a reset, precedence 0)."""
+        _create_work_item(client, "wi-fail")
+        client.patch("/api/v1/work-items/wi-fail", json={"status": "in_progress"})
+        client.patch("/api/v1/work-items/wi-fail", json={"status": "in_review"})
+
+        resp = client.patch(
+            "/api/v1/work-items/wi-fail",
+            json={"status": "failed"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "failed"
+
+    def test_open_status_allowed_as_reset_from_in_progress(self, client: TestClient) -> None:
+        """Open status is allowed from in_progress (precedence 1, explicit reset)."""
+        _create_work_item(client, "wi-reset")
+        client.patch("/api/v1/work-items/wi-reset", json={"status": "in_progress"})
+
+        resp = client.patch(
+            "/api/v1/work-items/wi-reset",
+            json={"status": "open"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "open"

@@ -637,3 +637,142 @@ async def test_create_pr_unknown_error_no_retry() -> None:
 
     assert result == ""
     assert provider.create_pr.call_count == 1
+
+
+# --- Work item update tests ---
+
+
+def _make_work_item_config(
+    sandbox_manager: object = None,
+    repo_provider: object = None,
+    work_item_store: object = None,
+) -> dict[str, Any]:
+    """Build config dict with work_item_store for testing work item updates."""
+    return {
+        "configurable": {
+            "sandbox_manager": sandbox_manager,
+            "repo_provider": repo_provider,
+            "work_item_store": work_item_store,
+        }
+    }
+
+
+async def test_close_updates_work_item_with_pr_url_and_in_review() -> None:
+    """Successful PR creation updates work item to in_review with pr_url."""
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_success_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    repo_provider = AsyncMock()
+    repo_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/42")
+    repo_provider.add_comment = AsyncMock()
+
+    work_item_store = AsyncMock()
+    stored_item: dict[str, Any] = {
+        "work_item_id": "wi-1",
+        "status": "in_progress",
+        "pr_url": "",
+        "description": "Build login page",
+    }
+    work_item_store.get = AsyncMock(return_value=stored_item)
+    work_item_store.update = AsyncMock()
+
+    config = _make_work_item_config(
+        sandbox_manager=sandbox,
+        repo_provider=repo_provider,
+        work_item_store=work_item_store,
+    )
+    state = _make_state(work_item_id="wi-1")
+
+    result = await close_workflow(state, config)
+
+    assert result["pr_url"] == "https://github.com/test/repo/pull/42"
+    work_item_store.update.assert_called_once()
+    update_call = work_item_store.update.call_args
+    assert update_call[0][0] == "wi-1"
+    updated_data = update_call[0][1]
+    assert updated_data["status"] == "in_review"
+    assert updated_data["pr_url"] == "https://github.com/test/repo/pull/42"
+
+
+async def test_close_work_item_update_failure_does_not_crash() -> None:
+    """If work item store update fails after PR creation, node still succeeds."""
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_success_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    repo_provider = AsyncMock()
+    repo_provider.create_pr = AsyncMock(return_value="https://github.com/test/repo/pull/99")
+    repo_provider.add_comment = AsyncMock()
+
+    work_item_store = AsyncMock()
+    work_item_store.get = AsyncMock(side_effect=RuntimeError("store down"))
+
+    config = _make_work_item_config(
+        sandbox_manager=sandbox,
+        repo_provider=repo_provider,
+        work_item_store=work_item_store,
+    )
+    state = _make_state(work_item_id="wi-1")
+
+    # Should not raise
+    result = await close_workflow(state, config)
+    assert result["pr_url"] == "https://github.com/test/repo/pull/99"
+    assert result["current_phase"] == "closed"
+
+
+async def test_close_reverts_work_item_to_open_on_pr_failure() -> None:
+    """Failed PR creation reverts work item status to open with failure note."""
+    sandbox = AsyncMock()
+    # Push will fail
+    sandbox.execute = AsyncMock(return_value=_fail_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    work_item_store = AsyncMock()
+    stored_item: dict[str, Any] = {
+        "work_item_id": "wi-fail",
+        "status": "in_progress",
+        "pr_url": "",
+        "description": "Build login page",
+    }
+    work_item_store.get = AsyncMock(return_value=stored_item)
+    work_item_store.update = AsyncMock()
+
+    config = _make_work_item_config(
+        sandbox_manager=sandbox,
+        work_item_store=work_item_store,
+    )
+    state = _make_state(work_item_id="wi-fail")
+
+    result = await close_workflow(state, config)
+
+    assert result.get("pr_url") == ""
+    work_item_store.update.assert_called_once()
+    update_call = work_item_store.update.call_args
+    updated_data = update_call[0][1]
+    assert updated_data["status"] == "open"
+    assert "Pipeline failure" in updated_data["description"]
+
+
+async def test_close_revert_failure_does_not_crash() -> None:
+    """If reverting work item status fails, the node still completes."""
+    sandbox = AsyncMock()
+    sandbox.execute = AsyncMock(return_value=_fail_result())
+    sandbox.reconnect_network = AsyncMock()
+    sandbox.disconnect_network = AsyncMock()
+
+    work_item_store = AsyncMock()
+    work_item_store.get = AsyncMock(side_effect=RuntimeError("store down"))
+
+    config = _make_work_item_config(
+        sandbox_manager=sandbox,
+        work_item_store=work_item_store,
+    )
+    state = _make_state(work_item_id="wi-revert-fail")
+
+    # Should not raise
+    result = await close_workflow(state, config)
+    assert result["current_phase"] == "closed"

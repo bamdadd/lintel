@@ -51,6 +51,7 @@ class TestAgentAPI:
             "channel_id": "C1",
             "thread_ts": "1234.5678",
             "channel_type": "slack",
+            "bot_id": None,
         }
         assert data["context"] == {"key": "value"}
 

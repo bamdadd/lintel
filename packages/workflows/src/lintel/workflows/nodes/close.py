@@ -263,23 +263,44 @@ async def close_workflow(
         with contextlib.suppress(Exception):
             await sandbox_manager.disconnect_network(sandbox_id)
 
-    # Update work item with PR URL(s)
-    if pr_url:
-        work_item_store = _configurable.get(
-            "work_item_store",
-            getattr(_configurable.get("app_state"), "work_item_store", None),
-        )
-        work_item_id = state.get("work_item_id", "")
-        if work_item_store and work_item_id:
-            try:
-                item = await work_item_store.get(work_item_id)
-                if item is not None:
-                    item["pr_url"] = pr_url
-                    if len(all_pr_urls) > 1:
-                        item["pr_urls"] = all_pr_urls
-                    await work_item_store.update(work_item_id, item)
-            except Exception:
-                logger.warning("close_update_work_item_failed")
+    # Update work item with PR URL(s) and transition to in_review
+    work_item_store = _configurable.get(
+        "work_item_store",
+        getattr(_configurable.get("app_state"), "work_item_store", None),
+    )
+    if work_item_store is None and run_id:
+        from lintel.workflows.nodes._runtime_registry import get_app_state as _get_app
+
+        _app = _get_app(run_id)
+        if _app is not None:
+            work_item_store = getattr(_app, "work_item_store", None)
+
+    work_item_id = state.get("work_item_id", "")
+    if pr_url and work_item_store and work_item_id:
+        try:
+            item = await work_item_store.get(work_item_id)
+            if item is not None:
+                item["pr_url"] = pr_url
+                item["status"] = "in_review"
+                if len(all_pr_urls) > 1:
+                    item["pr_urls"] = all_pr_urls
+                await work_item_store.update(work_item_id, item)
+        except Exception:
+            logger.warning("close_update_work_item_failed")
+    elif not pr_url and work_item_store and work_item_id:
+        # PR creation failed — revert status to open with a failure note
+        try:
+            item = await work_item_store.get(work_item_id)
+            if item is not None:
+                item["status"] = "open"
+                failure_note = push_error[:200] if push_error else "No PR raised"
+                existing_desc = item.get("description", "")
+                item["description"] = (
+                    f"{existing_desc}\n\n[Pipeline failure] {failure_note}"
+                ).strip()
+                await work_item_store.update(work_item_id, item)
+        except Exception:
+            logger.warning("close_revert_work_item_status_failed")
 
     stage_outputs: dict[str, object] = {}
     if pr_url:
