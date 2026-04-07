@@ -58,3 +58,7 @@ class ThreadWorkflowState(TypedDict):
     # Pipeline continuation — populated when rehydrating from a previous failed run
     previous_error: str
     previous_failed_stage: str
+
+    # Project conventions — concatenated CLAUDE.md file contents from the target repo.
+    # Collected by setup_workspace and injected into implement/review agent system prompts.
+    project_conventions: str
