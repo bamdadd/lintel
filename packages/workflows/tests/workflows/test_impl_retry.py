@@ -118,6 +118,7 @@ def _thread_ref() -> ThreadRef:
 # ---------------------------------------------------------------------------
 
 _DISC_MOD = "lintel.workflows.nodes._impl_discovery"
+_SELF_REVIEW = "lintel.workflows.nodes._self_review.run_self_review_loop"
 
 
 def _mock_run_tests(exit_codes: list[int]) -> AsyncMock:
@@ -159,6 +160,7 @@ class TestStructuredImplRetry:
             patch(f"{_DISC_MOD}.run_tests", _mock_run_tests([0])),
             patch(f"{_DISC_MOD}.run_lint", _mock_run_lint_pass()),
             patch(f"{_DISC_MOD}.fix_failures", _mock_fix_failures()),
+            patch(_SELF_REVIEW, AsyncMock()),
         ):
             _output, passed, _usage = await implement_structured(
                 agent_runtime=runtime,  # type: ignore[arg-type]
@@ -188,6 +190,7 @@ class TestStructuredImplRetry:
             patch(f"{_DISC_MOD}.run_tests", _mock_run_tests(exits)),
             patch(f"{_DISC_MOD}.run_lint", _mock_run_lint_pass()),
             patch(f"{_DISC_MOD}.fix_failures", _mock_fix_failures()),
+            patch(_SELF_REVIEW, AsyncMock()),
         ):
             _output, passed, _usage = await implement_structured(
                 agent_runtime=runtime,  # type: ignore[arg-type]
@@ -218,6 +221,7 @@ class TestStructuredImplRetry:
             patch(f"{_DISC_MOD}.run_tests", _mock_run_tests([1] * total)),
             patch(f"{_DISC_MOD}.run_lint", _mock_run_lint_pass()),
             patch(f"{_DISC_MOD}.fix_failures", _mock_fix_failures()),
+            patch(_SELF_REVIEW, AsyncMock()),
         ):
             output, passed, _usage = await implement_structured(
                 agent_runtime=runtime,  # type: ignore[arg-type]
