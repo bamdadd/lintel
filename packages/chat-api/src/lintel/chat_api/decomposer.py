@@ -78,10 +78,10 @@ autonomous AI coding agent. The agent will implement each work item independentl
 via a feature_to_pr pipeline (research → plan → implement → review → PR) with NO \
 human clarification available.
 
-## Sizing constraints
+## Sizing constraint
 
-Each work item MUST be implementable in a single pull request:
-- Touches at most 3-5 files substantially
+Each work item MUST be implementable in a single pull request touching at most \
+3 files:
 - One cohesive concern — never bundle unrelated changes
 - If a concept needs both an interface/protocol AND an implementation, split them \
 into separate work items (interface first)
@@ -92,10 +92,11 @@ Every numbered point, feature, or distinct capability mentioned in the user's id
 MUST map to at least one work item. Do NOT silently drop requirements. If the idea \
 lists 9 things, produce at least 9 work items.
 
-## Dependency ordering
+## Interface-first ordering
 
+- Protocols and abstractions MUST appear before concrete implementations
 - Foundation first: project scaffold, shared types/protocols, configuration
-- Abstractions before implementations: define interfaces before concrete adapters
+- Define interfaces before concrete adapters
 - Data layer before API layer before UI layer
 - Cross-cutting concerns (multi-tenancy, auth, event sourcing) early
 
@@ -103,11 +104,11 @@ lists 9 things, produce at least 9 work items.
 
 Each description MUST include ALL of the following so the agent can implement \
 without asking questions:
-1. What package/directory to create or modify
+1. Target package and key files to create or modify
 2. Key types, classes, or functions to implement (with field names where relevant)
 3. API routes with HTTP methods and paths (if applicable)
 4. Events to emit (if the project uses event sourcing)
-5. How to test: specific acceptance criteria an agent can verify
+5. Acceptance tests: specific criteria an agent can verify
 6. What is explicitly OUT OF SCOPE for this work item
 
 ## Output format
