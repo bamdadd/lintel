@@ -28,7 +28,7 @@ from lintel.workflows.nodes._impl_structured import GENERATE_SYSTEM_PROMPT as GE
 from lintel.workflows.nodes._impl_tdd import TDD_SYSTEM_PROMPT as TDD_SYSTEM_PROMPT
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Awaitable, Callable, Mapping
 
     from langchain_core.runnables import RunnableConfig
 
@@ -40,6 +40,63 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 MAX_NODE_FIX_ATTEMPTS = 2
+
+# Patterns that indicate a generic / placeholder work item title (case-insensitive).
+_GENERIC_TITLE_PATTERNS = (
+    "lintel: implement feature",
+    "implement feature",
+    "audit and harden",
+    "lintel: audit",
+    "new feature",
+    "feature request",
+    "todo",
+    "fix bug",
+    "untitled",
+)
+
+MIN_DESCRIPTION_LENGTH = 20
+
+
+def _validate_work_item(state: Mapping[str, Any]) -> str | None:
+    """Validate that state contains a usable work item.
+
+    Returns an error string if validation fails, or ``None`` if the work item
+    is acceptable.
+    """
+    work_item = state.get("work_item")
+    if not work_item:
+        return "No work item found in workflow state — cannot proceed with implementation."
+
+    # Support both dict and dataclass-style work items.
+    if isinstance(work_item, dict):
+        title: str = work_item.get("title", "") or ""
+        description: str = work_item.get("description", "") or ""
+    else:
+        title = getattr(work_item, "title", "") or ""
+        description = getattr(work_item, "description", "") or ""
+
+    title = title.strip()
+    description = description.strip()
+
+    if not title:
+        return "Work item has no title — cannot proceed with implementation."
+
+    title_lower = title.lower()
+    for pattern in _GENERIC_TITLE_PATTERNS:
+        if title_lower == pattern or title_lower.startswith(pattern + " "):
+            return (
+                f"Work item title is too generic ({title!r}). "
+                "Please provide a specific, descriptive title before running the implement stage."
+            )
+
+    if len(description) < MIN_DESCRIPTION_LENGTH:
+        return (
+            f"Work item description is too short ({len(description)} chars — "
+            f"minimum {MIN_DESCRIPTION_LENGTH}). "
+            "Please add a detailed description before running the implement stage."
+        )
+
+    return None
 
 
 async def spawn_implementation(
@@ -76,6 +133,15 @@ async def spawn_implementation(
         has_runtime=agent_runtime is not None,
         sandbox_id=state.get("sandbox_id", ""),
     )
+
+    # --- Work item validation guard ---
+    validation_error = _validate_work_item(state)
+    if validation_error:
+        logger.warning("implement_work_item_invalid", reason=validation_error)
+        await tracker.mark_running("implement")
+        await tracker.append_log("implement", f"Validation failed: {validation_error}")
+        await tracker.mark_completed("implement", error=validation_error)
+        return {"error": validation_error, "current_phase": "closed"}
 
     await tracker.mark_running("implement")
     await tracker.append_log("implement", "Starting implementation")

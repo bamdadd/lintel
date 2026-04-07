@@ -70,6 +70,11 @@ def _make_state(sandbox_id: str = "sandbox-123") -> dict[str, Any]:
         "sandbox_results": [],
         "pr_url": "",
         "error": None,
+        "work_item": {
+            "id": "test-wi",
+            "title": "Test: implement sorting feature",
+            "description": "Implement a sorting algorithm for the data pipeline processing module",
+        },
     }
 
 

@@ -101,6 +101,11 @@ def _make_state() -> dict[str, object]:
         "pr_url": "",
         "error": None,
         "run_id": "",
+        "work_item": {
+            "id": "test-wi",
+            "title": "Test: implement sorting feature",
+            "description": "Implement a sorting algorithm for the data pipeline processing module",
+        },
     }
 
 
