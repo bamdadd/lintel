@@ -290,6 +290,52 @@ async def stop_telegram_polling(app: object) -> None:
     app.state._telegram_poll_task = None
 
 
+async def start_slack_socket_listener(app: object) -> None:
+    """Start the Slack Socket Mode listener as a background task.
+
+    Requires an xapp- app-level token in the stored credentials.
+    If no app_token is available, logs a warning and skips.
+    """
+    await stop_slack_socket_listener(app)
+
+    creds: dict[str, str] | None = getattr(app.state, "slack_credentials", None)  # type: ignore[union-attr]
+    if creds is None:
+        return
+
+    bot_token = creds.get("bot_token", "")
+    app_token = creds.get("app_token", "")
+    signing_secret = creds.get("signing_secret", "")
+
+    if not bot_token or not app_token or not app_token.startswith("xapp-"):
+        logger.info(
+            "slack.socket.skipped",
+            has_bot_token=bool(bot_token),
+            has_app_token=bool(app_token),
+            reason="Socket Mode requires an xapp- app-level token",
+        )
+        return
+
+    from lintel.slack.socket_listener import SlackSocketListener
+
+    listener = SlackSocketListener(
+        bot_token=bot_token,
+        app_token=app_token,
+        app_state=app.state,  # type: ignore[union-attr]
+        signing_secret=signing_secret,
+        connection_id=SLACK_CREDENTIAL_ID,
+    )
+    await listener.start()
+    app.state._slack_socket_listener = listener  # type: ignore[union-attr]
+
+
+async def stop_slack_socket_listener(app: object) -> None:
+    """Stop the Slack Socket Mode listener if running."""
+    listener = getattr(app.state, "_slack_socket_listener", None)  # type: ignore[union-attr]
+    if listener is not None:
+        await listener.stop()
+    app.state._slack_socket_listener = None  # type: ignore[union-attr]
+
+
 @router.get("/settings/channels")
 async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
     """List all channel connections with status.
@@ -379,6 +425,9 @@ async def connect_slack(
 
     logger.info("slack.connected", connection_id=connection_id)
 
+    # Start Socket Mode listener if app_token is available
+    await start_slack_socket_listener(request.app)
+
     return {
         "channel_type": "slack",
         "connected": True,
@@ -430,6 +479,9 @@ async def disconnect_slack(request: Request) -> None:
 
     if not connected:
         raise HTTPException(status_code=404, detail="Slack not connected")
+
+    # Stop Socket Mode listener
+    await stop_slack_socket_listener(request.app)
 
     # Remove from credential store
     credential_store = await _get_credential_store(request)
