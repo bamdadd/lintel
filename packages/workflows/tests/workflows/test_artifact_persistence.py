@@ -19,6 +19,11 @@ def _make_state(**overrides: object) -> dict[str, Any]:
         "work_item_id": "wi-1",
         "plan": {"summary": "Do it", "tasks": [{"title": "task1"}]},
         "repo_branch": "main",
+        "work_item": {
+            "id": "test-wi",
+            "title": "Test: implement sorting feature",
+            "description": "Implement a sorting algorithm for the data pipeline processing module",
+        },
     }
     base.update(overrides)
     return base
