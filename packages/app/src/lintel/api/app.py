@@ -25,7 +25,7 @@ def create_app() -> FastAPI:
     def _generate_unique_id(route: APIRoute) -> str:
         if route.tags:
             return f"{route.tags[0]}_{route.name}"
-        return route.name
+        return route.name or ""
 
     app = FastAPI(
         title="Lintel",
@@ -48,7 +48,7 @@ def create_app() -> FastAPI:
     mount_routers(app)
 
     # Expose all API endpoints as MCP tools/resources
-    from fastapi_mcp import FastApiMCP  # type: ignore[import-untyped]
+    from fastapi_mcp import FastApiMCP
 
     mcp = FastApiMCP(
         app,

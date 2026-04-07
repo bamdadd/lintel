@@ -121,13 +121,16 @@ norecursedirs = ["tests/fixtures"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+disallow_untyped_decorators = false
 plugins = ["pydantic.mypy"]
 namespace_packages = true
 explicit_package_bases = true
 mypy_path = [
     "packages/contracts/src",
+    "packages/domain/src",
     "packages/agents/src",
     "packages/infrastructure/src",
+    "packages/auth-api/src",
     "packages/workflows/src",
     "packages/app/src",
     "packages/event-store/src",
@@ -217,6 +220,29 @@ mypy_path = [
     "packages/channel-message-routing-api/src",
     "packages/repo-auto-describe-api/src",
     "packages/cloud-providers-api/src",
+    "packages/background-agents-api/src",
+    "packages/board-sync-api/src",
+    "packages/channel-adapter-registry-api/src",
+    "packages/channel-connections-api/src",
+    "packages/codebase-index-api/src",
+    "packages/context-attachments-api/src",
+    "packages/data-retention-api/src",
+    "packages/digest-api/src",
+    "packages/drift-detection-api/src",
+    "packages/encryption-api/src",
+    "packages/feedback-api/src",
+    "packages/github-app-api/src",
+    "packages/incidents-api/src",
+    "packages/jira-adapter-api/src",
+    "packages/multiplayer-sessions-api/src",
+    "packages/proactive-triggers-api/src",
+    "packages/release-notes-api/src",
+    "packages/sandbox-pool-api/src",
+    "packages/stage-catalogue-api/src",
+    "packages/test-plan-api/src",
+    "packages/trust-scores-api/src",
+    "packages/web-ide-api/src",
+    "packages/workflow-acl-api/src",
 ]
 
 [[tool.mypy.overrides]]
@@ -226,6 +252,34 @@ follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
 module = ["aioboto3", "aioboto3.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "bcrypt",
+    "cryptography.*",
+    "dependency_injector",
+    "dependency_injector.*",
+    "fastapi",
+    "fastapi.*",
+    "fastapi_mcp",
+    "fastapi_mcp.*",
+    "googleapiclient.*",
+    "jwt",
+    "langchain_core.*",
+    "langgraph.*",
+    "litellm",
+    "litellm.*",
+    "opentelemetry",
+    "opentelemetry.*",
+    "presidio_analyzer",
+    "presidio_analyzer.*",
+    "pyotp",
+    "slack_sdk.*",
+    "starlette.*",
+    "structlog",
+    "structlog.*",
+]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
