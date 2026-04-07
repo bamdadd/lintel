@@ -1,7 +1,8 @@
 import { useEffect, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router';
 import {
   Title, Stack, Group, Badge, Text, Button, Paper, Loader, Center, Tabs, ScrollArea, Box,
+  Skeleton, Anchor,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconArrowLeft, IconPlayerStop, IconLayoutList, IconTrash } from '@tabler/icons-react';
@@ -12,6 +13,8 @@ import {
   usePipelinesCancelPipeline,
   usePipelinesDeletePipeline,
 } from '@/generated/api/pipelines/pipelines';
+import { useWorkItemsGetWorkItem } from '@/generated/api/work-items/work-items';
+import { useBoardsListBoards } from '@/features/boards/api';
 import { PipelineDAG } from '../components/PipelineDAG';
 import type { DAGNode, DAGEdge } from '../components/PipelineDAG';
 import { StepTimingBar } from '../components/StepTimingBar';
@@ -80,6 +83,31 @@ export function Component() {
 
   const pipeline = (pipelineResp?.data ?? {}) as Record<string, unknown>;
   const stages = (stagesResp?.data ?? []) as StageItem[];
+
+  // ── Work item subtitle: fetch work item when trigger_type starts with 'work_item:' ──
+  const workItemId = pipeline.work_item_id as string | undefined;
+  const isWorkItemTrigger = !!(
+    workItemId
+    && (pipeline.trigger_type as string)?.startsWith('work_item:')
+  );
+
+  const {
+    data: workItemResp,
+    isLoading: isWorkItemLoading,
+  } = useWorkItemsGetWorkItem(workItemId ?? '', {
+    query: { enabled: isWorkItemTrigger },
+  });
+  const workItem = workItemResp?.data as
+    | { work_item_id: string; title: string; project_id: string }
+    | undefined;
+
+  // Fetch boards for the project to build the board link
+  const { data: boardsResp } = useBoardsListBoards(
+    isWorkItemTrigger ? (pipeline.project_id as string) : undefined,
+  );
+  const boardId = (
+    (boardsResp?.data ?? boardsResp) as { board_id: string }[] | undefined
+  )?.[0]?.board_id;
   const cancelMut = usePipelinesCancelPipeline();
   const deleteMut = usePipelinesDeletePipeline();
   const handleActionComplete = useCallback(() => {
@@ -243,6 +271,21 @@ export function Component() {
             {(pipeline.status as string) ?? 'unknown'}
           </Badge>
         </Group>
+        {isWorkItemTrigger && (
+          isWorkItemLoading
+            ? <Skeleton data-testid="work-item-subtitle-skeleton" height={16} width={200} />
+            : workItem?.title && (
+              <Anchor
+                component={Link}
+                to={boardId ? `/boards/${boardId}?work_item=${workItem.work_item_id}` : '#'}
+                size="sm"
+                c="dimmed"
+                data-testid="work-item-subtitle"
+              >
+                {workItem.title}
+              </Anchor>
+            )
+        )}
         <Group gap="sm" wrap="wrap">
           {(pipeline.trigger_type as string)?.startsWith('chat:') && (
             <Button
