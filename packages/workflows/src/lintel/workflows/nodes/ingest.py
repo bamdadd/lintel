@@ -65,6 +65,10 @@ async def ingest_message(
         work_item_store = _configurable.get("work_item_store")
         if work_item_store is None:
             app_state = _configurable.get("app_state")
+            if app_state is None:
+                from lintel.workflows.nodes._runtime_registry import get_app_state
+
+                app_state = get_app_state(run_id)
             if app_state is not None:
                 work_item_store = getattr(app_state, "work_item_store", None)
         if work_item_store is not None:
@@ -87,6 +91,11 @@ async def ingest_message(
         work_item_store = _configurable.get("work_item_store")
         if work_item_store is None:
             app_state = _configurable.get("app_state")
+            # LangGraph strips custom configurable keys — fall back to registry
+            if app_state is None:
+                from lintel.workflows.nodes._runtime_registry import get_app_state
+
+                app_state = get_app_state(run_id)
             if app_state is not None:
                 work_item_store = getattr(app_state, "work_item_store", None)
         if work_item_store is not None:

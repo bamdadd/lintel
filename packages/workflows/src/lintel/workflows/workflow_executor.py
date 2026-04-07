@@ -149,6 +149,7 @@ class WorkflowExecutor:
                 "agent_runtime": self._agent_runtime,
                 "app_state": self._app_state,
                 "pipeline_store": getattr(self._app_state, "pipeline_store", None),
+                "work_item_store": getattr(self._app_state, "work_item_store", None),
                 "sandbox_manager": getattr(self._app_state, "sandbox_manager", None),
                 "credential_store": getattr(self._app_state, "credential_store", None),
                 "code_artifact_store": getattr(self._app_state, "code_artifact_store", None),
