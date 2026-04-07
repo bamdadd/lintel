@@ -230,8 +230,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     channel_registry = ChannelRegistry()
     app.state.channel_registry = channel_registry
 
-    # Register Slack adapter if configured (placeholder - real Slack adapter
-    # is initialized elsewhere via Bolt)
+    # Restore Slack credentials from credential store and start Socket Mode listener
+    from lintel.settings_api.channels_router import (
+        restore_slack_from_store,
+        start_slack_socket_listener,
+    )
+
+    await restore_slack_from_store(app)
+    await start_slack_socket_listener(app)
 
     # Register Telegram adapter: try env vars first, then fall back to credential store
     telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -489,8 +495,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await bot_lifecycle.stop_all()
     container.unwire()
     scheduler_task.cancel()
-    from lintel.settings_api.channels_router import stop_telegram_polling
+    from lintel.settings_api.channels_router import (
+        stop_slack_socket_listener,
+        stop_telegram_polling,
+    )
 
+    await stop_slack_socket_listener(app)
     await stop_telegram_polling(app)
     await engine.stop()
     if db_pool is not None:
