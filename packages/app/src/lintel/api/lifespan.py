@@ -152,7 +152,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
             raise RuntimeError(msg)
         import asyncpg
 
-        db_pool = await asyncpg.create_pool(dsn)  # type: ignore[no-untyped-call]
+        db_pool = await asyncpg.create_pool(dsn)
         stores = create_postgres_stores(cast("asyncpg.Pool", db_pool))
     else:
         stores = create_in_memory_stores()
@@ -193,7 +193,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     _checkpointer = MemorySaver()
 
-    def _graph_factory(workflow_type: str) -> CompiledStateGraph:  # type: ignore[type-arg]
+    def _graph_factory(workflow_type: str) -> CompiledStateGraph:
         from lintel.workflows.registry import get_workflow_builder
 
         builder_fn = get_workflow_builder(workflow_type)
