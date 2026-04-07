@@ -8,7 +8,9 @@ import {
   Stack,
   Badge,
   Alert,
+  ActionIcon,
 } from '@mantine/core';
+import { IconTrash } from '@tabler/icons-react';
 import {
   connectSlack,
   getSlackStatus,
@@ -19,9 +21,10 @@ import type { ChannelConnection } from './channelsApi';
 interface Props {
   connection: ChannelConnection;
   onUpdate: () => void;
+  onRemove?: () => void;
 }
 
-export function SlackConnectionCard({ connection, onUpdate }: Props) {
+export function SlackConnectionCard({ connection, onUpdate, onRemove }: Props) {
   const [botToken, setBotToken] = useState('');
   const [signingSecret, setSigningSecret] = useState('');
   const [appToken, setAppToken] = useState('');
@@ -77,12 +80,19 @@ export function SlackConnectionCard({ connection, onUpdate }: Props) {
       <Stack gap="md">
         <Group justify="space-between">
           <Title order={4}>Slack</Title>
-          <Badge
-            color={connection.connected ? 'green' : 'gray'}
-            variant="dot"
-          >
-            {connection.connected ? 'Connected' : 'Disconnected'}
-          </Badge>
+          <Group gap="xs">
+            <Badge
+              color={connection.connected ? 'green' : 'gray'}
+              variant="dot"
+            >
+              {connection.connected ? 'Connected' : 'Disconnected'}
+            </Badge>
+            {onRemove && (
+              <ActionIcon color="red" variant="subtle" size="sm" onClick={onRemove}>
+                <IconTrash size={14} />
+              </ActionIcon>
+            )}
+          </Group>
         </Group>
 
         {error && (

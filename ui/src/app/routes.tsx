@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { AppLayout } from '@/shared/layout/AppLayout';
 import { RouteError } from '@/shared/components/RouteError';
 import { ProtectedRoute } from '@/features/auth';
@@ -294,7 +294,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'settings/bots',
-        lazy: () => import('@/features/bots/pages/BotListPage'),
+        element: <Navigate to="/settings/channels" replace />,
       },
       {
         path: 'settings/channels',

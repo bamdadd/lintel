@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { useParams, useSearchParams, useNavigate } from 'react-router';
 import {
   Title, Stack, Group, Loader, Center, Text, ActionIcon, Button,
   TextInput, MultiSelect, Switch, Tooltip,
 } from '@mantine/core';
-import { IconSettings, IconPlus, IconSearch, IconX, IconArrowsSort } from '@tabler/icons-react';
+import {
+  IconSettings, IconPlus, IconSearch, IconX, IconArrowsSort, IconRefresh,
+} from '@tabler/icons-react';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
@@ -18,6 +20,7 @@ import { WorkItemDetailModal } from '../components/WorkItemDetailModal';
 import { EmptyState } from '@/shared/components/EmptyState';
 
 export function Component() {
+  const navigate = useNavigate();
   const { boardId } = useParams<{ boardId: string }>();
   const { data: boardResp, isLoading: boardLoading } = useBoardsGetBoard(boardId);
   const board = boardResp?.data;
@@ -297,9 +300,16 @@ export function Component() {
           <Button leftSection={<IconPlus size={16} />} size={isMobile ? 'xs' : 'sm'} onClick={openCreateItem}>
             {isMobile ? 'New' : 'New Work Item'}
           </Button>
-          <ActionIcon variant="subtle" onClick={openEdit}>
-            <IconSettings size={20} />
-          </ActionIcon>
+          <Tooltip label="Edit board columns">
+            <ActionIcon variant="subtle" onClick={openEdit}>
+              <IconSettings size={20} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Board sync settings">
+            <ActionIcon variant="subtle" onClick={() => void navigate('/settings/board-sync')}>
+              <IconRefresh size={20} />
+            </ActionIcon>
+          </Tooltip>
         </Group>
       </Group>
       <EditBoardModal board={board ?? null} opened={editOpened} onClose={closeEdit} />

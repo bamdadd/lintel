@@ -27,3 +27,5 @@ src/lintel/api/static/
 .superpowersworktrees
 worktrees
 .superpowers
+ui/src/generated/
+ui/.vite/

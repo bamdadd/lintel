@@ -1,6 +1,6 @@
-import { Title, Stack, Loader, Center, Table, Text, Badge, Group, Button, ActionIcon } from '@mantine/core';
+import { Title, Stack, Loader, Center, Table, Text, Badge, Group, Button, ActionIcon, Tooltip } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconRefresh } from '@tabler/icons-react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
@@ -53,9 +53,16 @@ export function Component() {
     <Stack gap="md">
       <Group justify="space-between">
         <Title order={2}>Boards</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
-          New Board
-        </Button>
+        <Group gap="xs">
+          <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
+            New Board
+          </Button>
+          <Tooltip label="Board sync settings">
+            <ActionIcon variant="subtle" size="lg" onClick={() => void navigate('/settings/board-sync')}>
+              <IconRefresh size={20} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
       </Group>
       <CreateBoardModal opened={createOpened} onClose={closeCreate} />
 
