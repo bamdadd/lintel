@@ -131,6 +131,25 @@ async def implement_structured(
                     logger.warning("implement_write_failed", path=rel_path)
                     await tracker.append_log("implement", f"  FAILED: {rel_path}")
 
+        # --- Phase 2.5: Self-review quality loop ---
+        if files_to_write:
+            from lintel.workflows.nodes._self_review import run_self_review_loop
+
+            try:
+                await run_self_review_loop(
+                    agent_runtime=agent_runtime,
+                    thread_ref=thread_ref,
+                    sandbox_manager=sandbox_manager,
+                    sandbox_id=sandbox_id,
+                    workspace_path=workspace_path,
+                    config=config,
+                    state=state,
+                    total_usage=total_usage,
+                )
+            except Exception:
+                logger.exception("self_review_loop_failed")
+                await tracker.append_log("implement", "Self-review loop failed — continuing")
+
         # --- Phase 3: Run tests, fix if broken ---
         test_passed = False
         test_output = ""
