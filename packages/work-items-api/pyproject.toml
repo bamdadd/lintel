@@ -8,6 +8,7 @@ dependencies = [
     "lintel-api-support",
     "lintel-persistence",
     "lintel-workflows",
+    "lintel-pipelines-api",
     "fastapi>=0.115",
     "pydantic>=2.10",
     "structlog>=24.4",
@@ -19,6 +20,7 @@ lintel-domain = { workspace = true }
 lintel-api-support = { workspace = true }
 lintel-persistence = { workspace = true }
 lintel-workflows = { workspace = true }
+lintel-pipelines-api = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

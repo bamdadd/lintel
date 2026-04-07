@@ -29,6 +29,20 @@ from lintel.workflows.types import (
 
 logger = logging.getLogger(__name__)
 
+# Status precedence — higher values take priority. Only forward transitions allowed
+# via the precedence guard; explicit resets (e.g. open after failure) bypass this.
+_STATUS_PRECEDENCE: dict[str, int] = {
+    "backlog": 0,
+    "open": 1,
+    "in_progress": 2,
+    "in_review": 3,
+    "approved": 4,
+    "merged": 5,
+    "done": 5,
+    "closed": 6,
+    "failed": 0,  # failed is a reset, not a progression
+}
+
 router = APIRouter()
 
 work_item_store_provider = StoreProvider()
@@ -128,6 +142,23 @@ async def update_work_item(
     if item is None:
         raise HTTPException(status_code=404, detail="Work item not found")
     updates = body.model_dump(exclude_none=True)
+    # Status precedence guard: prevent regressing to a lower-priority status
+    old_status = item.get("status", "")
+    new_status = updates.get("status", "")
+    if new_status and new_status != old_status:
+        old_prec = _STATUS_PRECEDENCE.get(old_status, 0)
+        new_prec = _STATUS_PRECEDENCE.get(new_status, 0)
+        # Block regression unless the new status is a terminal reset (failed/open
+        # after pipeline failure) — those have precedence 0-1 and are explicit.
+        if new_prec < old_prec and new_prec > 1:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Cannot regress status from '{old_status}' to '{new_status}'. "
+                    f"Only forward status transitions are allowed."
+                ),
+            )
+
     merged = {**item, **updates}
     await store.update(work_item_id, merged)
     await dispatch_event(
@@ -137,8 +168,6 @@ async def update_work_item(
     )
 
     # Trigger workflow when status transitions to in_progress
-    old_status = item.get("status", "")
-    new_status = updates.get("status", "")
     if new_status == "in_progress" and old_status != "in_progress":
         # Enforce WIP limit before allowing transition
         project_id = item.get("project_id", "")

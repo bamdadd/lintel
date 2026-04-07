@@ -261,3 +261,39 @@ class TestKanbanView:
         resp = client.get("/api/v1/boards/b1/kanban")
         data = resp.json()
         assert data["columns"][0]["wip_limit"] == 5
+
+    def test_kanban_includes_pr_url_when_present(self, client: TestClient) -> None:
+        """Kanban card includes pr_url when the work item has one."""
+        import asyncio
+
+        self._create_board(client)
+        store = work_item_store_provider.get()
+        wi = WorkItem(
+            work_item_id="w-pr",
+            project_id="p1",
+            title="Item with PR",
+            column_id="col-todo",
+            pr_url="https://github.com/test/repo/pull/42",
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(store.add(wi))
+
+        resp = client.get("/api/v1/boards/b1/kanban")
+        assert resp.status_code == 200
+        todo_items = resp.json()["columns"][0]["work_items"]
+        assert len(todo_items) == 1
+        assert todo_items[0]["pr_url"] == "https://github.com/test/repo/pull/42"
+
+    def test_kanban_pr_url_empty_when_absent(self, client: TestClient) -> None:
+        """Kanban card returns empty pr_url when work item has none."""
+        import asyncio
+
+        self._create_board(client)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self._add_work_item(work_item_id="w-no-pr", column_id="col-todo"))
+
+        resp = client.get("/api/v1/boards/b1/kanban")
+        assert resp.status_code == 200
+        todo_items = resp.json()["columns"][0]["work_items"]
+        assert len(todo_items) == 1
+        assert todo_items[0]["pr_url"] == ""
