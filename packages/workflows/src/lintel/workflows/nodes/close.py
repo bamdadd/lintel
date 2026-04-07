@@ -123,6 +123,15 @@ async def close_workflow(
     safe_msg = commit_msg.replace('"', '\\"')
 
     for _r_url, wd in repos_to_close:
+        # Ensure .gitignore excludes Python bytecode before staging to prevent
+        # __pycache__/ and *.pyc files from being committed.
+        from lintel.workflows.nodes._git_helpers import ensure_gitignore_excludes_bytecode
+
+        try:
+            await ensure_gitignore_excludes_bytecode(sandbox_manager, sandbox_id, wd)
+        except Exception:
+            logger.warning("close_gitignore_sanitize_failed", workdir=wd)
+
         commit_cmds = [
             f"cd {wd} && git config user.email 'lintel@lintel.dev'",
             f"cd {wd} && git config user.name 'Lintel'",
