@@ -6,10 +6,56 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 from lintel.chat_api.decomposer import (
+    DECOMPOSE_SYSTEM_PROMPT,
     DecomposedItem,
     IdeaDecomposer,
 )
 from lintel.domain.types import WorkItemType
+
+# ---------------------------------------------------------------------------
+# DECOMPOSE_SYSTEM_PROMPT instruction section tests
+# ---------------------------------------------------------------------------
+
+
+class TestDecomposeSystemPrompt:
+    """Verify that the prompt contains all four required instruction sections."""
+
+    def test_sizing_constraint_present(self) -> None:
+        assert "Sizing constraint" in DECOMPOSE_SYSTEM_PROMPT
+        assert "at most 3 files" in DECOMPOSE_SYSTEM_PROMPT
+
+    def test_requirement_traceability_present(self) -> None:
+        assert "Requirement traceability" in DECOMPOSE_SYSTEM_PROMPT
+        assert "every numbered point" in DECOMPOSE_SYSTEM_PROMPT.lower()
+
+    def test_interface_first_ordering_present(self) -> None:
+        assert "Interface-first ordering" in DECOMPOSE_SYSTEM_PROMPT
+        assert "protocols and abstractions" in DECOMPOSE_SYSTEM_PROMPT.lower()
+
+    def test_agent_readiness_present(self) -> None:
+        assert "Agent-ready descriptions" in DECOMPOSE_SYSTEM_PROMPT
+        assert "target package" in DECOMPOSE_SYSTEM_PROMPT.lower() or (
+            "package/directory" in DECOMPOSE_SYSTEM_PROMPT.lower()
+        )
+        assert "API routes" in DECOMPOSE_SYSTEM_PROMPT or "API route" in DECOMPOSE_SYSTEM_PROMPT
+        assert "events to emit" in DECOMPOSE_SYSTEM_PROMPT.lower() or (
+            "Events to emit" in DECOMPOSE_SYSTEM_PROMPT
+        )
+        assert "acceptance" in DECOMPOSE_SYSTEM_PROMPT.lower() or (
+            "test" in DECOMPOSE_SYSTEM_PROMPT.lower()
+        )
+
+    def test_all_four_sections_in_single_prompt(self) -> None:
+        """All four instruction keywords must appear in the prompt string."""
+        required_phrases = [
+            "Sizing constraint",
+            "Requirement traceability",
+            "Interface-first ordering",
+            "Agent-ready descriptions",
+        ]
+        for phrase in required_phrases:
+            assert phrase in DECOMPOSE_SYSTEM_PROMPT, f"Missing instruction section: {phrase!r}"
+
 
 # ---------------------------------------------------------------------------
 # _parse_response tests
@@ -202,7 +248,9 @@ class TestDecompose:
 
     async def test_calls_llm_and_returns_items(self) -> None:
         mock_router = MagicMock()
-        mock_router.select_model = AsyncMock(return_value=MagicMock())
+        mock_policy = MagicMock()
+        mock_policy.max_tokens = 16384
+        mock_router.select_model = AsyncMock(return_value=mock_policy)
         mock_router.call_model = AsyncMock(
             return_value={
                 "content": json.dumps(
@@ -228,6 +276,7 @@ class TestDecompose:
     async def test_uses_provided_model_policy(self) -> None:
         mock_router = MagicMock()
         mock_policy = MagicMock()
+        mock_policy.max_tokens = 16384
         mock_router.call_model = AsyncMock(return_value={"content": "[]"})
 
         decomposer = IdeaDecomposer(model_router=mock_router)
@@ -240,7 +289,9 @@ class TestDecompose:
 
     async def test_includes_project_context_in_prompt(self) -> None:
         mock_router = MagicMock()
-        mock_router.select_model = AsyncMock(return_value=MagicMock())
+        mock_policy = MagicMock()
+        mock_policy.max_tokens = 16384
+        mock_router.select_model = AsyncMock(return_value=mock_policy)
         mock_router.call_model = AsyncMock(return_value={"content": "[]"})
 
         decomposer = IdeaDecomposer(model_router=mock_router)

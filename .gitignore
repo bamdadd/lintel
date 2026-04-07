@@ -29,3 +29,8 @@ worktrees
 .superpowers
 ui/src/generated/
 ui/.vite/
+
+# Python bytecode (added by lintel)
+*.pyc
+*.pyo
+*.pyd
