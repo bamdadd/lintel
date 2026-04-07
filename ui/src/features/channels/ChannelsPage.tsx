@@ -341,52 +341,46 @@ function ConnectionsTab() {
 
   if (loading) return <Center py="xl"><Loader /></Center>;
 
-  const slackConnections = connections.filter((c) => c.channel_type === 'slack');
-  const telegramConnections = connections.filter((c) => c.channel_type === 'telegram');
+  const slackCards = connections.filter((c) => c.channel_type === 'slack');
+  const telegramCards = connections.filter((c) => c.channel_type === 'telegram');
 
-  const hasSlack = slackConnections.length > 0;
-  const hasTelegram = telegramConnections.length > 0;
-
-  // Only show "Add" options for types not yet connected
   const addOptions = [
-    ...(!hasSlack ? [{ value: 'slack', label: 'Slack' }] : []),
-    ...(!hasTelegram ? [{ value: 'telegram', label: 'Telegram' }] : []),
+    { value: 'slack', label: 'Slack' },
+    { value: 'telegram', label: 'Telegram' },
   ];
 
   return (
     <Stack gap="md">
-      {addOptions.length > 0 && (
-        <Group justify="flex-end">
-          <Select
-            size="xs"
-            placeholder="Add connection..."
-            value={addType}
-            onChange={(v) => {
-              setAddType(v);
-              if (v) {
-                setConnections((prev) => [
-                  ...prev,
-                  { channel_type: v, connected: false, bot_username: '' } as ChannelConnection,
-                ]);
-                setAddType(null);
-              }
-            }}
-            data={addOptions}
-            clearable
-            w={220}
-          />
-        </Group>
-      )}
-      {!hasSlack && slackConnections.length === 0 && telegramConnections.length === 0 && connections.length === 0 && (
+      <Group justify="flex-end">
+        <Select
+          size="xs"
+          placeholder="Add connection..."
+          value={addType}
+          onChange={(v) => {
+            setAddType(v);
+            if (v) {
+              setConnections((prev) => [
+                ...prev,
+                { channel_type: v, connected: false, bot_username: '' } as ChannelConnection,
+              ]);
+              setAddType(null);
+            }
+          }}
+          data={addOptions}
+          clearable
+          w={220}
+        />
+      </Group>
+      {connections.length === 0 && (
         <EmptyState
           title="No connections configured"
           description="Connect a messaging platform like Slack or Telegram to get started"
         />
       )}
       <SimpleGrid cols={{ base: 1, md: 2 }}>
-        {slackConnections.map((c, i) => (
+        {slackCards.map((c, i) => (
           <SlackConnectionCard
-            key={`slack-${i}`}
+            key={`slack-${c.id ?? i}`}
             connection={c}
             onUpdate={() => void fetchConnections()}
             onRemove={() => {
@@ -395,20 +389,9 @@ function ConnectionsTab() {
             }}
           />
         ))}
-        {/* Show blank Slack card only if user explicitly added one */}
-        {!hasSlack && connections.some((c) => c.channel_type === 'slack' && !c.connected) &&
-          connections.filter((c) => c.channel_type === 'slack' && !c.connected).map((c, i) => (
-            <SlackConnectionCard
-              key={`slack-new-${i}`}
-              connection={c}
-              onUpdate={() => void fetchConnections()}
-              onRemove={() => setConnections((prev) => prev.filter((p) => p !== c))}
-            />
-          ))
-        }
-        {telegramConnections.map((c, i) => (
+        {telegramCards.map((c, i) => (
           <TelegramConnectionCard
-            key={`tg-${i}`}
+            key={`tg-${c.id ?? i}`}
             connection={c}
             onUpdate={() => void fetchConnections()}
             onRemove={() => {
@@ -417,17 +400,6 @@ function ConnectionsTab() {
             }}
           />
         ))}
-        {/* Show blank Telegram card only if user explicitly added one */}
-        {!hasTelegram && connections.some((c) => c.channel_type === 'telegram' && !c.connected) &&
-          connections.filter((c) => c.channel_type === 'telegram' && !c.connected).map((c, i) => (
-            <TelegramConnectionCard
-              key={`tg-new-${i}`}
-              connection={c}
-              onUpdate={() => void fetchConnections()}
-              onRemove={() => setConnections((prev) => prev.filter((p) => p !== c))}
-            />
-          ))
-        }
       </SimpleGrid>
     </Stack>
   );
