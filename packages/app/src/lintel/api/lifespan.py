@@ -230,14 +230,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     channel_registry = ChannelRegistry()
     app.state.channel_registry = channel_registry
 
-    # Restore Slack credentials from credential store and start Socket Mode listener
-    from lintel.settings_api.channels_router import (
-        restore_slack_from_store,
-        start_slack_socket_listener,
-    )
+    # Restore Slack credentials from credential store (listener starts after chat_router)
+    from lintel.settings_api.channels_router import restore_slack_from_store
 
     await restore_slack_from_store(app)
-    await start_slack_socket_listener(app)
 
     # Register Telegram adapter: try env vars first, then fall back to credential store
     telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
@@ -260,11 +256,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
         await restore_telegram_from_store(app)
 
-    # Restore Slack credentials from credential store
-    from lintel.settings_api.channels_router import restore_slack_from_store
-
-    await restore_slack_from_store(app)
-
     chat_router = ChatRouter(
         model_router=model_router,
         mcp_tool_client=mcp_tool_client,
@@ -272,6 +263,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
     app.state.chat_router = chat_router
     app.state.mcp_tool_client = mcp_tool_client
+
+    # Start Slack Socket Mode listener now that chat_router is available
+    from lintel.settings_api.channels_router import start_slack_socket_listener
+
+    await start_slack_socket_listener(app)
 
     await _seed_defaults(stores)
     await _seed_guardrail_defaults(stores)
