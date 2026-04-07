@@ -62,21 +62,28 @@ def _validate_work_item(state: Mapping[str, Any]) -> str | None:
 
     Returns an error string if validation fails, or ``None`` if the work item
     is acceptable.
+
+    The pipeline stores work item data in two ways:
+    - ``work_item_id`` + ``work_item_title`` (ThreadWorkflowState fields)
+    - ``work_item`` dict (test fixtures and direct invocations)
+    Both are accepted.
     """
+    # Try the canonical state fields first (ThreadWorkflowState)
+    title: str = (state.get("work_item_title") or "").strip()
+    work_item_id: str = (state.get("work_item_id") or "").strip()
+
+    # Fall back to work_item dict (used by tests and direct invocations)
     work_item = state.get("work_item")
-    if not work_item:
+    if not title and work_item:
+        if isinstance(work_item, dict):
+            title = (work_item.get("title", "") or "").strip()
+            work_item_id = work_item_id or (work_item.get("id", "") or "").strip()
+        else:
+            title = (getattr(work_item, "title", "") or "").strip()
+            work_item_id = work_item_id or (getattr(work_item, "id", "") or "").strip()
+
+    if not title and not work_item_id and not work_item:
         return "No work item found in workflow state — cannot proceed with implementation."
-
-    # Support both dict and dataclass-style work items.
-    if isinstance(work_item, dict):
-        title: str = work_item.get("title", "") or ""
-        description: str = work_item.get("description", "") or ""
-    else:
-        title = getattr(work_item, "title", "") or ""
-        description = getattr(work_item, "description", "") or ""
-
-    title = title.strip()
-    description = description.strip()
 
     if not title:
         return "Work item has no title — cannot proceed with implementation."
@@ -89,7 +96,16 @@ def _validate_work_item(state: Mapping[str, Any]) -> str | None:
                 "Please provide a specific, descriptive title before running the implement stage."
             )
 
-    if len(description) < MIN_DESCRIPTION_LENGTH:
+    # Description check: only enforce when work_item dict is present (has description).
+    # The ThreadWorkflowState only stores work_item_title, not description.
+    description: str = ""
+    if work_item:
+        if isinstance(work_item, dict):
+            description = (work_item.get("description", "") or "").strip()
+        else:
+            description = (getattr(work_item, "description", "") or "").strip()
+
+    if description and len(description) < MIN_DESCRIPTION_LENGTH:
         return (
             f"Work item description is too short ({len(description)} chars — "
             f"minimum {MIN_DESCRIPTION_LENGTH}). "

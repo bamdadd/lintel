@@ -104,15 +104,47 @@ class TestValidateWorkItem:
         assert error is not None
         assert "generic" in error.lower()
 
-    def test_missing_description_key_returns_error(self) -> None:
+    def test_missing_description_key_passes(self) -> None:
+        """When work_item dict has no description, validation passes (description is optional)."""
         error = _validate_work_item({"work_item": {"title": "Add feature X"}})
-        assert error is not None
-        assert "description" in error.lower()
+        assert error is None
 
-    def test_none_description_returns_error(self) -> None:
+    def test_none_description_passes(self) -> None:
+        """When work_item dict has None description, validation passes."""
         error = _validate_work_item({"work_item": {"title": "Add feature X", "description": None}})
+        assert error is None
+
+    # --- Tests for ThreadWorkflowState fields (work_item_title + work_item_id) ---
+
+    def test_work_item_title_field_is_accepted(self) -> None:
+        """Pipeline sets work_item_title directly in state, not work_item dict."""
+        error = _validate_work_item(
+            {
+                "work_item_id": "wi-123",
+                "work_item_title": "Add self-review quality loop to implement node",
+            }
+        )
+        assert error is None
+
+    def test_work_item_title_only_without_id_is_accepted(self) -> None:
+        error = _validate_work_item({"work_item_title": "Add pagination"})
+        assert error is None
+
+    def test_work_item_id_only_without_title_returns_error(self) -> None:
+        """Having only an ID but no title should fail (need title for generic check)."""
+        error = _validate_work_item({"work_item_id": "wi-123"})
         assert error is not None
-        assert "description" in error.lower()
+        assert "no title" in error.lower()
+
+    def test_generic_title_via_state_field_returns_error(self) -> None:
+        error = _validate_work_item(
+            {
+                "work_item_id": "wi-123",
+                "work_item_title": "lintel: implement feature",
+            }
+        )
+        assert error is not None
+        assert "generic" in error.lower()
 
 
 # ---------------------------------------------------------------------------
