@@ -4,7 +4,23 @@ from __future__ import annotations
 
 from typing import Any
 
-from lintel.persistence.data_models import AgentDefinitionData
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class AgentDefinitionData(BaseModel):
+    """User-defined agent definition."""
+
+    agent_id: str
+    name: str = ""
+    description: str = ""
+    role: str = ""
+    system_prompt: str = ""
+    model_id: str = ""
+    temperature: float = 0.7
+    tools: list[str] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="allow")
 
 
 class AgentDefinitionStore:

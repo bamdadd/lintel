@@ -151,6 +151,23 @@ class HumanInterruptTimedOut(EventEnvelope):
     event_type: str = "HumanInterruptTimedOut"
 
 
+# --- Implementation Verification Events ---
+
+
+@dataclass(frozen=True)
+class ImplementationVerified(EventEnvelope):
+    """Emitted when plan-vs-implementation verification passes."""
+
+    event_type: str = "ImplementationVerified"
+
+
+@dataclass(frozen=True)
+class ImplementationVerificationFailed(EventEnvelope):
+    """Emitted when plan-vs-implementation verification finds unaddressed tasks."""
+
+    event_type: str = "ImplementationVerificationFailed"
+
+
 # --- Guardrail Approval Events (GRD-6) ---
 
 
@@ -192,4 +209,6 @@ register_events(
     GuardrailApprovalRequested,
     ChangeRequestTriggered,
     WorkflowQueued,
+    ImplementationVerified,
+    ImplementationVerificationFailed,
 )

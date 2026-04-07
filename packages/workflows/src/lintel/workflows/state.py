@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from operator import add
-from typing import Annotated, Any, TypedDict
+from typing import TYPE_CHECKING, Annotated, Any, TypedDict
+
+if TYPE_CHECKING:
+    from lintel.workflows.types import VerificationResult
 
 
 class ThreadWorkflowState(TypedDict):
@@ -68,3 +71,11 @@ class ThreadWorkflowState(TypedDict):
     # Project conventions — concatenated CLAUDE.md file contents from the target repo.
     # Collected by setup_workspace and injected into implement/review agent system prompts.
     project_conventions: str
+
+    # Implementation verification (verify_implementation node)
+    # Result of comparing plan tasks against actual sandbox file modifications.
+    verification_result: VerificationResult | None
+    # Human-readable summary of unaddressed tasks, fed back to the coder on retry.
+    verification_feedback: str | None
+    # Loop guard: number of implement attempts (incremented each loop-back).
+    implement_attempt_count: int
