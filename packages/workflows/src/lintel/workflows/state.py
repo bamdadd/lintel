@@ -1,12 +1,14 @@
-"""Workflow state definitions. TypedDict for LangGraph compatibility."""
+"""Workflow state definitions. TypedDict for LangGraph compatibility.
 
-from __future__ import annotations
+Note: ``from __future__ import annotations`` is deliberately omitted here
+because LangGraph's ``StateGraph`` calls ``get_type_hints()`` at runtime,
+which requires all referenced types to be resolvable in the module namespace.
+"""
 
 from operator import add
-from typing import TYPE_CHECKING, Annotated, Any, TypedDict
+from typing import Annotated, Any, TypedDict
 
-if TYPE_CHECKING:
-    from lintel.workflows.types import VerificationResult
+from lintel.workflows.types import VerificationResult  # noqa: TCH001
 
 
 class ThreadWorkflowState(TypedDict):

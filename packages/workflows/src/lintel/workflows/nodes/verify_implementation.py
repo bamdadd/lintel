@@ -6,19 +6,15 @@ many tasks are unaddressed (below COMPLETENESS_THRESHOLD) and retries
 remain, otherwise proceeds to review.
 """
 
-from __future__ import annotations
-
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import structlog
+from langchain_core.runnables import RunnableConfig
 
 from lintel.workflows.base import WorkflowNode
-
-if TYPE_CHECKING:
-    from langchain_core.runnables import RunnableConfig
-
-    from lintel.workflows.state import ThreadWorkflowState
+from lintel.workflows.state import ThreadWorkflowState
+from lintel.workflows.types import VerificationResult
 
 logger = structlog.get_logger()
 
@@ -248,11 +244,11 @@ class VerifyImplementationNode(WorkflowNode):
         self,
         config: RunnableConfig,
         state: ThreadWorkflowState,
-        result: Any,
+        result: VerificationResult,
     ) -> None:
         from lintel.workflows.events import ImplementationVerified
 
-        self._emit_event(
+        await self._emit_event(
             config,
             state,
             ImplementationVerified,
@@ -263,23 +259,23 @@ class VerifyImplementationNode(WorkflowNode):
         self,
         config: RunnableConfig,
         state: ThreadWorkflowState,
-        result: Any,
+        result: VerificationResult,
     ) -> None:
         from lintel.workflows.events import ImplementationVerificationFailed
 
-        self._emit_event(
+        await self._emit_event(
             config,
             state,
             ImplementationVerificationFailed,
             result,
         )
 
-    def _emit_event(
+    async def _emit_event(
         self,
         config: RunnableConfig,
         state: ThreadWorkflowState,
         event_cls: type,
-        result: Any,
+        result: VerificationResult,
     ) -> None:
         """Best-effort event emission via the event bus."""
         try:
@@ -290,7 +286,7 @@ class VerifyImplementationNode(WorkflowNode):
             if event_bus is None:
                 return
 
-            payload = {
+            payload: dict[str, Any] = {
                 "stage": "verify_implementation",
                 "verification_result": asdict(result),
             }
@@ -302,14 +298,8 @@ class VerifyImplementationNode(WorkflowNode):
                 actor_id="system",
                 payload=payload,
             )
-            # Fire-and-forget — event bus may be sync or async.
-            import asyncio
-
-            loop = asyncio.get_event_loop()
             if hasattr(event_bus, "publish"):
-                coro = event_bus.publish(event)
-                if asyncio.iscoroutine(coro):
-                    loop.create_task(coro)
+                await event_bus.publish(event)
         except Exception:
             logger.debug("verify_impl_event_emit_failed", exc_info=True)
 
