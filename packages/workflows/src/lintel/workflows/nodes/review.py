@@ -83,6 +83,14 @@ async def review_output(
 
             diff_parts: list[str] = []
             for ws_url, ws_dir in dirs_to_diff:
+                # Sanitize .gitignore before staging to exclude bytecode files.
+                from lintel.workflows.nodes._git_helpers import ensure_gitignore_excludes_bytecode
+
+                try:
+                    await ensure_gitignore_excludes_bytecode(sandbox_manager, sandbox_id, ws_dir)
+                except Exception:
+                    logger.warning("review_gitignore_sanitize_failed workdir=%s", ws_dir)
+
                 await sandbox_manager.execute(
                     sandbox_id,
                     SandboxJob(command="git add -A", workdir=ws_dir, timeout_seconds=10),
