@@ -1,9 +1,14 @@
-"""Workflow state definitions. TypedDict for LangGraph compatibility."""
+"""Workflow state definitions. TypedDict for LangGraph compatibility.
 
-from __future__ import annotations
+Note: ``from __future__ import annotations`` is deliberately omitted here
+because LangGraph's ``StateGraph`` calls ``get_type_hints()`` at runtime,
+which requires all referenced types to be resolvable in the module namespace.
+"""
 
 from operator import add
 from typing import Annotated, Any, TypedDict
+
+from lintel.workflows.types import VerificationResult
 
 
 class ThreadWorkflowState(TypedDict):
@@ -68,3 +73,11 @@ class ThreadWorkflowState(TypedDict):
     # Project conventions — concatenated CLAUDE.md file contents from the target repo.
     # Collected by setup_workspace and injected into implement/review agent system prompts.
     project_conventions: str
+
+    # Implementation verification (verify_implementation node)
+    # Result of comparing plan tasks against actual sandbox file modifications.
+    verification_result: VerificationResult | None
+    # Human-readable summary of unaddressed tasks, fed back to the coder on retry.
+    verification_feedback: str | None
+    # Loop guard: number of implement attempts (incremented each loop-back).
+    implement_attempt_count: int

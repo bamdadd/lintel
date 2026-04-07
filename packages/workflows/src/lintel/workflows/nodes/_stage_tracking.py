@@ -24,6 +24,7 @@ NODE_TO_STAGE: dict[str, str] = {
     "plan": "plan",
     "approval_gate_spec": "approve_spec",
     "implement": "implement",
+    "verify_implementation": "verify_implementation",
     "test": "test",
     "review": "review",
     "approval_gate_pr": "approved_for_pr",

@@ -286,3 +286,14 @@ class ApprovalDecision:
     approver: str = ""
     corrections: str = ""
     feedback: str = ""
+
+
+@dataclass(frozen=True)
+class VerificationResult:
+    """Result of comparing plan tasks against actual file modifications in the sandbox."""
+
+    completeness_score: float
+    addressed_tasks: tuple[str, ...]
+    unaddressed_tasks: tuple[str, ...]
+    modified_files: tuple[str, ...]
+    attempt_count: int

@@ -24,6 +24,10 @@ from lintel.workflows.nodes.research import research_codebase
 from lintel.workflows.nodes.review import review_output
 from lintel.workflows.nodes.route import route_intent
 from lintel.workflows.nodes.setup_workspace import setup_workspace
+from lintel.workflows.nodes.verify_implementation import (
+    VerifyImplementationNode,
+    route_after_verification,
+)
 from lintel.workflows.state import ThreadWorkflowState
 
 MAX_REVIEW_CYCLES = 3
@@ -38,6 +42,10 @@ def _resolve_max_review_cycles(state: ThreadWorkflowState) -> int:
     2. Module-level ``DEFAULT_MAX_REVIEW_CYCLES``
     """
     return int(state.get("max_review_cycles", DEFAULT_MAX_REVIEW_CYCLES))
+
+
+# Singleton node instance — safe because WorkflowNode is stateless between calls.
+_verify_implementation_node = VerifyImplementationNode()
 
 
 def build_feature_to_pr_graph() -> StateGraph[Any]:
@@ -58,6 +66,7 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
         partial(approval_gate, gate_type="spec_approval"),
     )
     graph.add_node("implement", spawn_implementation)
+    graph.add_node("verify_implementation", _verify_implementation_node)
     graph.add_node("review", review_output)
     graph.add_node(
         "approval_gate_pr",
@@ -83,7 +92,12 @@ def build_feature_to_pr_graph() -> StateGraph[Any]:
     graph.add_conditional_edges(
         "implement",
         _check_phase,
-        {"continue": "review", "close": "close"},
+        {"continue": "verify_implementation", "close": "close"},
+    )
+    graph.add_conditional_edges(
+        "verify_implementation",
+        route_after_verification,
+        {"review": "review", "implement": "implement", "close": "close"},
     )
     graph.add_conditional_edges(
         "review",

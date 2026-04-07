@@ -143,6 +143,7 @@ class TestGraphStructure:
             "plan",
             "approval_gate_spec",
             "implement",
+            "verify_implementation",
             "review",
             "approval_gate_pr",
             "close",
