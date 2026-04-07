@@ -74,6 +74,46 @@ class TestTranslateMessageEvent:
         event = {"type": "message", "text": "hello"}
         assert translate_message_event(event) is None
 
+    def test_handles_missing_team_with_connection_id(self) -> None:
+        """DM events may not include team — fallback to connection_id."""
+        event = {
+            "type": "message",
+            "text": "hi from DM",
+            "user": "U12345",
+            "channel": "D99999",
+            "ts": "1234567890.123456",
+        }
+        result = translate_message_event(event, connection_id="channel:slack")
+        assert result is not None
+        assert result.thread_ref.workspace_id == "channel:slack"
+        assert result.raw_text == "hi from DM"
+
+    def test_handles_missing_team_without_connection_id(self) -> None:
+        event = {
+            "type": "message",
+            "text": "hi",
+            "user": "U12345",
+            "channel": "D99999",
+            "ts": "1234567890.123456",
+        }
+        result = translate_message_event(event)
+        assert result is not None
+        assert result.thread_ref.workspace_id == "unknown"
+
+    def test_uses_user_team_field(self) -> None:
+        """Enterprise Grid events use user_team instead of team."""
+        event = {
+            "type": "message",
+            "text": "enterprise msg",
+            "user": "U12345",
+            "channel": "C99999",
+            "user_team": "E11111",
+            "ts": "1234567890.123456",
+        }
+        result = translate_message_event(event)
+        assert result is not None
+        assert result.thread_ref.workspace_id == "E11111"
+
     def test_returns_none_for_empty_channel(self) -> None:
         event = {
             "type": "message",

@@ -19,10 +19,14 @@ def translate_message_event(
 
     thread_ts = event.get("thread_ts", event.get("ts", ""))
     channel_id = event.get("channel", "")
-    team_id = event.get("team", "")
+    team_id = event.get("team", "") or event.get("user_team", "")
 
-    if not all([thread_ts, channel_id, team_id]):
+    if not thread_ts or not channel_id:
         return None
+
+    # Use connection_id as workspace fallback when team is absent (e.g. DMs)
+    if not team_id:
+        team_id = connection_id or "unknown"
 
     return ProcessIncomingMessage(
         thread_ref=ThreadRef(
