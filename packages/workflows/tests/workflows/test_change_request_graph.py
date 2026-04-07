@@ -42,12 +42,33 @@ def test_review_decision_request_changes_goes_to_revise() -> None:
 
 
 def test_review_decision_max_cycles_goes_to_close() -> None:
+    """Change request graph still closes at limit (force-approve → close for CR)."""
     state = {
         "error": None,
-        "review_cycles": 5,
+        "review_cycles": 3,
         "agent_outputs": [{"node": "review", "verdict": "request_changes"}],
     }
     assert _change_request_review_decision(state) == "close"
+
+
+def test_review_decision_respects_per_project_max() -> None:
+    """Per-project max_review_cycles is respected."""
+    state = {
+        "error": None,
+        "review_cycles": 2,
+        "max_review_cycles": 2,
+        "agent_outputs": [{"node": "review", "verdict": "request_changes"}],
+    }
+    assert _change_request_review_decision(state) == "close"
+
+    # Under the limit — should revise
+    state_under = {
+        "error": None,
+        "review_cycles": 1,
+        "max_review_cycles": 5,
+        "agent_outputs": [{"node": "review", "verdict": "request_changes"}],
+    }
+    assert _change_request_review_decision(state_under) == "revise"
 
 
 def test_review_decision_error_goes_to_close() -> None:

@@ -12,7 +12,7 @@ from typing import Any
 
 from langgraph.graph import END, StateGraph
 
-from lintel.workflows.feature_to_pr import MAX_REVIEW_CYCLES, _check_phase
+from lintel.workflows.feature_to_pr import _check_phase, _resolve_max_review_cycles
 from lintel.workflows.nodes.close import close_workflow
 from lintel.workflows.nodes.implement import spawn_implementation
 from lintel.workflows.nodes.review import review_output
@@ -21,7 +21,11 @@ from lintel.workflows.state import ThreadWorkflowState
 
 
 def _change_request_review_decision(state: ThreadWorkflowState) -> str:
-    """After review: approve → close, request_changes → revise (cycle-limited)."""
+    """After review: approve → close, request_changes → revise (cycle-limited).
+
+    When the circuit breaker trips, force-approves to close (so the PR is
+    still pushed) rather than silently dropping.
+    """
     import structlog
 
     _logger = structlog.get_logger()
@@ -30,6 +34,7 @@ def _change_request_review_decision(state: ThreadWorkflowState) -> str:
         return "close"
 
     review_cycles = state.get("review_cycles", 0)
+    max_cycles = _resolve_max_review_cycles(state)
     outputs = state.get("agent_outputs", [])
 
     for output in reversed(outputs):
@@ -38,17 +43,17 @@ def _change_request_review_decision(state: ThreadWorkflowState) -> str:
         if output.get("node") != "review":
             continue
         if output.get("verdict") == "request_changes":
-            if review_cycles < MAX_REVIEW_CYCLES:
+            if review_cycles < max_cycles:
                 _logger.info(
                     "change_request_review_revise",
                     cycle=review_cycles + 1,
-                    max_cycles=MAX_REVIEW_CYCLES,
+                    max_cycles=max_cycles,
                 )
                 return "revise"
-            _logger.info(
-                "change_request_review_max_cycles",
+            _logger.warning(
+                "change_request_review_circuit_breaker_tripped",
                 cycles=review_cycles,
-                max_cycles=MAX_REVIEW_CYCLES,
+                max_cycles=max_cycles,
             )
             return "close"
         if output.get("verdict") == "approve":

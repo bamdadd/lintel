@@ -55,6 +55,12 @@ class ThreadWorkflowState(TypedDict):
     # Review cycle counter (implement ↔ review loop)
     review_cycles: int
 
+    # Per-project configurable max review cycles (set from Project.max_review_cycles)
+    max_review_cycles: int
+
+    # Set to True when the review circuit breaker force-approved
+    review_circuit_breaker_tripped: bool
+
     # Pipeline continuation — populated when rehydrating from a previous failed run
     previous_error: str
     previous_failed_stage: str

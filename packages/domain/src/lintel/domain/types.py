@@ -34,6 +34,7 @@ class Project:
     credential_ids: tuple[str, ...] = ()
     status: ProjectStatus = ProjectStatus.ACTIVE
     workflow_execution_enabled: bool = True
+    max_review_cycles: int = 3
 
 
 class WorkItemStatus(StrEnum):

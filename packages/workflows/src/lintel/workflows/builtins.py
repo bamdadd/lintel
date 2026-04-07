@@ -43,8 +43,13 @@ def _check_phase(state: dict[str, Any]) -> str:
 
 
 def _review_decision(state: dict[str, Any]) -> str:
-    """After review: approve → continue, request_changes → revise (cycle-limited)."""
-    max_review_cycles = 5
+    """After review: approve → continue, request_changes → revise (cycle-limited).
+
+    When the circuit breaker trips, force-approves instead of closing.
+    """
+    from lintel.workflows.feature_to_pr import DEFAULT_MAX_REVIEW_CYCLES
+
+    max_review_cycles = int(state.get("max_review_cycles", DEFAULT_MAX_REVIEW_CYCLES))
     if state.get("error"):
         return "close"
     review_cycles = state.get("review_cycles", 0)
@@ -56,7 +61,7 @@ def _review_decision(state: dict[str, Any]) -> str:
         if output.get("verdict") == "request_changes":
             if review_cycles < max_review_cycles:
                 return "revise"
-            return "close"
+            return "continue"
         if output.get("verdict") == "approve":
             return "continue"
         break

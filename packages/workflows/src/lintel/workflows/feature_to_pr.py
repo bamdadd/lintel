@@ -26,7 +26,18 @@ from lintel.workflows.nodes.route import route_intent
 from lintel.workflows.nodes.setup_workspace import setup_workspace
 from lintel.workflows.state import ThreadWorkflowState
 
-MAX_REVIEW_CYCLES = 5
+MAX_REVIEW_CYCLES = 3
+DEFAULT_MAX_REVIEW_CYCLES = MAX_REVIEW_CYCLES
+
+
+def _resolve_max_review_cycles(state: ThreadWorkflowState) -> int:
+    """Return the configured max review cycles, falling back to the default.
+
+    Resolution order:
+    1. ``max_review_cycles`` in workflow state (set from project config during setup)
+    2. Module-level ``DEFAULT_MAX_REVIEW_CYCLES``
+    """
+    return int(state.get("max_review_cycles", DEFAULT_MAX_REVIEW_CYCLES))
 
 
 def build_feature_to_pr_graph() -> StateGraph[Any]:
@@ -118,7 +129,12 @@ def _check_phase(state: ThreadWorkflowState) -> str:
 
 
 def _review_decision(state: ThreadWorkflowState) -> str:
-    """After review: approve → continue, request_changes → revise (with cycle limit)."""
+    """After review: approve → continue, request_changes → revise (with cycle limit).
+
+    When the circuit breaker trips (review_cycles >= max), the pipeline
+    force-approves with a warning annotation instead of closing, so a PR
+    is still raised for human review.
+    """
     import structlog
 
     _logger = structlog.get_logger()
@@ -127,6 +143,7 @@ def _review_decision(state: ThreadWorkflowState) -> str:
         return "close"
 
     review_cycles = state.get("review_cycles", 0)
+    max_cycles = _resolve_max_review_cycles(state)
     outputs = state.get("agent_outputs", [])
 
     for output in reversed(outputs):
@@ -135,19 +152,19 @@ def _review_decision(state: ThreadWorkflowState) -> str:
         if output.get("node") != "review":
             continue
         if output.get("verdict") == "request_changes":
-            if review_cycles < MAX_REVIEW_CYCLES:
+            if review_cycles < max_cycles:
                 _logger.info(
                     "review_decision_revise",
                     cycle=review_cycles + 1,
-                    max_cycles=MAX_REVIEW_CYCLES,
+                    max_cycles=max_cycles,
                 )
                 return "revise"
-            _logger.info(
-                "review_decision_max_cycles",
+            _logger.warning(
+                "review_circuit_breaker_tripped",
                 cycles=review_cycles,
-                max_cycles=MAX_REVIEW_CYCLES,
+                max_cycles=max_cycles,
             )
-            return "close"
+            return "continue"
         if output.get("verdict") == "approve":
             return "continue"
         break
