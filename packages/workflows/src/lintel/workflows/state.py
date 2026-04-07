@@ -8,7 +8,7 @@ which requires all referenced types to be resolvable in the module namespace.
 from operator import add
 from typing import Annotated, Any, TypedDict
 
-from lintel.workflows.types import VerificationResult  # noqa: TCH001
+from lintel.workflows.types import VerificationResult
 
 
 class ThreadWorkflowState(TypedDict):

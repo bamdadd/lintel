@@ -9,8 +9,8 @@ remain, otherwise proceeds to review.
 from pathlib import PurePosixPath
 from typing import Any
 
-import structlog
 from langchain_core.runnables import RunnableConfig
+import structlog
 
 from lintel.workflows.base import WorkflowNode
 from lintel.workflows.state import ThreadWorkflowState
