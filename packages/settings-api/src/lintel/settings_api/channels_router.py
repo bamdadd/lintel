@@ -71,6 +71,16 @@ class ChannelConnectionStatus(BaseModel):
     message: str = ""
 
 
+def _strip_empty(d: dict[str, Any]) -> dict[str, Any]:
+    """Remove keys with empty/default values for cleaner API responses."""
+    keep = {"id", "channel_type", "enabled", "connected", "credential_ref"}
+    return {
+        k: v
+        for k, v in d.items()
+        if k in keep or (v is not None and v != "" and v != [] and v != {})
+    }
+
+
 async def _get_credential_store(request: Request) -> object | None:
     return getattr(request.app.state, "credential_store", None)
 
@@ -103,7 +113,11 @@ async def _upsert_connection(
     if existing is not None:
         updated = ChannelConnection(
             **{
-                **asdict(existing),
+                **(
+                    asdict(existing)
+                    if hasattr(existing, "__dataclass_fields__")
+                    else dict(existing)
+                ),
                 "credential_ref": credential_ref,
                 "bot_username": bot_username,
                 "enabled": enabled,
@@ -132,6 +146,39 @@ async def _remove_connection(request: Request, connection_id: str) -> None:
     existing = await store.get(connection_id)
     if existing is not None:
         await store.remove(connection_id)
+
+
+async def restore_slack_from_store(app: object) -> None:
+    """Restore Slack connection state from the credential store on startup.
+
+    Called from lifespan after stores are wired.
+    """
+    credential_store = getattr(app.state, "credential_store", None)  # type: ignore[union-attr]
+    if credential_store is None:
+        return
+
+    cred = await credential_store.get(SLACK_CREDENTIAL_ID)
+    if cred is None:
+        return
+
+    secret = await credential_store.get_secret(SLACK_CREDENTIAL_ID)
+    if not secret:
+        return
+
+    # secret format: "bot_token||signing_secret||app_token"
+    parts = secret.split("||", 2)
+    bot_token = parts[0]
+    signing_secret = parts[1] if len(parts) > 1 else ""
+    app_token = parts[2] if len(parts) > 2 else ""
+
+    app.state.slack_connected = True  # type: ignore[union-attr]
+    app.state.slack_credentials = {  # type: ignore[union-attr]
+        "bot_token": bot_token,
+        "signing_secret": signing_secret,
+        "app_token": app_token,
+    }
+
+    logger.info("slack.restored_from_store", credential_id=SLACK_CREDENTIAL_ID)
 
 
 async def restore_telegram_from_store(app: object) -> None:
@@ -254,7 +301,10 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
     if store is not None:
         connections = await store.list_all()
         if connections:
-            return [asdict(c) for c in connections]
+            return [
+                _strip_empty(asdict(c) if hasattr(c, "__dataclass_fields__") else dict(c))
+                for c in connections
+            ]
 
     # Fallback: build from app state (backward compat)
     result: list[dict[str, Any]] = []
@@ -330,6 +380,17 @@ async def connect_slack(
 async def slack_status(request: Request) -> dict[str, Any]:
     """Check Slack connection status."""
     connected = getattr(request.app.state, "slack_connected", False)
+
+    # Also check credential store (survives restarts)
+    if not connected:
+        credential_store = await _get_credential_store(request)
+        if credential_store is not None:
+            cred = await credential_store.get(SLACK_CREDENTIAL_ID)
+            if cred is not None:
+                connected = True
+                # Restore app state so future checks are fast
+                request.app.state.slack_connected = True
+
     if not connected:
         return {
             "channel_type": "slack",
@@ -348,6 +409,15 @@ async def slack_status(request: Request) -> dict[str, Any]:
 async def disconnect_slack(request: Request) -> None:
     """Disconnect Slack and remove stored credentials."""
     connected = getattr(request.app.state, "slack_connected", False)
+
+    # Also check credential store
+    if not connected:
+        credential_store = await _get_credential_store(request)
+        if credential_store is not None:
+            cred = await credential_store.get(SLACK_CREDENTIAL_ID)
+            if cred is not None:
+                connected = True
+
     if not connected:
         raise HTTPException(status_code=404, detail="Slack not connected")
 

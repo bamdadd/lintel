@@ -24,6 +24,9 @@ class CreateBotRequest(BaseModel):
     platform: BotPlatform = BotPlatform.CUSTOM
     scopes: list[str] = []
     status: BotStatus = BotStatus.ACTIVE
+    project_ids: list[str] = []
+    workflow_ids: list[str] = []
+    agent_ids: list[str] = []
 
 
 class UpdateBotRequest(BaseModel):
@@ -31,11 +34,17 @@ class UpdateBotRequest(BaseModel):
     platform: BotPlatform | None = None
     scopes: list[str] | None = None
     status: BotStatus | None = None
+    project_ids: list[str] | None = None
+    workflow_ids: list[str] | None = None
+    agent_ids: list[str] | None = None
 
 
 def _bot_to_dict(bot: Bot) -> dict[str, Any]:
     data = asdict(bot)
     data["scopes"] = list(bot.scopes)
+    data["project_ids"] = list(bot.project_ids)
+    data["workflow_ids"] = list(bot.workflow_ids)
+    data["agent_ids"] = list(bot.agent_ids)
     return data
 
 
@@ -79,6 +88,9 @@ async def create_bot(
         platform=body.platform,
         scopes=tuple(body.scopes),
         status=body.status,
+        project_ids=tuple(body.project_ids),
+        workflow_ids=tuple(body.workflow_ids),
+        agent_ids=tuple(body.agent_ids),
     )
     await store.add(bot)
     await dispatch_event(
@@ -140,8 +152,9 @@ async def update_bot(
     if bot is None:
         raise HTTPException(status_code=404, detail="Bot not found")
     updates = body.model_dump(exclude_none=True)
-    if "scopes" in updates:
-        updates["scopes"] = tuple(updates["scopes"])
+    for field in ("scopes", "project_ids", "workflow_ids", "agent_ids"):
+        if field in updates:
+            updates[field] = tuple(updates[field])
     updated = Bot(**{**asdict(bot), **updates})
     await store.update(updated)
     await dispatch_event(

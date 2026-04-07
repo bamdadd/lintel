@@ -254,6 +254,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
         await restore_telegram_from_store(app)
 
+    # Restore Slack credentials from credential store
+    from lintel.settings_api.channels_router import restore_slack_from_store
+
+    await restore_slack_from_store(app)
+
     chat_router = ChatRouter(
         model_router=model_router,
         mcp_tool_client=mcp_tool_client,

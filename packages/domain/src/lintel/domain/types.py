@@ -1495,6 +1495,9 @@ class Bot:
     platform: BotPlatform = BotPlatform.CUSTOM
     scopes: tuple[str, ...] = ()
     status: BotStatus = BotStatus.ACTIVE
+    project_ids: tuple[str, ...] = ()
+    workflow_ids: tuple[str, ...] = ()
+    agent_ids: tuple[str, ...] = ()
 
 
 # --- Workflow ACL ---

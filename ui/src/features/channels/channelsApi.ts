@@ -1,9 +1,14 @@
 import { customInstance } from '@/shared/api/client';
 
 export interface ChannelConnection {
+  id?: string;
   channel_type: string;
   connected: boolean;
+  enabled?: boolean;
   bot_username: string;
+  credential_ref?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface TelegramConnectionRequest {
@@ -18,11 +23,27 @@ export interface ChannelStatus {
   message: string;
 }
 
+/** Normalize raw API connection objects into ChannelConnection with `connected` flag. */
+function normalizeConnection(raw: Record<string, unknown>): ChannelConnection {
+  return {
+    id: (raw.id as string) ?? undefined,
+    channel_type: (raw.channel_type as string) ?? '',
+    // A connection record in the store means it's connected (enabled defaults to true)
+    connected: raw.connected === true || raw.enabled === true || (raw.credential_ref ? true : false),
+    enabled: raw.enabled as boolean | undefined,
+    bot_username: (raw.bot_username as string) ?? '',
+    credential_ref: (raw.credential_ref as string) ?? undefined,
+    created_at: (raw.created_at as string) ?? undefined,
+    updated_at: (raw.updated_at as string) ?? undefined,
+  };
+}
+
 export async function listChannelConnections(): Promise<ChannelConnection[]> {
-  const { data } = await customInstance<{ data: ChannelConnection[] }>(
+  const resp = await customInstance<ChannelConnection[] | { data: ChannelConnection[] }>(
     '/api/v1/settings/channels',
   );
-  return data ?? [];
+  const raw = Array.isArray(resp) ? resp : (resp as { data: ChannelConnection[] }).data ?? [];
+  return raw.map((r) => normalizeConnection(r as unknown as Record<string, unknown>));
 }
 
 export async function connectTelegram(

@@ -368,6 +368,9 @@ class PostgresChannelConnectionStore:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._store = PostgresDictStore(pool, "channel_connection")
 
+    def _extract_id(self, data: dict[str, Any]) -> str:
+        return str(data.get("connection_id") or data["id"])
+
     async def add(self, connection: Any) -> None:  # noqa: ANN401
         data = (
             asdict(connection) if hasattr(connection, "__dataclass_fields__") else dict(connection)
@@ -375,7 +378,7 @@ class PostgresChannelConnectionStore:
         for k, v in data.items():
             if isinstance(v, tuple | frozenset):
                 data[k] = list(v)
-        await self._store.put(data["connection_id"], data)
+        await self._store.put(self._extract_id(data), data)
 
     async def get(self, connection_id: str) -> Any:  # noqa: ANN401
         return await self._store.get(connection_id)
@@ -390,7 +393,7 @@ class PostgresChannelConnectionStore:
         for k, v in data.items():
             if isinstance(v, tuple | frozenset):
                 data[k] = list(v)
-        await self._store.put(data["connection_id"], data)
+        await self._store.put(self._extract_id(data), data)
 
     async def remove(self, connection_id: str) -> None:
         await self._store.remove(connection_id)

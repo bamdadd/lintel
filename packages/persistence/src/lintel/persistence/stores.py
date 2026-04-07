@@ -119,7 +119,10 @@ class PostgresCredentialStore(PostgresCrudStore):
             name=name,
             repo_ids=frozenset(repo_ids) if repo_ids else frozenset(),
         )
-        await self.add(cred)
+        try:
+            await self.add(cred)
+        except ValueError:
+            await self.update(cred)
         # Store secret separately
         async with self._pool_ref.acquire() as conn:  # type: ignore[no-untyped-call]
             await conn.execute(
