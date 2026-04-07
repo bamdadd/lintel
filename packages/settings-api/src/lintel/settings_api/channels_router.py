@@ -306,28 +306,38 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
                 for c in connections
             ]
 
-    # Fallback: build from app state (backward compat)
+    # Fallback: build from app state + credential store
     result: list[dict[str, Any]] = []
 
     slack_connected = getattr(request.app.state, "slack_connected", False) or hasattr(
         request.app.state, "slack_app"
     )
-    result.append(
-        {
-            "channel_type": "slack",
-            "connected": slack_connected,
-            "bot_username": "",
-        }
-    )
+    # Also check credential store (survives restarts)
+    if not slack_connected:
+        credential_store = await _get_credential_store(request)
+        if credential_store is not None:
+            cred = await credential_store.get(SLACK_CREDENTIAL_ID)
+            if cred is not None:
+                slack_connected = True
+                request.app.state.slack_connected = True
+    if slack_connected:
+        result.append(
+            {
+                "channel_type": "slack",
+                "connected": True,
+                "bot_username": "",
+            }
+        )
 
     telegram_adapter = getattr(request.app.state, "telegram_adapter", None)
-    result.append(
-        {
-            "channel_type": "telegram",
-            "connected": telegram_adapter is not None,
-            "bot_username": telegram_adapter.bot_username if telegram_adapter else "",
-        }
-    )
+    if telegram_adapter is not None:
+        result.append(
+            {
+                "channel_type": "telegram",
+                "connected": True,
+                "bot_username": telegram_adapter.bot_username if telegram_adapter else "",
+            }
+        )
 
     return result
 
