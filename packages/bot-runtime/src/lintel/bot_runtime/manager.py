@@ -17,6 +17,26 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
+
+def _ensure_bot(bot: Bot | dict[str, Any]) -> Bot:
+    """Normalize a dict (from Postgres) or Bot dataclass to a Bot instance."""
+    if isinstance(bot, dict):
+        from lintel.domain.types import Bot as BotCls
+
+        # Convert list fields back to tuples
+        data = dict(bot)
+        for field in ("scopes", "project_ids", "workflow_ids", "agent_ids"):
+            val = data.get(field)
+            if isinstance(val, list):
+                data[field] = tuple(val)
+        if "platform" in data and isinstance(data["platform"], str):
+            data["platform"] = BotPlatform(data["platform"])
+        if "status" in data and isinstance(data["status"], str):
+            data["status"] = BotStatus(data["status"])
+        return BotCls(**{k: v for k, v in data.items() if k in BotCls.__dataclass_fields__})
+    return bot
+
+
 # Exponential backoff constants
 _INITIAL_BACKOFF_S = 1.0
 _MAX_BACKOFF_S = 60.0
@@ -71,7 +91,8 @@ class BotLifecycleManager:
         """
         bots = await self._bot_store.list_all()
         started = 0
-        for bot in bots:
+        for raw_bot in bots:
+            bot = _ensure_bot(raw_bot)
             if bot.status != BotStatus.ACTIVE:
                 continue
             await self.start_bot(bot.bot_id)
@@ -92,10 +113,11 @@ class BotLifecycleManager:
 
     async def start_bot(self, bot_id: str) -> bool:
         """Start a bot connection. Returns True if started successfully."""
-        bot = await self._bot_store.get(bot_id)
-        if bot is None:
+        raw_bot = await self._bot_store.get(bot_id)
+        if raw_bot is None:
             logger.warning("bot_lifecycle.start.not_found", bot_id=bot_id)
             return False
+        bot = _ensure_bot(raw_bot)
 
         async with self._lock:
             # Stop existing connection if running
@@ -193,10 +215,11 @@ class BotLifecycleManager:
         if not bot_id:
             return
 
-        bot = await self._bot_store.get(bot_id)
-        if bot is None:
+        raw_bot = await self._bot_store.get(bot_id)
+        if raw_bot is None:
             await self.stop_bot(bot_id)
             return
+        bot = _ensure_bot(raw_bot)
 
         if bot.status != BotStatus.ACTIVE:
             await self.stop_bot(bot_id)
