@@ -347,10 +347,12 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
     if store is not None:
         connections = await store.list_all()
         if connections:
-            return [
-                _strip_empty(asdict(c) if hasattr(c, "__dataclass_fields__") else dict(c))
-                for c in connections
-            ]
+            result_from_store: list[dict[str, Any]] = []
+            for c in connections:
+                d = asdict(c) if hasattr(c, "__dataclass_fields__") else dict(c)
+                d["connected"] = bool(d.get("credential_ref", ""))
+                result_from_store.append(_strip_empty(d))
+            return result_from_store
 
     # Fallback: build from app state + credential store
     result: list[dict[str, Any]] = []
