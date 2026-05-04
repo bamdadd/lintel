@@ -93,7 +93,7 @@ def _seed_warm_sandbox(client: TestClient, project_id: str = "proj-1") -> dict:
     )
 
     store = pooled_sandbox_store_provider.get()
-    sb = asyncio.get_event_loop().run_until_complete(
+    sb = asyncio.run(
         _seed(store, image_id="img-1", project_id=project_id),
     )
     from dataclasses import asdict

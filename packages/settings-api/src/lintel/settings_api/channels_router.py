@@ -366,24 +366,24 @@ async def list_channel_connections(request: Request) -> list[dict[str, Any]]:
             if cred is not None:
                 slack_connected = True
                 request.app.state.slack_connected = True
-    if slack_connected:
-        result.append(
-            {
-                "channel_type": "slack",
-                "connected": True,
-                "bot_username": "",
-            }
-        )
+    # Always include slack entry so clients can discover and configure it
+    result.append(
+        {
+            "channel_type": "slack",
+            "connected": slack_connected,
+            "bot_username": "",
+        }
+    )
 
     telegram_adapter = getattr(request.app.state, "telegram_adapter", None)
-    if telegram_adapter is not None:
-        result.append(
-            {
-                "channel_type": "telegram",
-                "connected": True,
-                "bot_username": telegram_adapter.bot_username if telegram_adapter else "",
-            }
-        )
+    # Always include telegram entry so clients can discover and configure it
+    result.append(
+        {
+            "channel_type": "telegram",
+            "connected": telegram_adapter is not None,
+            "bot_username": telegram_adapter.bot_username if telegram_adapter else "",
+        }
+    )
 
     return result
 

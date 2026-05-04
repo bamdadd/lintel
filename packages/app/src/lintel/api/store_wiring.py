@@ -947,7 +947,7 @@ def create_postgres_stores(pool: asyncpg.Pool) -> dict[str, Any]:
         "knowledge_extraction_store": PgCompliance(pool, "knowledge_extraction", "run_id"),
         "architecture_decision_store": PgCompliance(pool, "architecture_decision", "decision_id"),
         "policy_generation_store": PgCompliance(pool, "policy_generation", "run_id"),
-        "guardrail_rule_store": PgCompliance(pool, "guardrail_rules", "id"),
+        "guardrail_rule_store": PgCompliance(pool, "guardrail_rules", "rule_id"),
         # Agent Action Governance stores (REQ-030)
         "governance_policy_store": PgCompliance(pool, "governance_policy", "policy_id"),
         "governance_audit_store": PgCompliance(pool, "governance_audit", "entry_id"),

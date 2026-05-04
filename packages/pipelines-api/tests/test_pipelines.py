@@ -72,7 +72,7 @@ class TestPipelinesAPI:
         assert data["run_id"] == "run1"
         assert data["project_id"] == "proj-1"
         assert data["status"] == "pending"
-        assert len(data["stages"]) == 11  # feature_to_pr has 11 stages
+        assert len(data["stages"]) == 12  # feature_to_pr has 12 stages
 
     def test_create_pipeline_rejected_without_repo(self, client: TestClient) -> None:
         resp = client.post(
@@ -133,7 +133,7 @@ class TestPipelinesAPI:
         data = resp.json()
         assert data["status"] == "cancelled"
         skipped = [s for s in data["stages"] if s["status"] == "skipped"]
-        assert len(skipped) == 8  # pending stages get skipped (ingest+route auto-start)
+        assert len(skipped) == 9  # pending stages get skipped (ingest+route auto-start)
 
     def test_delete_pipeline(self, client: TestClient) -> None:
         _create_pipeline(client, "run1")

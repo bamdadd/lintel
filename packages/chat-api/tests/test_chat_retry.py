@@ -95,7 +95,7 @@ class TestRetryEndpoint:
                     failed = dataclasses.replace(run, status=PipelineStatus.FAILED)
                     await pipeline_store.update(failed)
 
-            asyncio.get_event_loop().run_until_complete(_fail_run())
+            asyncio.run(_fail_run())
 
         # Retry
         resp = client.post(f"/api/v1/chat/conversations/{conv_id}/retry")

@@ -27,15 +27,17 @@ class TestDiscoverTestCommand:
         mgr = _mock_sandbox(
             # detect files
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
-            # workspace check
+            # workspace check (Phase 1b)
             (0, "0", ""),
             # detect capabilities (postgres available)
             (0, "HAS_POSTGRES\nHAS_UV", ""),
+            # _python_setup: workspace check #1 (probe_cmd selection)
+            (0, "0", ""),
             # _python_setup: probe installed
             (0, "MISSING", ""),
             # _python_setup: which uv
             (0, "/root/.local/bin/uv", ""),
-            # _python_setup: workspace check for sync
+            # _python_setup: workspace check #2 (sync flags)
             (0, "0", ""),
             # _detect_python_extras: grep pyproject.toml
             (0, '"spacy>=3.0"', ""),
@@ -53,8 +55,9 @@ class TestDiscoverTestCommand:
         """Python project, no postgres → falls back to test-unit."""
         mgr = _mock_sandbox(
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
-            (0, "0", ""),  # workspace check
+            (0, "0", ""),  # workspace check (Phase 1b)
             (0, "HAS_UV", ""),
+            (0, "0", ""),  # _python_setup: workspace check #1
             # probe installed
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
@@ -73,8 +76,9 @@ class TestDiscoverTestCommand:
         """Python project, no Makefile → pytest directly."""
         mgr = _mock_sandbox(
             (0, "/w/pyproject.toml", ""),
-            (0, "0", ""),  # workspace check
+            (0, "0", ""),  # workspace check (Phase 1b)
             (0, "HAS_UV\nHAS_POSTGRES", ""),
+            (0, "0", ""),  # _python_setup: workspace check #1
             (0, "MISSING", ""),
             (0, "/root/.local/bin/uv", ""),
             (0, "0", ""),  # workspace check for sync
@@ -89,8 +93,9 @@ class TestDiscoverTestCommand:
         """uv not found → setup includes curl install."""
         mgr = _mock_sandbox(
             (0, "/w/pyproject.toml", ""),
-            (0, "0", ""),  # workspace check
+            (0, "0", ""),  # workspace check (Phase 1b)
             (0, "", ""),
+            (0, "0", ""),  # _python_setup: workspace check #1
             (0, "MISSING", ""),  # probe
             (0, "MISSING", ""),  # which uv
             (0, "0", ""),  # workspace check for sync
@@ -105,8 +110,9 @@ class TestDiscoverTestCommand:
         """When venv exists with project installed, skip all setup."""
         mgr = _mock_sandbox(
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
-            (0, "0", ""),  # workspace check
+            (0, "0", ""),  # workspace check (Phase 1b)
             (0, "HAS_UV", ""),
+            (0, "0", ""),  # _python_setup: workspace check #1
             # probe: already installed
             (0, "INSTALLED", ""),
             # _python_test_command: make help
@@ -123,8 +129,9 @@ class TestDiscoverTestCommand:
         """uv workspace with test-affected target → make test-affected."""
         mgr = _mock_sandbox(
             (0, "/w/Makefile\n/w/pyproject.toml", ""),
-            (0, "1", ""),  # workspace check → is workspace
+            (0, "1", ""),  # workspace check (Phase 1b) → is workspace
             (0, "HAS_UV", ""),
+            (0, "1", ""),  # _python_setup: workspace check #1
             # probe: already installed
             (0, "INSTALLED", ""),
             # _find_make_affected_target: grep Makefile

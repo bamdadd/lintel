@@ -52,8 +52,7 @@ class TestCheckWorkflowAllowed:
         svc = self._make_svc()
         conn = ChannelConnection(
             id="conn-1",
-            provider="slack",
-            channel_id="C123",
+            channel_type="slack",
             workspace_id="T123",
             allowed_workflows=(),
         )
@@ -63,8 +62,7 @@ class TestCheckWorkflowAllowed:
         svc = self._make_svc()
         conn = ChannelConnection(
             id="conn-1",
-            provider="slack",
-            channel_id="C123",
+            channel_type="slack",
             workspace_id="T123",
             allowed_workflows=("feature_to_pr", "bug_fix"),
         )
@@ -74,8 +72,7 @@ class TestCheckWorkflowAllowed:
         svc = self._make_svc()
         conn = ChannelConnection(
             id="conn-1",
-            provider="slack",
-            channel_id="C123",
+            channel_type="slack",
             workspace_id="T123",
             allowed_workflows=("bug_fix",),
         )
@@ -100,7 +97,7 @@ class TestCheckProjectAllowed:
     def test_empty_project_ids_allows_all(self) -> None:
         svc = self._make_svc()
         conn = ChannelConnection(
-            id="conn-1", provider="slack", channel_id="C123", workspace_id="T123", project_ids=()
+            id="conn-1", channel_type="slack", workspace_id="T123", project_ids=()
         )
         assert svc.check_project_allowed(conn, "proj-1") is None
 
@@ -108,8 +105,7 @@ class TestCheckProjectAllowed:
         svc = self._make_svc()
         conn = ChannelConnection(
             id="conn-1",
-            provider="slack",
-            channel_id="C123",
+            channel_type="slack",
             workspace_id="T123",
             project_ids=("proj-1", "proj-2"),
         )
@@ -119,8 +115,7 @@ class TestCheckProjectAllowed:
         svc = self._make_svc()
         conn = ChannelConnection(
             id="conn-1",
-            provider="slack",
-            channel_id="C123",
+            channel_type="slack",
             workspace_id="T123",
             project_ids=("proj-1",),
         )
@@ -209,8 +204,7 @@ class TestChannelConnectionFields:
 
         conn = ChannelConnection(
             id="c1",
-            provider="slack",
-            channel_id="C1",
+            channel_type="slack",
             workspace_id="T1",
         )
         assert conn.allowed_workflows == ()
@@ -221,8 +215,7 @@ class TestChannelConnectionFields:
 
         conn = ChannelConnection(
             id="c1",
-            provider="slack",
-            channel_id="C1",
+            channel_type="slack",
             workspace_id="T1",
             allowed_workflows=("feature_to_pr", "bug_fix"),
             project_ids=("proj-1",),
